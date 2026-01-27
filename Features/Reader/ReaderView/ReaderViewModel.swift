@@ -123,7 +123,8 @@ class ReaderViewModel {
         let bookmark = Bookmark(
             chapterIndex: index,
             progress: progress,
-            characterCount: currentCharacter
+            characterCount: currentCharacter,
+            lastModified: Date()
         )
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
     }
