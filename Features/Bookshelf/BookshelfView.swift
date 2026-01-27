@@ -16,6 +16,7 @@ struct BookshelfView: View {
     @State private var showDictionaries = false
     @State private var showAnkiSettings = false
     @State private var showAppearance = false
+    @State private var showSync = false
     
     let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
@@ -78,6 +79,12 @@ struct BookshelfView: View {
                         } label: {
                             Label("Appearance", systemImage: "paintbrush.pointed")
                         }
+                        
+                        Button {
+                            showSync = true
+                        } label: {
+                            Label("Syncing", systemImage: "cloud")
+                        }
                     } label: {
                         Image(systemName: "gearshape")
                     }
@@ -96,6 +103,9 @@ struct BookshelfView: View {
             }
             .navigationDestination(isPresented: $showAnkiSettings) {
                 AnkiView()
+            }
+            .navigationDestination(isPresented: $showSync) {
+                SyncView()
             }
             .sheet(isPresented: $showAppearance) {
                 AppearanceView(userConfig: userConfig)
