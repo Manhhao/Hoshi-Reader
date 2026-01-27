@@ -20,13 +20,13 @@ class BookshelfViewModel {
     private var bookProgress: [UUID: Double] = [:]
     
     init() {
-        loadBooks()
     }
     
     func loadBooks() {
         do {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
+            print(try BookStorage.getDocumentsDirectory().path)
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -103,12 +103,44 @@ class BookshelfViewModel {
     }
     
     private func processImport(sourceURL: URL) throws {
-        let localURL = try BookStorage.copySecurityScopedFile(from: sourceURL, to: "Books/\(sourceURL.lastPathComponent)")
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempURL = tempDir.appendingPathComponent(sourceURL.lastPathComponent)
+        
+        try? FileManager.default.removeItem(at: tempURL)
+        try? FileManager.default.removeItem(at: tempURL.deletingPathExtension())
+        
+        try FileManager.default.copyItem(at: sourceURL, to: tempURL)
+        
+        defer {
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: tempURL.deletingPathExtension())
+        }
+        
+        let tempDocument = try BookStorage.loadEpub(tempURL)
+        guard let title = tempDocument.title, !title.isEmpty else {
+            return
+        }
+        
+        let safeTitle = sanitizeFileName(title)
+        
+        let booksDir = try BookStorage.getBooksDirectory()
+        let targetFolder = booksDir.appendingPathComponent(safeTitle)
+        
+        if FileManager.default.fileExists(atPath: targetFolder.path) {
+            return
+        }
+        
+        let destinationPath = "Books/\(safeTitle).epub"
+        let localURL = try BookStorage.copySecurityScopedFile(from: sourceURL, to: destinationPath)
         let bookFolder = localURL.deletingPathExtension()
         
+        let document = try BookStorage.loadEpub(localURL)
+        
+        try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document)
+    }
+
+    private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument) throws {
         do {
-            let document = try BookStorage.loadEpub(localURL)
-            
             var coverURL: String? = nil
             if let coverPath = findCoverInManifest(document: document) {
                 let coverSourceURL = document.contentDirectory.appendingPathComponent(coverPath)
@@ -136,6 +168,13 @@ class BookshelfViewModel {
             try? BookStorage.delete(at: bookFolder)
             throw error
         }
+    }
+    
+    private func sanitizeFileName(_ string: String) -> String {
+        return string
+            .components(separatedBy: CharacterSet(charactersIn: "\\/:*?\"<>|").union(.newlines).union(.controlCharacters))
+            .joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func findCoverInManifest(document: EPUBDocument) -> String? {
