@@ -22,8 +22,12 @@ extension String {
         text = text.replacingOccurrences(of: "&amp;", with: "&")
         text = text.replacingOccurrences(of: "&lt;", with: "<")
         text = text.replacingOccurrences(of: "&gt;", with: ">")
-        text = text.replacingOccurrences(of: "[。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］\\[\\]・：；:;，,.─—]", with: "", options: .regularExpression)
-        return text.components(separatedBy: .whitespacesAndNewlines).joined().count
+        text = text.replacingOccurrences(
+            of: "[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\\p{Radical}\\p{Unified_Ideograph}]",
+            with: "",
+            options: .regularExpression
+        )
+        return text.count
     }
 }
 

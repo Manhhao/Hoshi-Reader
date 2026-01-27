@@ -92,7 +92,7 @@ struct VerticalWebView: UIViewRepresentable {
         init(_ parent: VerticalWebView) {
             self.parent = parent
         }
-
+        
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "textSelected",
                   let body = message.body as? [String: Any] else {
@@ -215,9 +215,7 @@ struct VerticalWebView: UIViewRepresentable {
                 
                 // wait for all images to load before scrolling to bookmark
                 Promise.all(imagePromises).then(() => {
-                    var raw = document.body.scrollHeight * \(self.parent.currentProgress);
-                    var targetScroll = Math.floor(raw / window.innerHeight) * window.innerHeight;
-                    window.scrollTo(0, targetScroll);
+                    window.hoshiReader.restoreProgress(\(self.parent.currentProgress));
                 });
             })();
             """
@@ -313,17 +311,7 @@ struct VerticalWebView: UIViewRepresentable {
                 return
             }
             
-            let script = """
-            (function() {
-                var scrollPos = window.scrollY;
-                var maxScroll = document.body.scrollHeight;
-            
-                if (maxScroll <= 0) {
-                    return 0;
-                }
-                return scrollPos / maxScroll;
-            })()
-            """
+            let script = "window.hoshiReader.calculateProgress()"
             
             webView.evaluateJavaScript(script) { (result, _) in
                 if let progress = result as? Double {

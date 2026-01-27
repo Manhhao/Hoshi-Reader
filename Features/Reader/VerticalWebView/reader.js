@@ -10,6 +10,7 @@ window.hoshiReader = {
     selection: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
+    ttuRegex: /[^0-9A-Z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
 
     isScanBoundary(char) {
         return /^[\s\u3000]$/.test(char) || this.scanDelimiters.includes(char);
@@ -24,16 +25,87 @@ window.hoshiReader = {
         let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
         return el?.closest('p') || null;
     },
+    
+    countChars(text) {
+        return text.replace(this.ttuRegex, '').length;
+    },
 
-    createParagraphWalker(node) {
-        const root = this.findParagraph(node) || document.body;
+    createWalker(rootNode) {
+        const root = rootNode || document.body;
+        
         return document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
             acceptNode: (n) => this.isFurigana(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
         });
     },
 
+    calculateProgress() {
+        var walker = this.createWalker();
+        var totalChars = 0;
+        var exploredChars = 0;
+        var node;
+
+        while (node = walker.nextNode()) {
+            var nodeLen = this.countChars(node.textContent);
+            totalChars += nodeLen;
+
+            if (nodeLen > 0) {
+                var range = document.createRange();
+                range.selectNodeContents(node);
+                if (range.getBoundingClientRect().top < 0) {
+                    exploredChars += nodeLen;
+                }
+            }
+        }
+
+        return totalChars > 0 ? exploredChars / totalChars : 0;
+    },
+
+    restoreProgress(progress) {
+        if (progress <= 0) {
+            return;
+        }
+
+        if (progress >= 0.99) {
+            var lastPage = Math.floor((document.body.scrollHeight - window.innerHeight) / window.innerHeight) * window.innerHeight;
+            window.scrollTo(0, Math.max(0, lastPage));
+            return;
+        }
+
+        var walker = this.createWalker();
+        var totalChars = 0;
+        var node;
+
+        while (node = walker.nextNode()) {
+            totalChars += this.countChars(node.textContent);
+        }
+
+        if (totalChars <= 0) {
+            return;
+        }
+
+        var targetCharCount = totalChars * progress;
+        var runningSum = 0;
+        var targetNode = null;
+
+        walker = this.createWalker();
+        while (node = walker.nextNode()) {
+            runningSum += this.countChars(node.textContent);
+            if (runningSum > targetCharCount) {
+                targetNode = node;
+                break;
+            }
+        }
+
+        if (targetNode) {
+            var range = document.createRange();
+            range.selectNodeContents(targetNode);
+            var pageIndex = Math.floor(range.getBoundingClientRect().top / window.innerHeight);
+            window.scrollTo(0, pageIndex * window.innerHeight);
+        }
+    },
+
     getSentence(startNode, startOffset) {
-        const walker = this.createParagraphWalker(startNode);
+        const walker = this.createWalker(startNode);
 
         walker.currentNode = startNode;
         const partsBefore = [];
@@ -161,7 +233,7 @@ window.hoshiReader = {
 
         this.clearHighlight();
 
-        const walker = this.createParagraphWalker(hit.node);
+        const walker = this.createWalker(hit.node);
 
         let text = '';
         let node = hit.node;
