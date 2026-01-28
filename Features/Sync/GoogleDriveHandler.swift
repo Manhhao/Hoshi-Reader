@@ -17,11 +17,11 @@ enum GoogleDriveError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .folderNotFound:
-            return "No ttu-reader-data found on Google Drive."
+            return "No ttu-reader-data folder on Google Drive"
         case .fileNotFound:
-            return "Progress file not found."
+            return "Progress file not found"
         case .invalidResponse:
-            return "Invalid response from Google Drive."
+            return "Invalid response from Google Drive"
         case .apiError(let message):
             return message
         }

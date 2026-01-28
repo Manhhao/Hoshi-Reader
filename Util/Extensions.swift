@@ -63,14 +63,14 @@ struct LoadingOverlay: View {
             if #available(iOS 26, *) {
                 VStack(spacing: 12) {
                     ProgressView()
-                    Text("Importing...")
+                    Text(message)
                 }
                 .padding(24)
                 .glassEffect()
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
-                    Text("Importing...")
+                    Text(message)
                 }
                 .padding(24)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))

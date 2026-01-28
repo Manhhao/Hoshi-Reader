@@ -137,7 +137,7 @@ class BookshelfViewModel {
                 let root = try await GoogleDriveHandler.shared.findRootFolder()
                 let books = try await GoogleDriveHandler.shared.listBooks(rootFolder: root)
                 guard let driveFolder = books.first(where: { $0.name == title }) else {
-                    showError(message: "Book not found on Google Drive")
+                    showError(message: "Could not find \(title) on Google Drive")
                     // TODO: create book on google drive
                     return
                 }

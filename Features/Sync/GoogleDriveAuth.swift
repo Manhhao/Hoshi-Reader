@@ -28,9 +28,9 @@ enum GoogleDriveAuthError: LocalizedError {
         case .tokenExchangeFailed(let statusCode):
             return "Token exchange failed: \(statusCode)"
         case .notAuthenticated:
-            return "Not authenticated. Please sign in."
+            return "Not authenticated\nPlease sign in"
         case .tokenRefreshFailed:
-            return "Failed to refresh token. Please sign in again."
+            return "Failed to refresh token\nPlease sign in again"
         }
     }
 }
