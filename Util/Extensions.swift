@@ -60,12 +60,21 @@ struct LoadingOverlay: View {
         ZStack {
             Color.black.opacity(0.2)
                 .ignoresSafeArea()
-            VStack(spacing: 12) {
-                ProgressView()
-                Text(message)
+            if #available(iOS 26, *) {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Importing...")
+                }
+                .padding(24)
+                .glassEffect()
+            } else {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Importing...")
+                }
+                .padding(24)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
-            .padding(24)
-            .glassEffect()
         }
     }
 }

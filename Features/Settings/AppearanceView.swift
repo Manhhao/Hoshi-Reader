@@ -43,6 +43,15 @@ struct AppearanceView: View {
                         Stepper("", value: $userConfig.horizontalPadding, in: 0...80, step: 2)
                             .labelsHidden()
                     }
+                    
+                    HStack {
+                        Text("Vertical Padding")
+                        Spacer()
+                        Text("\(userConfig.verticalPadding)")
+                            .fontWeight(.semibold)
+                        Stepper("", value: $userConfig.verticalPadding, in: 0...80, step: 2)
+                            .labelsHidden()
+                    }
                 }
                 
                 Section("Popup") {

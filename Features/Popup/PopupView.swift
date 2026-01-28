@@ -74,7 +74,24 @@ struct PopupView: View {
     }
     
     var body: some View {
-        GlassEffectContainer {
+        if #available(iOS 26, *) {
+            GlassEffectContainer {
+                if isVisible, let selectionData, let layout {
+                    PopupWebView(
+                        content: constructHtml(selectionData: selectionData),
+                        onMine: { content in
+                            AnkiManager.shared.addNote(content: content, sentence: selectionData.sentence)
+                        }
+                    )
+                    .frame(width: layout.width, height: layout.height)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 8))
+                    .glassEffectID("popup", in: namespace)
+                    .glassEffectTransition(.materialize)
+                    .position(layout.position)
+                    .animation(nil, value: layout.position)
+                }
+            }
+        } else {
             if isVisible, let selectionData, let layout {
                 PopupWebView(
                     content: constructHtml(selectionData: selectionData),
@@ -83,9 +100,7 @@ struct PopupView: View {
                     }
                 )
                 .frame(width: layout.width, height: layout.height)
-                .glassEffect(.regular, in: .rect(cornerRadius: 8))
-                .glassEffectID("popup", in: namespace)
-                .glassEffectTransition(.materialize)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                 .position(layout.position)
                 .animation(nil, value: layout.position)
             }

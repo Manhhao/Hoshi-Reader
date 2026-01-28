@@ -141,12 +141,12 @@ struct VerticalWebView: UIViewRepresentable {
                 box-sizing: border-box !important;
                 column-width: var(--page-height, 100vh) !important;
                 column-height: var(--page-width, 100vw) !important;
-                column-gap: 0 !important;
-                padding: 0 \(parent.userConfig.horizontalPadding)px !important;
+                column-gap: \(parent.userConfig.verticalPadding * 2)px;
+                padding: \(parent.userConfig.verticalPadding)px \(parent.userConfig.horizontalPadding)px !important;
             }
             img.block-img {
                 max-width: calc(100vw - \(parent.userConfig.horizontalPadding * 2)px) !important;
-                max-height: 100vh !important;
+                max-height: calc(100vh - \(parent.userConfig.verticalPadding * 2)px) !important;
                 width: auto !important;
                 height: auto !important;
                 display: block !important;
@@ -157,7 +157,7 @@ struct VerticalWebView: UIViewRepresentable {
             }
             svg {
                 max-width: calc(100vw - \(parent.userConfig.horizontalPadding * 2)px) !important;
-                max-height: 100vh !important;
+                max-height: calc(100vh - \(parent.userConfig.verticalPadding * 2)px) !important;
                 width: 100% !important;
                 height: 100% !important;
                 display: block !important;
@@ -190,6 +190,16 @@ struct VerticalWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 
+                // this is to add vertical spacing at the end if vertical padding > 0
+                // this seems to create a full page
+                if (\(parent.userConfig.verticalPadding) > 0) {
+                    var spacer = document.createElement('div');
+                    spacer.style.height = '\(parent.userConfig.verticalPadding)px';
+                    spacer.style.width = '100%';
+                    spacer.style.display = 'block';
+                    spacer.style.breakInside = 'avoid';
+                    document.body.appendChild(spacer);
+                }
                 \(readerJS)
 
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
@@ -280,7 +290,8 @@ struct VerticalWebView: UIViewRepresentable {
             let script = """
                 (function() {
                     var pageHeight = \(Int(self.parent.viewSize.height));
-                    if ((window.scrollY + pageHeight) < (document.body.scrollHeight - 1)) {
+                    var maxScroll = (\(parent.userConfig.verticalPadding) === 0) ? document.body.scrollHeight : document.body.scrollHeight - pageHeight;
+                    if ((window.scrollY + pageHeight) <= (maxScroll - 1)) {
                         window.scrollBy(0, pageHeight);
                         return "scrolled";
                     }

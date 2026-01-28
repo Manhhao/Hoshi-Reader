@@ -33,6 +33,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(horizontalPadding, forKey: "horizontalPadding") }
     }
     
+    var verticalPadding: Int {
+        didSet { UserDefaults.standard.set(verticalPadding, forKey: "verticalPadding") }
+    }
+    
     var bookshelfSortOption: SortOption {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
@@ -70,6 +74,7 @@ class UserConfig {
         
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
         self.horizontalPadding = defaults.object(forKey: "horizontalPadding") as? Int ?? 10
+        self.verticalPadding = defaults.object(forKey: "verticalPadding") as? Int ?? 0
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16

@@ -394,8 +394,8 @@ function renderStructuredContent(parent, node) {
 
     if (Array.isArray(node)) {
         const isStringArray = node.every(item => typeof item === 'string');
-        
-        if (isStringArray && node.length > 1) {
+        const insideSpan = parent.tagName === 'SPAN';
+        if (isStringArray && node.length > 1 && !insideSpan) {
             const ul = document.createElement('ul');
             node.forEach(child => {
                 const li = document.createElement('li');
