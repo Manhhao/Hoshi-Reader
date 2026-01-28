@@ -65,14 +65,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
     }
     
-    var accessToken: String? {
-        didSet { UserDefaults.standard.set(accessToken, forKey: "accessToken") }
-    }
-    
-    var refreshToken: String? {
-        didSet { UserDefaults.standard.set(refreshToken, forKey: "refreshToken") }
-    }
-    
     init() {
         let defaults = UserDefaults.standard
         
@@ -85,8 +77,6 @@ class UserConfig {
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
-        self.accessToken = defaults.string(forKey: "accessToken")
-        self.refreshToken = defaults.string(forKey: "refreshToken")
         
         self.bookshelfSortOption = defaults.string(forKey: "bookshelfSortOption")
             .flatMap(SortOption.init) ?? .recent

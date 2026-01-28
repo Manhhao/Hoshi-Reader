@@ -98,14 +98,16 @@ window.hoshiReader = {
 
         if (targetNode) {
             var range = document.createRange();
-            range.selectNodeContents(targetNode);
+            range.setStart(targetNode, 0);
+            range.setEnd(targetNode, 1);
             var pageIndex = Math.floor(range.getBoundingClientRect().top / window.innerHeight);
             window.scrollTo(0, pageIndex * window.innerHeight);
         }
     },
 
     getSentence(startNode, startOffset) {
-        const walker = this.createWalker(startNode);
+        const container = this.findParagraph(startNode) || document.body;
+        const walker = this.createWalker(container);
 
         walker.currentNode = startNode;
         const partsBefore = [];
@@ -233,7 +235,8 @@ window.hoshiReader = {
 
         this.clearHighlight();
 
-        const walker = this.createWalker(hit.node);
+        const container = this.findParagraph(hit.node) || document.body;
+        const walker = this.createWalker(container);
 
         let text = '';
         let node = hit.node;

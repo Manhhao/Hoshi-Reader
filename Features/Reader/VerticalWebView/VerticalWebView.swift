@@ -166,7 +166,7 @@ struct VerticalWebView: UIViewRepresentable {
                 -webkit-column-break-inside: avoid !important;
             }
             ::highlight(hoshi-selection) {
-                background-color: rgba(160, 160, 160, 0.4);
+                background-color: rgba(160, 160, 160, 0.4) !important;
                 color: inherit;
             }
             @media (prefers-color-scheme: light) { html, body { background-color: #fff !important; color: #000 !important; } }
@@ -191,7 +191,18 @@ struct VerticalWebView: UIViewRepresentable {
                 document.head.appendChild(style);
                 
                 \(readerJS)
-                
+
+                // wrap text not in spans inside ruby elements in spans to fix highlighting
+                document.querySelectorAll('ruby').forEach(ruby => {
+                    ruby.childNodes.forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                            const span = document.createElement('span');
+                            span.textContent = node.textContent;
+                            node.replaceWith(span);
+                        }
+                    });
+                });
+
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
                 var imagePromises = Array.from(images).map(img => {

@@ -14,6 +14,8 @@ enum GoogleDriveAuthError: LocalizedError {
     case noCallbackURL
     case missingAuthorizationCode
     case tokenExchangeFailed(statusCode: Int)
+    case notAuthenticated
+    case tokenRefreshFailed
     
     var errorDescription: String? {
         switch self {
@@ -24,7 +26,11 @@ enum GoogleDriveAuthError: LocalizedError {
         case .missingAuthorizationCode:
             return "Authorization code missing from callback"
         case .tokenExchangeFailed(let statusCode):
-            return "Token exchange failed with status code: \(statusCode)"
+            return "Token exchange failed: \(statusCode)"
+        case .notAuthenticated:
+            return "Not authenticated. Please sign in."
+        case .tokenRefreshFailed:
+            return "Failed to refresh token. Please sign in again."
         }
     }
 }
@@ -33,13 +39,23 @@ enum GoogleDriveAuthError: LocalizedError {
 @Observable
 class GoogleDriveAuth: NSObject {
     static let shared = GoogleDriveAuth()
-    
     private override init() {}
     
-    func authenticate(clientId: String, config: UserConfig) async throws {
+    var isAuthenticated: Bool {
+        TokenStorage.get("accessToken") != nil
+    }
+
+    func getAccessToken() throws -> String {
+        guard let token = TokenStorage.get("accessToken") else {
+            throw GoogleDriveAuthError.notAuthenticated
+        }
+        return token
+    }
+
+    func authenticate(clientId: String) async throws {
         let scheme = clientId.components(separatedBy: ".").reversed().joined(separator: ".")
         let redirectUri = "\(scheme):/oauth2callback"
-        
+
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
@@ -47,13 +63,48 @@ class GoogleDriveAuth: NSObject {
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: "https://www.googleapis.com/auth/drive.file"),
         ]
-        
+
         guard let authURL = components.url else {
             throw GoogleDriveAuthError.invalidAuthURL
         }
-        
+
         let code = try await getAuthorizationCode(from: authURL, callbackScheme: scheme)
-        try await exchangeCode(code: code, clientId: clientId, redirectUri: redirectUri, config: config)
+        try await exchangeCode(code: code, clientId: clientId, redirectUri: redirectUri)
+        TokenStorage.save(clientId, for: "clientId")
+    }
+    
+    func refreshAccessToken() async throws -> String {
+        guard let refreshToken = TokenStorage.get("refreshToken"),
+              let clientId = TokenStorage.get("clientId") else {
+            throw GoogleDriveAuthError.notAuthenticated
+        }
+
+        let url = URL(string: "https://oauth2.googleapis.com/token")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let params = [
+            "client_id": clientId,
+            "grant_type": "refresh_token",
+            "refresh_token": refreshToken
+        ]
+        request.httpBody = params
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: "&")
+            .data(using: .utf8)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            TokenStorage.clear()
+            throw GoogleDriveAuthError.tokenRefreshFailed
+        }
+        
+        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+        TokenStorage.save(tokenResponse.accessToken, for: "accessToken")
+        
+        return tokenResponse.accessToken
     }
     
     private func getAuthorizationCode(from url: URL, callbackScheme: String) async throws -> String {
@@ -80,7 +131,7 @@ class GoogleDriveAuth: NSObject {
         return code
     }
     
-    private func exchangeCode(code: String, clientId: String, redirectUri: String, config: UserConfig) async throws {
+    private func exchangeCode(code: String, clientId: String, redirectUri: String) async throws {
         let url = URL(string: "https://oauth2.googleapis.com/token")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -107,9 +158,9 @@ class GoogleDriveAuth: NSObject {
         
         let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
         
-        config.accessToken = tokenResponse.accessToken
+        TokenStorage.save(tokenResponse.accessToken, for: "accessToken")
         if let refresh = tokenResponse.refreshToken {
-            config.refreshToken = refresh
+            TokenStorage.save(refresh, for: "refreshToken")
         }
     }
 }

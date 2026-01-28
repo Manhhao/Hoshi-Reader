@@ -49,6 +49,7 @@ struct BookInfo: Codable {
     let chapterInfo: [String: ChapterInfo]
     
     struct ChapterInfo: Codable {
+        let spineIndex: Int?
         let currentTotal: Int
         let chapterCount: Int
     }

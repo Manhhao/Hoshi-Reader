@@ -48,3 +48,24 @@ extension UIApplication {
             .safeAreaInsets.top ?? 0
     }
 }
+
+struct LoadingOverlay: View {
+    let message: String
+    
+    init(_ message: String = "Loading...") {
+        self.message = message
+    }
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.2)
+                .ignoresSafeArea()
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(message)
+            }
+            .padding(24)
+            .glassEffect()
+        }
+    }
+}
