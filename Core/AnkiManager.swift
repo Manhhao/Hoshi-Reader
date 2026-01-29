@@ -92,7 +92,9 @@ class AnkiManager {
               let glossary = content["glossary"],
               let glossaryFirst = content["glossaryFirst"],
               let frequencies = content["frequenciesHtml"],
-              let frequencyHarmonicRank = content["freqHarmonicRank"] else {
+              let frequencyHarmonicRank = content["freqHarmonicRank"],
+              let pitchPositions = content["pitchPositions"],
+              let pitchCategories = content["pitchCategories"] else {
             return
         }
         
@@ -119,6 +121,10 @@ class AnkiManager {
                 value = frequencies
             case .frequencyHarmonicRank:
                 value = frequencyHarmonicRank
+            case .pitchPositions:
+                value = pitchPositions
+            case .pitchCategories:
+                value = pitchCategories
             case .sentence:
                 if let sentenceBolded = sentence?.replacingOccurrences(of: matched, with: "<b>\(matched)</b>") {
                     value = sentenceBolded

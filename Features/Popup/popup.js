@@ -3,6 +3,8 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
+//  Copyright © 2023-2025 Yomitan Authors (marked pitch functions)
+//  Copyright © 2021-2022 Yomichan Authors (marked pitch functions)
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
@@ -10,6 +12,7 @@ const KANJI_RANGE = '\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF';
 const KANJI_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const KANJI_SEGMENT_PATTERN = new RegExp(`[${KANJI_RANGE}]+|[^${KANJI_RANGE}]+`, 'g');
 const DEFAULT_HARMONIC_RANK = '9999999';
+const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -336,6 +339,39 @@ function constructFrequencyHtml(frequencies) {
     return result;
 }
 
+function constructPitchPositionHtml(pitches) {
+    if (!pitches?.length) {
+        return '';
+    }
+    
+    let result = '<ol>';
+    pitches.forEach(pitchGroup => {
+        pitchGroup.pitchPositions.forEach(pos => {
+            result += `<li><span style="display:inline;"><span>[</span><span>${pos}</span><span>]</span></span></li>`;
+        });
+    });
+    result += '</ol>';
+    return result;
+}
+
+function constructPitchCategories(pitches, reading, definitionTags) {
+    if (!pitches?.length) {
+        return '';
+    }
+    
+    const verbOrAdj = isVerbOrAdjective(definitionTags);
+    const categories = [];
+    pitches.forEach(pitchGroup => {
+        pitchGroup.pitchPositions.forEach(pos => {
+            const category = getPitchCategory(reading, pos, verbOrAdj);
+            if (category && !categories.includes(category)) {
+                categories.push(category);
+            }
+        });
+    });
+    return categories.join(',');
+}
+
 function getFrequencyHarmonicRank(frequencies) {
     if (!frequencies || frequencies.length === 0) {
         return DEFAULT_HARMONIC_RANK;
@@ -359,7 +395,7 @@ function getFrequencyHarmonicRank(frequencies) {
     return String(Math.round(values.length / sumOfReciprocals));
 }
 
-function mineEntry(expression, reading, frequencies, matched, entryIndex) {
+function mineEntry(expression, reading, frequencies, pitches, definitionTags, matched, entryIndex) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
     const glossary = constructGlossaryHtml(idx);
@@ -367,6 +403,8 @@ function mineEntry(expression, reading, frequencies, matched, entryIndex) {
     const frequenciesHtml = constructFrequencyHtml(frequencies);
     const singleGlossaries = constructSingleGlossaryHtml(idx);
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
+    const pitchPositions = constructPitchPositionHtml(pitches);
+    const pitchCategories = constructPitchCategories(pitches, reading, definitionTags);
     webkit.messageHandlers.mineEntry.postMessage({
         expression,
         reading,
@@ -375,7 +413,9 @@ function mineEntry(expression, reading, frequencies, matched, entryIndex) {
         frequenciesHtml,
         freqHarmonicRank,
         glossary,
-        glossaryFirst
+        glossaryFirst,
+        pitchPositions,
+        pitchCategories
     });
 }
 
@@ -480,12 +520,99 @@ function createFrequencyGroup(freqGroup) {
     ]);
 }
 
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L350
+function isMoraPitchHigh(moraIndex, pitchAccentValue) {
+    switch (pitchAccentValue) {
+        case 0: return (moraIndex > 0);
+        case 1: return (moraIndex < 1);
+        default: return (moraIndex > 0 && moraIndex < pitchAccentValue);
+    }
+}
+
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L406
+function getKanaMorae(text) {
+    const morae = [];
+    let i;
+    for (const c of text) {
+        if (SMALL_KANA_SET.has(c) && (i = morae.length) > 0) {
+            morae[i - 1] += c;
+        } else {
+            morae.push(c);
+        }
+    }
+    return morae;
+}
+
+// this might be unreliable
+function isVerbOrAdjective(definitionTags) {
+    return definitionTags?.some(tag => tag.startsWith('v') || tag.startsWith('adj-i')) ?? false;
+}
+
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L366
+function getPitchCategory(reading, pitchAccentValue, verbOrAdjective = false) {
+    if (pitchAccentValue === 0) {
+        return 'heiban';
+    }
+    if (verbOrAdjective) {
+        return pitchAccentValue > 0 ? 'kifuku' : null;
+    }
+    if (pitchAccentValue === 1) {
+        return 'atamadaka';
+    }
+    if (pitchAccentValue > 1) {
+        const moraCount = getKanaMorae(reading).length;
+        return pitchAccentValue >= moraCount ? 'odaka' : 'nakadaka';
+    }
+    return null;
+}
+
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/display/pronunciation-generator.js#L38
+function createPitchHtml(reading, pitchValue) {
+    const morae = getKanaMorae(reading);
+    const container = el('span', { className: 'pronunciation-text' });
+
+    for (let i = 0; i < morae.length; i++) {
+        const mora = morae[i];
+        const isHigh = isMoraPitchHigh(i, pitchValue);
+        const isHighNext = isMoraPitchHigh(i + 1, pitchValue);
+
+        const moraSpan = el('span', {
+            className: 'pronunciation-mora',
+            'data-pitch': isHigh ? 'high' : 'low',
+            'data-pitch-next': isHighNext ? 'high' : 'low',
+            textContent: mora
+        });
+
+        moraSpan.appendChild(el('span', { className: 'pronunciation-mora-line' }));
+        container.appendChild(moraSpan);
+    }
+
+    return container;
+}
+
+function createPitchGroup(pitchData, reading) {
+    const container = el('div', { className: 'pitch-group' });
+    container.appendChild(el('span', { className: 'pitch-dict-label', textContent: pitchData.dictionary }));
+
+    const list = el('ul', { className: 'pitch-entries' });
+    pitchData.pitchPositions.forEach((pitch) => {
+        const li = el('li');
+        li.appendChild(createPitchHtml(reading, pitch));
+        li.appendChild(document.createTextNode(` [${pitch}]`));
+        list.appendChild(li);
+    });
+    container.appendChild(list);
+
+    return container;
+}
+
 function createTags(entry) {
-    const { deinflectionTrace, frequencies } = entry;
+    const { deinflectionTrace, frequencies, pitches, reading } = entry;
     const hasDeinflection = deinflectionTrace?.length;
     const hasFrequencies = frequencies?.length;
+    const hasPitches = pitches?.length;
 
-    if (!hasDeinflection && !hasFrequencies) {
+    if (!hasDeinflection && !hasFrequencies && !hasPitches) {
         return null;
     }
 
@@ -503,11 +630,17 @@ function createTags(entry) {
         container.appendChild(freqContainer);
     }
 
+    if (hasPitches) {
+        const pitchContainer = el('div', { className: 'pitch-list' });
+        pitches.forEach(pitch => pitchContainer.appendChild(createPitchGroup(pitch, reading)));
+        container.appendChild(pitchContainer);
+    }
+
     return container;
 }
 
 function createEntryHeader(entry, idx) {
-    const { expression, reading, matched, frequencies } = entry;
+    const { expression, reading, matched, frequencies, pitches, definitionTags } = entry;
     const header = el('div', { className: 'entry-header' });
 
     const expressionSpan = el('span', { className: 'expression' });
@@ -521,7 +654,7 @@ function createEntryHeader(entry, idx) {
     header.appendChild(el('button', {
         className: 'mine-button',
         textContent: '+',
-        onclick: () => mineEntry(expression, reading, frequencies, matched, idx)
+        onclick: () => mineEntry(expression, reading, frequencies, pitches, definitionTags, matched, idx)
     }));
 
     return header;

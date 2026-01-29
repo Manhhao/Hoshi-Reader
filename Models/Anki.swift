@@ -45,4 +45,6 @@ enum Handlebars: String, CaseIterable, Codable {
     case sentence = "{sentence}"
     case frequencies = "{frequencies}"
     case frequencyHarmonicRank = "{frequency-harmonic-rank}"
+    case pitchPositions = "{pitch-accent-positions}"
+    case pitchCategories = "{pitch-accent-categories}"
 }

@@ -3,6 +3,8 @@
  *  Hoshi Reader
  *
  *  Copyright © 2026 Manhhao.
+ *  Copyright © 2023-2025 Yomitan Authors (marked pitch styles)
+ *  Copyright © 2021-2022 Yomichan Authors (marked pitch styles)
  *  SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -148,6 +150,48 @@ hr {
     right: 10px;
     font-size: 20px;
     line-height: 1;
+}
+
+.pitch-list {
+    margin: 3px 0 0 0;
+    font-size: 12px;
+}
+
+.pitch-dict-label {
+    background-color: #94a6eb;
+    color: #fff;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.pitch-entries {
+    list-style: circle inside;
+    margin: 2px 0 0 0;
+    padding: 0;
+}
+
+/* https://github.com/yomidevs/yomitan/blob/master/ext/css/display-pronunciation.css */
+.pronunciation-mora {
+    position: relative;
+}
+
+.pronunciation-mora[data-pitch="high"] > .pronunciation-mora-line {
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    border-top: 1px solid currentColor;
+}
+
+.pronunciation-mora[data-pitch="high"][data-pitch-next="low"] > .pronunciation-mora-line {
+    right: -1px;
+    height: 0.4em;
+    border-right: 1px solid currentColor;
+}
+
+.pronunciation-mora[data-pitch="high"][data-pitch-next="low"] {
+    padding-right: 1px;
+    margin-right: 1px;
 }
 
 @media (prefers-color-scheme: light) {
