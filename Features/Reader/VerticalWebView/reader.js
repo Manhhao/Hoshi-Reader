@@ -332,7 +332,7 @@ window.hoshiReader = {
     },
 
     clearHighlight() {
-        window.getSelection()?.removeAllRanges()
+        window.getSelection()?.removeAllRanges();
         CSS.highlights?.clear();
         this.selection = null;
     }

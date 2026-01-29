@@ -9,6 +9,13 @@
 import SwiftUI
 import EPUBKit
 
+struct WebViewState: Hashable {
+    var fontSize: Int
+    var horizontalPadding: Int
+    var verticalPadding: Int
+    var size: CGSize
+}
+
 struct ReaderLoader: View {
     @State private var viewModel: ReaderLoaderViewModel
     
@@ -67,7 +74,12 @@ struct ReaderView: View {
                         },
                         onTapOutside: viewModel.closePopup
                     )
-                    .id("\(userConfig.fontSize)-\(userConfig.horizontalPadding)-\(userConfig.verticalPadding)-\(Int(geometry.size.width))x\(Int(geometry.size.height))")
+                    .id(WebViewState(
+                        fontSize: userConfig.fontSize,
+                        horizontalPadding: userConfig.horizontalPadding,
+                        verticalPadding: userConfig.verticalPadding,
+                        size: geometry.size
+                    ))
                     
                     PopupView(
                         isVisible: $viewModel.showPopup,
