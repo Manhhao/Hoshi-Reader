@@ -43,8 +43,14 @@ struct ReaderView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
+    @State private var focusMode = false
     
-    private let webViewPadding: CGFloat = 48
+    private let webViewPadding: CGFloat = 12
+    private let lineHeight: CGFloat = 18
+    
+    private let showCharactersTop = true
+    private let showTitle = true
+    
     
     init(document: EPUBDocument, rootURL: URL) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL))
@@ -55,9 +61,9 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: topSafeArea + webViewPadding)
+                .frame(height: topSafeArea + webViewPadding + (showCharactersTop ? lineHeight : 0) + (showTitle ? lineHeight : 0))
                 .contentShape(Rectangle())
-            
+
             GeometryReader { geometry in
                 ZStack {
                     VerticalWebView(
@@ -80,7 +86,7 @@ struct ReaderView: View {
                         verticalPadding: userConfig.verticalPadding,
                         size: geometry.size
                     ))
-                    
+
                     PopupView(
                         isVisible: $viewModel.showPopup,
                         selectionData: viewModel.currentSelection,
@@ -91,64 +97,77 @@ struct ReaderView: View {
                     .zIndex(100)
                 }
             }
-        }
-        .onAppear {
-            // swiftui bug? if the button is pressed too quickly after opening a book, the menu slides to the top of the screen
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                viewModel.markReady()
-            }
-            
-            if topSafeArea == 0 {
-                topSafeArea = UIApplication.topSafeArea
-            }
-        }
-        .overlay(alignment: .top) {
-            VStack {
-                if let title = viewModel.document.title {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 10)
-                        .lineLimit(1)
-                }
-                Text("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, topSafeArea)
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .bottomBar) {
-                Circle()
-                    .fill(.clear)
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Image(systemName: "chevron.left")
-                    }
+
+            HStack {
+                CircleButton(systemName: "chevron.left")
                     .onTapGesture {
                         dismiss()
                     }
-                
+
                 Spacer()
-                
-                // TODO: half of the button does nothing
+
                 Menu {
                     Button {
                         viewModel.activeSheet = .chapters
                     } label: {
                         Label("Chapters", systemImage: "list.bullet")
                     }
-                    
+
                     Button {
                         viewModel.activeSheet = .appearance
                     } label: {
                         Label("Appearance", systemImage: "paintbrush.pointed")
                     }
                 } label: {
-                    Image(systemName: "slider.horizontal.3")
+                    CircleButton(systemName: "slider.horizontal.3")
                 }
-                .disabled(!viewModel.ready)
+                .tint(.primary)
             }
+            .padding(.horizontal, 20)
+            .frame(height: UIApplication.bottomSafeArea + 8, alignment: .top)
+            .contentShape(Rectangle())  // Makes the whole HStack tappable including Spacer
+            .onTapGesture {
+                withAnimation(.default.speed(2)) {
+                    focusMode.toggle()
+                }
+            }
+            //.background(Color(red: 1, green: 1, blue: 1))
+        }
+        .onAppear {
+            if topSafeArea == 0 {
+                topSafeArea = UIApplication.topSafeArea
+            }
+        }
+        .overlay(alignment: .top) {
+            VStack {
+                if !focusMode {
+                    if showTitle {
+                        if let title = viewModel.document.title {
+                            Text(title)
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 30)
+                                .lineLimit(1)
+                        }
+                        if showCharactersTop {
+                            Text("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(.top, topSafeArea)
+        }
+        .overlay(alignment: .bottom) {
+            VStack {
+                if !showCharactersTop {
+                    Text("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom)
         }
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
@@ -163,9 +182,47 @@ struct ReaderView: View {
                 .presentationDetents([.medium, .large])
             }
         }
-        .toolbarBackgroundVisibility(.hidden, for: .bottomBar)
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)
         .statusBarHidden()
+    }
+}
+
+struct CircleButton: View {
+    let systemName: String
+    let interactive: Bool
+
+    init(systemName: String, interactive: Bool = true) {
+        self.systemName = systemName
+        self.interactive = interactive
+    }
+
+    var body: some View {
+        if #available(iOS 26, *) {
+            Image(systemName: systemName)
+                .font(.system(size: 20))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .glassEffect(interactive ? .regular.interactive() : .regular)
+                .padding(8)
+                .contentShape(Circle())
+        } else {
+            Image(systemName: systemName)
+                .font(.system(size: 20))
+                .foregroundStyle(.primary)
+                .padding(8)
+        }
+    }
+}
+
+#Preview {
+    Group {
+        if let url = Bundle.main.url(forResource: "sample", withExtension: "epub"),
+           let doc = try? EPUBParser().parse(documentAt: url) {
+            ReaderView(document: doc, rootURL: url.deletingLastPathComponent())
+                .environment(UserConfig())
+        } else {
+            Text("Sample book not found")
+        }
     }
 }

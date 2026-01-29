@@ -47,6 +47,12 @@ extension UIApplication {
             .keyWindow?
             .safeAreaInsets.top ?? 0
     }
+
+    static var bottomSafeArea: CGFloat {
+        (shared.connectedScenes.first as? UIWindowScene)?
+            .keyWindow?
+            .safeAreaInsets.bottom ?? 0
+    }
 }
 
 struct LoadingOverlay: View {

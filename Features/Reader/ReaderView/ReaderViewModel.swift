@@ -62,8 +62,7 @@ class ReaderViewModel {
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
     var bookInfo: BookInfo
-    var ready = false
-    
+
     // lookup stuff
     var showPopup = false
     var currentSelection: SelectionData?
@@ -149,10 +148,6 @@ class ReaderViewModel {
             return true
         }
         return false
-    }
-    
-    func markReady() {
-        ready = true
     }
     
     func handleTextSelection(_ selection: SelectionData, maxResults: Int) -> Int? {
