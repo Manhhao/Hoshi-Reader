@@ -135,13 +135,23 @@ struct PopupView: View {
                     frequencies: frequencyTags))
             }
             
+            var pitches: [PitchData] = []
+            for pitchEntry in result.term.pitches {
+                var pitchPositions: [Int] = []
+                for element in pitchEntry.pitch_positions {
+                    pitchPositions.append(Int(element))
+                }
+                pitches.append(PitchData(dictionary: String(pitchEntry.dict_name), pitchPositions: pitchPositions))
+            }
+            
             entries.append(EntryData(
                 expression: expression,
                 reading: reading,
                 matched: matched,
                 deinflectionTrace: deinflectionTrace,
                 glossaries: glossaries,
-                frequencies: frequencies
+                frequencies: frequencies,
+                pitches: pitches
             ))
         }
         

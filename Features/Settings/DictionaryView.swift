@@ -62,6 +62,21 @@ struct DictionaryView: View {
                     dictionaryManager.deleteDictionary(indexSet: indexSet, type: .frequency)
                 }
             }
+            
+            Section("Pitch Dictionaries") {
+                ForEach(dictionaryManager.pitchDictionaries) { dict in
+                    Toggle(dict.name, isOn: Binding(
+                        get: { dict.isEnabled },
+                        set: { dictionaryManager.toggleDictionary(index: dict.order, enabled: $0, type: .pitch) }
+                    ))
+                }
+                .onMove { from, to in
+                    dictionaryManager.moveDictionary(from: from, to: to, type: .pitch)
+                }
+                .onDelete { indexSet in
+                    dictionaryManager.deleteDictionary(indexSet: indexSet, type: .pitch)
+                }
+            }
         }
         .onAppear {
             dictionaryManager.loadDictionaries()
@@ -81,6 +96,13 @@ struct DictionaryView: View {
                         isImporting = true
                     } label: {
                         Label("Frequency", systemImage: "numbers.rectangle")
+                    }
+                    
+                    Button {
+                        importType = .pitch
+                        isImporting = true
+                    } label: {
+                        Label("Pitch", systemImage: "underline")
                     }
                 } label: {
                     Image(systemName: "plus")

@@ -14,6 +14,7 @@ import CxxStdlib
 enum DictionaryType: String {
     case term = "Term"
     case frequency = "Frequency"
+    case pitch = "Pitch"
 }
 
 @Observable
@@ -23,6 +24,7 @@ class DictionaryManager {
     
     private(set) var termDictionaries: [DictionaryInfo] = []
     private(set) var frequencyDictionaries: [DictionaryInfo] = []
+    private(set) var pitchDictionaries: [DictionaryInfo] = []
     private(set) var isImporting = false
     var shouldShowError = false
     var errorMessage = ""
@@ -36,13 +38,16 @@ class DictionaryManager {
     func loadDictionaries() {
         let storedTermDicts = (try? getDictionariesFromStorage(type: .term)) ?? []
         let storedFreqDicts = (try? getDictionariesFromStorage(type: .frequency)) ?? []
+        let storedPitchDicts = (try? getDictionariesFromStorage(type: .pitch)) ?? []
         
         if let config = try? loadDictionaryConfig() {
             termDictionaries = collectDictionaries(storedDicts: storedTermDicts, configDicts: config.termDictionaries)
             frequencyDictionaries = collectDictionaries(storedDicts: storedFreqDicts, configDicts: config.frequencyDictionaries)
+            pitchDictionaries = collectDictionaries(storedDicts: storedPitchDicts, configDicts: config.pitchDictionaries)
         } else {
             termDictionaries = storedTermDicts
             frequencyDictionaries = storedFreqDicts
+            pitchDictionaries = storedPitchDicts
         }
         rebuildLookupQuery()
     }
@@ -117,6 +122,13 @@ class DictionaryManager {
                     isEnabled: $0.isEnabled,
                     order: $0.order
                 )
+            },
+            pitchDictionaries: pitchDictionaries.map {
+                DictionaryConfig.DictionaryEntry(
+                    fileName: $0.path.lastPathComponent,
+                    isEnabled: $0.isEnabled,
+                    order: $0.order
+                )
             }
         )
         
@@ -184,6 +196,8 @@ class DictionaryManager {
             termDictionaries[index].isEnabled = enabled
         case .frequency:
             frequencyDictionaries[index].isEnabled = enabled
+        case .pitch:
+            pitchDictionaries[index].isEnabled = enabled
         }
         saveDictionaryConfig()
         rebuildLookupQuery()
@@ -195,6 +209,8 @@ class DictionaryManager {
             termDictionaries.move(fromOffsets: from, toOffset: to)
         case .frequency:
             frequencyDictionaries.move(fromOffsets: from, toOffset: to)
+        case .pitch:
+            pitchDictionaries.move(fromOffsets: from, toOffset: to)
         }
         updateOrder(type: type)
         saveDictionaryConfig()
@@ -210,6 +226,10 @@ class DictionaryManager {
         case .frequency:
             for index in frequencyDictionaries.indices {
                 frequencyDictionaries[index].order = index
+            }
+        case .pitch:
+            for index in pitchDictionaries.indices {
+                pitchDictionaries[index].order = index
             }
         }
     }
@@ -227,6 +247,12 @@ class DictionaryManager {
                 let dictionary = frequencyDictionaries[index]
                 try? BookStorage.delete(at: dictionary.path)
                 frequencyDictionaries.remove(at: index)
+            }
+        case .pitch:
+            for index in indexSet {
+                let dictionary = pitchDictionaries[index]
+                try? BookStorage.delete(at: dictionary.path)
+                pitchDictionaries.remove(at: index)
             }
         }
         saveDictionaryConfig()
@@ -246,7 +272,11 @@ class DictionaryManager {
             .filter { $0.isEnabled }
             .map { $0.path }
         
-        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths)
+        let enabledPitchPaths = pitchDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
     }
 
     private func showError(_ message: String) {

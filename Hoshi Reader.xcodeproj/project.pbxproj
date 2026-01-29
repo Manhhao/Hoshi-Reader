@@ -450,7 +450,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@github.com:Manhhao/yomitandicts-cpp.git";
 			requirement = {
-				branch = main;
+				branch = "pitch-query";
 				kind = branch;
 			};
 		};

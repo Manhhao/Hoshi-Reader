@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "git@github.com:Manhhao/yomitandicts-cpp.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "560149a2e8d31bcea682a7b2444b1cb4cacda6bc"
+        "branch" : "pitch-query",
+        "revision" : "ac359abdcd5d27fedf92a44f89d5642a9c0509da"
       }
     },
     {
