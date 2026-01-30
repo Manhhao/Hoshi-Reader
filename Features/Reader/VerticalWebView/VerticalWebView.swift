@@ -201,7 +201,11 @@ struct VerticalWebView: UIViewRepresentable {
                     document.body.appendChild(spacer);
                 }
                 \(readerJS)
-
+                
+                if (\(parent.userConfig.readerHideFurigana)) {
+                    document.querySelectorAll('rt').forEach(rt => rt.remove());
+                }
+            
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
                     ruby.childNodes.forEach(node => {

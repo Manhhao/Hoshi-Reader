@@ -69,6 +69,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
     }
     
+    var readerHideFurigana: Bool {
+        didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
+    }
+    
     init() {
         let defaults = UserDefaults.standard
         
@@ -79,6 +83,7 @@ class UserConfig {
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.collapseDictionaries = defaults.object(forKey: "collapseDictionaries") as? Bool ?? true
+        self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""

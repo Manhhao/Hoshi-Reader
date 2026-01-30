@@ -14,6 +14,7 @@ struct WebViewState: Hashable {
     var horizontalPadding: Int
     var verticalPadding: Int
     var size: CGSize
+    var hideFurigana: Bool
 }
 
 struct ReaderLoader: View {
@@ -78,7 +79,8 @@ struct ReaderView: View {
                         fontSize: userConfig.fontSize,
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
-                        size: geometry.size
+                        size: geometry.size,
+                        hideFurigana: userConfig.readerHideFurigana
                     ))
                     
                     PopupView(
