@@ -15,6 +15,7 @@ struct WebViewState: Hashable {
     var horizontalPadding: Int
     var verticalPadding: Int
     var size: CGSize
+    var textColor: Color
 }
 
 struct ReaderLoader: View {
@@ -46,13 +47,28 @@ struct ReaderView: View {
     @State private var topSafeArea: CGFloat = 0
     @State private var focusMode = false
     
-    private let webViewPadding: CGFloat = 12
-    private let lineHeight: CGFloat = 12
+    private let webViewPadding: CGFloat = 4
+    private let lineHeight: CGFloat = 16
     
-    private let showProgressTop = true
-    private let showTitle = true
-    private let showCharacters = false
-    private let showPercentage = false
+    var readerBackgroundColor: Color {
+        switch userConfig.theme {
+        case .sepia:
+            return Color(red: 0.949, green: 0.886, blue: 0.788)
+        case .custom:
+            return userConfig.customBackgroundColor
+        default:
+            return Color(.systemBackground)
+        }
+    }
+    
+    var readerTextColor: Color {
+        switch userConfig.theme {
+        case .custom:
+            return userConfig.customTextColor
+        default:
+            return Color(.label)
+        }
+    }
     
     init(document: EPUBDocument, rootURL: URL) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL))
@@ -60,10 +76,10 @@ struct ReaderView: View {
     
     var progressString: String {
         var result: [String] = []
-        if showCharacters {
+        if userConfig.readerShowCharacters {
             result.append("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
         }
-        if showPercentage {
+        if userConfig.readerShowPercentage {
             let percent = viewModel.bookInfo.characterCount > 0 ? (Double(viewModel.currentCharacter) / Double(viewModel.bookInfo.characterCount) * 100) : 0
             result.append("\(String(format: "%.2f%%", percent))")
         }
@@ -75,7 +91,7 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: topSafeArea + webViewPadding + (showProgressTop && !progressString.isEmpty ? lineHeight : 0) + (showTitle ? lineHeight : 0))
+                .frame(height: topSafeArea + webViewPadding + (userConfig.readerShowProgressTop && !progressString.isEmpty ? lineHeight : 0) + (userConfig.readerShowTitle ? lineHeight : 0))
                 .contentShape(Rectangle())
             
             GeometryReader { geometry in
@@ -99,7 +115,8 @@ struct ReaderView: View {
                         fontSize: userConfig.fontSize,
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
-                        size: geometry.size
+                        size: geometry.size,
+                        textColor: readerTextColor
                     ))
                     
                     PopupView(
@@ -108,6 +125,7 @@ struct ReaderView: View {
                         lookupResults: viewModel.lookupResults,
                         dictionaryStyles: viewModel.dictionaryStyles,
                         screenSize: geometry.size,
+                        isVertical: userConfig.verticalWriting
                     )
                     .zIndex(100)
                 }
@@ -149,6 +167,7 @@ struct ReaderView: View {
                 }
             }
         }
+        .background(readerBackgroundColor)
         .onAppear {
             if topSafeArea == 0 {
                 topSafeArea = UIApplication.topSafeArea
@@ -157,7 +176,7 @@ struct ReaderView: View {
         .overlay(alignment: .top) {
             VStack {
                 if !focusMode {
-                    if showTitle {
+                    if userConfig.readerShowTitle {
                         if let title = viewModel.document.title {
                             Text(title)
                                 .font(.subheadline)
@@ -166,7 +185,7 @@ struct ReaderView: View {
                                 .lineLimit(1)
                         }
                     }
-                    if showProgressTop {
+                    if userConfig.readerShowProgressTop && !progressString.isEmpty {
                         Text(progressString)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -177,13 +196,12 @@ struct ReaderView: View {
         }
         .overlay(alignment: .bottom) {
             VStack {
-                if !showProgressTop {
+                if !focusMode && !userConfig.readerShowProgressTop && !progressString.isEmpty {
                     Text(progressString)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.bottom)
         }
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
@@ -206,6 +224,7 @@ struct ReaderView: View {
 }
 
 struct CircleButton: View {
+    @Environment(\.colorScheme) private var colorScheme
     let systemName: String
     let interactive: Bool
     

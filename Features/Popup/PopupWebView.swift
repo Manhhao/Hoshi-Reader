@@ -60,7 +60,7 @@ struct PopupWebView: UIViewRepresentable {
         }
     }
     
-    private var popupJS: String {
+    private var popupJs: String {
         guard let url = Bundle.main.url(forResource: "popup", withExtension: "js"),
               let js = try? String(contentsOf: url, encoding: .utf8) else {
             return ""
@@ -68,7 +68,7 @@ struct PopupWebView: UIViewRepresentable {
         return js
     }
     
-    private var popupCSS: String {
+    private var popupCss: String {
         guard let url = Bundle.main.url(forResource: "popup", withExtension: "css"),
               let css = try? String(contentsOf: url, encoding: .utf8) else {
             return ""
@@ -82,8 +82,8 @@ struct PopupWebView: UIViewRepresentable {
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>\(popupCSS)</style>
-            <script>\(popupJS)</script>
+            <style>\(popupCss)</style>
+            <script>\(popupJs)</script>
         </head>
         <body>
             \(content)

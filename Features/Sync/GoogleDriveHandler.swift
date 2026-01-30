@@ -54,7 +54,7 @@ struct TtuProgress: Codable {
 class GoogleDriveHandler {
     static let shared = GoogleDriveHandler()
     private init() {}
-
+    
     private func performRequest(_ request: URLRequest, retry: Bool = true) async throws -> Data {
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -80,7 +80,7 @@ class GoogleDriveHandler {
         
         return data
     }
-
+    
     func findRootFolder() async throws -> String {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
@@ -92,11 +92,11 @@ class GoogleDriveHandler {
         ]
         
         guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-
+        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
+        
         let data = try await performRequest(request)
         
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
@@ -117,11 +117,11 @@ class GoogleDriveHandler {
         ]
         
         guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-
+        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
+        
         let data = try await performRequest(request)
         
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
@@ -149,7 +149,7 @@ class GoogleDriveHandler {
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
         return list.files.first?.id
     }
-
+    
     func getProgressFile(fileId: String) async throws -> TtuProgress {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!
@@ -167,7 +167,7 @@ class GoogleDriveHandler {
         decoder.dateDecodingStrategy = .millisecondsSince1970
         return try decoder.decode(TtuProgress.self, from: data)
     }
-
+    
     func updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress) async throws {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         let timestamp = Int(progress.lastBookmarkModified.timeIntervalSince1970 * 1000)

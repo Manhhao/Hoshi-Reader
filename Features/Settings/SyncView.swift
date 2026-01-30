@@ -13,7 +13,7 @@ struct SyncView: View {
     @State private var isAuthenticated = GoogleDriveAuth.shared.isAuthenticated
     @State private var errorMessage = ""
     @State private var showError = false
-
+    
     var body: some View {
         @Bindable var userConfig = userConfig
         List {
@@ -22,12 +22,12 @@ struct SyncView: View {
             } footer: {
                 Text("A [Google Cloud project](https://github.com/ttu-ttu/ebook-reader?tab=readme-ov-file#storage-sources) is necessary for syncing with ッツ Reader.\nAfter the intial setup, create another OAuth client ID in the same project, select iOS as the Application type and set the Bundle ID to 'de.manhhao.hoshi'. Paste the Client ID in the textbox below and and press on 'Sign in with Google'.\nYou can now sync individual books by long-pressing and selecting 'Sync'.")
             }
-
+            
             if userConfig.enableSync {
                 Section("Client ID") {
                     TextField("Required", text: $userConfig.googleClientId)
                 }
-
+                
                 Section {
                     HStack {
                         Text("Status")

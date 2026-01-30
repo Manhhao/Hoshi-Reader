@@ -11,7 +11,7 @@ import SwiftUI
 struct AnkiView: View {
     @State private var ankiManager = AnkiManager.shared
     @State private var dictionaryManager = DictionaryManager.shared
-
+    
     private var availableHandlebars: [String] {
         var options = Handlebars.allCases.map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {

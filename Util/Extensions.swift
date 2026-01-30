@@ -47,7 +47,7 @@ extension UIApplication {
             .keyWindow?
             .safeAreaInsets.top ?? 0
     }
-
+    
     static var bottomSafeArea: CGFloat {
         (shared.connectedScenes.first as? UIWindowScene)?
             .keyWindow?
@@ -81,6 +81,37 @@ struct LoadingOverlay: View {
                 .padding(24)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
+        }
+    }
+}
+
+// https://stackoverflow.com/questions/26341008/how-to-convert-uicolor-to-hex-and-display-in-nslog
+extension UIColor {
+    var hexString: String {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        let multiplier: CGFloat = 255.9999999
+        
+        getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        
+        if alpha == 1.0 {
+            return String(
+                format: "#%02lX%02lX%02lX",
+                Int(red * multiplier),
+                Int(green * multiplier),
+                Int(blue * multiplier)
+            )
+        }
+        else {
+            return String(
+                format: "#%02lX%02lX%02lX%02lX",
+                Int(red * multiplier),
+                Int(green * multiplier),
+                Int(blue * multiplier),
+                Int(alpha * multiplier)
+            )
         }
     }
 }

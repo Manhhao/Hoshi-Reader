@@ -195,7 +195,7 @@ hr {
 }
 
 @media (prefers-color-scheme: light) {
-
+    
     html,
     body {
         color: #000;
@@ -203,12 +203,12 @@ hr {
 }
 
 @media (prefers-color-scheme: dark) {
-
+    
     html,
     body {
         color: #fff;
     }
-
+    
     .overlay {
         background: #222;
     }

@@ -44,7 +44,8 @@ struct ReaderWebView: UIViewRepresentable {
         
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
-        webView.backgroundColor = UIColor.systemBackground
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
         webView.navigationDelegate = context.coordinator
         
@@ -120,7 +121,7 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
         
-        private var readerJS: String {
+        private var readerJs: String {
             guard let url = Bundle.main.url(forResource: "reader", withExtension: "js"),
                   let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
                 return ""
@@ -133,6 +134,21 @@ struct ReaderWebView: UIViewRepresentable {
             let pageWidth = Int(parent.viewSize.width)
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             let columnGap = parent.userConfig.verticalWriting ? parent.userConfig.verticalPadding * 2 : parent.userConfig.horizontalPadding * 2
+            
+            let textColorCss: String = {
+                if parent.userConfig.theme == .custom {
+                    let hex = UIColor(parent.userConfig.customTextColor).hexString
+                    return """
+                    html, body { color: \(hex) !important; }
+                    """
+                } else {
+                    guard parent.userConfig.horizontalPadding > 0 else { return "" }
+                    return """
+                    @media (prefers-color-scheme: light) { html, body { color: #000 !important; } }
+                    @media (prefers-color-scheme: dark) { html, body { color: #fff !important; } }
+                    """
+                }
+            }()
             
             let css = """
             html, body { 
@@ -176,11 +192,10 @@ struct ReaderWebView: UIViewRepresentable {
                 background-color: rgba(160, 160, 160, 0.4) !important;
                 color: inherit;
             }
-            @media (prefers-color-scheme: light) { html, body { background-color: #fff !important; color: #000 !important; } }
-            @media (prefers-color-scheme: dark) { html, body { background-color: #000 !important; color: #fff !important; } }
+            \(textColorCss)
             """
             
-            let spacerJS: String = {
+            let spacerJs: String = {
                 if parent.userConfig.verticalWriting {
                     guard parent.userConfig.verticalPadding > 0 else { return "" }
                     return """
@@ -204,7 +219,7 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }()
             
-            let snapScrollJS: String = {
+            let snapScrollJs: String = {
                 if parent.userConfig.verticalWriting {
                     return """
                     var lastPageScroll = 0;
@@ -251,9 +266,9 @@ struct ReaderWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 
-                \(spacerJS)
-                \(readerJS)
-
+                \(spacerJs)
+                \(readerJs)
+            
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
                     ruby.childNodes.forEach(node => {
@@ -265,7 +280,7 @@ struct ReaderWebView: UIViewRepresentable {
                     });
                 });
                 
-                \(snapScrollJS)
+                \(snapScrollJs)
                 
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
@@ -296,7 +311,7 @@ struct ReaderWebView: UIViewRepresentable {
             """
             
             webView.evaluateJavaScript(script) { _, _ in
-                UIView.animate(withDuration: 0.25) {
+                UIView.animate(withDuration: 0.3) {
                     webView.alpha = 1
                 }
             }
@@ -317,17 +332,14 @@ struct ReaderWebView: UIViewRepresentable {
                 if let res = result as? String, res == "scrolled" {
                     self.saveBookmark()
                 } else {
-                    let chapterChanged = direction == .forward
-                        ? self.parent.onNextChapter()
-                        : self.parent.onPreviousChapter()
-                    
+                    let chapterChanged = direction == .forward ? self.parent.onNextChapter() : self.parent.onPreviousChapter()
                     if chapterChanged {
                         webView.alpha = 0
                     }
                 }
             }
         }
-
+        
         private func paginationScript(direction: NavigationDirection, isVertical: Bool) -> String {
             if isVertical {
                 let pageHeight = Int(parent.viewSize.height)
@@ -385,11 +397,11 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }
         }
-
+        
         @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
             navigate(parent.userConfig.verticalWriting ? .backward : .forward)
         }
-
+        
         @objc func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
             navigate(parent.userConfig.verticalWriting ? .forward : .backward)
         }

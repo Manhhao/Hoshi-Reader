@@ -25,7 +25,7 @@ struct BookStorage {
         }
         return url
     }
-
+    
     static func getBooksDirectory() throws -> URL {
         try getDocumentsDirectory().appendingPathComponent("Books")
     }
@@ -66,7 +66,7 @@ struct BookStorage {
         try replaceFile(at: destinationURL, with: fileURL)
         return destinationURL
     }
-        
+    
     private static func replaceFile(at destination: URL, with source: URL) throws {
         try delete(at: destination)
         try FileManager.default.copyItem(at: source, to: destination)

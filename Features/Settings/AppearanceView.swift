@@ -34,8 +34,17 @@ struct AppearanceView: View {
                     }
                 }
                 
-                Section("Reader") {
-                    Toggle("Vertical Writing", isOn: $userConfig.verticalWriting)
+                Section("Reader Layout") {
+                    HStack {
+                        Text("Text Orientation")
+                        Spacer()
+                        Picker("", selection: $userConfig.verticalWriting) {
+                            Text("縦").tag(true)
+                            Text("横").tag(false)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 100)
+                    }
                     HStack {
                         Text("Font Size")
                         Spacer()
@@ -61,6 +70,25 @@ struct AppearanceView: View {
                             .fontWeight(.semibold)
                         Stepper("", value: $userConfig.verticalPadding, in: 0...80, step: 2)
                             .labelsHidden()
+                    }
+                }
+                
+                Section("Reader Display") {
+                    Toggle("Show Title", isOn: $userConfig.readerShowTitle)
+                    Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
+                    Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
+                    
+                    if userConfig.readerShowCharacters || userConfig.readerShowPercentage {
+                        HStack {
+                            Text("Position")
+                            Spacer()
+                            Picker("", selection: $userConfig.readerShowProgressTop) {
+                                Text("Top").tag(true)
+                                Text("Bottom").tag(false)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 120)
+                        }
                     }
                 }
                 

@@ -44,18 +44,18 @@ class GoogleDriveAuth: NSObject {
     var isAuthenticated: Bool {
         TokenStorage.get("accessToken") != nil
     }
-
+    
     func getAccessToken() throws -> String {
         guard let token = TokenStorage.get("accessToken") else {
             throw GoogleDriveAuthError.notAuthenticated
         }
         return token
     }
-
+    
     func authenticate(clientId: String) async throws {
         let scheme = clientId.components(separatedBy: ".").reversed().joined(separator: ".")
         let redirectUri = "\(scheme):/oauth2callback"
-
+        
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
@@ -63,11 +63,11 @@ class GoogleDriveAuth: NSObject {
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: "https://www.googleapis.com/auth/drive.file"),
         ]
-
+        
         guard let authURL = components.url else {
             throw GoogleDriveAuthError.invalidAuthURL
         }
-
+        
         let code = try await getAuthorizationCode(from: authURL, callbackScheme: scheme)
         try await exchangeCode(code: code, clientId: clientId, redirectUri: redirectUri)
         TokenStorage.save(clientId, for: "clientId")
@@ -78,12 +78,12 @@ class GoogleDriveAuth: NSObject {
               let clientId = TokenStorage.get("clientId") else {
             throw GoogleDriveAuthError.notAuthenticated
         }
-
+        
         let url = URL(string: "https://oauth2.googleapis.com/token")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-
+        
         let params = [
             "client_id": clientId,
             "grant_type": "refresh_token",

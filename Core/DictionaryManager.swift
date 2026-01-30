@@ -278,7 +278,7 @@ class DictionaryManager {
         
         LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
     }
-
+    
     private func showError(_ message: String) {
         errorMessage = message
         shouldShowError = true

@@ -13,7 +13,8 @@ struct PopupLayout {
     let selectionRect: CGRect
     let screenSize: CGSize
     let maxWidth: CGFloat
-    let height: CGFloat
+    let maxHeight: CGFloat
+    let isVertical: Bool
     
     private let popupPadding: CGFloat = 4
     private let screenBorderPadding: CGFloat = 6
@@ -30,22 +31,59 @@ struct PopupLayout {
         spaceRight >= spaceLeft
     }
     
+    private var spaceAbove: CGFloat {
+        selectionRect.minY - popupPadding
+    }
+    
+    private var spaceBelow: CGFloat {
+        screenSize.height - selectionRect.maxY - popupPadding
+    }
+    
+    private var showBelow: Bool {
+        spaceBelow >= spaceAbove
+    }
+    
     var width: CGFloat {
-        min(max(spaceLeft, spaceRight) - screenBorderPadding, maxWidth)
+        if isVertical {
+            return min(max(spaceLeft, spaceRight) - screenBorderPadding, maxWidth)
+        } else {
+            return maxWidth
+        }
+    }
+    
+    var height: CGFloat {
+        if isVertical {
+            return maxHeight
+        } else {
+            return min(max(spaceAbove, spaceBelow) - screenBorderPadding, maxHeight)
+        }
     }
     
     var position: CGPoint {
         var x: CGFloat
-        if showOnRight {
-            x = selectionRect.maxX + popupPadding + (width / 2)
+        var y: CGFloat
+        
+        if isVertical {
+            if showOnRight {
+                x = selectionRect.maxX + popupPadding + (width / 2)
+            } else {
+                x = selectionRect.minX - popupPadding - (width / 2)
+            }
+            x = max(width / 2, min(x, screenSize.width - width / 2))
+            
+            y = selectionRect.minY + (height / 2)
+            y = max(height / 2, min(y, screenSize.height - height / 2))
         } else {
-            x = selectionRect.minX - popupPadding - (width / 2)
+            x = selectionRect.minX + (width / 2)
+            x = max(width / 2 + screenBorderPadding, min(x, screenSize.width - width / 2 - screenBorderPadding))
+            
+            if showBelow {
+                y = selectionRect.maxY + popupPadding + (height / 2)
+            } else {
+                y = selectionRect.minY - popupPadding - (height / 2)
+            }
+            y = max(height / 2, min(y, screenSize.height - height / 2))
         }
-        
-        x = max(width / 2, min(x, screenSize.width - width / 2))
-        
-        var y = selectionRect.minY + (height / 2)
-        y = max(height / 2, min(y, screenSize.height - height / 2))
         
         return CGPoint(x: x, y: y)
     }
@@ -59,6 +97,7 @@ struct PopupView: View {
     let lookupResults: [LookupResult]
     let dictionaryStyles: [String: String]
     let screenSize: CGSize
+    let isVertical: Bool
     
     private var layout: PopupLayout? {
         guard let selectionData else {
@@ -69,7 +108,8 @@ struct PopupView: View {
             selectionRect: selectionData.rect,
             screenSize: screenSize,
             maxWidth: CGFloat(userConfig.popupWidth),
-            height: CGFloat(userConfig.popupHeight)
+            maxHeight: CGFloat(userConfig.popupHeight),
+            isVertical: isVertical
         )
     }
     
@@ -106,7 +146,7 @@ struct PopupView: View {
             }
         }
     }
-
+    
     private func constructHtml(selectionData: SelectionData) -> String {
         var entries: [EntryData] = []
         
@@ -146,9 +186,9 @@ struct PopupView: View {
                 }
                 pitches.append(PitchData(dictionary: String(pitchEntry.dict_name), pitchPositions: pitchPositions))
             }
-
+            
             let definitionTags = String(result.term.definition_tags).split(separator: " ").map { String($0) }
-
+            
             entries.append(EntryData(
                 expression: expression,
                 reading: reading,

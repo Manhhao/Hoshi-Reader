@@ -75,11 +75,27 @@ class UserConfig {
     var googleClientId: String {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
     }
-
+    
     var uiTheme: Themes {
         didSet { UserDefaults.standard.set(uiTheme.rawValue, forKey: "uiTheme") }
     }
-
+    
+    var readerShowProgressTop: Bool {
+        didSet { UserDefaults.standard.set(readerShowProgressTop, forKey: "readerShowProgressTop") }
+    }
+    
+    var readerShowTitle: Bool {
+        didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
+    }
+    
+    var readerShowCharacters: Bool {
+        didSet { UserDefaults.standard.set(readerShowCharacters, forKey: "readerShowCharacters") }
+    }
+    
+    var readerShowPercentage: Bool {
+        didSet { UserDefaults.standard.set(readerShowPercentage, forKey: "readerShowPercentage") }
+    }
+    
     var customBackgroundColor: Color {
         didSet {
             saveColor(customBackgroundColor, key: "customBackgroundColor")
@@ -111,14 +127,19 @@ class UserConfig {
         
         self.theme = defaults.string(forKey: "theme")
             .flatMap(Themes.init) ?? .system
-
+        
         self.uiTheme = defaults.string(forKey: "uiTheme")
             .flatMap(Themes.init) ?? .system
-
+        
         self.customBackgroundColor = UserConfig.loadColor(key: "customBackgroundColor") ?? Color(.sRGB, red: 1, green: 1, blue: 1)
         self.customTextColor = UserConfig.loadColor(key: "customTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
+        
+        self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
+        self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
+        self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
+        self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
     }
     
     private func saveColor(_ color: Color, key: String) {

@@ -47,6 +47,6 @@ enum Handlebars: String, CaseIterable {
     case frequencyHarmonicRank = "{frequency-harmonic-rank}"
     case pitchPositions = "{pitch-accent-positions}"
     case pitchCategories = "{pitch-accent-categories}"
-
+    
     static let singleGlossaryPrefix = "{single-glossary-"
 }
