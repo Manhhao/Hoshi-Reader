@@ -9,6 +9,11 @@
 import WebKit
 import SwiftUI
 
+private enum NavigationDirection {
+    case forward
+    case backward
+}
+
 struct SelectionData {
     let text: String
     let sentence: String?
@@ -126,6 +131,8 @@ struct VerticalWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let pageHeight = Int(parent.viewSize.height)
             let pageWidth = Int(parent.viewSize.width)
+            let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
+            let columnGap = parent.userConfig.verticalWriting ? parent.userConfig.verticalPadding * 2 : parent.userConfig.horizontalPadding * 2
             
             let css = """
             html, body { 
@@ -135,13 +142,13 @@ struct VerticalWebView: UIViewRepresentable {
                 padding: 0 !important; 
             }
             body {
-                writing-mode: vertical-rl !important;
+                writing-mode: \(writingMode) !important;
                 font-family: "Hiragino Mincho ProN", serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
                 box-sizing: border-box !important;
                 column-width: var(--page-height, 100vh) !important;
                 column-height: var(--page-width, 100vw) !important;
-                column-gap: \(parent.userConfig.verticalPadding * 2)px;
+                column-gap: \(columnGap)px;
                 padding: \(parent.userConfig.verticalPadding)px \(parent.userConfig.horizontalPadding)px !important;
             }
             img.block-img {
@@ -173,6 +180,60 @@ struct VerticalWebView: UIViewRepresentable {
             @media (prefers-color-scheme: dark) { html, body { background-color: #000 !important; color: #fff !important; } }
             """
             
+            let spacerJS: String = {
+                if parent.userConfig.verticalWriting {
+                    guard parent.userConfig.verticalPadding > 0 else { return "" }
+                    return """
+                    var spacer = document.createElement('div');
+                    spacer.style.height = '\(parent.userConfig.verticalPadding)px';
+                    spacer.style.width = '100%';
+                    spacer.style.display = 'block';
+                    spacer.style.breakInside = 'avoid';
+                    document.body.appendChild(spacer);
+                    """
+                } else {
+                    guard parent.userConfig.horizontalPadding > 0 else { return "" }
+                    return """
+                    var spacer = document.createElement('div');
+                    spacer.style.height = '100%';
+                    spacer.style.width = '\(parent.userConfig.horizontalPadding)px';
+                    spacer.style.display = 'block';
+                    spacer.style.breakInside = 'avoid';
+                    document.body.appendChild(spacer);
+                    """
+                }
+            }()
+            
+            let snapScrollJS: String = {
+                if parent.userConfig.verticalWriting {
+                    return """
+                    var lastPageScroll = 0;
+                    window.addEventListener('scroll', function() {
+                        var pageHeight = window.innerHeight;
+                        var snappedScroll = Math.round(window.scrollY / pageHeight) * pageHeight;
+                        if (Math.abs(window.scrollY - snappedScroll) > 1) {
+                            window.scrollTo(0, lastPageScroll);
+                        } else {
+                            lastPageScroll = snappedScroll;
+                        }
+                    }, { passive: true });
+                    """
+                } else {
+                    return """
+                    var lastPageScroll = 0;
+                    window.addEventListener('scroll', function() {
+                        var pageWidth = window.innerWidth;
+                        var snappedScroll = Math.round(window.scrollX / pageWidth) * pageWidth;
+                        if (Math.abs(window.scrollX - snappedScroll) > 1) {
+                            window.scrollTo(lastPageScroll, 0);
+                        } else {
+                            lastPageScroll = snappedScroll;
+                        }
+                    }, { passive: true });
+                    """
+                }
+            }()
+            
             let script = """
             (function() {
                 var viewport = document.querySelector('meta[name="viewport"]');
@@ -190,16 +251,7 @@ struct VerticalWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 
-                // this is to add vertical spacing at the end if vertical padding > 0
-                // this seems to create a full page
-                if (\(parent.userConfig.verticalPadding) > 0) {
-                    var spacer = document.createElement('div');
-                    spacer.style.height = '\(parent.userConfig.verticalPadding)px';
-                    spacer.style.width = '100%';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                }
+                \(spacerJS)
                 \(readerJS)
 
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
@@ -212,18 +264,9 @@ struct VerticalWebView: UIViewRepresentable {
                         }
                     });
                 });
-
-                var lastPageScroll = 0;
-                window.addEventListener('scroll', function() {
-                    var pageHeight = window.innerHeight;
-                    var snappedScroll = Math.round(window.scrollY / pageHeight) * pageHeight;
-                    if (Math.abs(window.scrollY - snappedScroll) > 1) {
-                        window.scrollTo(0, lastPageScroll);
-                    } else {
-                        lastPageScroll = snappedScroll;
-                    }
-                }, { passive: true });
-
+                
+                \(snapScrollJS)
+                
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
                 var imagePromises = Array.from(images).map(img => {
@@ -259,67 +302,96 @@ struct VerticalWebView: UIViewRepresentable {
             }
         }
         
-        @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
-            guard let webView = webView else {
-                return
-            }
+        private func navigate(_ direction: NavigationDirection) {
+            guard let webView = webView else { return }
             
             clearHighlight()
             parent.onTapOutside?()
             
-            let script = """
-                (function() {
-                    var pageHeight = \(Int(self.parent.viewSize.height));
-                    if (window.scrollY > 0) {
-                        window.scrollBy(0, -pageHeight);
-                        return "scrolled";
-                    }
-                    return "limit";
-                })()
-                """
+            let isVertical = parent.userConfig.verticalWriting
+            let script = paginationScript(direction: direction, isVertical: isVertical)
             
-            webView.evaluateJavaScript(script) { (result, _) in
+            webView.evaluateJavaScript(script) { [weak self] result, _ in
+                guard let self = self else { return }
+                
                 if let res = result as? String, res == "scrolled" {
                     self.saveBookmark()
-                }
-                else {
-                    if self.parent.onPreviousChapter() {
+                } else {
+                    let chapterChanged = direction == .forward
+                        ? self.parent.onNextChapter()
+                        : self.parent.onPreviousChapter()
+                    
+                    if chapterChanged {
                         webView.alpha = 0
                     }
                 }
             }
         }
-        
+
+        private func paginationScript(direction: NavigationDirection, isVertical: Bool) -> String {
+            if isVertical {
+                let pageHeight = Int(parent.viewSize.height)
+                if direction == .forward {
+                    let padding = parent.userConfig.verticalPadding
+                    return """
+                    (function() {
+                        var pageHeight = \(pageHeight);
+                        var maxScroll = (\(padding) === 0) ? document.body.scrollHeight : document.body.scrollHeight - pageHeight;
+                        if ((window.scrollY + pageHeight) <= (maxScroll - 1)) {
+                            window.scrollBy(0, pageHeight);
+                            return "scrolled";
+                        }
+                        return "limit";
+                    })()
+                    """
+                } else {
+                    return """
+                    (function() {
+                        var pageHeight = \(pageHeight);
+                        if (window.scrollY > 0) {
+                            window.scrollBy(0, -pageHeight);
+                            return "scrolled";
+                        }
+                        return "limit";
+                    })()
+                    """
+                }
+            } else {
+                let pageWidth = Int(parent.viewSize.width)
+                if direction == .forward {
+                    let padding = parent.userConfig.horizontalPadding
+                    return """
+                    (function() {
+                        var pageWidth = \(pageWidth);
+                        var maxScroll = (\(padding) === 0) ? document.body.scrollWidth : document.body.scrollWidth - pageWidth;
+                        if ((window.scrollX + pageWidth) <= (maxScroll - 1)) {
+                            window.scrollBy(pageWidth, 0);
+                            return "scrolled";
+                        }
+                        return "limit";
+                    })()
+                    """
+                } else {
+                    return """
+                    (function() {
+                        var pageWidth = \(pageWidth);
+                        if (window.scrollX > 0) {
+                            window.scrollBy(-pageWidth, 0);
+                            return "scrolled";
+                        }
+                        return "limit";
+                    })()
+                    """
+                }
+            }
+        }
+
+        @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
+            navigate(parent.userConfig.verticalWriting ? .backward : .forward)
+        }
+
         @objc func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
-            guard let webView = webView else {
-                return
-            }
-            
-            clearHighlight()
-            parent.onTapOutside?()
-            
-            let script = """
-                (function() {
-                    var pageHeight = \(Int(self.parent.viewSize.height));
-                    var maxScroll = (\(parent.userConfig.verticalPadding) === 0) ? document.body.scrollHeight : document.body.scrollHeight - pageHeight;
-                    if ((window.scrollY + pageHeight) <= (maxScroll - 1)) {
-                        window.scrollBy(0, pageHeight);
-                        return "scrolled";
-                    }
-                    return "limit";
-                })()
-                """
-            
-            webView.evaluateJavaScript(script) { result, _ in
-                if let res = result as? String, res == "scrolled" {
-                    self.saveBookmark();
-                }
-                else {
-                    if self.parent.onNextChapter() {
-                        webView.alpha = 0
-                    }
-                }
-            }
+            navigate(parent.userConfig.verticalWriting ? .forward : .backward)
         }
         
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {

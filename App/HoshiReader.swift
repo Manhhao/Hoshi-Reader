@@ -22,7 +22,7 @@ struct HoshiReaderApp: App {
         WindowGroup {
             BookshelfView()
                 .environment(userConfig)
-                .preferredColorScheme(userConfig.theme.colorScheme)
+                .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
                 .onOpenURL { url in
                     handleURL(url)
                 }

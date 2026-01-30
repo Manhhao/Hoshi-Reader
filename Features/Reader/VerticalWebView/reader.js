@@ -11,7 +11,11 @@ window.hoshiReader = {
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
     ttuRegex: /[^0-9A-Z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
-
+    
+    isVertical() {
+        return window.getComputedStyle(document.body).writingMode === "vertical-rl";
+    },
+    
     isScanBoundary(char) {
         return /^[\s\u3000]$/.test(char) || this.scanDelimiters.includes(char);
     },
@@ -51,7 +55,8 @@ window.hoshiReader = {
             if (nodeLen > 0) {
                 var range = document.createRange();
                 range.selectNodeContents(node);
-                if (range.getBoundingClientRect().top < 0) {
+                var anchor = this.isVertical() ? range.getBoundingClientRect().top : range.getBoundingClientRect().left;
+                if (anchor < 0) {
                     exploredChars += nodeLen;
                 }
             }
@@ -65,9 +70,15 @@ window.hoshiReader = {
             return;
         }
 
+        var vertical = this.isVertical();
         if (progress >= 0.99) {
-            var lastPage = Math.floor((document.body.scrollHeight - window.innerHeight) / window.innerHeight) * window.innerHeight;
-            window.scrollTo(0, Math.max(0, lastPage));
+            if (vertical) {
+                var lastPage = Math.floor((document.body.scrollHeight - window.innerHeight) / window.innerHeight) * window.innerHeight;
+                window.scrollTo(0, lastPage);
+            } else {
+                var lastPage = Math.floor((document.body.scrollWidth - window.innerWidth) / window.innerWidth) * window.innerWidth;
+                window.scrollTo(lastPage, 0);
+            }
             return;
         }
 
@@ -100,8 +111,13 @@ window.hoshiReader = {
             var range = document.createRange();
             range.setStart(targetNode, 0);
             range.setEnd(targetNode, 1);
-            var pageIndex = Math.floor(range.getBoundingClientRect().top / window.innerHeight);
-            window.scrollTo(0, pageIndex * window.innerHeight);
+            if (vertical) {
+                var pageIndex = Math.floor(range.getBoundingClientRect().top / window.innerHeight);
+                window.scrollTo(0, pageIndex * window.innerHeight);
+            } else {
+                var pageIndex = Math.floor(range.getBoundingClientRect().left / window.innerWidth);
+                window.scrollTo(pageIndex * window.innerWidth, 0);
+            }
         }
     },
 

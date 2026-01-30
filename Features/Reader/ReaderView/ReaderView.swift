@@ -10,6 +10,7 @@ import SwiftUI
 import EPUBKit
 
 struct WebViewState: Hashable {
+    var verticalWriting: Bool
     var fontSize: Int
     var horizontalPadding: Int
     var verticalPadding: Int
@@ -46,14 +47,27 @@ struct ReaderView: View {
     @State private var focusMode = false
     
     private let webViewPadding: CGFloat = 12
-    private let lineHeight: CGFloat = 18
+    private let lineHeight: CGFloat = 12
     
-    private let showCharactersTop = true
+    private let showProgressTop = true
     private let showTitle = true
-    
+    private let showCharacters = false
+    private let showPercentage = false
     
     init(document: EPUBDocument, rootURL: URL) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL))
+    }
+    
+    var progressString: String {
+        var result: [String] = []
+        if showCharacters {
+            result.append("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+        }
+        if showPercentage {
+            let percent = viewModel.bookInfo.characterCount > 0 ? (Double(viewModel.currentCharacter) / Double(viewModel.bookInfo.characterCount) * 100) : 0
+            result.append("\(String(format: "%.2f%%", percent))")
+        }
+        return result.joined(separator: " ")
     }
     
     var body: some View {
@@ -61,9 +75,9 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: topSafeArea + webViewPadding + (showCharactersTop ? lineHeight : 0) + (showTitle ? lineHeight : 0))
+                .frame(height: topSafeArea + webViewPadding + (showProgressTop && !progressString.isEmpty ? lineHeight : 0) + (showTitle ? lineHeight : 0))
                 .contentShape(Rectangle())
-
+            
             GeometryReader { geometry in
                 ZStack {
                     VerticalWebView(
@@ -81,12 +95,13 @@ struct ReaderView: View {
                         onTapOutside: viewModel.closePopup
                     )
                     .id(WebViewState(
+                        verticalWriting: userConfig.verticalWriting,
                         fontSize: userConfig.fontSize,
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
                         size: geometry.size
                     ))
-
+                    
                     PopupView(
                         isVisible: $viewModel.showPopup,
                         selectionData: viewModel.currentSelection,
@@ -97,22 +112,23 @@ struct ReaderView: View {
                     .zIndex(100)
                 }
             }
-
+            
             HStack {
                 CircleButton(systemName: "chevron.left")
                     .onTapGesture {
                         dismiss()
                     }
-
+                    .opacity(focusMode ? 0 : 1)
+                
                 Spacer()
-
+                
                 Menu {
                     Button {
                         viewModel.activeSheet = .chapters
                     } label: {
                         Label("Chapters", systemImage: "list.bullet")
                     }
-
+                    
                     Button {
                         viewModel.activeSheet = .appearance
                     } label: {
@@ -122,16 +138,16 @@ struct ReaderView: View {
                     CircleButton(systemName: "slider.horizontal.3")
                 }
                 .tint(.primary)
+                .opacity(focusMode ? 0 : 1)
             }
             .padding(.horizontal, 20)
             .frame(height: UIApplication.bottomSafeArea + 8, alignment: .top)
-            .contentShape(Rectangle())  // Makes the whole HStack tappable including Spacer
+            .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.default.speed(2)) {
                     focusMode.toggle()
                 }
             }
-            //.background(Color(red: 1, green: 1, blue: 1))
         }
         .onAppear {
             if topSafeArea == 0 {
@@ -149,11 +165,11 @@ struct ReaderView: View {
                                 .padding(.horizontal, 30)
                                 .lineLimit(1)
                         }
-                        if showCharactersTop {
-                            Text("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                    }
+                    if showProgressTop {
+                        Text(progressString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -161,8 +177,8 @@ struct ReaderView: View {
         }
         .overlay(alignment: .bottom) {
             VStack {
-                if !showCharactersTop {
-                    Text("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+                if !showProgressTop {
+                    Text(progressString)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -174,6 +190,7 @@ struct ReaderView: View {
             case .appearance:
                 AppearanceView(userConfig: userConfig)
                     .presentationDetents([.medium])
+                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
             case .chapters:
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex in
                     viewModel.setIndex(index: spineIndex, progress: 0)
@@ -184,19 +201,19 @@ struct ReaderView: View {
         }
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)
-        .statusBarHidden()
+        .statusBarHidden(focusMode)
     }
 }
 
 struct CircleButton: View {
     let systemName: String
     let interactive: Bool
-
+    
     init(systemName: String, interactive: Bool = true) {
         self.systemName = systemName
         self.interactive = interactive
     }
-
+    
     var body: some View {
         if #available(iOS 26, *) {
             Image(systemName: systemName)
@@ -211,18 +228,6 @@ struct CircleButton: View {
                 .font(.system(size: 20))
                 .foregroundStyle(.primary)
                 .padding(8)
-        }
-    }
-}
-
-#Preview {
-    Group {
-        if let url = Bundle.main.url(forResource: "sample", withExtension: "epub"),
-           let doc = try? EPUBParser().parse(documentAt: url) {
-            ReaderView(document: doc, rootURL: url.deletingLastPathComponent())
-                .environment(UserConfig())
-        } else {
-            Text("Sample book not found")
         }
     }
 }

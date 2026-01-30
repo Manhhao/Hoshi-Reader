@@ -56,6 +56,7 @@ struct BookshelfView: View {
             .sheet(isPresented: $showAppearance) {
                 AppearanceView(userConfig: userConfig)
                     .presentationDetents([.medium])
+                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
             }
             .alert("Error", isPresented: $viewModel.shouldShowError) {
                 Button("OK", role: .cancel) { }

@@ -13,12 +13,15 @@ enum Themes: String, CaseIterable, Codable {
     case system = "System"
     case light = "Light"
     case dark = "Dark"
+    case sepia = "Sepia"
+    case custom = "Custom"
     
     var colorScheme: ColorScheme? {
         switch self {
-        case .system: nil
         case .light: .light
         case .dark: .dark
+        case .sepia: .light
+        default: nil
         }
     }
 }
@@ -65,8 +68,28 @@ class UserConfig {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
     }
     
+    var verticalWriting: Bool {
+        didSet { UserDefaults.standard.set(verticalWriting, forKey: "verticalWriting") }
+    }
+    
     var googleClientId: String {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
+    }
+
+    var uiTheme: Themes {
+        didSet { UserDefaults.standard.set(uiTheme.rawValue, forKey: "uiTheme") }
+    }
+
+    var customBackgroundColor: Color {
+        didSet {
+            saveColor(customBackgroundColor, key: "customBackgroundColor")
+        }
+    }
+    
+    var customTextColor: Color {
+        didSet {
+            saveColor(customTextColor, key: "customTextColor")
+        }
     }
     
     init() {
@@ -88,5 +111,29 @@ class UserConfig {
         
         self.theme = defaults.string(forKey: "theme")
             .flatMap(Themes.init) ?? .system
+
+        self.uiTheme = defaults.string(forKey: "uiTheme")
+            .flatMap(Themes.init) ?? .system
+
+        self.customBackgroundColor = UserConfig.loadColor(key: "customBackgroundColor") ?? Color(.sRGB, red: 1, green: 1, blue: 1)
+        self.customTextColor = UserConfig.loadColor(key: "customTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
+        
+        self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
+    }
+    
+    private func saveColor(_ color: Color, key: String) {
+        let uiColor = UIColor(color)
+        let colorData = try? NSKeyedArchiver.archivedData(withRootObject: uiColor, requiringSecureCoding: false)
+        UserDefaults.standard.set(colorData, forKey: key)
+    }
+    
+    private static func loadColor(key: String) -> Color? {
+        guard let colorData = UserDefaults.standard.data(forKey: key) else {
+            return nil
+        }
+        if let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: colorData) {
+            return Color(uiColor)
+        }
+        return nil
     }
 }

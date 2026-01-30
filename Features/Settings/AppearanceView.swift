@@ -23,9 +23,19 @@ struct AppearanceView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    if userConfig.theme == .custom {
+                        Picker("Interface", selection: $userConfig.uiTheme) {
+                            Text("System").tag(Themes.system)
+                            Text("Light").tag(Themes.light)
+                            Text("Dark").tag(Themes.dark)
+                        }
+                        ColorPicker("Background Color", selection: $userConfig.customBackgroundColor)
+                        ColorPicker("Text Color", selection: $userConfig.customTextColor)
+                    }
                 }
                 
                 Section("Reader") {
+                    Toggle("Vertical Writing", isOn: $userConfig.verticalWriting)
                     HStack {
                         Text("Font Size")
                         Spacer()
