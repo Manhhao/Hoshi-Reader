@@ -80,7 +80,7 @@ struct ReaderView: View {
             
             GeometryReader { geometry in
                 ZStack {
-                    VerticalWebView(
+                    ReaderWebView(
                         fileURL: viewModel.getCurrentChapter(),
                         contentURL: viewModel.document.contentDirectory,
                         userConfig: userConfig,

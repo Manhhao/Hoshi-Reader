@@ -1,5 +1,5 @@
 //
-//  VerticalWebView.swift
+//  ReaderWebView.swift
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
@@ -20,7 +20,7 @@ struct SelectionData {
     let rect: CGRect
 }
 
-struct VerticalWebView: UIViewRepresentable {
+struct ReaderWebView: UIViewRepresentable {
     let fileURL: URL?
     let contentURL: URL
     let userConfig: UserConfig
@@ -90,11 +90,11 @@ struct VerticalWebView: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler {
-        var parent: VerticalWebView
+        var parent: ReaderWebView
         weak var webView: WKWebView?
         var currentURL: URL?
         
-        init(_ parent: VerticalWebView) {
+        init(_ parent: ReaderWebView) {
             self.parent = parent
         }
         
