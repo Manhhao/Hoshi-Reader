@@ -71,73 +71,43 @@ window.hoshiReader = {
         }
         
         var vertical = this.isVertical();
-        if (progress >= 0.99) {
+        var pageSize = vertical ? window.innerHeight : window.innerWidth;
+        var totalSize = vertical ? document.body.scrollHeight : document.body.scrollWidth;
+        var maxPages = Math.ceil((totalSize - pageSize) / pageSize);
+        
+        if (progress >= 0.99 || maxPages <= 0) {
             if (vertical) {
-                var lastPage = Math.floor((document.body.scrollHeight - window.innerHeight) / window.innerHeight) * window.innerHeight;
-                window.scrollTo(0, lastPage);
+                window.scrollTo(0, maxPages * pageSize);
             } else {
-                var lastPage = Math.floor((document.body.scrollWidth - window.innerWidth) / window.innerWidth) * window.innerWidth;
-                window.scrollTo(lastPage, 0);
+                window.scrollTo(maxPages * pageSize, 0);
             }
             return;
         }
         
-        var walker = this.createWalker();
-        var totalChars = 0;
-        var node;
+        var low = 0;
+        var high = maxPages;
         
-        while (node = walker.nextNode()) {
-            totalChars += this.countChars(node.textContent);
-        }
-        
-        if (totalChars <= 0) {
-            return;
-        }
-        
-        // i don't know why this works anymore, the logic was broken with custom fonts but gemini produced something that worked
-        var targetCharCount = totalChars * progress;
-        var runningSum = 0;
-        var targetNode = null;
-        var charsBeforeNode = 0;
-        
-        walker = this.createWalker();
-        while (node = walker.nextNode()) {
-            var nodeChars = this.countChars(node.textContent);
-            if (runningSum + nodeChars > targetCharCount) {
-                targetNode = node;
-                charsBeforeNode = runningSum;
-                break;
-            }
-            runningSum += nodeChars;
-        }
-        
-        if (targetNode) {
-            var nodeChars = this.countChars(targetNode.textContent);
-            var charsIntoNode = targetCharCount - charsBeforeNode;
-            var charRatio = nodeChars > 0 ? charsIntoNode / nodeChars : 0;
-            
-            var range = document.createRange();
-            range.selectNodeContents(targetNode);
-            var rect = range.getBoundingClientRect();
-            
-            var targetY = rect.top + (rect.height * charRatio);
-            
+        while (low < high) {
+            var mid = Math.floor((low + high) / 2);
             if (vertical) {
-                var pageIndex = Math.floor(targetY / window.innerHeight);
-                if (charRatio > 0.99) pageIndex++;
-                pageIndex = Math.max(0, pageIndex);
-                var maxScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
-                var scrollY = Math.min(pageIndex * window.innerHeight, maxScroll);
-                window.scrollTo(0, scrollY);
+                window.scrollTo(0, mid * pageSize);
             } else {
-                var targetX = rect.left + (rect.width * charRatio);
-                var pageIndex = Math.floor(targetX / window.innerWidth);
-                if (charRatio > 0.99) pageIndex++;
-                pageIndex = Math.max(0, pageIndex);
-                var maxScroll = Math.max(0, document.body.scrollWidth - window.innerWidth);
-                var scrollX = Math.min(pageIndex * window.innerWidth, maxScroll);
-                window.scrollTo(scrollX, 0);
+                window.scrollTo(mid * pageSize, 0);
             }
+            
+            var currentProgress = this.calculateProgress();
+            
+            if (currentProgress < progress) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+        
+        if (vertical) {
+            window.scrollTo(0, low * pageSize);
+        } else {
+            window.scrollTo(low * pageSize, 0);
         }
     },
     
