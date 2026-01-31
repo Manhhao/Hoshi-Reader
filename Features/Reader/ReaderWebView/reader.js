@@ -94,7 +94,7 @@ window.hoshiReader = {
             return;
         }
         
-        // i tbh don't know why this works anymore, the logic was broken with custom fonts but gemini produced something that worked
+        // i don't know why this works anymore, the logic was broken with custom fonts but gemini produced something that worked
         var targetCharCount = totalChars * progress;
         var runningSum = 0;
         var targetNode = null;
@@ -123,13 +123,17 @@ window.hoshiReader = {
             var targetY = rect.top + (rect.height * charRatio);
             
             if (vertical) {
-                var pageIndex = Math.max(0, Math.floor(targetY / window.innerHeight));
+                var pageIndex = Math.floor(targetY / window.innerHeight);
+                if (charRatio > 0.99) pageIndex++;
+                pageIndex = Math.max(0, pageIndex);
                 var maxScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
                 var scrollY = Math.min(pageIndex * window.innerHeight, maxScroll);
                 window.scrollTo(0, scrollY);
             } else {
                 var targetX = rect.left + (rect.width * charRatio);
-                var pageIndex = Math.max(0, Math.floor(targetX / window.innerWidth));
+                var pageIndex = Math.floor(targetX / window.innerWidth);
+                if (charRatio > 0.99) pageIndex++;
+                pageIndex = Math.max(0, pageIndex);
                 var maxScroll = Math.max(0, document.body.scrollWidth - window.innerWidth);
                 var scrollX = Math.min(pageIndex * window.innerWidth, maxScroll);
                 window.scrollTo(scrollX, 0);

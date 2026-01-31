@@ -126,6 +126,8 @@ struct AppearanceView: View {
                         Stepper("", value: $userConfig.verticalPadding, in: 0...80, step: 2)
                             .labelsHidden()
                     }
+                    
+                    Toggle("Hide Furigana", isOn: $userConfig.readerHideFurigana)
                 }
                 
                 Section("Reader Display") {

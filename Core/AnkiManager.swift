@@ -50,9 +50,20 @@ class AnkiManager {
         }
     }
     
-    func fetch() {
+    func fetch(retryCount: Int = 0) {
+        let delay = 0.8
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            self.performFetch(retryCount: retryCount)
+        }
+    }
+
+    private func performFetch(retryCount: Int) {
         guard let data = UIPasteboard.general.data(forPasteboardType: Self.pasteboardType) else {
-            errorMessage = "No data received from Anki"
+            if retryCount < 3 {
+                fetch(retryCount: retryCount + 1)
+                return
+            }
+            errorMessage = "No data received from Anki. Please try again."
             return
         }
         UIPasteboard.general.setData(Data(), forPasteboardType: Self.pasteboardType)

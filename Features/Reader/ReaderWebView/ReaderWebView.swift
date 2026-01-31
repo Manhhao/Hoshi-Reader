@@ -281,8 +281,13 @@ struct ReaderWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 
+
                 \(spacerJs)
                 \(readerJs)
+                
+                if (\(parent.userConfig.readerHideFurigana)) {
+                    document.querySelectorAll('rt').forEach(rt => rt.remove());
+                }
             
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
