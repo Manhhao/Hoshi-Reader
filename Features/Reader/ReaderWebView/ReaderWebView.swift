@@ -82,7 +82,7 @@ struct ReaderWebView: UIViewRepresentable {
         
         if context.coordinator.currentURL != url {
             context.coordinator.currentURL = url
-            webView.loadFileURL(url, allowingReadAccessTo: contentURL)
+            webView.loadFileURL(url, allowingReadAccessTo: try! BookStorage.getDocumentsDirectory())
         }
     }
     
@@ -150,7 +150,22 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }()
             
+            var fontFaceCss = ""
+            if !FontManager.shared.isDefaultFont(name: parent.userConfig.selectedFont) {
+                if let fontURL = try? FontManager.shared.getFontUrl(name: parent.userConfig.selectedFont) {
+                    let fontType = fontURL.pathExtension.lowercased()
+                    fontFaceCss = """
+                    @font-face {
+                        font-family: '\(parent.userConfig.selectedFont)';
+                        src: url('\(fontURL.absoluteString)') format('\(fontType == "otf" ? "opentype" : "truetype")');
+                    }
+                    """
+                }
+            }
+            
+            
             let css = """
+            \(fontFaceCss)
             html, body { 
                 height: var(--page-height, 100vh) !important;
                 width: var(--page-width, 100vw) !important;
@@ -159,7 +174,7 @@ struct ReaderWebView: UIViewRepresentable {
             }
             body {
                 writing-mode: \(writingMode) !important;
-                font-family: "Hiragino Mincho ProN", serif !important;
+                font-family: \(parent.userConfig.selectedFont), serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
                 box-sizing: border-box !important;
                 column-width: var(--page-height, 100vh) !important;
@@ -303,8 +318,11 @@ struct ReaderWebView: UIViewRepresentable {
                     });
                 });
                 
-                // wait for all images to load before scrolling to bookmark
                 Promise.all(imagePromises).then(() => {
+                    return document.fonts.ready;
+                }).then(() => {
+                    return new Promise(resolve => setTimeout(resolve, 50));
+                }).then(() => {
                     window.hoshiReader.restoreProgress(\(self.parent.currentProgress));
                 });
             })();

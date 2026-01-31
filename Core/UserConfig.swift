@@ -98,14 +98,18 @@ class UserConfig {
     
     var customBackgroundColor: Color {
         didSet {
-            saveColor(customBackgroundColor, key: "customBackgroundColor")
+            Self.saveColor(customBackgroundColor, key: "customBackgroundColor")
         }
     }
     
     var customTextColor: Color {
         didSet {
-            saveColor(customTextColor, key: "customTextColor")
+            Self.saveColor(customTextColor, key: "customTextColor")
         }
+    }
+    
+    var selectedFont: String {
+        didSet { UserDefaults.standard.set(selectedFont, forKey: "selectedFont") }
     }
     
     init() {
@@ -134,6 +138,8 @@ class UserConfig {
         self.customBackgroundColor = UserConfig.loadColor(key: "customBackgroundColor") ?? Color(.sRGB, red: 1, green: 1, blue: 1)
         self.customTextColor = UserConfig.loadColor(key: "customTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         
+        self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
+        
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
         
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
@@ -142,7 +148,7 @@ class UserConfig {
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
     }
     
-    private func saveColor(_ color: Color, key: String) {
+    private static func saveColor(_ color: Color, key: String) {
         let uiColor = UIColor(color)
         let colorData = try? NSKeyedArchiver.archivedData(withRootObject: uiColor, requiringSecureCoding: false)
         UserDefaults.standard.set(colorData, forKey: key)

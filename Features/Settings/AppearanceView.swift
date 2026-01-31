@@ -7,10 +7,15 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AppearanceView: View {
     let userConfig: UserConfig
     @Environment(\.dismiss) var dismiss
+    @State private var isImportingFont = false
+    @State private var importedFonts: [String] = []
+    @State private var showingDeleteConfirmation = false
+    @State private var fontToDelete: String? = nil
     
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -45,6 +50,56 @@ struct AppearanceView: View {
                         .pickerStyle(.segmented)
                         .frame(width: 100)
                     }
+                    
+                    HStack {
+                        Picker("Font", selection: $userConfig.selectedFont) {
+                            ForEach(FontManager.defaultFonts + importedFonts, id: \.self) { font in
+                                Text(font).tag(font)
+                            }
+                        }
+                        
+                        if !FontManager.shared.isDefaultFont(name: userConfig.selectedFont) {
+                            Button {
+                                fontToDelete = userConfig.selectedFont
+                                showingDeleteConfirmation = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.red)
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .confirmationDialog("", isPresented: $showingDeleteConfirmation, titleVisibility: .hidden) {
+                                Button("Delete", role: .destructive) {
+                                    if let fontName = fontToDelete {
+                                        try? FontManager.shared.deleteFont(name: fontName)
+                                        userConfig.selectedFont = FontManager.defaultFonts[0]
+                                        importedFonts = (try? FontManager.shared.getFontsFromStorage())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
+                                    }
+                                }
+                            } message: {
+                                if let fontName = fontToDelete {
+                                    Text("Delete \"\(fontName)\"?")
+                                }
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        isImportingFont = true
+                    } label: {
+                        Text("Import Font")
+                    }
+                    .fileImporter(
+                        isPresented: $isImportingFont,
+                        allowedContentTypes: [.font],
+                        onCompletion: { result in
+                            if case .success(let url) = result {
+                                try? FontManager.shared.importFont(from: url)
+                                importedFonts = (try? FontManager.shared.getFontsFromStorage())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
+                            }
+                        }
+                    )
+                    
                     HStack {
                         Text("Font Size")
                         Spacer()
@@ -128,6 +183,9 @@ struct AppearanceView: View {
                         Image(systemName: "xmark")
                     }
                 }
+            }
+            .onAppear {
+                importedFonts = (try? FontManager.shared.getFontsFromStorage())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
             }
         }
     }

@@ -16,6 +16,7 @@ struct WebViewState: Hashable {
     var verticalPadding: Int
     var size: CGSize
     var textColor: Color
+    var selectedFont: String
 }
 
 struct ReaderLoader: View {
@@ -116,7 +117,8 @@ struct ReaderView: View {
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
                         size: geometry.size,
-                        textColor: readerTextColor
+                        textColor: readerTextColor,
+                        selectedFont: userConfig.selectedFont
                     ))
                     
                     PopupView(

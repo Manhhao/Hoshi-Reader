@@ -34,6 +34,7 @@
 				AnkiManager.swift,
 				BookStorage.swift,
 				DictionaryManager.swift,
+				FontManager.swift,
 				LookupEngine.swift,
 				UserConfig.swift,
 			);
