@@ -164,7 +164,7 @@ struct ReaderView: View {
                 .opacity(focusMode ? 0 : 1)
             }
             .padding(.horizontal, 20)
-            .frame(height: UIApplication.bottomSafeArea + 8, alignment: .top)
+            .frame(height: (UIApplication.bottomSafeArea != 0 ? UIApplication.bottomSafeArea : 44) + 8, alignment: .top)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.default.speed(2)) {
