@@ -126,6 +126,7 @@ struct DictionarySearchView: View {
             window.collapseDictionaries = \(userConfig.collapseDictionaries);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.audioSources = \(audioSources);
+            window.needsAudio = \(AnkiManager.shared.needsAudio);
         </script>
         <div id="entries-container"></div>
         """

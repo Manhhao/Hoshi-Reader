@@ -423,7 +423,7 @@ async function mineEntry(expression, reading, frequencies, pitches, definitionTa
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, definitionTags);
     
-    if (!audioUrls[idx] && window.audioSources?.length) {
+    if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);
     }
     

@@ -28,6 +28,10 @@ class AnkiManager {
     
     var isConnected: Bool { !availableDecks.isEmpty }
     
+    var needsAudio: Bool {
+        fieldMappings.values.contains(Handlebars.audio.rawValue)
+    }
+    
     private let fileServer = LocalFileServer()
     
     private static let scheme = "hoshi://"
