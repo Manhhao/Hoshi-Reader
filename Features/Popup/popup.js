@@ -3,7 +3,7 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
-//  Copyright © 2023-2025 Yomitan Authors (marked pitch functions)
+//  Copyright © 2023-2025 Yomitan Authors (marked pitch functions, furigana functions)
 //  Copyright © 2021-2022 Yomichan Authors (marked pitch functions)
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
@@ -69,46 +69,105 @@ function closeOverlay() {
     document.querySelector('.overlay').style.display = 'none';
 }
 
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L171
+function createFuriganaSegment(text, reading) {
+    return {text, reading};
+}
+
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L242
+function getFuriganaKanaSegments(text, reading) {
+    const textLength = text.length;
+    const newSegments = [];
+    let start = 0;
+    let state = (reading[0] === text[0]);
+    for (let i = 1; i < textLength; ++i) {
+        const newState = (reading[i] === text[i]);
+        if (state === newState) { continue; }
+        newSegments.push(createFuriganaSegment(text.substring(start, i), state ? '' : reading.substring(start, i)));
+        state = newState;
+        start = i;
+    }
+    newSegments.push(createFuriganaSegment(text.substring(start, textLength), state ? '' : reading.substring(start, textLength)));
+    return newSegments;
+}
+
+// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L182
+function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
+    const groupCount = groups.length - groupsStart;
+    if (groupCount <= 0) {
+        return reading.length === 0 ? [] : null;
+    }
+
+    const group = groups[groupsStart];
+    const {isKana, text} = group;
+    const textLength = text.length;
+    if (isKana) {
+        const {textNormalized} = group;
+        if (textNormalized !== null && readingNormalized.startsWith(textNormalized)) {
+            const segments = segmentizeFurigana(
+                reading.substring(textLength),
+                readingNormalized.substring(textLength),
+                groups,
+                groupsStart + 1,
+            );
+            if (segments !== null) {
+                if (reading.startsWith(text)) {
+                    segments.unshift(createFuriganaSegment(text, ''));
+                } else {
+                    segments.unshift(...getFuriganaKanaSegments(text, reading));
+                }
+                return segments;
+            }
+        }
+        return null;
+    } else {
+        let result = null;
+        for (let i = reading.length; i >= textLength; --i) {
+            const segments = segmentizeFurigana(
+                reading.substring(i),
+                readingNormalized.substring(i),
+                groups,
+                groupsStart + 1,
+            );
+            if (segments !== null) {
+                if (result !== null) {
+                    // More than one way to segmentize the tail; mark as ambiguous
+                    return null;
+                }
+                const segmentReading = reading.substring(0, i);
+                segments.unshift(createFuriganaSegment(text, segmentReading));
+                result = segments;
+            }
+            // There is only one way to segmentize the last non-kana group
+            if (groupCount === 1) {
+                break;
+            }
+        }
+        return result;
+    }
+}
+
 function segmentFurigana(expression, reading) {
     if (!reading || reading === expression) {
         return [[expression, '']];
     }
-    
-    const segments = expression.match(KANJI_SEGMENT_PATTERN) || [];
-    const readingNormalized = toHiragana(reading);
-    const result = [];
-    let readingPos = 0;
-    
-    for (let i = 0; i < segments.length; i++) {
-        const text = segments[i];
-        const isKanji = KANJI_PATTERN.test(text[0]);
-        
-        if (!isKanji) {
-            const matchPos = readingNormalized.indexOf(toHiragana(text), readingPos);
-            if (matchPos > readingPos && result.length && result.at(-1)[1] === null) {
-                result.at(-1)[1] = reading.slice(readingPos, matchPos);
-            }
-            result.push([text, '']);
-            if (matchPos !== -1) {
-                readingPos = matchPos + text.length;
-            }
-        } else {
-            const nextKana = segments.slice(i + 1).find(segment => !KANJI_PATTERN.test(segment[0]));
-            const nextPos = nextKana ? readingNormalized.indexOf(toHiragana(nextKana), readingPos + 1) : -1;
-            
-            if (nextPos !== -1) {
-                result.push([text, reading.slice(readingPos, nextPos)]);
-                readingPos = nextPos;
-            } else if (!nextKana) {
-                result.push([text, reading.slice(readingPos)]);
-                readingPos = reading.length;
-            } else {
-                result.push([text, null]);
-            }
-        }
+
+    const groups = [];
+    const segmentMatches = expression.match(KANJI_SEGMENT_PATTERN) || [];
+    for (const text of segmentMatches) {
+        const isKana = !KANJI_PATTERN.test(text[0]);
+        const textNormalized = isKana ? toHiragana(text) : null;
+        groups.push({isKana, text, textNormalized});
     }
-    
-    return result.map(([text, furi]) => [text, furi || '']);
+
+    const readingNormalized = toHiragana(reading);
+    const segments = segmentizeFurigana(reading, readingNormalized, groups, 0);
+
+    if (segments !== null) {
+        return segments.map(seg => [seg.text, seg.reading]);
+    }
+
+    return [[expression, reading]];
 }
 
 function buildFuriganaEl(parent, expression, reading) {
