@@ -135,7 +135,7 @@ struct DictionarySearchView: View {
 
 struct DictionarySearchBar: View {
     @Binding var text: String
-    @FocusState private var isFocused: Bool
+    @State private var isFocused: Bool = false
     let onSubmit: () -> Void
     
     init(text: Binding<String>, onSubmit: @escaping () -> Void) {
@@ -150,12 +150,7 @@ struct DictionarySearchBar: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.secondary)
                 
-                TextField("", text: $text)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .focused($isFocused)
-                    .onSubmit(onSubmit)
+                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
                 
                 if !text.isEmpty {
                     Button {
@@ -182,12 +177,7 @@ struct DictionarySearchBar: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.secondary)
                 
-                TextField("", text: $text)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .focused($isFocused)
-                    .onSubmit(onSubmit)
+                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
                 
                 if !text.isEmpty {
                     Button {
