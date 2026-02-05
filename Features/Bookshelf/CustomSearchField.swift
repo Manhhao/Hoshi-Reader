@@ -11,6 +11,18 @@ import SwiftUI
 
 class SearchField: UITextField {
     var targetLanguage: String? // avoid modifying `init`
+    var onTransitionComplete: (() -> Void)?
+    
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        // get the coordinator of the transition of navigation push
+        let transitionCoordinator = self.parentViewController?.transitionCoordinator
+        if let transitionCoordinator {
+            transitionCoordinator.animate(alongsideTransition: nil) { _ in
+                self.onTransitionComplete?()
+            }
+        }
+    }
     
     override var textInputMode: UITextInputMode? {
         guard let targetLanguage else {
@@ -42,20 +54,26 @@ struct CustomSearchField: UIViewRepresentable {
         searchField.returnKeyType = .search
         searchField.setContentHuggingPriority(.defaultHigh, for: .vertical)
         searchField.delegate = context.coordinator
+        searchField.onTransitionComplete = { [weak searchField] in
+            if context.coordinator.isFocused {
+                searchField?.becomeFirstResponder()
+            }
+        }
         return searchField
     }
     
     func updateUIView(_ uiView: UITextField, context: Context) {
         context.coordinator.updateSelf(searchText: $searchText, isFocused: $isFocused)
         
-        if isFocused {
-            Task {
-                try? await Task.sleep(for: .seconds(0.45))
+        // detect `isFocused` after the first `updateUIView` of search field and the navigation push
+        if uiView.window != nil {
+            if isFocused {
                 uiView.becomeFirstResponder()
+            } else {
+                uiView.resignFirstResponder()
             }
-        } else {
-            uiView.resignFirstResponder()
         }
+        
         if uiView.text != searchText{
             uiView.text = searchText
         }
@@ -99,4 +117,19 @@ struct CustomSearchField: UIViewRepresentable {
         }
     }
     
+}
+
+// MARK: - Extensions
+
+extension UIView {
+    var parentViewController: UIViewController? {
+        var responder: UIResponder? = self
+        while let r = responder {
+            if let vc = responder as? UIViewController {
+                return vc
+            }
+            responder = r.next
+        }
+        return nil
+    }
 }
