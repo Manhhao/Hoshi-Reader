@@ -135,7 +135,7 @@ struct DictionarySearchView: View {
 
 struct DictionarySearchBar: View {
     @Binding var text: String
-    @State private var isFocused: Bool = false
+    @State private var isFocused: Bool = true
     let onSubmit: () -> Void
     
     init(text: Binding<String>, onSubmit: @escaping () -> Void) {
