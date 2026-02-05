@@ -49,7 +49,10 @@ struct CustomSearchField: UIViewRepresentable {
         context.coordinator.updateSelf(searchText: $searchText, isFocused: $isFocused)
         
         if isFocused {
-            uiView.becomeFirstResponder()
+            Task {
+                try? await Task.sleep(for: .seconds(0.45))
+                uiView.becomeFirstResponder()
+            }
         } else {
             uiView.resignFirstResponder()
         }
