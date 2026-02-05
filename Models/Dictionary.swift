@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import SwiftData
 
 struct DictionaryInfo: Identifiable, Codable {
     let id: UUID
@@ -21,6 +22,45 @@ struct DictionaryInfo: Identifiable, Codable {
         self.path = path
         self.isEnabled = isEnabled
         self.order = order
+    }
+}
+
+
+@Model
+class DictionaryDetailInfo {
+    static let defaultCSS = """
+        :host {
+            /* Put light mode css here */
+            div {}
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :host {
+                /* Put dark mode css here */
+                div {}
+            }
+        }
+        """
+    @MainActor
+    static func appendCustomCSS(dictionaryStyles: [String: String], modelContext: ModelContext) -> [String: String] {
+        var fullDictionaryStyles: [String: String] = [:]
+        for (name, css) in dictionaryStyles {
+            let matchedDetailInfos = modelContext.getDetailInfosBy(name: name)
+            if (matchedDetailInfos.count == 0) || (matchedDetailInfos.count > 1) {
+                continue
+            }
+            let matchedDetailInfo = matchedDetailInfos.first!
+            fullDictionaryStyles.updateValue(matchedDetailInfo.customCSS + css, forKey: name)
+        }
+        return fullDictionaryStyles
+    }
+    
+    var name: String
+    var customCSS: String
+    
+    init(name: String, customCSS: String = DictionaryDetailInfo.defaultCSS) {
+        self.name = name
+        self.customCSS = customCSS
     }
 }
 
@@ -84,5 +124,16 @@ struct AudioSource: Codable, Identifiable {
         self.url = url
         self.isEnabled = isEnabled
         self.isDefault = isDefault
+    }
+}
+
+extension ModelContext {
+    func getDetailInfosBy(name: String) -> [DictionaryDetailInfo] {
+        let dictionaryDetailPredicate = #Predicate<DictionaryDetailInfo> { detailSetting in
+            detailSetting.name == name
+        }
+        let descriptor = FetchDescriptor<DictionaryDetailInfo>(predicate: dictionaryDetailPredicate)
+        let dictionaryDetailInfos = try! fetch(descriptor)
+        return dictionaryDetailInfos
     }
 }

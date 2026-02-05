@@ -8,12 +8,14 @@
 
 import UniformTypeIdentifiers
 import SwiftUI
+import SwiftData
 
 struct DictionaryView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
     @State private var importType: DictionaryType = .term
+    @State private var selectedDictionary: DictionaryInfo?
     
     var body: some View {
         List {
@@ -36,10 +38,17 @@ struct DictionaryView: View {
             
             Section("Term Dictionaries") {
                 ForEach(dictionaryManager.termDictionaries) { dict in
-                    Toggle(dict.name, isOn: Binding(
+                    Toggle(isOn: Binding(
                         get: { dict.isEnabled },
                         set: { dictionaryManager.toggleDictionary(index: dict.order, enabled: $0, type: .term) }
-                    ))
+                    ), label: {
+                        Text(dict.name)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.rect)
+                    })
+                    .onTapGesture {
+                        selectedDictionary = dict
+                    }
                 }
                 .onMove { from, to in
                     dictionaryManager.moveDictionary(from: from, to: to, type: .term)
@@ -82,6 +91,12 @@ struct DictionaryView: View {
         .onAppear {
             dictionaryManager.loadDictionaries()
         }
+        .sheet(item: $selectedDictionary, content: { dictionary in
+            DictionaryDetailSettingView(dictionaryInfo: dictionary) {
+                selectedDictionary = nil
+            }
+            .presentationDetents([.large])
+        })
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -131,5 +146,55 @@ struct DictionaryView: View {
         } message: {
             Text(dictionaryManager.errorMessage)
         }
+    }
+}
+
+struct DictionaryDetailSettingView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var dictionaryDetailInfos: [DictionaryDetailInfo]
+    @FocusState private var focusState
+    let dictionaryInfo: DictionaryInfo
+    @State var customCSS: String = ""
+    let onDismiss: (() -> Void)?
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    @Bindable var bindableDetailInfos: DictionaryDetailInfo = dictionaryDetailInfos.first!
+                    TextEditor(text: $bindableDetailInfos.customCSS)
+                        .font(.system(.body, design: .monospaced))
+                        .focused($focusState)
+                } header: {
+                    Text("Custom CSS")
+                }
+            }
+            .onAppear(perform: {
+                if dictionaryDetailInfos.count == 0 {
+                    modelContext.insert(DictionaryDetailInfo(name: dictionaryInfo.name, customCSS: DictionaryDetailInfo.defaultCSS))
+                }
+            })
+            .toolbar(content: {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Button("Reset", role: .destructive) {
+                        @Bindable var bindableDetailInfos: DictionaryDetailInfo = dictionaryDetailInfos.first!
+                        bindableDetailInfos.customCSS = DictionaryDetailInfo.defaultCSS
+                    }
+                    .tint(Color.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Button("Done") {
+                        focusState = false
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            })
+            .padding()
+        }
+    }
+    
+    init(dictionaryInfo: DictionaryInfo, onDismiss: (() -> Void)?) {
+        self.dictionaryInfo = dictionaryInfo
+        self.onDismiss = onDismiss
     }
 }
