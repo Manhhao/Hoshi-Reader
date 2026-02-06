@@ -14,13 +14,14 @@ struct BookView: View {
     
     var body: some View {
         VStack(spacing: 6) {
-            AsyncImage(url: book.coverURL) { image in
-                image
+            if let coverURL = book.coverURL,
+               let image = UIImage(contentsOfFile: coverURL.path) {
+                Image(uiImage: image)
                     .resizable()
                     .aspectRatio(0.709, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .shadow(color: .primary.opacity(0.3), radius: 5)
-            } placeholder: {
+            } else {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.3))
                     .aspectRatio(0.709, contentMode: .fit)
