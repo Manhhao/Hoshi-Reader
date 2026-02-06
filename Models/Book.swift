@@ -21,7 +21,7 @@ enum SortOption: String, CaseIterable, Identifiable {
     }
 }
 
-struct BookMetadata: Codable, Identifiable {
+struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String?
     let cover: String?

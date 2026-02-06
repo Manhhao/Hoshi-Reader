@@ -18,6 +18,7 @@ struct BookshelfView: View {
     @State private var showAppearance = false
     @State private var showAdvanced = false
     @State private var showDictionarySearch = false
+    @State private var navigationPath = NavigationPath()
     @Binding var pendingImportURL: URL?
 
     private let columns = [
@@ -25,7 +26,7 @@ struct BookshelfView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(viewModel.sortedBooks(by: userConfig.bookshelfSortOption)) { book in
@@ -43,9 +44,13 @@ struct BookshelfView: View {
             }
             .onChange(of: pendingImportURL) { _, url in
                 if let url {
+                    navigationPath = NavigationPath()
                     viewModel.importBook(result: .success(url))
                     pendingImportURL = nil
                 }
+            }
+            .navigationDestination(for: BookMetadata.self) { book in
+                ReaderLoader(book: book)
             }
             .fileImporter(
                 isPresented: $viewModel.isImporting,
@@ -155,9 +160,7 @@ struct BookCell: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        NavigationLink {
-            ReaderLoader(book: book)
-        } label: {
+        NavigationLink(value: book) {
             BookView(book: book, progress: viewModel.progress(for: book))
         }
         .buttonStyle(.plain)
