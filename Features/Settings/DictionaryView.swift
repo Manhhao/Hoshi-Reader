@@ -161,10 +161,23 @@ struct DictionaryDetailSettingView: View {
     let onDismiss: (() -> Void)?
     
     var body: some View {
-        Section {
+        VStack {
+            HStack {
+                Text("CSS for \(dictionaryInfo.name)")
+                    .bold()
+                    .font(.title3)
+                
+                Spacer()
+                
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        onDismiss?()
+                    }
+            }
             CSSEditorView(text: $dictionaryInfo.customCSS, isFocus: $isFocus)
-        } header: {
-            Text("Custom CSS")
+                .cornerRadius(16)
         }
         .onAppear(perform: {
             if dictionaryInfo.customCSS == "" {
@@ -176,6 +189,8 @@ struct DictionaryDetailSettingView: View {
             dictionaryManager.updateDictionaryCSS(index: dictionaryInfo.order, newCSS: storedCSS, type: .term)
         })
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.secondarySystemBackground).ignoresSafeArea())
     }
     
     init(dictionaryInfo: DictionaryInfo, onDismiss: (() -> Void)?) {

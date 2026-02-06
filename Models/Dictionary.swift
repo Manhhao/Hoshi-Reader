@@ -25,25 +25,6 @@ struct DictionaryInfo: Identifiable, Codable {
         self.customCSS = customCSS
     }
     
-    enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case path
-        case isEnabled
-        case order
-        case customCSS
-    }
-    
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decode(UUID.self, forKey: .id)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.path = try container.decode(URL.self, forKey: .path)
-        self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
-        self.order = try container.decode(Int.self, forKey: .order)
-        self.customCSS = try container.decodeIfPresent(String.self, forKey: .customCSS) ?? ""
-    }
-    
     static let defaultCSS = """
         :host {
             /* Put light mode css here */
@@ -90,6 +71,30 @@ struct DictionaryConfig: Codable {
         let fileName: String
         var isEnabled: Bool
         var order: Int
+        var customCSS: String
+        
+        init(fileName: String, isEnabled: Bool, order: Int, customCSS: String) {
+            self.fileName = fileName
+            self.isEnabled = isEnabled
+            self.order = order
+            self.customCSS = customCSS
+        }
+        
+        enum CodingKeys: String, CodingKey {
+            case fileName
+            case isEnabled
+            case order
+            case customCSS
+        }
+        
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.fileName = try container.decode(String.self, forKey: .fileName)
+            self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+            self.order = try container.decode(Int.self, forKey: .order)
+            self.customCSS = try container.decodeIfPresent(String.self, forKey: .customCSS) ?? ""
+        }
+        
     }
 }
 

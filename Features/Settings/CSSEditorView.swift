@@ -21,15 +21,18 @@ struct CSSEditorView: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.font = UIFont.monospacedSystemFont(ofSize: 17, weight: .regular)
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
         let coordinator = context.coordinator
         textView.delegate = coordinator
         
         let toolBar = UIToolbar()
-        let resetButtonItem = UIBarButtonItem(title: "Clear", style: .plain, target: coordinator, action: #selector(Coordinator.resetCSS))
+        let resetButtonItem = UIBarButtonItem(title: "Reset", style: .plain, target: coordinator, action: #selector(Coordinator.resetCSS))
         let spacerItem = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         let toolBarDoneItem = UIBarButtonItem(title: "Done", style: .plain, target: coordinator, action: #selector(Coordinator.dismissKeyboard))
         toolBar.items = [resetButtonItem, spacerItem, toolBarDoneItem]
         toolBar.sizeToFit()
+        toolBar.backgroundColor = .systemGray6
         textView.inputAccessoryView = toolBar
         return textView
     }
@@ -41,12 +44,18 @@ struct CSSEditorView: UIViewRepresentable {
             uiView.text = text
         }
         
-        if isFocus && !uiView.isFirstResponder {
-            uiView.becomeFirstResponder()
-        }
-        
-        if !isFocus && uiView.isFirstResponder {
-            uiView.resignFirstResponder()
+        if isFocus {
+            if !uiView.isFirstResponder {
+                Task {
+                    uiView.becomeFirstResponder()
+                }
+            }
+        } else {
+            if uiView.isFirstResponder {
+                Task {
+                    uiView.resignFirstResponder()
+                }
+            }
         }
     }
     
@@ -98,7 +107,6 @@ struct CSSEditorView: UIViewRepresentable {
         @objc
         func dismissKeyboard() {
             parent.isFocus = false
-            print("dismiss!!!")
         }
         
         @objc

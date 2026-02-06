@@ -61,6 +61,7 @@ class DictionaryManager {
                 var dictInfo = stored
                 dictInfo.isEnabled = configDict.isEnabled
                 dictInfo.order = configDict.order
+                dictInfo.customCSS = configDict.customCSS
                 result.append(dictInfo)
             }
         }
@@ -113,21 +114,24 @@ class DictionaryManager {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    customCSS: $0.customCSS
                 )
             },
             frequencyDictionaries: frequencyDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    customCSS: $0.customCSS
                 )
             },
             pitchDictionaries: pitchDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    customCSS: $0.customCSS
                 )
             }
         )
