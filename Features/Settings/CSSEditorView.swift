@@ -32,7 +32,7 @@ struct CSSEditorView: UIViewRepresentable {
         let toolBarDoneItem = UIBarButtonItem(title: "Done", style: .plain, target: coordinator, action: #selector(Coordinator.dismissKeyboard))
         toolBar.items = [resetButtonItem, spacerItem, toolBarDoneItem]
         toolBar.sizeToFit()
-        toolBar.backgroundColor = .systemGray6
+        toolBar.backgroundColor = .clear
         textView.inputAccessoryView = toolBar
         return textView
     }
