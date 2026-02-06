@@ -203,6 +203,15 @@ class DictionaryManager {
         rebuildLookupQuery()
     }
     
+    func updateDictionaryCSS(index: Int, newCSS: String, type: DictionaryType) {
+        guard type == .term else {
+            return
+        }
+        termDictionaries[index].customCSS = newCSS
+        saveDictionaryConfig()
+        rebuildLookupQuery()
+    }
+    
     func moveDictionary(from: IndexSet, to: Int, type: DictionaryType) {
         switch type {
         case .term:

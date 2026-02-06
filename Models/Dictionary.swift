@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import SwiftData
 
 struct DictionaryInfo: Identifiable, Codable {
     let id: UUID
@@ -15,19 +14,36 @@ struct DictionaryInfo: Identifiable, Codable {
     let path: URL
     var isEnabled: Bool
     var order: Int
+    var customCSS: String
     
-    init(id: UUID = UUID(), name: String, path: URL, isEnabled: Bool = true, order: Int = 0) {
+    init(id: UUID = UUID(), name: String, path: URL, isEnabled: Bool = true, order: Int = 0, customCSS: String = "") {
         self.id = id
         self.name = name
         self.path = path
         self.isEnabled = isEnabled
         self.order = order
+        self.customCSS = customCSS
     }
-}
-
-
-@Model
-class DictionaryDetailInfo {
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case path
+        case isEnabled
+        case order
+        case customCSS
+    }
+    
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.path = try container.decode(URL.self, forKey: .path)
+        self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        self.order = try container.decode(Int.self, forKey: .order)
+        self.customCSS = try container.decodeIfPresent(String.self, forKey: .customCSS) ?? ""
+    }
+    
     static let defaultCSS = """
         :host {
             /* Put light mode css here */
@@ -41,26 +57,27 @@ class DictionaryDetailInfo {
             }
         }
         """
-    @MainActor
-    static func appendCustomCSS(dictionaryStyles: [String: String], modelContext: ModelContext) -> [String: String] {
-        var fullDictionaryStyles: [String: String] = [:]
-        for (name, css) in dictionaryStyles {
-            let matchedDetailInfos = modelContext.getDetailInfosBy(name: name)
-            if (matchedDetailInfos.count == 0) || (matchedDetailInfos.count > 1) {
-                continue
-            }
-            let matchedDetailInfo = matchedDetailInfos.first!
-            fullDictionaryStyles.updateValue(matchedDetailInfo.customCSS + css, forKey: name)
+    
+    static func dictionaryInfo(of name: String, in infos: [DictionaryInfo]) -> DictionaryInfo? {
+        let matchedIndices = infos.indices { dictionaryInfo in
+            dictionaryInfo.name == name
         }
-        return fullDictionaryStyles
+        let matchedDictionaryInfos = infos[matchedIndices]
+        if (matchedDictionaryInfos.count == 0) || (matchedDictionaryInfos.count > 1) {
+            return nil
+        }
+        return matchedDictionaryInfos.first!
     }
     
-    var name: String
-    var customCSS: String
-    
-    init(name: String, customCSS: String = DictionaryDetailInfo.defaultCSS) {
-        self.name = name
-        self.customCSS = customCSS
+    static func appendCustomCSS(dictionaryStyles: [String: String], for dictionaryInfos: [DictionaryInfo]) -> [String: String] {
+        var fullDictionaryStyles: [String: String] = [:]
+        for (name, css) in dictionaryStyles {
+            let matchedDictionaryInfo = Self.dictionaryInfo(of: name, in: dictionaryInfos)
+            if let matchedDictionaryInfo {
+                fullDictionaryStyles.updateValue(matchedDictionaryInfo.customCSS + css, forKey: name)
+            }
+        }
+        return fullDictionaryStyles
     }
 }
 
@@ -124,16 +141,5 @@ struct AudioSource: Codable, Identifiable {
         self.url = url
         self.isEnabled = isEnabled
         self.isDefault = isDefault
-    }
-}
-
-extension ModelContext {
-    func getDetailInfosBy(name: String) -> [DictionaryDetailInfo] {
-        let dictionaryDetailPredicate = #Predicate<DictionaryDetailInfo> { detailSetting in
-            detailSetting.name == name
-        }
-        let descriptor = FetchDescriptor<DictionaryDetailInfo>(predicate: dictionaryDetailPredicate)
-        let dictionaryDetailInfos = try! fetch(descriptor)
-        return dictionaryDetailInfos
     }
 }

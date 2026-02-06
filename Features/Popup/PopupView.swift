@@ -8,7 +8,6 @@
 
 import SwiftUI
 import CYomitanDicts
-import SwiftData
 
 struct PopupLayout {
     let selectionRect: CGRect
@@ -93,8 +92,7 @@ struct PopupLayout {
 struct PopupView: View {
     @Namespace private var namespace
     @Environment(UserConfig.self) private var userConfig
-    @Query var dictionaryDetailInfos: [DictionaryDetailInfo]
-    @Environment(\.modelContext) var modelContext
+    @State var dictionaryManager: DictionaryManager = .shared
     @Binding var isVisible: Bool
     let selectionData: SelectionData?
     let lookupResults: [LookupResult]
@@ -207,7 +205,7 @@ struct PopupView: View {
                 definitionTags: definitionTags
             ))
         }
-        let fullStyles = DictionaryDetailInfo.appendCustomCSS(dictionaryStyles: dictionaryStyles, modelContext: modelContext)
+        let fullStyles = DictionaryInfo.appendCustomCSS(dictionaryStyles: dictionaryStyles, for: dictionaryManager.termDictionaries)
         let styles = (try? JSONEncoder().encode(fullStyles)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let entriesJson = (try? JSONEncoder().encode(entries)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         

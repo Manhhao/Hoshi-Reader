@@ -11,7 +11,7 @@ import CYomitanDicts
 
 struct DictionarySearchView: View {
     @Environment(UserConfig.self) private var userConfig
-    @Environment(\.modelContext) private var modelContext
+    @State private var dictionaryManager = DictionaryManager.shared
     @State private var query: String = ""
     @State private var lastQuery: String = ""
     @State private var content: String = ""
@@ -114,7 +114,7 @@ struct DictionarySearchView: View {
         for style in styles {
             dictionaryStyles[String(style.dict_name)] = String(style.styles)
         }
-        let fullStyles = DictionaryDetailInfo.appendCustomCSS(dictionaryStyles: dictionaryStyles, modelContext: modelContext)
+        let fullStyles = DictionaryInfo.appendCustomCSS(dictionaryStyles: dictionaryStyles, for: dictionaryManager.termDictionaries)
         
         let stylesJson = (try? JSONEncoder().encode(fullStyles)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let entriesJson = (try? JSONEncoder().encode(entries)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"

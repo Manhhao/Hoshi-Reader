@@ -8,7 +8,6 @@
 
 import UniformTypeIdentifiers
 import SwiftUI
-import SwiftData
 
 struct DictionaryView: View {
     @Environment(UserConfig.self) private var userConfig
@@ -36,7 +35,7 @@ struct DictionaryView: View {
                 Text("Yomitan term and frequency dictionaries (.zip) are supported")
             }
             
-            Section("Term Dictionaries") {
+            Section {
                 ForEach(dictionaryManager.termDictionaries) { dict in
                     Toggle(isOn: Binding(
                         get: { dict.isEnabled },
@@ -56,6 +55,10 @@ struct DictionaryView: View {
                 .onDelete { indexSet in
                     dictionaryManager.deleteDictionary(indexSet: indexSet, type: .term)
                 }
+            } header: {
+                Text("Term Dictionaries")
+            } footer: {
+                Text("Tap to set custom CSS for each dictionary")
             }
             
             Section("Frequency Dictionaries") {
@@ -149,48 +152,30 @@ struct DictionaryView: View {
     }
 }
 
+// MARK: - Per dictionary detail settings model view
+
 struct DictionaryDetailSettingView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var dictionaryDetailInfos: [DictionaryDetailInfo]
-    @FocusState private var focusState
-    let dictionaryInfo: DictionaryInfo
-    @State var customCSS: String = ""
+    @State private var dictionaryManager = DictionaryManager.shared
+    @State private var isFocus = false
+    @State var dictionaryInfo: DictionaryInfo
     let onDismiss: (() -> Void)?
     
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    @Bindable var bindableDetailInfos: DictionaryDetailInfo = dictionaryDetailInfos.first!
-                    TextEditor(text: $bindableDetailInfos.customCSS)
-                        .font(.system(.body, design: .monospaced))
-                        .focused($focusState)
-                } header: {
-                    Text("Custom CSS")
-                }
-            }
-            .onAppear(perform: {
-                if dictionaryDetailInfos.count == 0 {
-                    modelContext.insert(DictionaryDetailInfo(name: dictionaryInfo.name, customCSS: DictionaryDetailInfo.defaultCSS))
-                }
-            })
-            .toolbar(content: {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Button("Reset", role: .destructive) {
-                        @Bindable var bindableDetailInfos: DictionaryDetailInfo = dictionaryDetailInfos.first!
-                        bindableDetailInfos.customCSS = DictionaryDetailInfo.defaultCSS
-                    }
-                    .tint(Color.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Button("Done") {
-                        focusState = false
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            })
-            .padding()
+        Section {
+            CSSEditorView(text: $dictionaryInfo.customCSS, isFocus: $isFocus)
+        } header: {
+            Text("Custom CSS")
         }
+        .onAppear(perform: {
+            if dictionaryInfo.customCSS == "" {
+                dictionaryInfo.customCSS = DictionaryInfo.defaultCSS
+            }
+        })
+        .onDisappear(perform: {
+            let storedCSS = dictionaryInfo.customCSS == DictionaryInfo.defaultCSS ? "" : dictionaryInfo.customCSS
+            dictionaryManager.updateDictionaryCSS(index: dictionaryInfo.order, newCSS: storedCSS, type: .term)
+        })
+        .padding()
     }
     
     init(dictionaryInfo: DictionaryInfo, onDismiss: (() -> Void)?) {

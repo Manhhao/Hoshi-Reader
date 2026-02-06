@@ -8,7 +8,6 @@
 
 import SwiftUI
 import WebKit
-import SwiftData
 
 @main
 struct HoshiReaderApp: App {
@@ -24,7 +23,6 @@ struct HoshiReaderApp: App {
         WindowGroup {
             BookshelfView(pendingImportURL: $pendingImportURL)
                 .environment(userConfig)
-                .modelContainer(for: DictionaryDetailInfo.self)
                 .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
                 .onOpenURL { url in
                     handleURL(url)
