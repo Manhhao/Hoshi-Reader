@@ -132,6 +132,13 @@ struct ReaderView: View {
                         coverURL: viewModel.coverURL,
                         documentTitle: viewModel.document.title
                     )
+                    .simultaneousGesture(DragGesture().onEnded({ value in
+                        if userConfig.popupSwipeToDismiss &&
+                            (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
+                            (abs(value.translation.height) < 20) {
+                            viewModel.closePopup()
+                        }
+                    }))
                     .zIndex(100)
                 }
             }

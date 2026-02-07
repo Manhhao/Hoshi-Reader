@@ -175,6 +175,22 @@ struct AppearanceView: View {
                             set: { userConfig.popupHeight = Int($0) }
                         ), in: 100...350, step: 10)
                     }
+                    
+                    Toggle("Swipe to Dismiss", isOn: Bindable(userConfig).popupSwipeToDismiss)
+                    if userConfig.popupSwipeToDismiss {
+                        VStack {
+                            HStack {
+                                Text("Swipe Threshold")
+                                Spacer()
+                                Text("\(userConfig.popupSwipeThreshold)")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: .init(
+                                get: { Double(userConfig.popupSwipeThreshold) },
+                                set: { userConfig.popupSwipeThreshold = Int($0) }
+                            ), in: 20...80, step: 5)
+                        }
+                    }
                 }
             }
             .navigationTitle("Appearance")

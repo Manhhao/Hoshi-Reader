@@ -120,6 +120,14 @@ class UserConfig {
         didSet { UserDefaults.standard.set(popupHeight, forKey: "popupHeight") }
     }
     
+    var popupSwipeToDismiss: Bool {
+        didSet { UserDefaults.standard.set(popupSwipeToDismiss, forKey: "popupSwipeToDismiss") }
+    }
+    
+    var popupSwipeThreshold: Int {
+        didSet { UserDefaults.standard.set(popupSwipeThreshold, forKey: "popupSwipeThreshold") }
+    }
+    
     var audioSources: [AudioSource] {
         didSet {
             if let data = try? JSONEncoder().encode(audioSources) {
@@ -137,6 +145,12 @@ class UserConfig {
         isEnabled: true,
         isDefault: true
     )
+    
+    var customCSS: String {
+        didSet {
+            UserDefaults.standard.set(customCSS, forKey: "customCSS")
+        }
+    }
     
     init() {
         let defaults = UserDefaults.standard
@@ -173,6 +187,8 @@ class UserConfig {
         
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupSwipeToDismiss = defaults.object(forKey: "popupSwipeToDismiss") as? Bool ?? false
+        self.popupSwipeThreshold = defaults.object(forKey: "popupSwipeThreshold") as? Int ?? 40
         
         if let data = defaults.data(forKey: "audioSources"),
            let sources = try? JSONDecoder().decode([AudioSource].self, from: data) {
@@ -180,6 +196,8 @@ class UserConfig {
         } else {
             self.audioSources = [UserConfig.defaultAudioSource]
         }
+        
+        self.customCSS = defaults.string(forKey: "customCSS") ?? ""
     }
     
     private static func saveColor(_ color: Color, key: String) {

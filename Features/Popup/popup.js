@@ -819,8 +819,8 @@ function createGlossarySection(dictName, contents, isFirst) {
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
     details.appendChild(summary);
 
-    const shadowHost = document.createElement('div');
-    const shadow = shadowHost.attachShadow({ mode: 'open' });
+    const dictWrapper = document.createElement('div');
+    dictWrapper.setAttribute('data-dictionary', dictName);
     const compactCss = window.compactGlossaries ? `
         ul[data-sc-content="glossary"],
         ol[data-sc-content="glossary"],
@@ -848,50 +848,51 @@ function createGlossarySection(dictName, contents, isFirst) {
     ` : '';
 
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
-    shadow.appendChild(el('style', {
+    dictWrapper.appendChild(el('style', {
         textContent: `
-            :host {
+            [data-dictionary="${dictName}"] {
                 display: block;
                 font-size: 14px;
                 line-height: 1.4;
                 padding: 0;
+            
+                ul, ol {
+                    padding-left: 1.2em;
+                    margin: 2px 0; 
+                }
+                li { 
+                    margin: 1px 0;
+                }
+                .glossary-tags {
+                    display: inline-flex;
+                    gap: 4px;
+                    flex-wrap: wrap;
+                    margin: 0 0 2px 0;
+                }
+                .glossary-tag {
+                    font-size: 10px;
+                    padding: 2px 4px;
+                    background-color: rgba(128, 128, 128, 0.2);
+                    border-radius: 4px;
+                    line-height: 1;
+                }
+                table {
+                    table-layout: auto;
+                    border-collapse: collapse;
+                }
+                th, td {
+                    border: 1px solid currentColor;
+                    padding: 0.25em;
+                    vertical-align: top;
+                }
+                th {
+                    font-weight: bold;
+                }
+                @media (prefers-color-scheme: light) { color: #000; }
+                @media (prefers-color-scheme: dark) { color: #fff; }
+                ${dictStyle}
+                ${compactCss}
             }
-            ul, ol {
-                padding-left: 1.2em;
-                margin: 2px 0; 
-            }
-            li { 
-                margin: 1px 0;
-            }
-            .glossary-tags {
-                display: inline-flex;
-                gap: 4px;
-                flex-wrap: wrap;
-                margin: 0 0 2px 0;
-            }
-            .glossary-tag {
-                font-size: 10px;
-                padding: 2px 4px;
-                background-color: rgba(128, 128, 128, 0.2);
-                border-radius: 4px;
-                line-height: 1;
-            }
-            table {
-                table-layout: auto;
-                border-collapse: collapse;
-            }
-            th, td {
-                border: 1px solid currentColor;
-                padding: 0.25em;
-                vertical-align: top;
-            }
-            th {
-                font-weight: bold;
-            }
-            @media (prefers-color-scheme: light) { :host { color: #000; } }
-            @media (prefers-color-scheme: dark) { :host { color: #fff; } }
-            ${dictStyle}
-            ${compactCss}
         `.trim()
     }));
     
@@ -913,7 +914,7 @@ function createGlossarySection(dictName, contents, isFirst) {
 
     const termTagsRow = createGlossaryTags(termTags);
     if (termTagsRow) {
-        shadow.appendChild(termTagsRow);
+        dictWrapper.appendChild(termTagsRow);
     }
 
     if (contents.length > 1) {
@@ -924,10 +925,12 @@ function createGlossarySection(dictName, contents, isFirst) {
             if (tags) {
                 li.appendChild(tags);
             }
-            renderContent(li, item.content);
+            const content = el('div', { className: 'glossary-content' });
+            renderContent(content, item.content);
+            li.appendChild(content);
             ol.appendChild(li);
         });
-        shadow.appendChild(ol);
+        dictWrapper.appendChild(ol);
     } else {
         contents.forEach((item, idx) => {
             const wrapper = el('div');
@@ -935,12 +938,14 @@ function createGlossarySection(dictName, contents, isFirst) {
             if (tags) {
                 wrapper.appendChild(tags);
             }
-            renderContent(wrapper, item.content);
-            shadow.appendChild(wrapper);
+            const content = el('div', { className: 'glossary-content' });
+            renderContent(content, item.content);
+            wrapper.appendChild(content);
+            dictWrapper.appendChild(wrapper);
         });
     }
 
-    details.appendChild(shadowHost);
+    details.appendChild(dictWrapper);
     return details;
 }
 
@@ -978,5 +983,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         container.appendChild(entryDiv);
     });
+
+    if (window.customCSS) {
+        const customStyle = document.createElement('style');
+        customStyle.textContent = window.customCSS;
+        document.body.appendChild(customStyle);
+    }
 });
 
