@@ -925,7 +925,9 @@ function createGlossarySection(dictName, contents, isFirst) {
             if (tags) {
                 li.appendChild(tags);
             }
-            renderContent(li, item.content);
+            const content = el('div', { className: 'glossary-content' });
+            renderContent(content, item.content);
+            li.appendChild(content);
             ol.appendChild(li);
         });
         dictWrapper.appendChild(ol);
@@ -936,7 +938,9 @@ function createGlossarySection(dictName, contents, isFirst) {
             if (tags) {
                 wrapper.appendChild(tags);
             }
-            renderContent(wrapper, item.content);
+            const content = el('div', { className: 'glossary-content' });
+            renderContent(content, item.content);
+            wrapper.appendChild(content);
             dictWrapper.appendChild(wrapper);
         });
     }
