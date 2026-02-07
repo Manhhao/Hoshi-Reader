@@ -58,6 +58,42 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
+    
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url else { return }
+        
+        let fontType = url.pathExtension.lowercased()
+        let fileName = url.deletingPathExtension().lastPathComponent
+        
+        do {
+            guard let fontFile = try FontManager.shared.getFontUrl(name: fileName) else {
+                return
+            }
+            
+            let data = try Data(contentsOf: fontFile)
+            
+            let response = URLResponse(
+                url: url,
+                mimeType: "font/\(fontType == "otf" ? "otf" : "ttf")",
+                expectedContentLength: data.count,
+                textEncodingName: nil
+            )
+            
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(data)
+            urlSchemeTask.didFinish()
+            
+        } catch {
+            urlSchemeTask.didFailWithError(error)
+        }
+    }
+    
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
+        
+    }
+}
+
 struct PopupWebView: UIViewRepresentable {
     let dictionaryManager = DictionaryManager.shared
     let fontManager = FontManager.shared
@@ -89,6 +125,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "mineEntry")
         config.userContentController.add(context.coordinator, name: "openLink")
         config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
+        config.setURLSchemeHandler(DocumentResourceHandler(), forURLScheme: "local-resources")
         
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false

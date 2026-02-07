@@ -27,7 +27,7 @@ class FontManager {
                     fontFaceCss += """
                 @font-face {
                     font-family: '\(fontName)';
-                    src: url('\(try! FontManager.getFontsDirectory().lastPathComponent)/\(fontURL.lastPathComponent)') format('\(fontType == "otf" ? "opentype" : "truetype")');
+                    src: url('local-resources:///\(fontURL.lastPathComponent)') format('\(fontType == "otf" ? "opentype" : "truetype")');
                 }
                 """
                 }

@@ -91,7 +91,7 @@ struct CSSEditorView: UIViewRepresentable {
     func makeFontBarItem(context: Context, uiTextView: UITextView) -> UIBarButtonItem {
         let uiActions: [UIAction] = fontManager.allFonts.map { fontName in
             UIAction(title: fontName) { _ in
-                uiTextView.insertText("font-family: \(fontName);")
+                uiTextView.insertText("font-family: \"\(fontName)\";")
             }
         }
         let uiMenu = UIMenu(title: "Available Fonts", children: uiActions)
