@@ -979,5 +979,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         container.appendChild(entryDiv);
     });
+
+    if (window.customCSS) {
+        const customStyle = document.createElement('style');
+        customStyle.textContent = window.customCSS;
+        document.body.appendChild(customStyle);
+    }
 });
 

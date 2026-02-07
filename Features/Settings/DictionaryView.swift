@@ -149,7 +149,8 @@ struct DictionaryDetailSettingView: View {
     var body: some View {
         NavigationStack {
             CSSEditorView(text: $customCSS)
-                .padding(20)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
                 .background(Color(.secondarySystemBackground).ignoresSafeArea())
                 .navigationTitle("Custom CSS")
                 .navigationBarTitleDisplayMode(.inline)

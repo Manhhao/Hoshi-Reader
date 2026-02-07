@@ -127,6 +127,7 @@ struct DictionarySearchView: View {
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.audioSources = \(audioSources);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.customCSS = `\(userConfig.customCSS)`;
         </script>
         <div id="entries-container"></div>
         """

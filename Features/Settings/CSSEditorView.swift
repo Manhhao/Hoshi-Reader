@@ -10,24 +10,60 @@ import SwiftUI
 
 struct CSSEditorView: View {
     let dictionaryManager = DictionaryManager.shared
-    let fontManager = FontManager.shared
     @Binding var text: String
     @FocusState private var isFocused: Bool
     
     var body: some View {
-        TextEditor(text: $text)
-            .font(.system(.body, design: .monospaced))
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
-            .focused($isFocused)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    fontMenu
-                    dictionaryMenu
-                    Spacer()
-                    Button("Done") { isFocused = false }
+        VStack(spacing: 0) {
+            toolbar
+            TextEditor(text: $text)
+                .font(.system(.body, design: .monospaced))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($isFocused)
+        }
+    }
+    
+    @ViewBuilder
+    private var toolbar: some View {
+        if #available(iOS 26, *) {
+            HStack {
+                dictionaryMenu
+                    .glassEffect(.regular.interactive())
+                Spacer()
+                if isFocused {
+                    Button {
+                        isFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .glassEffect(.regular.interactive())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(8)
+        } else {
+            HStack {
+                dictionaryMenu
+                    .background(.ultraThinMaterial, in: Capsule())
+                Spacer()
+                if isFocused {
+                    Button {
+                        isFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(8)
+        }
     }
     
     private var dictionaryMenu: some View {
@@ -38,23 +74,20 @@ struct CSSEditorView: View {
                     [data-dictionary="\(dict.name)"] {
                         
                     }
+                    
                     """
                 }
             }
         } label: {
-            Image(systemName: "character.book.closed.ja")
-        }
-    }
-    
-    private var fontMenu: some View {
-        Menu {
-            ForEach(fontManager.allFonts, id: \.self) { fontName in
-                Button(fontName) {
-                    text += "font-family: \"\(fontName)\";"
-                }
+            HStack(spacing: 6) {
+                Image(systemName: "character.book.closed.ja")
+                Text("Insert Selector")
             }
-        } label: {
-            Image(systemName: "textformat.size.larger.ja")
+            .font(.system(size: 16))
+            .foregroundStyle(.primary)
+            .frame(height: 44)
+            .padding(.horizontal, 12)
         }
+        .buttonStyle(.plain)
     }
 }

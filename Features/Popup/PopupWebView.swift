@@ -58,47 +58,7 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
-class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
-    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        guard let url = urlSchemeTask.request.url else {
-            urlSchemeTask.didFailWithError(URLError(.badURL))
-            return
-        }
-        
-        let fontType = url.pathExtension.lowercased()
-        let fileName = url.deletingPathExtension().lastPathComponent
-        
-        do {
-            guard let fontFile = try FontManager.shared.getFontUrl(name: fileName) else {
-                urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
-                return
-            }
-            
-            let data = try Data(contentsOf: fontFile, options: .mappedIfSafe)
-            
-            let response = URLResponse(
-                url: url,
-                mimeType: "font/\(fontType == "otf" ? "otf" : "ttf")",
-                expectedContentLength: data.count,
-                textEncodingName: nil
-            )
-            
-            urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(data)
-            urlSchemeTask.didFinish()
-            
-        } catch {
-            urlSchemeTask.didFailWithError(error)
-        }
-    }
-    
-    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) { }
-}
-
 struct PopupWebView: UIViewRepresentable {
-    @Environment(UserConfig.self) var userConfig
-    let dictionaryManager = DictionaryManager.shared
-    let fontManager = FontManager.shared
     let content: String
     var onMine: (([String: String]) -> Void)? = nil
     
@@ -127,7 +87,6 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "mineEntry")
         config.userContentController.add(context.coordinator, name: "openLink")
         config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
-        config.setURLSchemeHandler(DocumentResourceHandler(), forURLScheme: "local-resources")
         
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
@@ -178,11 +137,7 @@ struct PopupWebView: UIViewRepresentable {
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-                \(Self.popupCss)
-                \(userConfig.customCSS)
-                \(fontManager.fontfaceCSS)
-            </style>
+            <style>\(Self.popupCss)</style>
             <script>\(Self.popupJs)</script>
         </head>
         <body>
