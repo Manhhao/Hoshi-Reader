@@ -13,7 +13,7 @@ class FontManager {
     static let defaultFonts = ["Hiragino Mincho ProN", "Hiragino Kaku Gothic ProN"]
     
     var allFonts: [String] {
-        let importedFonts = (try? FontManager.shared.getFontsFromStorage())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
+        let importedFonts = (try? getFontsFromStorage())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
         return FontManager.defaultFonts + importedFonts
     }
     

@@ -820,7 +820,7 @@ function createGlossarySection(dictName, contents, isFirst) {
     details.appendChild(summary);
 
     const dictWrapper = document.createElement('div');
-    dictWrapper.setAttribute('data-dictionary', dictName)
+    dictWrapper.setAttribute('data-dictionary', dictName);
     const compactCss = window.compactGlossaries ? `
         ul[data-sc-content="glossary"],
         ol[data-sc-content="glossary"],

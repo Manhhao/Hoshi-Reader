@@ -144,11 +144,11 @@ struct DictionaryView: View {
 struct DictionaryDetailSettingView: View {
     @Environment(UserConfig.self) var userConfig
     @Environment(\.dismiss) private var dismiss
+    @State private var customCSS: String = ""
 
     var body: some View {
-        @Bindable var userConfig = userConfig
         NavigationStack {
-            CSSEditorView(text: $userConfig.customCSS)
+            CSSEditorView(text: $customCSS)
                 .padding(20)
                 .background(Color(.secondarySystemBackground).ignoresSafeArea())
                 .navigationTitle("Custom CSS")
@@ -156,7 +156,7 @@ struct DictionaryDetailSettingView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Reset", role: .destructive) {
-                            userConfig.customCSS = ""
+                            customCSS = ""
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -167,6 +167,12 @@ struct DictionaryDetailSettingView: View {
                         }
                     }
                 }
+        }
+        .onAppear {
+            customCSS = userConfig.customCSS
+        }
+        .onDisappear {
+            userConfig.customCSS = customCSS
         }
     }
 }

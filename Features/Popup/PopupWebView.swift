@@ -59,19 +59,22 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
 }
 
 class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
-    
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        guard let url = urlSchemeTask.request.url else { return }
+        guard let url = urlSchemeTask.request.url else {
+            urlSchemeTask.didFailWithError(URLError(.badURL))
+            return
+        }
         
         let fontType = url.pathExtension.lowercased()
         let fileName = url.deletingPathExtension().lastPathComponent
         
         do {
             guard let fontFile = try FontManager.shared.getFontUrl(name: fileName) else {
+                urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
                 return
             }
             
-            let data = try Data(contentsOf: fontFile)
+            let data = try Data(contentsOf: fontFile, options: .mappedIfSafe)
             
             let response = URLResponse(
                 url: url,
@@ -89,9 +92,7 @@ class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
         }
     }
     
-    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        
-    }
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) { }
 }
 
 struct PopupWebView: UIViewRepresentable {

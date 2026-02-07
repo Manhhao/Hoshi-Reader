@@ -133,7 +133,7 @@ struct BookStorage {
             let metadataURL = url.appendingPathComponent(FileNames.metadata)
             
             if FileManager.default.fileExists(atPath: metadataURL.path) {
-                let data = try Data(contentsOf: metadataURL, options: .mappedIfSafe)
+                let data = try Data(contentsOf: metadataURL)
                 let book = try JSONDecoder().decode(BookMetadata.self, from: data)
                 books.append(book)
             }
