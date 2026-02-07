@@ -44,6 +44,13 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 | [yomitandicts-cpp](https://github.com/Manhhao/yomitandicts-cpp) | Dictionary backend | GPLv3 |
 | [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | EPUB parsing library | MIT |
 
+## Attribution
+
+| Name | Description | License |
+| :--- | :--- | :--- |
+| [Yomitan](https://github.com/yomidevs/yomitan) | Pitch accent implementation, Furigana Segmenter | GPLv3 |
+| [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPLv3 |
+
 ## Issues
 
 Please open an issue [here](https://github.com/Manhhao/Hoshi-Reader/issues) or in the TMW thread.
@@ -52,6 +59,7 @@ Please open an issue [here](https://github.com/Manhhao/Hoshi-Reader/issues) or i
 
 * **[TheMoeWay](https://learnjapanese.moe/)** - Enabling me to start learning real Japanese through immersion.
 * **[Yomitan](https://github.com/yomidevs/yomitan)** - For serving as an invaluable tool and the primary inspiration for the pop-up dictionary.
+* **[Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid)** - For providing a great mining experience on Android, which this project aims to replicate.
 * **[ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader)** - Inspiring the core reading experience.
 * **[星街すいせい (Hoshimachi Suisei)](https://www.youtube.com/@HoshimachiSuisei)** - For being my motivation behind learning Japanese and giving the project a name (星読み).
 
