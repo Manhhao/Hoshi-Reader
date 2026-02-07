@@ -32,10 +32,9 @@ class AnkiManager {
         fieldMappings.values.contains(Handlebars.audio.rawValue)
     }
     
-    private let fileServer = LocalFileServer()
-    
     private static let scheme = "hoshi://"
     private static let fetchCallback = scheme + "ankiFetch"
+    private static let successCallback = scheme + "ankiSuccess"
     
     private static let pasteboardType = "net.ankimobile.json"
     private static let infoCallback = "anki://x-callback-url/infoForAdding"
@@ -117,8 +116,8 @@ class AnkiManager {
         
         var coverPath: String?
         if let coverURL = context.coverURL {
-            try? fileServer.start(file: coverURL)
-            coverPath = "http://localhost:8080/\(coverURL.lastPathComponent)"
+            try? LocalFileServer.shared.setCover(file: coverURL)
+            coverPath = "http://localhost:\(LocalFileServer.port)/cover/cover.\(coverURL.pathExtension)"
         }
         
         var urlComponents = URLComponents(string: Self.addNoteCallback)
@@ -177,17 +176,13 @@ class AnkiManager {
             queryItems.append(URLQueryItem(name: "dupes", value: "1"))
         }
         
-        queryItems.append(URLQueryItem(name: "x-success", value: Self.scheme))
+        queryItems.append(URLQueryItem(name: "x-success", value: Self.successCallback))
         
         urlComponents?.queryItems = queryItems
         
         if let url = urlComponents?.url {
             UIApplication.shared.open(url)
         }
-    }
-    
-    func stopServer() {
-        fileServer.stop()
     }
     
     func save() {

@@ -11,19 +11,34 @@ import WebKit
 
 @main
 struct HoshiReaderApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var userConfig = UserConfig()
+    @State private var pendingImportURL: URL?
+    
     init() {
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
     }
-    
-    @State private var userConfig = UserConfig()
-    @State private var pendingImportURL: URL?
     
     var body: some Scene {
         WindowGroup {
             BookshelfView(pendingImportURL: $pendingImportURL)
                 .environment(userConfig)
                 .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    switch phase {
+                    case .active:
+                        LocalFileServer.shared.endBackgroundTask()
+                        LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                    case .background:
+                        LocalFileServer.shared.startBackgroundTask()
+                    default:
+                        break
+                    }
+                }
+                .onChange(of: userConfig.enableLocalAudio) { _, _ in
+                    LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                }
                 .onOpenURL { url in
                     handleURL(url)
                 }
@@ -34,8 +49,8 @@ struct HoshiReaderApp: App {
         if url.scheme == "hoshi" {
             if url.host == "ankiFetch" {
                 AnkiManager.shared.fetch()
-            } else {
-                AnkiManager.shared.stopServer()
+            } else if url.host == "ankiSuccess" {
+                LocalFileServer.shared.clearCover()
             }
         } else if url.isFileURL {
             pendingImportURL = url

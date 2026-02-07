@@ -76,11 +76,13 @@ struct FrequencyTag: Encodable {
 
 struct AudioSource: Codable, Identifiable {
     var id: String { url }
+    var name: String
     let url: String
     var isEnabled: Bool
     let isDefault: Bool
-
-    init(url: String, isEnabled: Bool = true, isDefault: Bool = false) {
+    
+    init(name: String = "", url: String, isEnabled: Bool = true, isDefault: Bool = false) {
+        self.name = name
         self.url = url
         self.isEnabled = isEnabled
         self.isDefault = isDefault
