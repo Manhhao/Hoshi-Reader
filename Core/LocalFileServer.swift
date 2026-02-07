@@ -150,7 +150,7 @@ class LocalFileServer {
             sqlite3_close(db)
         }
         
-        // Technically Ankiconnect Android and the original Local Audio plugin return multiple entries, there is no support for
+        // Technically Ankiconnect Android and the original Local Audio plugin return multiple entries
         // sort by matching reading first for more accurate results
         let sortOrder = "CASE source " + Self.defaultSources.indices.map { "WHEN ? THEN \($0) " }.joined() + "END"
         let sql = """
