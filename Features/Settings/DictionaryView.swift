@@ -14,6 +14,7 @@ struct DictionaryView: View {
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
     @State private var importType: DictionaryType = .term
+    @State private var showCSSEditor = false
     
     var body: some View {
         List {
@@ -82,8 +83,14 @@ struct DictionaryView: View {
         .onAppear {
             dictionaryManager.loadDictionaries()
         }
+        .sheet(isPresented: $showCSSEditor) {
+            DictionaryDetailSettingView()
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button("", systemImage: "paintbrush") {
+                    showCSSEditor = true
+                }
                 Menu {
                     Button {
                         importType = .term
@@ -130,6 +137,43 @@ struct DictionaryView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(dictionaryManager.errorMessage)
+        }
+    }
+}
+
+struct DictionaryDetailSettingView: View {
+    @Environment(UserConfig.self) var userConfig
+    @Environment(\.dismiss) private var dismiss
+    @State private var customCSS: String = ""
+
+    var body: some View {
+        NavigationStack {
+            CSSEditorView(text: $customCSS)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+                .background(Color(.secondarySystemBackground).ignoresSafeArea())
+                .navigationTitle("Custom CSS")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Reset", role: .destructive) {
+                            customCSS = ""
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                    }
+                }
+        }
+        .onAppear {
+            customCSS = userConfig.customCSS
+        }
+        .onDisappear {
+            userConfig.customCSS = customCSS
         }
     }
 }

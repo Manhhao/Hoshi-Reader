@@ -210,6 +210,8 @@ struct PopupView: View {
         
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         return """
         <script>
@@ -219,6 +221,7 @@ struct PopupView: View {
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.audioSources = \(audioSources);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.customCSS = \(customCSS);
         </script>
         <div id="entries-container"></div>
         """
