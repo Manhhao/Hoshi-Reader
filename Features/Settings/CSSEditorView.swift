@@ -13,7 +13,7 @@ struct CSSEditorView: View {
     let fontManager = FontManager.shared
     @Binding var text: String
     @FocusState private var isFocused: Bool
-
+    
     var body: some View {
         TextEditor(text: $text)
             .font(.system(.body, design: .monospaced))
@@ -22,8 +22,6 @@ struct CSSEditorView: View {
             .focused($isFocused)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
-                    Button("Reset") { text = "" }
-                    Spacer()
                     fontMenu
                     dictionaryMenu
                     Spacer()
@@ -31,31 +29,23 @@ struct CSSEditorView: View {
                 }
             }
     }
-
+    
     private var dictionaryMenu: some View {
         Menu {
             ForEach(dictionaryManager.termDictionaries) { dict in
                 Button(dict.name) {
                     text += """
-[data-dictionary="\(dict.name)"] {
-    /* Put light mode css here */
-
-}
-
-@media (prefers-color-scheme: dark) {
-    [data-dictionary="\(dict.name)"] {
-        /* Put dark mode css here */
-
-    }
-}
-"""
+                    [data-dictionary="\(dict.name)"] {
+                        
+                    }
+                    """
                 }
             }
         } label: {
             Image(systemName: "character.book.closed.ja")
         }
     }
-
+    
     private var fontMenu: some View {
         Menu {
             ForEach(fontManager.allFonts, id: \.self) { fontName in

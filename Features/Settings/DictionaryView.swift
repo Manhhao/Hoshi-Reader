@@ -154,6 +154,11 @@ struct DictionaryDetailSettingView: View {
                 .navigationTitle("Custom CSS")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Reset", role: .destructive) {
+                            userConfig.customCSS = ""
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             dismiss()
