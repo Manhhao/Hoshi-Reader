@@ -13,6 +13,7 @@ import EPUBKit
 @MainActor
 class BookshelfViewModel {
     var books: [BookMetadata] = []
+    var shelves: [BookShelf] = []
     var isImporting: Bool = false
     var shouldShowError: Bool = false
     var errorMessage: String = ""
@@ -21,28 +22,73 @@ class BookshelfViewModel {
     var isSyncing: Bool = false
     
     private var bookProgress: [UUID: Double] = [:]
-
+    
     func loadBooks() {
         do {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
+            loadShelves()
             print(try BookStorage.getDocumentsDirectory().path)
         } catch {
             showError(message: error.localizedDescription)
         }
     }
     
-    func sortedBooks(by option: SortOption) -> [BookMetadata] {
+    func loadShelves() {
+        shelves = BookStorage.loadShelves() ?? []
+    }
+    
+    func saveShelves() {
+        try? BookStorage.save(shelves, inside: try! BookStorage.getDocumentsDirectory(), as: FileNames.shelves)
+    }
+    
+    func createShelf(name: String) {
+        if !shelves.contains(where: { $0.name == name }) {
+            shelves.append(BookShelf(name: name, bookIds: []))
+            saveShelves()
+        }
+    }
+    
+    func deleteShelf(name: String) {
+        shelves.removeAll(where: { $0.name == name })
+        saveShelves()
+    }
+    
+    func moveBook(_ id: UUID, to name: String?) {
+        for i in shelves.indices {
+            shelves[i].bookIds.removeAll { $0 == id }
+        }
+        if let name,
+           let index = shelves.firstIndex(where: { $0.name == name }) {
+            shelves[index].bookIds.append(id)
+        }
+        saveShelves()
+    }
+    
+    func shelfSections(sortedBy: SortOption) -> [ShelfSection] {
+        var sections: [ShelfSection] = []
+        for shelf in shelves {
+            let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
+            sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
+        }
+        
+        let unshelved = books.filter{ !sections.flatMap { $0.books }.contains($0) }
+        sections.append(ShelfSection(shelf: nil, books: sortBooks(unshelved, by: sortedBy)))
+        
+        return sections
+    }
+    
+    func sortBooks(_ books: [BookMetadata], by option: SortOption) -> [BookMetadata] {
         switch option {
         case .recent:
-            return books.sorted {
-                ($0.lastAccess) > ($1.lastAccess)
-            }
+            return books.sorted { $0.lastAccess > $1.lastAccess }
         case .title:
-            return books.sorted {
-                ($0.title ?? "").localizedCompare($1.title ?? "") == .orderedAscending
-            }
+            return books.sorted { ($0.title ?? "").localizedCompare($1.title ?? "") == .orderedAscending }
         }
+    }
+    
+    func sortedBooks(by option: SortOption) -> [BookMetadata] {
+        sortBooks(books, by: option)
     }
     
     private func loadBookProgress() {
@@ -78,6 +124,10 @@ class BookshelfViewModel {
                 let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
                 try BookStorage.delete(at: bookURL)
             }
+            for i in shelves.indices {
+                shelves[i].bookIds.removeAll { $0 == book.id }
+            }
+            saveShelves()
             withAnimation {
                 books.removeAll { $0.id == book.id }
             }
@@ -100,7 +150,7 @@ class BookshelfViewModel {
             showError(message: error.localizedDescription)
         }
     }
-
+    
     private func determineSyncDirection(local: Bookmark?, ttuProgress: TtuProgress?) -> SyncDirection {
         guard let local = local, let lastModified = local.lastModified else {
             if ttuProgress != nil {
@@ -177,39 +227,39 @@ class BookshelfViewModel {
             }
         }
     }
-
+    
     private func importProgress(ttuProgress: TtuProgress, to url: URL) {
         guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
-
+        
         var chapterIndex = 0
         var progress = 0.0
-
+        
         for chapter in bookInfo.chapterInfo.values {
             if chapter.chapterCount == 0 {
                 continue
             }
-
+            
             let start = chapter.currentTotal
             let end = start + chapter.chapterCount
-
+            
             if ttuProgress.exploredCharCount >= start && ttuProgress.exploredCharCount <= end {
                 chapterIndex = chapter.spineIndex ?? 0
                 progress = Double(ttuProgress.exploredCharCount - start) / Double(chapter.chapterCount)
                 break
             }
         }
-
+        
         let bookmark = Bookmark(
             chapterIndex: chapterIndex,
             progress: progress,
             characterCount: ttuProgress.exploredCharCount,
             lastModified: ttuProgress.lastBookmarkModified
         )
-
+        
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
         loadBookProgress()
     }
-
+    
     private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {
         guard let bookInfo = BookStorage.loadBookInfo(root: url),
               let lastModified = localBookmark.lastModified else { return }
@@ -275,7 +325,7 @@ class BookshelfViewModel {
         
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document)
     }
-
+    
     private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument) throws {
         do {
             var coverURL: String? = nil
@@ -285,7 +335,7 @@ class BookshelfViewModel {
                 try BookStorage.copyFile(from: coverSourceURL, to: coverDestination)
                 coverURL = coverDestination
             }
-
+            
             let metadata = BookMetadata(
                 title: document.title,
                 cover: coverURL,
@@ -294,7 +344,7 @@ class BookshelfViewModel {
             )
             
             let bookinfo = BookProcessor.process(document: document)
-
+            
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
             try BookStorage.delete(at: localURL)
@@ -351,4 +401,9 @@ class BookshelfViewModel {
         successMessage = message
         shouldShowSuccess = true
     }
+}
+
+struct ShelfSection {
+    let shelf: BookShelf?
+    var books: [BookMetadata]
 }

@@ -54,3 +54,8 @@ struct BookInfo: Codable {
         let chapterCount: Int
     }
 }
+
+struct BookShelf: Codable {
+    let name: String
+    var bookIds: [UUID]
+}

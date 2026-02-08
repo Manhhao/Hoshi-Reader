@@ -13,6 +13,7 @@ enum FileNames: Sendable {
     static let metadata = "metadata.json"
     static let bookmark = "bookmark.json"
     static let bookinfo = "bookinfo.json"
+    static let shelves = "shelves.json"
 }
 
 struct BookStorage {
@@ -107,6 +108,10 @@ struct BookStorage {
     
     static func loadMetadata(root: URL) -> BookMetadata? {
         load(BookMetadata.self, from: root.appendingPathComponent(FileNames.metadata))
+    }
+    
+    static func loadShelves() -> [BookShelf]? {
+        load([BookShelf].self, from: try! getDocumentsDirectory().appendingPathComponent(FileNames.shelves))
     }
     
     static func loadAllBooks() throws -> [BookMetadata] {

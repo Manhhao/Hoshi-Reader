@@ -17,31 +17,23 @@ struct BookshelfView: View {
     @State private var showAnkiSettings = false
     @State private var showAppearance = false
     @State private var showAdvanced = false
-    @State private var selectedBook: BookMetadata?
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
+    @State private var showShelfManagement = false
     @Binding var pendingImportURL: URL?
     @Binding var pendingLookup: String?
-
-    private let columns = [
-        GridItem(.adaptive(minimum: 160), spacing: 20)
-    ]
-
+    
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Books", systemImage: "books.vertical", value: 0) {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(viewModel.sortedBooks(by: userConfig.bookshelfSortOption)) { book in
-                                BookCell(book: book, viewModel: viewModel) {
-                                    selectedBook = book
-                                }
-                            }
+                        let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption)
+                        ForEach(sections, id: \.shelf?.name) { section in
+                            ShelfView(viewModel: viewModel, section: section, showTitle: sections.count > 1)
                         }
-                        .padding()
                     }
-                    .navigationBarTitleDisplayMode(.inline)
+                    .navigationTitle("Books")
                     .toolbar {
                         toolbarContent
                     }
@@ -53,12 +45,11 @@ struct BookshelfView: View {
                         allowedContentTypes: [.epub],
                         onCompletion: viewModel.importBook
                     )
-                    .fullScreenCover(item: $selectedBook) { book in
-                        ReaderLoader(book: book)
-                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
-                    }
                     .navigationDestination(for: LookupDestination.self) { dest in
                         DictionarySearchView(initialQuery: dest.query)
+                    }
+                    .sheet(isPresented: $showShelfManagement) {
+                        ShelfManagementView(viewModel: viewModel)
                     }
                 }
                 .onChange(of: pendingImportURL) { _, url in
@@ -167,6 +158,12 @@ struct BookshelfView: View {
         }
         
         ToolbarItem(placement: .topBarTrailing) {
+            Button { showShelfManagement = true } label: {
+                Image(systemName: "folder.badge.gearshape")
+            }
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
             Button { viewModel.isImporting = true } label: {
                 Image(systemName: "plus")
             }
@@ -190,6 +187,23 @@ struct BookCell: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            Menu {
+                Button {
+                    viewModel.moveBook(book.id, to: nil)
+                } label: {
+                    Label("None", systemImage: "tray")
+                }
+                ForEach(viewModel.shelves, id: \.name) { shelf in
+                    Button {
+                        viewModel.moveBook(book.id, to: shelf.name)
+                    } label: {
+                        Label(shelf.name, systemImage: "folder")
+                    }
+                }
+            } label: {
+                Label("Move to Shelf", systemImage: "folder")
+            }
+            
             if userConfig.enableSync {
                 Button {
                     viewModel.syncBook(book: book)
