@@ -17,6 +17,7 @@ struct BookshelfView: View {
     @State private var showAnkiSettings = false
     @State private var showAppearance = false
     @State private var showAdvanced = false
+    @State private var showAbout = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var showShelfManagement = false
@@ -102,6 +103,18 @@ struct BookshelfView: View {
                             Label("Advanced", systemImage: "gearshape.2")
                         }
                         .foregroundStyle(.primary)
+                        
+                        Section {
+                            Link(destination: URL(string: "https://github.com/Manhhao/Hoshi-Reader/issues")!) {
+                                Label("Report an Issue", systemImage: "exclamationmark.bubble")
+                            }
+                            Button {
+                                showAbout = true
+                            } label: {
+                                Label("About", systemImage: "info.circle")
+                            }
+                            .foregroundStyle(.primary)
+                        }
                     }
                     .navigationTitle("Settings")
                     .navigationDestination(isPresented: $showDictionaries) {
@@ -112,6 +125,9 @@ struct BookshelfView: View {
                     }
                     .navigationDestination(isPresented: $showAdvanced) {
                         AdvancedView()
+                    }
+                    .navigationDestination(isPresented: $showAbout) {
+                        AboutView()
                     }
                     .sheet(isPresented: $showAppearance) {
                         AppearanceView(userConfig: userConfig)

@@ -16,12 +16,14 @@ struct AdvancedView: View {
             } label: {
                 Label("Audio", systemImage: "speaker.wave.2")
             }
+            .foregroundStyle(.primary)
             
             NavigationLink {
                 SyncView()
             } label: {
                 Label("ッツ Sync", systemImage: "cloud")
             }
+            .foregroundStyle(.primary)
         }
         .navigationTitle("Advanced")
     }
