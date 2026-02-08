@@ -96,7 +96,7 @@ struct DictionaryView: View {
                         importType = .term
                         isImporting = true
                     } label: {
-                        Label("Term", systemImage: "character.book.closed")
+                        Label("Term", systemImage: "character.text.justify.ja")
                     }
                     
                     Button {
@@ -110,7 +110,7 @@ struct DictionaryView: View {
                         importType = .pitch
                         isImporting = true
                     } label: {
-                        Label("Pitch", systemImage: "underline")
+                        Label("Pitch", systemImage: "textformat.characters.dottedunderline.ja")
                     }
                 } label: {
                     Image(systemName: "plus")

@@ -17,7 +17,8 @@ struct BookshelfView: View {
     @State private var showAnkiSettings = false
     @State private var showAppearance = false
     @State private var showAdvanced = false
-    @State private var showDictionarySearch = false
+    @State private var selectedBook: BookMetadata?
+    @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @Binding var pendingImportURL: URL?
     @Binding var pendingLookup: String?
@@ -27,77 +28,121 @@ struct BookshelfView: View {
     ]
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(viewModel.sortedBooks(by: userConfig.bookshelfSortOption)) { book in
-                        BookCell(book: book, viewModel: viewModel)
+        TabView(selection: $selectedTab) {
+            Tab("Books", systemImage: "books.vertical", value: 0) {
+                NavigationStack(path: $navigationPath) {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(viewModel.sortedBooks(by: userConfig.bookshelfSortOption)) { book in
+                                BookCell(book: book, viewModel: viewModel) {
+                                    selectedBook = book
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        toolbarContent
+                    }
+                    .onAppear {
+                        viewModel.loadBooks()
+                    }
+                    .fileImporter(
+                        isPresented: $viewModel.isImporting,
+                        allowedContentTypes: [.epub],
+                        onCompletion: viewModel.importBook
+                    )
+                    .fullScreenCover(item: $selectedBook) { book in
+                        ReaderLoader(book: book)
+                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+                    }
+                    .navigationDestination(for: LookupDestination.self) { dest in
+                        DictionarySearchView(initialQuery: dest.query)
                     }
                 }
-                .padding()
-            }
-            .navigationTitle("Books")
-            .toolbar {
-                toolbarContent
-            }
-            .onAppear {
-                viewModel.loadBooks()
-            }
-            .onChange(of: pendingImportURL) { _, url in
-                if let url {
-                    navigationPath = NavigationPath()
-                    viewModel.importBook(result: .success(url))
-                    pendingImportURL = nil
+                .onChange(of: pendingImportURL) { _, url in
+                    if let url {
+                        navigationPath = NavigationPath()
+                        viewModel.importBook(result: .success(url))
+                        pendingImportURL = nil
+                    }
+                }
+                .onChange(of: pendingLookup) { _, text in
+                    if let text {
+                        selectedTab = 0
+                        navigationPath.append(LookupDestination(query: text))
+                        pendingLookup = nil
+                    }
                 }
             }
-            .onChange(of: pendingLookup) { _, text in
-                if let text {
-                    navigationPath.append(LookupDestination(query: text))
-                    pendingLookup = nil
+            
+            Tab("Dictionary", systemImage: "character.magnify.ja", value: 1) {
+                NavigationStack {
+                    DictionarySearchView()
+                        .navigationTitle("Dictionary")
                 }
             }
-            .navigationDestination(for: BookMetadata.self) { book in
-                ReaderLoader(book: book)
-            }
-            .navigationDestination(for: LookupDestination.self) { dest in
-                DictionarySearchView(initialQuery: dest.query)
-            }
-            .fileImporter(
-                isPresented: $viewModel.isImporting,
-                allowedContentTypes: [.epub],
-                onCompletion: viewModel.importBook
-            )
-            .navigationDestination(isPresented: $showDictionaries) {
-                DictionaryView()
-            }
-            .navigationDestination(isPresented: $showAnkiSettings) {
-                AnkiView()
-            }
-            .navigationDestination(isPresented: $showAdvanced) {
-                AdvancedView()
-            }
-            .navigationDestination(isPresented: $showDictionarySearch) {
-                DictionarySearchView()
-            }
-            .sheet(isPresented: $showAppearance) {
-                AppearanceView(userConfig: userConfig)
-                    .presentationDetents([.medium])
-                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
-            }
-            .alert("Error", isPresented: $viewModel.shouldShowError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(viewModel.errorMessage)
-            }
-            .alert("", isPresented: $viewModel.shouldShowSuccess) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(viewModel.successMessage)
-            }
-            .overlay {
-                if viewModel.isSyncing {
-                    LoadingOverlay("Syncing...")
+            
+            Tab("Settings", systemImage: "gearshape", value: 2) {
+                NavigationStack {
+                    List {
+                        Button {
+                            showDictionaries = true
+                        } label: {
+                            Label("Dictionaries", systemImage: "character.book.closed.ja")
+                        }
+                        .foregroundStyle(.primary)
+                        Button {
+                            showAnkiSettings = true
+                        } label: {
+                            Label("Anki", systemImage: "tray.full")
+                        }
+                        .foregroundStyle(.primary)
+                        Button {
+                            showAppearance = true
+                        } label: {
+                            Label("Appearance", systemImage: "paintbrush.pointed")
+                        }
+                        .foregroundStyle(.primary)
+                        Button {
+                            showAdvanced = true
+                        } label: {
+                            Label("Advanced", systemImage: "gearshape.2")
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                    .navigationTitle("Settings")
+                    .navigationDestination(isPresented: $showDictionaries) {
+                        DictionaryView()
+                    }
+                    .navigationDestination(isPresented: $showAnkiSettings) {
+                        AnkiView()
+                    }
+                    .navigationDestination(isPresented: $showAdvanced) {
+                        AdvancedView()
+                    }
+                    .sheet(isPresented: $showAppearance) {
+                        AppearanceView(userConfig: userConfig)
+                            .presentationDetents([.medium])
+                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+                    }
                 }
+            }
+        }
+        .alert("Error", isPresented: $viewModel.shouldShowError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.errorMessage)
+        }
+        .alert("", isPresented: $viewModel.shouldShowSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.successMessage)
+        }
+        .overlay {
+            if viewModel.isSyncing {
+                LoadingOverlay("Syncing...")
             }
         }
     }
@@ -121,45 +166,12 @@ struct BookshelfView: View {
             }
         }
         
-        ToolbarItem(placement: .principal) {
-            CircleButton(systemName: "text.page.badge.magnifyingglass", interactive: true, fontSize: 16)
-                .onTapGesture {
-                    showDictionarySearch = true
-                }
-        }
-        
         ToolbarItem(placement: .topBarTrailing) {
             Button { viewModel.isImporting = true } label: {
                 Image(systemName: "plus")
             }
         }
         
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button {
-                    showDictionaries = true
-                } label: {
-                    Label("Dictionaries", systemImage: "books.vertical")
-                }
-                Button {
-                    showAnkiSettings = true
-                } label: {
-                    Label("Anki", systemImage: "tray.full")
-                }
-                Button {
-                    showAppearance = true
-                } label: {
-                    Label("Appearance", systemImage: "paintbrush.pointed")
-                }
-                Button {
-                    showAdvanced = true
-                } label: {
-                    Label("Advanced", systemImage: "gearshape.2")
-                }
-            } label: {
-                Image(systemName: "gearshape")
-            }
-        }
     }
 }
 
@@ -167,10 +179,13 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     let book: BookMetadata
     var viewModel: BookshelfViewModel
+    var onSelect: () -> Void
     @State private var showDeleteConfirmation = false
-
+    
     var body: some View {
-        NavigationLink(value: book) {
+        Button {
+            onSelect()
+        } label: {
             BookView(book: book, progress: viewModel.progress(for: book))
         }
         .buttonStyle(.plain)

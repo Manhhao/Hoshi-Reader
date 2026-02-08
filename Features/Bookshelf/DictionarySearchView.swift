@@ -15,6 +15,7 @@ struct DictionarySearchView: View {
     @State private var lastQuery: String = ""
     @State private var content: String = ""
     @State private var hasSearched = false
+    @State private var searchFocused = true
     var initialQuery: String = ""
     
     var body: some View {
@@ -24,13 +25,13 @@ struct DictionarySearchView: View {
                 AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
             }
         )
-        .navigationTitle("Dictionary Search")
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea()
-        .overlay(alignment: .bottom){
+        .overlay(alignment: .bottom) {
             if initialQuery.isEmpty {
-                DictionarySearchBar(text: $query) {
+                DictionarySearchBar(text: $query, isFocused: $searchFocused) {
                     runLookup()
+                    searchFocused = true
                 }
             }
         }
@@ -38,6 +39,11 @@ struct DictionarySearchView: View {
             if !initialQuery.isEmpty {
                 query = initialQuery
                 runLookup()
+            } else {
+                searchFocused = false
+                Task { @MainActor in
+                    searchFocused = true
+                }
             }
         }
     }
@@ -147,13 +153,8 @@ struct DictionarySearchView: View {
 
 struct DictionarySearchBar: View {
     @Binding var text: String
-    @State private var isFocused: Bool = true
+    @Binding var isFocused: Bool
     let onSubmit: () -> Void
-    
-    init(text: Binding<String>, onSubmit: @escaping () -> Void) {
-        self._text = text
-        self.onSubmit = onSubmit
-    }
     
     var body: some View {
         if #available(iOS 26, *) {
@@ -179,9 +180,8 @@ struct DictionarySearchBar: View {
             .padding(.vertical, 12)
             .glassEffect(.regular.interactive())
             .contentShape(Capsule())
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 30)
             .padding(.bottom, 4)
-            .onAppear { isFocused = true }
         }
         else {
             HStack(spacing: 10) {
@@ -208,7 +208,6 @@ struct DictionarySearchBar: View {
             .contentShape(Capsule())
             .padding(.horizontal, 20)
             .padding(.bottom, 4)
-            .onAppear { isFocused = true }
         }
     }
 }

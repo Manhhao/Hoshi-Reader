@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 import WebKit
 
 @main
@@ -19,6 +20,16 @@ struct HoshiReaderApp: App {
     init() {
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
+        configureTabBarAppearance()
+    }
+    
+    private func configureTabBarAppearance() {
+        let tab = UITabBarAppearance()
+        tab.configureWithDefaultBackground()
+        tab.stackedLayoutAppearance.selected.iconColor = .label
+        tab.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.label]
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
     }
     
     var body: some Scene {
