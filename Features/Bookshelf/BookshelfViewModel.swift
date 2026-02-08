@@ -54,6 +54,11 @@ class BookshelfViewModel {
         saveShelves()
     }
     
+    func moveShelves(from source: IndexSet, to destination: Int) {
+        shelves.move(fromOffsets: source, toOffset: destination)
+        saveShelves()
+    }
+    
     func moveBook(_ id: UUID, to name: String?) {
         for i in shelves.indices {
             shelves[i].bookIds.removeAll { $0 == id }

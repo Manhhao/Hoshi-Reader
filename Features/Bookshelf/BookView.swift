@@ -27,8 +27,13 @@ struct BookView: View {
                     .aspectRatio(0.709, contentMode: .fit)
             }
             
-            ProgressView(value: progress)
-                .tint(.primary.opacity(0.4))
+            HStack(spacing: 4) {
+                ProgressView(value: progress)
+                    .tint(.primary.opacity(0.4))
+                Text(String(format: "%.1f%%", progress * 100))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
             
             Text(book.title ?? "")
                 .font(.system(size: 16))

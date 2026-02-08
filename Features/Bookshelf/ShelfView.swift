@@ -12,30 +12,98 @@ struct ShelfView: View {
     @Namespace private var namespace
     @Environment(UserConfig.self) var userConfig
     @State private var selectedBook: BookMetadata?
+    @State private var isCollapsed = true
+    @State private var compactRowCount = 4
     var viewModel: BookshelfViewModel
     var section: ShelfSection
     var showTitle: Bool = true
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
     ]
+    private let compactColumns = [
+        GridItem(.adaptive(minimum: 80), spacing: 12)
+    ]
     
     var body: some View {
         VStack {
-            if showTitle {
-                Text(section.shelf?.name ?? "Unshelved")
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-            }
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(section.books) { book in
-                    BookCell(book: book, viewModel: viewModel) {
-                        selectedBook = book
+            if section.books.count > 0 {
+                if showTitle {
+                    if section.shelf != nil {
+                        Button {
+                            withAnimation(.default.speed(1.5)) {
+                                isCollapsed.toggle()
+                            }
+                        } label: {
+                            HStack {
+                                Text(section.shelf!.name)
+                                    .font(.title3.bold())
+                                Text("\(section.books.count)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                            .padding(.horizontal)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        HStack {
+                            Text("Unshelved")
+                                .font(.title3.bold())
+                            Text("\(section.books.count)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
                     }
-                    .matchedTransitionSource(id: book.id, in: namespace)
+                }
+                
+                if isCollapsed && section.shelf != nil {
+                    LazyVGrid(columns: compactColumns, spacing: 12) {
+                        ForEach(section.books.prefix(compactRowCount)) { book in
+                            Button {
+                                withAnimation(.default.speed(1.5)) {
+                                    isCollapsed = false
+                                }
+                            } label: {
+                                if let coverURL = book.coverURL,
+                                   let image = UIImage(contentsOfFile: coverURL.path) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(0.709, contentMode: .fit)
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .shadow(color: .primary.opacity(0.3), radius: 5)
+                                } else {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.gray.opacity(0.3))
+                                        .aspectRatio(0.709, contentMode: .fit)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .onGeometryChange(for: Int.self) { proxy in
+                        max(1, Int((proxy.size.width + 12) / (80 + 12)))
+                    } action: { count in
+                        compactRowCount = count
+                    }
+                    .padding(.horizontal)
+                } else {
+                    LazyVGrid(columns: columns, spacing: 20) {
+                        ForEach(section.books) { book in
+                            BookCell(book: book, viewModel: viewModel, currentShelf: section.shelf?.name) {
+                                selectedBook = book
+                            }
+                            .matchedTransitionSource(id: book.id, in: namespace)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
             }
-            .padding(.horizontal)
         }
         .fullScreenCover(item: $selectedBook) { book in
             ReaderLoader(book: book)

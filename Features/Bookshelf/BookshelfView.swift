@@ -176,6 +176,7 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     let book: BookMetadata
     var viewModel: BookshelfViewModel
+    var currentShelf: String?
     var onSelect: () -> Void
     @State private var showDeleteConfirmation = false
     
@@ -193,12 +194,14 @@ struct BookCell: View {
                 } label: {
                     Label("None", systemImage: "tray")
                 }
+                .disabled(currentShelf == nil)
                 ForEach(viewModel.shelves, id: \.name) { shelf in
                     Button {
                         viewModel.moveBook(book.id, to: shelf.name)
                     } label: {
                         Label(shelf.name, systemImage: "folder")
                     }
+                    .disabled(shelf.name == currentShelf)
                 }
             } label: {
                 Label("Move to Shelf", systemImage: "folder")

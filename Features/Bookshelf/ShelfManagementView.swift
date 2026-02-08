@@ -12,7 +12,7 @@ struct ShelfManagementView: View {
     @Environment(\.dismiss) private var dismiss
     var viewModel: BookshelfViewModel
     @State private var newShelfName = ""
-
+    
     var body: some View {
         NavigationStack {
             List {
@@ -25,8 +25,11 @@ struct ShelfManagementView: View {
                             viewModel.deleteShelf(name: viewModel.shelves[index].name)
                         }
                     }
+                    .onMove { source, destination in
+                        viewModel.moveShelves(from: source, to: destination)
+                    }
                 }
-
+                
                 Section("Add Shelf") {
                     HStack {
                         TextField("Shelf name", text: $newShelfName)
