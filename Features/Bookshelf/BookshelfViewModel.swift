@@ -99,7 +99,7 @@ class BookshelfViewModel {
         case .recent:
             return books.sorted { $0.lastAccess > $1.lastAccess }
         case .title:
-            return books.sorted { ($0.title ?? "").localizedCompare($1.title ?? "") == .orderedAscending }
+            return books.sorted { ($0.title ?? "").localizedStandardCompare($1.title ?? "") == .orderedAscending }
         }
     }
     
