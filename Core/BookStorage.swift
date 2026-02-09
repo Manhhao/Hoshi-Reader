@@ -111,7 +111,7 @@ struct BookStorage {
     }
     
     static func loadShelves() -> [BookShelf]? {
-        load([BookShelf].self, from: try! getDocumentsDirectory().appendingPathComponent(FileNames.shelves))
+        load([BookShelf].self, from: try! getBooksDirectory().appendingPathComponent(FileNames.shelves))
     }
     
     static func loadAllBooks() throws -> [BookMetadata] {
