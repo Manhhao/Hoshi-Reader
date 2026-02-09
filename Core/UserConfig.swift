@@ -9,6 +9,11 @@
 import Foundation
 import SwiftUI
 
+enum SyncMode: String, CaseIterable, Codable {
+    case auto = "Auto"
+    case manual = "Manual"
+}
+
 enum Themes: String, CaseIterable, Codable {
     case system = "System"
     case light = "Light"
@@ -46,6 +51,10 @@ class UserConfig {
     
     var enableSync: Bool {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
+    }
+    
+    var syncMode: SyncMode {
+        didSet { UserDefaults.standard.set(syncMode.rawValue, forKey: "syncMode") }
     }
     
     var googleClientId: String {
@@ -181,6 +190,8 @@ class UserConfig {
         self.compactGlossaries = defaults.object(forKey: "compactGlossaries") as? Bool ?? true
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
+        self.syncMode = defaults.string(forKey: "syncMode")
+            .flatMap(SyncMode.init) ?? .auto
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
         
         self.theme = defaults.string(forKey: "theme")

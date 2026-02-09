@@ -324,10 +324,27 @@ struct BookCell: View {
             }
             
             if userConfig.enableSync {
-                Button {
-                    viewModel.syncBook(book: book)
-                } label: {
-                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                if userConfig.syncMode == .manual {
+                    Menu {
+                        Button {
+                            viewModel.syncBook(book: book, direction: .importFromTtu)
+                        } label: {
+                            Label("Import", systemImage: "arrow.down")
+                        }
+                        Button {
+                            viewModel.syncBook(book: book, direction: .exportToTtu)
+                        } label: {
+                            Label("Export", systemImage: "arrow.up")
+                        }
+                    } label: {
+                        Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                } else {
+                    Button {
+                        viewModel.syncBook(book: book)
+                    } label: {
+                        Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
                 }
             }
             

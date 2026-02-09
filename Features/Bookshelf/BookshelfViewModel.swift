@@ -189,7 +189,7 @@ class BookshelfViewModel {
         }
     }
     
-    func syncBook(book: BookMetadata) {
+    func syncBook(book: BookMetadata, direction: SyncDirection? = nil) {
         guard let title = book.title,
               let bookFolder = book.folder else { return }
         
@@ -220,7 +220,8 @@ class BookshelfViewModel {
                 
                 let localBookmark = BookStorage.loadBookmark(root: url)
                 
-                switch determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress) {
+                let syncDirection = direction ?? determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress)
+                switch syncDirection {
                 case .importFromTtu:
                     guard let ttuProgress else { return }
                     importProgress(ttuProgress: ttuProgress, to: url)
