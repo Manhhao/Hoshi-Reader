@@ -46,6 +46,7 @@ struct BookshelfView: View {
                         }
                     }
                     .navigationTitle("Books")
+                    .scrollIndicators(.hidden)
                     .toolbar {
                         toolbarContent
                     }
@@ -112,7 +113,7 @@ struct BookshelfView: View {
                         Button {
                             showAnkiSettings = true
                         } label: {
-                            Label("Anki", systemImage: "tray.full")
+                            Label("Anki Integration", systemImage: "tray.full")
                         }
                         .foregroundStyle(.primary)
                         Button {
