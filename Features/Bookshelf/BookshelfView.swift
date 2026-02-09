@@ -39,7 +39,8 @@ struct BookshelfView: View {
                                 section: section,
                                 showTitle: sections.count > 1,
                                 isSelecting: isSelecting,
-                                selectedBooks: $selectedBooks
+                                selectedBooks: $selectedBooks,
+                                pendingLookup: $pendingLookup
                             )
                         }
                     }

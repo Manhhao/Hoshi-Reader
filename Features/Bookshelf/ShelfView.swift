@@ -19,6 +19,7 @@ struct ShelfView: View {
     var showTitle: Bool = true
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
+    @Binding var pendingLookup: String?
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
     ]
@@ -120,6 +121,11 @@ struct ShelfView: View {
         .onChange(of: selectedBook) { old, new in
             if old != nil && new == nil {
                 viewModel.loadBooks()
+            }
+        }
+        .onChange(of: pendingLookup) { _, text in
+            if text != nil && selectedBook != nil {
+                selectedBook = nil
             }
         }
     }
