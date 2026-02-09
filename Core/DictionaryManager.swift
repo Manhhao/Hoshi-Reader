@@ -82,7 +82,7 @@ class DictionaryManager {
         let directory = try Self.getDictionariesDirectory()
             .appendingPathComponent(type.rawValue)
         
-        if !FileManager.default.fileExists(atPath: directory.path) {
+        if !FileManager.default.fileExists(atPath: directory.path(percentEncoded: false)) {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         
@@ -99,7 +99,7 @@ class DictionaryManager {
         let configURL = try Self.getDictionariesDirectory()
             .appendingPathComponent(Self.configFileName)
         
-        if FileManager.default.fileExists(atPath: configURL.path) {
+        if FileManager.default.fileExists(atPath: configURL.path(percentEncoded: false)) {
             let data = try Data(contentsOf: configURL)
             let decoder = JSONDecoder()
             return try decoder.decode(DictionaryConfig.self, from: data)
@@ -143,7 +143,7 @@ class DictionaryManager {
             let data = try encoder.encode(config)
             
             let directory = configURL.deletingLastPathComponent()
-            if !FileManager.default.fileExists(atPath: directory.path) {
+            if !FileManager.default.fileExists(atPath: directory.path(percentEncoded: false)) {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             }
             
@@ -175,10 +175,10 @@ class DictionaryManager {
                     tempFiles.append(temp)
                     
                     let destinationPath = try await Self.getDictionariesDirectory()
-                        .appendingPathComponent(type.rawValue).path
+                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
                     
                     let importResult = dictionary_importer.import(
-                        std.string(temp.path),
+                        std.string(temp.path(percentEncoded: false)),
                         std.string(destinationPath)
                     )
                     
@@ -207,12 +207,12 @@ class DictionaryManager {
             showError("failed to access dictionary")
             return
         }
-        let sourcePath = url.path
+        let sourcePath = url.path(percentEncoded: false)
         
         let destinationPath: String
         do {
             destinationPath = try Self.getDictionariesDirectory()
-                .appendingPathComponent(type.rawValue).path
+                .appendingPathComponent(type.rawValue).path(percentEncoded: false)
         } catch {
             showError("failed to import dictionary: \(error.localizedDescription)")
             return

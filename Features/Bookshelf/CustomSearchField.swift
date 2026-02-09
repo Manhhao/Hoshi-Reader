@@ -77,7 +77,7 @@ struct CustomSearchField: UIViewRepresentable {
             }
         }
         
-        if uiView.text != searchText{
+        if uiView.text != searchText {
             uiView.text = searchText
         }
     }

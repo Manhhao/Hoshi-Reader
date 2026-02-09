@@ -116,7 +116,7 @@ struct AudioView: View {
     }
     
     private func calcAudioDbSize() {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: audioDbURL.path),
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: audioDbURL.path(percentEncoded: false)),
               let size = attributes[.size] as? Int64 else {
             importedSize = nil
             return

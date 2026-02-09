@@ -145,7 +145,7 @@ class LocalFileServer {
         let dbURL = try! BookStorage.getDocumentsDirectory().appendingPathComponent(Self.localAudioPath)
         
         var db: OpaquePointer?
-        sqlite3_open(dbURL.path, &db)
+        sqlite3_open(dbURL.path(percentEncoded: false), &db)
         defer {
             sqlite3_close(db)
         }
@@ -203,7 +203,7 @@ class LocalFileServer {
         let dbURL = try! BookStorage.getDocumentsDirectory().appendingPathComponent(Self.localAudioPath)
         
         var db: OpaquePointer?
-        sqlite3_open(dbURL.path, &db)
+        sqlite3_open(dbURL.path(percentEncoded: false), &db)
         defer {
             sqlite3_close(db)
         }
@@ -221,8 +221,10 @@ class LocalFileServer {
         sqlite3_bind_text(stmt, 1, source, -1, Self.sqliteTransient)
         sqlite3_bind_text(stmt, 2, file, -1, Self.sqliteTransient)
         
-        sqlite3_step(stmt)
-        let bytes = sqlite3_column_blob(stmt, 0)!
+        guard sqlite3_step(stmt) == SQLITE_ROW, let bytes = sqlite3_column_blob(stmt, 0) else {
+            send(Data(), status: "404 Not Found", contentType: "text/plain; charset=utf-8", to: connection)
+            return
+        }
         let count = Int(sqlite3_column_bytes(stmt, 0))
         let audioData = Data(bytes: bytes, count: count)
         send(audioData, status: "200 OK", contentType: "audio/mpeg", to: connection)

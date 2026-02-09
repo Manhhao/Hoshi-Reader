@@ -208,7 +208,7 @@ class AnkiManager {
         }
         let url = directory.appendingPathComponent(Self.ankiConfig)
         
-        guard FileManager.default.fileExists(atPath: url.path),
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let data = try? Data(contentsOf: url),
               let config = try? JSONDecoder().decode(AnkiConfig.self, from: data) else {
             return

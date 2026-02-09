@@ -28,7 +28,6 @@ class BookshelfViewModel {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
-            print(try BookStorage.getDocumentsDirectory().path)
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -89,7 +88,7 @@ class BookshelfViewModel {
             sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
         }
         
-        let unshelved = books.filter{ !sections.flatMap { $0.books }.contains($0) }
+        let unshelved = books.filter { !sections.flatMap { $0.books }.contains($0) }
         sections.append(ShelfSection(shelf: nil, books: sortBooks(unshelved, by: sortedBy)))
         
         return sections
@@ -330,7 +329,7 @@ class BookshelfViewModel {
         let booksDir = try BookStorage.getBooksDirectory()
         let targetFolder = booksDir.appendingPathComponent(safeTitle)
         
-        if FileManager.default.fileExists(atPath: targetFolder.path) {
+        if FileManager.default.fileExists(atPath: targetFolder.path(percentEncoded: false)) {
             return
         }
         
@@ -345,7 +344,7 @@ class BookshelfViewModel {
     
     private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument) throws {
         do {
-            var coverURL: String? = nil
+            var coverURL: String?
             if let coverPath = findCoverInManifest(document: document) {
                 let coverSourceURL = document.contentDirectory.appendingPathComponent(coverPath)
                 let coverDestination = "Books/\(bookFolder.lastPathComponent)/\(URL(fileURLWithPath: coverPath).lastPathComponent)"
@@ -399,7 +398,7 @@ class BookshelfViewModel {
         // fallbacks in case the epub doesn't conform to any standards
         let imageTypes: [EPUBMediaType] = [.jpeg, .png, .gif, .svg]
         if let coverItem = document.manifest.items.values.first(where: { $0.id.lowercased().contains("cover") }),
-           imageTypes.contains(coverItem.mediaType){
+           imageTypes.contains(coverItem.mediaType) {
             return coverItem.path
         }
         if let firstImage = document.manifest.items.values.first(where: { imageTypes.contains($0.mediaType) }) {

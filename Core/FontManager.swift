@@ -18,13 +18,13 @@ class FontManager {
     
     func importFont(from: URL) throws {
         let destinationPath = "Fonts/\(from.lastPathComponent)"
-        let _ = try? BookStorage.copySecurityScopedFile(from: from, to: destinationPath)
+        _ = try? BookStorage.copySecurityScopedFile(from: from, to: destinationPath)
     }
     
     func getFontsFromStorage() throws -> [URL] {
         let directory = try Self.getFontsDirectory()
         
-        if !FileManager.default.fileExists(atPath: directory.path) {
+        if !FileManager.default.fileExists(atPath: directory.path(percentEncoded: false)) {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         

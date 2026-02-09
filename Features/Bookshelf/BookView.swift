@@ -16,7 +16,7 @@ struct BookView: View {
     var body: some View {
         VStack(spacing: 6) {
             if let coverURL = book.coverURL,
-               let image = UIImage(contentsOfFile: coverURL.path) {
+               let image = UIImage(contentsOfFile: coverURL.path(percentEncoded: false)) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(0.709, contentMode: .fit)

@@ -23,13 +23,13 @@ class LookupEngine {
     func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL]) {
         dictQuery = DictionaryQuery()
         for path in termPaths {
-            dictQuery?.add_dict(std.string(path.path))
+            dictQuery?.add_dict(std.string(path.path(percentEncoded: false)))
         }
         for path in freqPaths {
-            dictQuery?.add_freq_dict(std.string(path.path))
+            dictQuery?.add_freq_dict(std.string(path.path(percentEncoded: false)))
         }
         for path in pitchPaths {
-            dictQuery?.add_pitch_dict(std.string(path.path))
+            dictQuery?.add_pitch_dict(std.string(path.path(percentEncoded: false)))
         }
         lookupEngine = Lookup(&dictQuery!, &deinflector!)
     }
