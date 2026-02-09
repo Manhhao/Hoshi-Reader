@@ -44,6 +44,7 @@ struct ReaderLoader: View {
 
 struct ReaderView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
@@ -220,7 +221,7 @@ struct ReaderView: View {
             case .appearance:
                 AppearanceView(userConfig: userConfig)
                     .presentationDetents([.medium])
-                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
             case .chapters:
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex in
                     viewModel.setIndex(index: spineIndex, progress: 0)

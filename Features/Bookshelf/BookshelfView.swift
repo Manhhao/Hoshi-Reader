@@ -11,6 +11,7 @@ import EPUBKit
 import UniformTypeIdentifiers
 
 struct BookshelfView: View {
+    @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) var userConfig
     @State private var viewModel = BookshelfViewModel()
     @State private var showDictionaries = false
@@ -155,7 +156,7 @@ struct BookshelfView: View {
                     .sheet(isPresented: $showAppearance) {
                         AppearanceView(userConfig: userConfig)
                             .presentationDetents([.medium])
-                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
                     }
                 }
             }
