@@ -153,6 +153,55 @@ class DictionaryManager {
         }
     }
     
+    func importRecommendedDictionaries() {
+        let recommendedDictionaries: [(url: String, type: DictionaryType)] = [
+            ("https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.zip", .term),
+            ("https://api.jiten.moe/api/frequency-list/download", .frequency),
+        ]
+        
+        isImporting = true
+        
+        Task.detached {
+            var tempFiles: [URL] = []
+            defer {
+                for file in tempFiles {
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
+            
+            do {
+                for (url, type) in recommendedDictionaries {
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: url)!)
+                    tempFiles.append(temp)
+                    
+                    let destinationPath = try await Self.getDictionariesDirectory()
+                        .appendingPathComponent(type.rawValue).path
+                    
+                    let importResult = dictionary_importer.import(
+                        std.string(temp.path),
+                        std.string(destinationPath)
+                    )
+                    
+                    if importResult.term_count == 0 && importResult.meta_count == 0 {
+                        throw URLError(.cannotParseResponse)
+                    }
+                }
+                
+                await MainActor.run {
+                    self.isImporting = false
+                    self.loadDictionaries()
+                    self.saveDictionaryConfig()
+                    self.rebuildLookupQuery()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isImporting = false
+                    self.showError("failed to download dictionaries: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
     func importDictionary(from url: URL, type: DictionaryType) {
         guard url.startAccessingSecurityScopedResource() else {
             showError("failed to access dictionary")

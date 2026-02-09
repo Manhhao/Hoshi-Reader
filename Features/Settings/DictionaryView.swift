@@ -15,9 +15,25 @@ struct DictionaryView: View {
     @State private var isImporting = false
     @State private var importType: DictionaryType = .term
     @State private var showCSSEditor = false
+    @State private var showDownloadConfirmation = false
     
     var body: some View {
         List {
+            Section {
+                Button("Get recommended dictionaries") {
+                    showDownloadConfirmation = true
+                }
+                .disabled(dictionaryManager.isImporting)
+                .alert("Download Dictionaries", isPresented: $showDownloadConfirmation) {
+                    Button("Download") {
+                        dictionaryManager.importRecommendedDictionaries()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will download the latest JMdict Yomitan (Term) and Jiten.moe (Frequency) dictionaries.")
+                }
+            }
+            
             Section {
                 HStack {
                     Text("Max Results")
@@ -32,7 +48,7 @@ struct DictionaryView: View {
             } header: {
                 Text("Lookup Settings")
             } footer: {
-                Text("Yomitan term and frequency dictionaries (.zip) are supported")
+                Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported")
             }
             
             Section("Term Dictionaries") {

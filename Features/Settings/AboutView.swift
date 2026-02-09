@@ -75,15 +75,27 @@ struct AboutView: View {
             
             Section("Attribution") {
                 LicenseRow(
+                    name: "Ankiconnect Android",
+                    license: "GPLv3",
+                    url: "https://github.com/KamWithK/AnkiconnectAndroid",
+                    text: nil
+                )
+                LicenseRow(
                     name: "Yomitan",
                     license: "GPLv3",
                     url: "https://github.com/yomidevs/yomitan",
                     text: nil
                 )
                 LicenseRow(
-                    name: "Ankiconnect Android",
-                    license: "GPLv3",
-                    url: "https://github.com/KamWithK/AnkiconnectAndroid",
+                    name: "JMdict for Yomitan",
+                    license: "MIT",
+                    url: "https://github.com/yomidevs/jmdict-yomitan",
+                    text: nil
+                )
+                LicenseRow(
+                    name: "Jiten",
+                    license: "Apache-2.0",
+                    url: "https://github.com/Sirush/Jiten",
                     text: nil
                 )
             }
