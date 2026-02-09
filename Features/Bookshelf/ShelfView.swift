@@ -17,6 +17,8 @@ struct ShelfView: View {
     var viewModel: BookshelfViewModel
     var section: ShelfSection
     var showTitle: Bool = true
+    var isSelecting: Bool = false
+    @Binding var selectedBooks: Set<BookMetadata>
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
     ]
@@ -95,9 +97,14 @@ struct ShelfView: View {
                 } else {
                     LazyVGrid(columns: columns, spacing: 20) {
                         ForEach(section.books) { book in
-                            BookCell(book: book, viewModel: viewModel, currentShelf: section.shelf?.name) {
-                                selectedBook = book
-                            }
+                            BookCell(
+                                book: book,
+                                viewModel: viewModel,
+                                currentShelf: section.shelf?.name,
+                                onSelect: { selectedBook = book },
+                                isSelecting: isSelecting,
+                                selectedBooks: $selectedBooks
+                            )
                             .matchedTransitionSource(id: book.id, in: namespace)
                         }
                     }

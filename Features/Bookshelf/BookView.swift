@@ -11,6 +11,7 @@ import SwiftUI
 struct BookView: View {
     let book: BookMetadata
     let progress: Double
+    var isSelected: Bool = false
     
     var body: some View {
         VStack(spacing: 6) {
@@ -21,10 +22,26 @@ struct BookView: View {
                     .aspectRatio(0.709, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .shadow(color: .primary.opacity(0.3), radius: 5)
+                    .overlay(alignment: .topTrailing) {
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.white, .blue)
+                                .padding(6)
+                        }
+                    }
             } else {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.3))
                     .aspectRatio(0.709, contentMode: .fit)
+                    .overlay(alignment: .topTrailing) {
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.white, .blue)
+                                .padding(6)
+                        }
+                    }
             }
             
             HStack(spacing: 4) {

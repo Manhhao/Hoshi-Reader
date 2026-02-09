@@ -21,6 +21,9 @@ struct BookshelfView: View {
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
     @State private var showShelfManagement = false
+    @State private var isSelecting = false
+    @State private var selectedBooks = Set<BookMetadata>()
+    @State private var showBulkDeleteConfirmation = false
     @Binding var pendingImportURL: URL?
     @Binding var pendingLookup: String?
     
@@ -31,7 +34,13 @@ struct BookshelfView: View {
                     ScrollView {
                         let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption)
                         ForEach(sections, id: \.shelf?.name) { section in
-                            ShelfView(viewModel: viewModel, section: section, showTitle: sections.count > 1)
+                            ShelfView(
+                                viewModel: viewModel,
+                                section: section,
+                                showTitle: sections.count > 1,
+                                isSelecting: isSelecting,
+                                selectedBooks: $selectedBooks
+                            )
                         }
                     }
                     .navigationTitle("Books")
@@ -52,6 +61,16 @@ struct BookshelfView: View {
                     .sheet(isPresented: $showShelfManagement) {
                         ShelfManagementView(viewModel: viewModel)
                     }
+                    .alert(
+                        "Delete \(selectedBooks.count) book(s)?",
+                        isPresented: $showBulkDeleteConfirmation
+                    ) {
+                        Button("Delete", role: .destructive) {
+                            viewModel.deleteBooks(selectedBooks)
+                            clearSelection()
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    }
                 }
                 .onChange(of: pendingImportURL) { _, url in
                     if let url {
@@ -66,6 +85,9 @@ struct BookshelfView: View {
                         navigationPath.append(LookupDestination(query: text))
                         pendingLookup = nil
                     }
+                }
+                .onChange(of: selectedTab) {
+                    clearSelection()
                 }
             }
             
@@ -156,54 +178,130 @@ struct BookshelfView: View {
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Menu {
-                Section {
-                    Text("Sorting by...")
-                        .foregroundStyle(.secondary)
-                    Picker("Sort", selection: Bindable(userConfig).bookshelfSortOption) {
-                        ForEach(SortOption.allCases) { option in
-                            Label(option.rawValue, systemImage: option.icon)
-                                .tag(option)
+        if isSelecting {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Done") {
+                    clearSelection()
+                }
+                .fontWeight(.semibold)
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        viewModel.moveBooks(selectedBooks, to: nil)
+                        clearSelection()
+                    } label: {
+                        Label("None", systemImage: "tray")
+                    }
+                    ForEach(viewModel.shelves, id: \.name) { shelf in
+                        Button {
+                            viewModel.moveBooks(selectedBooks, to: shelf.name)
+                            clearSelection()
+                        } label: {
+                            Label(shelf.name, systemImage: "folder")
                         }
                     }
+                } label: {
+                    Image(systemName: "folder")
                 }
-            } label: {
-                Image(systemName: "arrow.up.arrow.down")
+                .disabled(selectedBooks.isEmpty)
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showBulkDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(selectedBooks.isEmpty)
+            }
+        } else {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Section {
+                        Text("Sorting by...")
+                            .foregroundStyle(.secondary)
+                        Picker("Sort", selection: Bindable(userConfig).bookshelfSortOption) {
+                            ForEach(SortOption.allCases) { option in
+                                Label(option.rawValue, systemImage: option.icon)
+                                    .tag(option)
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    withAnimation(.default.speed(2)) {
+                        isSelecting = true
+                    }
+                } label: {
+                    Image(systemName: "checklist")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showShelfManagement = true
+                } label: {
+                    Image(systemName: "folder.badge.gearshape")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    viewModel.isImporting = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-            Button { showShelfManagement = true } label: {
-                Image(systemName: "folder.badge.gearshape")
-            }
+    }
+    
+    private func clearSelection() {
+        withAnimation(.default.speed(2)) {
+            isSelecting = false
+            selectedBooks.removeAll()
         }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-            Button { viewModel.isImporting = true } label: {
-                Image(systemName: "plus")
-            }
-        }
-        
     }
 }
 
 struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
+    @State private var showDeleteConfirmation = false
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
     var onSelect: () -> Void
-    @State private var showDeleteConfirmation = false
+    var isSelecting: Bool = false
+    @Binding var selectedBooks: Set<BookMetadata>
+    
+    private var isSelected: Bool {
+        selectedBooks.contains(book)
+    }
     
     var body: some View {
         Button {
-            onSelect()
+            if isSelecting {
+                withAnimation(.default.speed(2)) {
+                    if isSelected {
+                        selectedBooks.remove(book)
+                    } else {
+                        selectedBooks.insert(book)
+                    }
+                }
+            } else {
+                onSelect()
+            }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book))
+            BookView(book: book, progress: viewModel.progress(for: book), isSelected: isSelecting && isSelected)
         }
         .buttonStyle(.plain)
-        .contextMenu {
+        .contextMenu(isSelecting ? nil : ContextMenu {
             Menu {
                 Button {
                     viewModel.moveBook(book.id, to: nil)
@@ -220,7 +318,7 @@ struct BookCell: View {
                     .disabled(shelf.name == currentShelf)
                 }
             } label: {
-                Label("Move to Shelf", systemImage: "folder")
+                Label("Move", systemImage: "folder")
             }
             
             if userConfig.enableSync {
@@ -236,7 +334,7 @@ struct BookCell: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
+        })
         .confirmationDialog(
             "Delete \"\(book.title ?? "")\"?",
             isPresented: $showDeleteConfirmation,

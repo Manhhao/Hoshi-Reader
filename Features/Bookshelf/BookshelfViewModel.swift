@@ -70,6 +70,18 @@ class BookshelfViewModel {
         saveShelves()
     }
     
+    func moveBooks(_ books: Set<BookMetadata>, to name: String?) {
+        for book in books {
+            moveBook(book.id, to: name)
+        }
+    }
+
+    func deleteBooks(_ books: Set<BookMetadata>) {
+        for book in books {
+            deleteBook(book)
+        }
+    }
+    
     func shelfSections(sortedBy: SortOption) -> [ShelfSection] {
         var sections: [ShelfSection] = []
         for shelf in shelves {

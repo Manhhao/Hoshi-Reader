@@ -25,7 +25,7 @@ struct HoshiReaderApp: App {
     
     private func configureTabBarAppearance() {
         let tab = UITabBarAppearance()
-        tab.configureWithDefaultBackground()
+        tab.configureWithTransparentBackground()
         tab.stackedLayoutAppearance.selected.iconColor = .label
         tab.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.label]
         UITabBar.appearance().standardAppearance = tab
