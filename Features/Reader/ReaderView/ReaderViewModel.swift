@@ -57,17 +57,27 @@ class ReaderViewModel {
     let document: EPUBDocument
     let rootURL: URL
     
-    // reader stuff
+    // reader
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
     var bookInfo: BookInfo
     
-    // lookup stuff
+    // lookups
     var showPopup = false
     var currentSelection: SelectionData?
     var lookupResults: [LookupResult] = []
     var dictionaryStyles: [String: String] = [:]
+    
+    // stats
+    private var isTracking = true
+    private var timeRead: Int = 0
+    private var charsRead: Int = 0
+    private var avgSpeed: Int = 0
+    private var maxSpeed: Int = 0
+    private var minSpeed: Int = 0
+    private var lastCount: Int = 0
+    private var lastTimestamp: Date = Date.now
     
     init(document: EPUBDocument, rootURL: URL) {
         self.document = document
@@ -86,6 +96,7 @@ class ReaderViewModel {
         } else {
             bookInfo = BookInfo(characterCount: 0, chapterInfo: [:])
         }
+        lastCount = currentCharacter
     }
     
     var currentCharacter: Int {
@@ -125,6 +136,15 @@ class ReaderViewModel {
             characterCount: currentCharacter,
             lastModified: Date()
         )
+        if isTracking {
+            updateStats()
+            print("time: \(timeRead)")
+            print("chars: \(charsRead)")
+            print("avg: \(avgSpeed)")
+            print("max: \(maxSpeed)/h")
+            print("min: \(minSpeed)/h")
+            print("\(lastTimestamp)")
+        }
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
     }
     
@@ -173,5 +193,48 @@ class ReaderViewModel {
         withAnimation(.default.speed(2)) {
             showPopup = false
         }
+    }
+    
+    func startTracking() {
+        isTracking = true
+        lastTimestamp = Date.now
+        lastCount = currentCharacter
+    }
+    
+    func stopTracking() {
+        guard isTracking else {
+            return
+        }
+        isTracking = false
+        updateStats()
+        saveStats()
+    }
+    
+    func updateStats() {
+        let now = Date.now
+        let timeDelta = Int(now.timeIntervalSince(lastTimestamp))
+        guard timeDelta > 0 else {
+            return
+        }
+        
+        // simple 2min idle timer for now, ideally we should call updateStats every second, and track swipe/tap events to reset an idle timer
+        guard timeDelta < 120 else {
+            lastCount = currentCharacter
+            lastTimestamp = Date.now
+            return
+        }
+        
+        timeRead += timeDelta
+        let charDelta = currentCharacter - lastCount
+        charsRead = max(charsRead + charDelta, 0)
+        avgSpeed = charsRead / timeDelta * 3600
+        maxSpeed = max(maxSpeed, avgSpeed)
+        minSpeed = minSpeed != 0 ? min(minSpeed, avgSpeed) : avgSpeed
+        lastTimestamp = now
+        lastCount = currentCharacter
+    }
+    
+    func saveStats() {
+        
     }
 }
