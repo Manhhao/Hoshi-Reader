@@ -19,9 +19,9 @@ struct BookshelfView: View {
     @State private var showAppearance = false
     @State private var showAdvanced = false
     @State private var showAbout = false
+    @State private var showShelfManagement = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
-    @State private var showShelfManagement = false
     @State private var isSelecting = false
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
