@@ -338,6 +338,14 @@ window.hoshiReader = {
             return null;
         }
         
+        // Dismiss popup if tapping on the first character of the current selection
+        if (this.selection &&
+            hit.node === this.selection.startNode &&
+            hit.offset === this.selection.startOffset) {
+            this.clearHighlight();
+            return null;
+        }
+
         this.clearHighlight();
         
         const container = this.findParagraph(hit.node) || document.body;
