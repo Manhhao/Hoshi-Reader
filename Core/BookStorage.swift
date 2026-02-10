@@ -112,7 +112,7 @@ struct BookStorage {
     }
     
     static func loadStatistics(root: URL) -> [Statistics]? {
-        load([Statistics].self, from: root.appendingPathComponent(FileNames.metadata))
+        load([Statistics].self, from: root.appendingPathComponent(FileNames.statistics))
     }
     
     static func loadShelves() -> [BookShelf]? {

@@ -13,6 +13,7 @@ import CYomitanDicts
 enum ActiveSheet: Identifiable {
     case appearance
     case chapters
+    case statistics
     var id: Self { self }
 }
 
@@ -70,14 +71,15 @@ class ReaderViewModel {
     var dictionaryStyles: [String: String] = [:]
     
     // stats
-    private var isTracking = true
-    private var timeRead: Int = 0
-    private var charsRead: Int = 0
-    private var avgSpeed: Int = 0
-    private var maxSpeed: Int = 0
-    private var minSpeed: Int = 0
-    private var lastCount: Int = 0
-    private var lastTimestamp: Date = Date.now
+    var isTracking = false
+    var isPaused = false
+    var lastTimestamp: Date = .now
+    var timeRead: Double = 0
+    var charsRead: Int = 0
+    var avgSpeed: Int = 0
+    var maxSpeed: Int = 0
+    var minSpeed: Int = 0
+    var lastCount: Int = 0
     
     init(document: EPUBDocument, rootURL: URL) {
         self.document = document
@@ -197,7 +199,7 @@ class ReaderViewModel {
     
     func startTracking() {
         isTracking = true
-        lastTimestamp = Date.now
+        lastTimestamp = .now
         lastCount = currentCharacter
     }
     
@@ -211,23 +213,16 @@ class ReaderViewModel {
     }
     
     func updateStats() {
-        let now = Date.now
-        let timeDelta = Int(now.timeIntervalSince(lastTimestamp))
+        let now: Date = .now
+        let timeDelta = now.timeIntervalSince(lastTimestamp)
         guard timeDelta > 0 else {
-            return
-        }
-        
-        // simple 2min idle timer for now, ideally we should call updateStats every second, and track swipe/tap events to reset an idle timer
-        guard timeDelta < 120 else {
-            lastCount = currentCharacter
-            lastTimestamp = Date.now
             return
         }
         
         timeRead += timeDelta
         let charDelta = currentCharacter - lastCount
         charsRead = max(charsRead + charDelta, 0)
-        avgSpeed = charsRead / timeDelta * 3600
+        avgSpeed = Int(Double(charsRead) / timeRead * 3600)
         maxSpeed = max(maxSpeed, avgSpeed)
         minSpeed = minSpeed != 0 ? min(minSpeed, avgSpeed) : avgSpeed
         lastTimestamp = now

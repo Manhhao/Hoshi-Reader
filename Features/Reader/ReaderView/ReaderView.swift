@@ -45,6 +45,7 @@ struct ReaderLoader: View {
 struct ReaderView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
@@ -165,6 +166,12 @@ struct ReaderView: View {
                     } label: {
                         Label("Appearance", systemImage: "paintbrush.pointed")
                     }
+                    
+                    Button {
+                        viewModel.activeSheet = .statistics
+                    } label: {
+                        Label("Statistics", systemImage: "chart.xyaxis.line")
+                    }
                 } label: {
                     CircleButton(systemName: "slider.horizontal.3")
                 }
@@ -228,6 +235,32 @@ struct ReaderView: View {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium, .large])
+            case .statistics:
+                StatisticsView(viewModel: viewModel)
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        .task(id: viewModel.isTracking) {
+            guard viewModel.isTracking, !viewModel.isPaused else {
+                return
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                if !viewModel.isPaused {
+                    viewModel.updateStats()
+                }
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard viewModel.isTracking else {
+                return
+            }
+            if phase == .active {
+                viewModel.lastTimestamp = .now
+                viewModel.isPaused = false
+            }
+            else {
+                viewModel.isPaused = true
             }
         }
         .navigationBarBackButtonHidden(true)
