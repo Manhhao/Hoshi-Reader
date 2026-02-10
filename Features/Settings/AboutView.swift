@@ -98,6 +98,18 @@ struct AboutView: View {
                     url: "https://github.com/Sirush/Jiten",
                     text: nil
                 )
+                LicenseRow(
+                    name: "Kanji alive",
+                    license: "CC-BY-4.0",
+                    url: "https://github.com/kanjialive/kanji-data-media",
+                    text: nil
+                )
+                LicenseRow(
+                    name: "Tofugu/WaniKani Audio",
+                    license: "CC-BY-SA-4.0",
+                    url: "https://github.com/tofugu/japanese-vocabulary-pronunciation-audio",
+                    text: nil
+                )
             }
         }
         .navigationTitle("About")

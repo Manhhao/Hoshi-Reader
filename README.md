@@ -32,7 +32,7 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 - **ッツ Reader sync**
 - Dictionary search
 - Bookshelves
-- Customizable themes and custom CSS
+- Custom themes, fonts and css
 
 </div>
 </div>
@@ -57,6 +57,8 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 | [Yomitan](https://github.com/yomidevs/yomitan) | Pitch accent implementation, Furigana Segmenter | GPLv3 |
 | [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | MIT |
 | [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | Apache-2.0 |
+| [Kanji alive](https://github.com/kanjialive/kanji-data-media) | Default audio source | CC-BY-4.0 |
+| [Tofugu/WaniKani Audio](https://github.com/tofugu/japanese-vocabulary-pronunciation-audio) | Default audio source | CC-BY-SA-4.0 |
 
 ## Issues
 
