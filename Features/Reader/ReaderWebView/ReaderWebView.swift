@@ -8,6 +8,7 @@
 
 import WebKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 private enum NavigationDirection {
     case forward
@@ -108,26 +109,24 @@ struct ReaderWebView: UIViewRepresentable {
                 UIView.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
-                return
             }
-            guard message.name == "textSelected",
-                  let body = message.body as? [String: Any] else {
-                return
-            }
-            guard let text = body["text"] as? String,
-                  let sentence = body["sentence"] as? String,
-                  let rectData = body["rect"] as? [String: Any],
-                  let x = rectData["x"] as? CGFloat,
-                  let y = rectData["y"] as? CGFloat,
-                  let w = rectData["width"] as? CGFloat,
-                  let h = rectData["height"] as? CGFloat else {
-                return
-            }
-            let rect = CGRect(x: x, y: y, width: w, height: h)
-            let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
-            
-            if let highlightCount = parent.onTextSelected?(selectionData) {
-                highlightSelection(count: highlightCount)
+            else if message.name == "textSelected" {
+                guard let body = message.body as? [String: Any],
+                      let text = body["text"] as? String,
+                      let sentence = body["sentence"] as? String,
+                      let rectData = body["rect"] as? [String: Any],
+                      let x = rectData["x"] as? CGFloat,
+                      let y = rectData["y"] as? CGFloat,
+                      let w = rectData["width"] as? CGFloat,
+                      let h = rectData["height"] as? CGFloat else {
+                    return
+                }
+                let rect = CGRect(x: x, y: y, width: w, height: h)
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
+                
+                if let highlightCount = parent.onTextSelected?(selectionData) {
+                    highlightSelection(count: highlightCount)
+                }
             }
         }
         
@@ -264,6 +263,7 @@ struct ReaderWebView: UIViewRepresentable {
 
                 \(spacerJs)
                 \(readerJs)
+                window.hoshiReader.registerCopyText();
                 
                 if (\(parent.userConfig.readerHideFurigana)) {
                     document.querySelectorAll('rt').forEach(rt => rt.remove());
