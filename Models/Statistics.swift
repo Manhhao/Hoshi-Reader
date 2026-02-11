@@ -13,7 +13,7 @@ struct Statistics: Codable {
     let title: String
     let dateKey: String
     var charactersRead: Int
-    var readingTime: Int
+    var readingTime: Double
     var minReadingSpeed: Int
     var altMinReadingSpeed: Int
     var lastReadingSpeed: Int

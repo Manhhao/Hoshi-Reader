@@ -18,17 +18,27 @@ struct StatisticsView: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.charsRead.formatted(.number.grouping(.never)))**")
+                        Text("**\(viewModel.sessionStatistics.charactersRead.formatted(.number.grouping(.never)))**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.avgSpeed.formatted(.number.grouping(.never))) / h**")
+                        Text("**\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.timeRead).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.readingTime).formatted())**")
+                    }
+                    HStack {
+                        Text("Time to finish Book:")
+                        Spacer()
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.bookInfo.characterCount - viewModel.currentCharacter) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
+                    }
+                    HStack {
+                        Text("Time to finish Chapter:")
+                        Spacer()
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.currentChapterCount) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
                     }
                 } header: {
                     HStack {
@@ -55,24 +65,40 @@ struct StatisticsView: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**0**")
+                        Text("**\(viewModel.todaysStatistics.charactersRead.formatted(.number.grouping(.never)))**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**0 / h**")
+                        Text("**\(viewModel.todaysStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
                         Spacer()
-                        Text("**00:00:00**")
+                        Text("**\(Duration.seconds(viewModel.todaysStatistics.readingTime).formatted())**")
+                    }
+                } header: {
+                    Text("Today")
+                }
+                
+                Section {
+                    HStack {
+                        Text("Characters Read:")
+                        Spacer()
+                        Text("**\(viewModel.allTimeStatistics.charactersRead.formatted(.number.grouping(.never)))**")
+                    }
+                    HStack {
+                        Text("Reading Speed:")
+                        Spacer()
+                        Text("**\(viewModel.allTimeStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
+                    }
+                    HStack {
+                        Text("Reading Time:")
+                        Spacer()
+                        Text("**\(Duration.seconds(viewModel.allTimeStatistics.readingTime).formatted())**")
                     }
                 } header: {
                     Text("All Time")
-                }
-                
-                Section("History") {
-                    
                 }
             }
             .navigationTitle("Statistics")

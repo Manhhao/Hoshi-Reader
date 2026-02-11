@@ -148,6 +148,9 @@ struct ReaderView: View {
             HStack {
                 CircleButton(systemName: "chevron.left")
                     .onTapGesture {
+                        if viewModel.isTracking {
+                            viewModel.stopTracking()
+                        }
                         dismiss()
                     }
                     .opacity(focusMode ? 0 : 1)

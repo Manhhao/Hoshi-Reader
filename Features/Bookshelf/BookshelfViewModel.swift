@@ -28,6 +28,7 @@ class BookshelfViewModel {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
+            print(try BookStorage.getDocumentsDirectory().path(percentEncoded: false))
         } catch {
             showError(message: error.localizedDescription)
         }

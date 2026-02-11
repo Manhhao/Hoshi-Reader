@@ -179,6 +179,10 @@ class UserConfig {
         }
     }
     
+    var enableStatistics: Bool {
+        didSet { UserDefaults.standard.set(enableStatistics, forKey: "enableStatistics") }
+    }
+    
     init() {
         let defaults = UserDefaults.standard
         
@@ -227,6 +231,8 @@ class UserConfig {
         }
         self.enableLocalAudio = defaults.object(forKey: "enableLocalAudio") as? Bool ?? false
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
+        
+        self.enableStatistics = defaults.object(forKey: "enableStatistics") as? Bool ?? true
     }
     
     private static func saveColor(_ color: Color, key: String) {
