@@ -332,6 +332,10 @@ class BookshelfViewModel {
     }
     
     private func mergeStatistics(localStatistics: [Statistics], externalStatistics: [Statistics], syncMode: StatisticsSyncMode) -> [Statistics] {
+        if syncMode == .replace {
+            return externalStatistics
+        }
+        
         var grouped: [String: Statistics] = [:]
         
         for stat in localStatistics {
@@ -340,11 +344,7 @@ class BookshelfViewModel {
         
         for stat in externalStatistics {
             if let existing = grouped[stat.dateKey] {
-                if syncMode == .merge {
-                    if stat.lastStatisticModified > existing.lastStatisticModified {
-                        grouped[stat.dateKey] = stat
-                    }
-                } else {
+                if stat.lastStatisticModified > existing.lastStatisticModified {
                     grouped[stat.dateKey] = stat
                 }
             } else {
