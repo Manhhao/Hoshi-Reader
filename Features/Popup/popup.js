@@ -3,8 +3,8 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
-//  Copyright © 2023-2025 Yomitan Authors (marked pitch functions, furigana functions)
-//  Copyright © 2021-2022 Yomichan Authors (marked pitch functions)
+//  Copyright © 2023-2025 Yomitan Authors.
+//  Copyright © 2021-2022 Yomichan Authors.
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 

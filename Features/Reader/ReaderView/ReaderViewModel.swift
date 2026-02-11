@@ -3,6 +3,7 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
+//  Copyright © 2026 ッツ Reader Authors.
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
@@ -99,16 +100,16 @@ class ReaderViewModel {
         }
         
         // TODO: add menu option to enable/disable stats
-        sessionStatistics = Self.getDefaultStatistics(title: document.title ?? "")
-        todaysStatistics = Self.getDefaultStatistics(title: document.title ?? "")
-        allTimeStatistics = Self.getDefaultStatistics(title: document.title ?? "")
+        sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         
         loadStatistics()
     }
     
     func loadStatistics() {
         stats = BookStorage.loadStatistics(root: rootURL) ?? []
-        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistics(title: document.title ?? "")
+        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
         
         for stat in stats {
             allTimeStatistics.readingTime += stat.readingTime
@@ -232,6 +233,7 @@ class ReaderViewModel {
         saveStats()
     }
     
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
     func updateStats() {
         let now: Date = .now
         let timeDiff = Date.now.timeIntervalSince(lastTimestamp)
@@ -250,6 +252,7 @@ class ReaderViewModel {
         lastCount = currentCharacter
     }
     
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
     func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
         to.readingTime += timeDiff
         to.charactersRead = max(to.charactersRead + characterDiff, 0)
@@ -272,7 +275,7 @@ class ReaderViewModel {
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
     }
     
-    static private func getDefaultStatistics(title: String) -> Statistics {
+    static private func getDefaultStatistic(title: String) -> Statistics {
         return Statistics(title: title, dateKey: Self.formattedDate(date: .now), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
     }
     

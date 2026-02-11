@@ -19,6 +19,13 @@ struct AdvancedView: View {
             .foregroundStyle(.primary)
             
             NavigationLink {
+                StatisticsSettingsView()
+            } label: {
+                Label("Statistics", systemImage: "chart.xyaxis.line")
+            }
+            .foregroundStyle(.primary)
+            
+            NavigationLink {
                 SyncView()
             } label: {
                 Label("ッツ Sync", systemImage: "cloud")

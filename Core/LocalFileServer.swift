@@ -3,7 +3,7 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
-//  Copyright © 2022-2026 Ankiconnect Android (marked Local Audio functions).
+//  Copyright © 2022-2026 Ankiconnect Android.
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
