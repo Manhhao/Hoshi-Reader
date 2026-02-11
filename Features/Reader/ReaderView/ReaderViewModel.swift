@@ -58,6 +58,7 @@ class ReaderLoaderViewModel {
 class ReaderViewModel {
     let document: EPUBDocument
     let rootURL: URL
+    let enableStatistics: Bool
     
     // reader
     var index: Int = 0
@@ -81,9 +82,10 @@ class ReaderViewModel {
     var todaysStatistics: Statistics
     var allTimeStatistics: Statistics
     
-    init(document: EPUBDocument, rootURL: URL) {
+    init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool) {
         self.document = document
         self.rootURL = rootURL
+        self.enableStatistics = enableStatistics
         
         if let bookmark = BookStorage.loadBookmark(root: rootURL) {
             index = bookmark.chapterIndex
@@ -99,12 +101,13 @@ class ReaderViewModel {
             bookInfo = BookInfo(characterCount: 0, chapterInfo: [:])
         }
         
-        // TODO: add menu option to enable/disable stats
         sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         
-        loadStatistics()
+        if enableStatistics {
+            loadStatistics()
+        }
     }
     
     func loadStatistics() {

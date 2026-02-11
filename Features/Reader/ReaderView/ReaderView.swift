@@ -21,6 +21,7 @@ struct WebViewState: Hashable {
 }
 
 struct ReaderLoader: View {
+    @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderLoaderViewModel
     
     init(book: BookMetadata) {
@@ -30,7 +31,7 @@ struct ReaderLoader: View {
     var body: some View {
         Group {
             if let doc = viewModel.document, let root = viewModel.rootURL {
-                ReaderView(document: doc, rootURL: root)
+                ReaderView(document: doc, rootURL: root, enableStatistics: userConfig.enableStatistics)
                     .interactiveDismissDisabled()
             } else {
                 ProgressView()
@@ -74,8 +75,8 @@ struct ReaderView: View {
         }
     }
     
-    init(document: EPUBDocument, rootURL: URL) {
-        _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL))
+    init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool) {
+        _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL, enableStatistics: enableStatistics))
     }
     
     var progressString: String {
@@ -170,10 +171,12 @@ struct ReaderView: View {
                         Label("Appearance", systemImage: "paintbrush.pointed")
                     }
                     
-                    Button {
-                        viewModel.activeSheet = .statistics
-                    } label: {
-                        Label("Statistics", systemImage: "chart.xyaxis.line")
+                    if userConfig.enableStatistics {
+                        Button {
+                            viewModel.activeSheet = .statistics
+                        } label: {
+                            Label("Statistics", systemImage: "chart.xyaxis.line")
+                        }
                     }
                 } label: {
                     CircleButton(systemName: "slider.horizontal.3")

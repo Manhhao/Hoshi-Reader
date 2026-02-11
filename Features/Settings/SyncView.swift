@@ -25,7 +25,7 @@ struct SyncView: View {
             
             if userConfig.enableSync {
                 Section {
-                    Picker("Mode", selection: $userConfig.syncMode) {
+                    Picker("Import/Export Behavior", selection: $userConfig.syncMode) {
                         ForEach(SyncMode.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
                         }
