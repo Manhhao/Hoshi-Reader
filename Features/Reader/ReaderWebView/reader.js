@@ -91,6 +91,21 @@ window.hoshiReader = {
         }, { passive: true });
     },
     
+    registerCopyText() {
+        if (window.copyTextRegistered) {
+            return;
+        }
+        window.copyTextRegistered = true
+        document.addEventListener('copy', function(event) {
+            let text = window.getSelection()?.toString();
+            if (!text) {
+                return;
+            }
+            event.preventDefault();
+            event.clipboardData.setData('text/plain', text);
+        }, true);
+    },
+    
     restoreProgress(progress) {
         var notifyComplete = () => window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
         var vertical = window.getComputedStyle(document.body).writingMode === "vertical-rl";
