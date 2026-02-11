@@ -22,6 +22,7 @@ struct BookshelfView: View {
     @State private var showShelfManagement = false
     @State private var selectedTab = 0
     @State private var navigationPath = NavigationPath()
+    @State private var dictionaryRoute = DictionaryRoute()
     @State private var isSelecting = false
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
@@ -60,9 +61,6 @@ struct BookshelfView: View {
                         allowedContentTypes: [.epub],
                         onCompletion: viewModel.importBook
                     )
-                    .navigationDestination(for: LookupDestination.self) { dest in
-                        DictionarySearchView(initialQuery: dest.query)
-                    }
                     .sheet(isPresented: $showShelfManagement) {
                         ShelfManagementView(viewModel: viewModel)
                     }
@@ -84,13 +82,6 @@ struct BookshelfView: View {
                         pendingImportURL = nil
                     }
                 }
-                .onChange(of: pendingLookup) { _, text in
-                    if let text {
-                        selectedTab = 0
-                        navigationPath.append(LookupDestination(query: text))
-                        pendingLookup = nil
-                    }
-                }
                 .onChange(of: selectedTab) {
                     clearSelection()
                 }
@@ -98,8 +89,12 @@ struct BookshelfView: View {
             
             Tab("Dictionary", systemImage: "character.magnify.ja", value: 1) {
                 NavigationStack {
-                    DictionarySearchView()
-                        .navigationTitle("Dictionary")
+                    DictionarySearchView(
+                        initialQuery: dictionaryRoute.query,
+                        initialAutofocus: dictionaryRoute.autofocus
+                    )
+                    .id(dictionaryRoute.id)
+                    .navigationTitle("Dictionary")
                 }
             }
             
@@ -162,6 +157,16 @@ struct BookshelfView: View {
                             .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
                     }
                 }
+            }
+        }
+        .onChange(of: pendingLookup) { _, text in
+            if let text {
+                selectedTab = 1
+                dictionaryRoute = DictionaryRoute(
+                    query: text,
+                    autofocus: text.isEmpty
+                )
+                pendingLookup = nil
             }
         }
         .alert("Error", isPresented: $viewModel.shouldShowError) {
@@ -275,6 +280,13 @@ struct BookshelfView: View {
     }
 }
 
-struct LookupDestination: Hashable {
+private struct DictionaryRoute {
+    let id = UUID()
     let query: String
+    let autofocus: Bool
+    
+    init(query: String = "", autofocus: Bool = true) {
+        self.query = query
+        self.autofocus = autofocus
+    }
 }

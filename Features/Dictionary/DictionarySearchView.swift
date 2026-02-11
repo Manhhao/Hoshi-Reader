@@ -15,8 +15,10 @@ struct DictionarySearchView: View {
     @State private var lastQuery: String = ""
     @State private var content: String = ""
     @State private var hasSearched = false
-    @State private var searchFocused = true
+    @State private var searchFocused = false
+    @State private var didInitialQuery = false
     var initialQuery: String = ""
+    var initialAutofocus: Bool = true
     
     var body: some View {
         PopupWebView(
@@ -28,22 +30,23 @@ struct DictionarySearchView: View {
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea()
         .overlay(alignment: .bottom) {
-            if initialQuery.isEmpty {
-                DictionarySearchBar(text: $query, isFocused: $searchFocused) {
-                    runLookup()
-                    searchFocused = true
-                }
+            DictionarySearchBar(text: $query, isFocused: $searchFocused) {
+                runLookup()
             }
         }
         .onAppear {
-            if !initialQuery.isEmpty {
+            if !didInitialQuery && !initialQuery.isEmpty {
                 query = initialQuery
                 runLookup()
-            } else {
+            }
+            if initialAutofocus || didInitialQuery {
                 searchFocused = false
                 Task { @MainActor in
                     searchFocused = true
                 }
+            } else {
+                searchFocused = false
+                didInitialQuery = true
             }
         }
     }

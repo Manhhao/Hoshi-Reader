@@ -64,11 +64,8 @@ struct HoshiReaderApp: App {
             } else if url.host == "ankiSuccess" {
                 LocalFileServer.shared.clearCover()
             } else if url.host == "search" {
-                if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                   let text = components.queryItems?.first(where: { $0.name == "text" })?.value,
-                   !text.isEmpty {
-                    pendingLookup = text
-                }
+                let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                pendingLookup = components?.queryItems?.first(where: { $0.name == "text" })?.value ?? ""
             }
         } else if url.isFileURL {
             pendingImportURL = url

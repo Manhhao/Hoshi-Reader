@@ -90,6 +90,7 @@ struct CustomSearchField: UIViewRepresentable {
         @Binding var searchText: String
         @Binding var isFocused: Bool
         let onSubmit: () -> Void
+        private var shouldSubmit = false
         
         func textFieldDidBeginEditing(_ textField: UITextField) {
             if !isFocused {
@@ -98,6 +99,7 @@ struct CustomSearchField: UIViewRepresentable {
         }
         
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            shouldSubmit = true
             textField.resignFirstResponder()
             isFocused = false
             return true
@@ -105,7 +107,11 @@ struct CustomSearchField: UIViewRepresentable {
         
         func textFieldDidEndEditing(_ textField: UITextField) {
             searchText = textField.text ?? ""
-            onSubmit()
+            isFocused = false
+            if shouldSubmit {
+                shouldSubmit = false
+                onSubmit()
+            }
         }
         
         init(searchText: Binding<String>, isFocused: Binding<Bool>, onSubmit: @escaping () -> Void) {
