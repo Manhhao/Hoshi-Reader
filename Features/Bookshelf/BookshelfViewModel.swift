@@ -28,6 +28,7 @@ class BookshelfViewModel {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
+            print(try BookStorage.getDocumentsDirectory().path(percentEncoded: false))
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -189,7 +190,7 @@ class BookshelfViewModel {
         }
     }
     
-    func syncBook(book: BookMetadata, direction: SyncDirection? = nil) {
+    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode) {
         guard let title = book.title,
               let bookFolder = book.folder else { return }
         
@@ -208,6 +209,10 @@ class BookshelfViewModel {
                     return
                 }
                 
+                let directory = try BookStorage.getBooksDirectory()
+                let url = directory.appendingPathComponent(bookFolder)
+                let localBookmark = BookStorage.loadBookmark(root: url)
+                
                 let progressFileId = try await GoogleDriveHandler.shared.findProgressFileId(folderId: driveFolder.id)
                 let ttuProgress: TtuProgress? = if let progressFileId {
                     try await GoogleDriveHandler.shared.getProgressFile(fileId: progressFileId)
@@ -215,16 +220,30 @@ class BookshelfViewModel {
                     nil
                 }
                 
-                let directory = try BookStorage.getBooksDirectory()
-                let url = directory.appendingPathComponent(bookFolder)
-                
-                let localBookmark = BookStorage.loadBookmark(root: url)
+                var statsFileId: String?
+                var ttuStats: [Statistics]?
+                var localStats: [Statistics]?
+                if syncStats {
+                    localStats = BookStorage.loadStatistics(root: url)
+                    statsFileId = try await GoogleDriveHandler.shared.findStatsFileId(folderId: driveFolder.id)
+                    ttuStats = if let statsFileId {
+                        try await GoogleDriveHandler.shared.getStatsFile(fileId: statsFileId)
+                    } else {
+                        nil
+                    }
+                }
                 
                 let syncDirection = direction ?? determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress)
                 switch syncDirection {
                 case .importFromTtu:
                     guard let ttuProgress else { return }
                     importProgress(ttuProgress: ttuProgress, to: url)
+                    if syncStats {
+                        let mergedStats = mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
+                        if !mergedStats.isEmpty {
+                            try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
+                        }
+                    }
                     showSuccess(message: "Synced \(title) from ッツ\n\(ttuProgress.exploredCharCount) characters")
                 case .exportToTtu:
                     guard let localBookmark else { return }
@@ -235,6 +254,12 @@ class BookshelfViewModel {
                         fileId: progressFileId,
                         url: url
                     )
+                    if syncStats {
+                        let mergedStats = mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode)
+                        if !mergedStats.isEmpty {
+                            try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolder.id, fileId: statsFileId, stats: mergedStats)
+                        }
+                    }
                     showSuccess(message: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters")
                 case .synced:
                     showSuccess(message: "\(title) is already synced")
@@ -304,6 +329,30 @@ class BookshelfViewModel {
             lastModified: roundedDate
         )
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+    }
+    
+    private func mergeStatistics(localStatistics: [Statistics], externalStatistics: [Statistics], syncMode: StatisticsSyncMode) -> [Statistics] {
+        if syncMode == .replace {
+            return externalStatistics
+        }
+        
+        var grouped: [String: Statistics] = [:]
+        
+        for stat in localStatistics {
+            grouped[stat.dateKey] = stat
+        }
+        
+        for stat in externalStatistics {
+            if let existing = grouped[stat.dateKey] {
+                if stat.lastStatisticModified > existing.lastStatisticModified {
+                    grouped[stat.dateKey] = stat
+                }
+            } else {
+                grouped[stat.dateKey] = stat
+            }
+        }
+        
+        return Array(grouped.values)
     }
     
     private func processImport(sourceURL: URL) throws {

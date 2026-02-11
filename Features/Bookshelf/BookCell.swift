@@ -62,12 +62,12 @@ struct BookCell: View {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
-                            viewModel.syncBook(book: book, direction: .importFromTtu)
+                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
                         } label: {
                             Label("Import", systemImage: "arrow.down")
                         }
                         Button {
-                            viewModel.syncBook(book: book, direction: .exportToTtu)
+                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
                         } label: {
                             Label("Export", systemImage: "arrow.up")
                         }
@@ -76,7 +76,7 @@ struct BookCell: View {
                     }
                 } else {
                     Button {
-                        viewModel.syncBook(book: book)
+                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }

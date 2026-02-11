@@ -3,6 +3,7 @@
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
+//  Copyright © 2026 ッツ Reader Authors.
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
@@ -13,6 +14,7 @@ import CYomitanDicts
 enum ActiveSheet: Identifiable {
     case appearance
     case chapters
+    case statistics
     var id: Self { self }
 }
 
@@ -56,22 +58,34 @@ class ReaderLoaderViewModel {
 class ReaderViewModel {
     let document: EPUBDocument
     let rootURL: URL
+    let enableStatistics: Bool
     
-    // reader stuff
+    // reader
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
     var bookInfo: BookInfo
     
-    // lookup stuff
+    // lookups
     var showPopup = false
     var currentSelection: SelectionData?
     var lookupResults: [LookupResult] = []
     var dictionaryStyles: [String: String] = [:]
     
-    init(document: EPUBDocument, rootURL: URL) {
+    // stats
+    var isTracking = false
+    var isPaused = false
+    var lastTimestamp: Date = .now
+    var lastCount: Int = 0
+    var stats: [Statistics] = []
+    var sessionStatistics: Statistics
+    var todaysStatistics: Statistics
+    var allTimeStatistics: Statistics
+    
+    init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool) {
         self.document = document
         self.rootURL = rootURL
+        self.enableStatistics = enableStatistics
         
         if let bookmark = BookStorage.loadBookmark(root: rootURL) {
             index = bookmark.chapterIndex
@@ -86,6 +100,34 @@ class ReaderViewModel {
         } else {
             bookInfo = BookInfo(characterCount: 0, chapterInfo: [:])
         }
+        
+        sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        
+        if enableStatistics {
+            loadStatistics()
+        }
+    }
+    
+    func loadStatistics() {
+        stats = BookStorage.loadStatistics(root: rootURL) ?? []
+        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
+        
+        for stat in stats {
+            allTimeStatistics.readingTime += stat.readingTime
+            allTimeStatistics.charactersRead += stat.charactersRead
+            allTimeStatistics.lastReadingSpeed = allTimeStatistics.readingTime > 0 ? Int((Double(allTimeStatistics.charactersRead) / allTimeStatistics.readingTime) * 3600.0) : 0
+        }
+    }
+    
+    var currentChapterCount: Int {
+        guard document.spine.items.indices.contains(index),
+              let manifestItem = document.manifest.items[document.spine.items[index].idref],
+              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
+            return 0
+        }
+        return chapterInfo.currentTotal + chapterInfo.chapterCount
     }
     
     var currentCharacter: Int {
@@ -125,6 +167,10 @@ class ReaderViewModel {
             characterCount: currentCharacter,
             lastModified: Date()
         )
+        if isTracking {
+            updateStats()
+            saveStats()
+        }
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
     }
     
@@ -173,5 +219,72 @@ class ReaderViewModel {
         withAnimation(.default.speed(2)) {
             showPopup = false
         }
+    }
+    
+    func startTracking() {
+        isTracking = true
+        lastTimestamp = .now
+        lastCount = currentCharacter
+    }
+    
+    func stopTracking() {
+        guard isTracking else {
+            return
+        }
+        isTracking = false
+        updateStats()
+        saveStats()
+    }
+    
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
+    func updateStats() {
+        let now: Date = .now
+        let timeDiff = Date.now.timeIntervalSince(lastTimestamp)
+        let charDiff = currentCharacter - lastCount
+        let finalCharDiff = charDiff < 0 && abs(charDiff) > sessionStatistics.charactersRead ? -sessionStatistics.charactersRead : charDiff;
+        let lastStatisticModified = Int(Date.now.timeIntervalSince1970 * 1000)
+        guard timeDiff > 0 else {
+            return
+        }
+        
+        updateStatistic(to: &sessionStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
+        updateStatistic(to: &todaysStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
+        updateStatistic(to: &allTimeStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
+        
+        lastTimestamp = now
+        lastCount = currentCharacter
+    }
+    
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
+    func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
+        to.readingTime += timeDiff
+        to.charactersRead = max(to.charactersRead + characterDiff, 0)
+        to.lastReadingSpeed = to.readingTime > 0 ? Int((Double(to.charactersRead) / to.readingTime) * 3600.0) : 0
+        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
+        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        if characterDiff != 0 {
+            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        }
+        to.lastStatisticModified = lastStatisticModified
+    }
+    
+    func saveStats() {
+        if let index = stats.firstIndex(where: { $0.dateKey == Self.formattedDate(date: .now) }) {
+            stats[index] = todaysStatistics
+        } else {
+            stats.append(todaysStatistics)
+        }
+        
+        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+    }
+    
+    static private func getDefaultStatistic(title: String) -> Statistics {
+        return Statistics(title: title, dateKey: Self.formattedDate(date: .now), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
+    }
+    
+    static private func formattedDate(date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        return formatter.string(from: date)
     }
 }

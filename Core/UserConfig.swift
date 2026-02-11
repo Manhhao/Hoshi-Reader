@@ -70,15 +70,11 @@ class UserConfig {
     }
     
     var customBackgroundColor: Color {
-        didSet {
-            Self.saveColor(customBackgroundColor, key: "customBackgroundColor")
-        }
+        didSet { Self.saveColor(customBackgroundColor, key: "customBackgroundColor") }
     }
     
     var customTextColor: Color {
-        didSet {
-            Self.saveColor(customTextColor, key: "customTextColor")
-        }
+        didSet { Self.saveColor(customTextColor, key: "customTextColor") }
     }
     
     var verticalWriting: Bool {
@@ -174,9 +170,19 @@ class UserConfig {
     )
     
     var customCSS: String {
-        didSet {
-            UserDefaults.standard.set(customCSS, forKey: "customCSS")
-        }
+        didSet { UserDefaults.standard.set(customCSS, forKey: "customCSS") }
+    }
+    
+    var enableStatistics: Bool {
+        didSet { UserDefaults.standard.set(enableStatistics, forKey: "enableStatistics") }
+    }
+    
+    var statisticsEnableSync: Bool {
+        didSet { UserDefaults.standard.set(statisticsEnableSync, forKey: "statisticsEnableSync") }
+    }
+    
+    var statisticsSyncMode: StatisticsSyncMode {
+        didSet { UserDefaults.standard.set(statisticsSyncMode.rawValue, forKey: "statisticsSyncMode") }
     }
     
     init() {
@@ -227,6 +233,11 @@ class UserConfig {
         }
         self.enableLocalAudio = defaults.object(forKey: "enableLocalAudio") as? Bool ?? false
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
+        
+        self.enableStatistics = defaults.object(forKey: "enableStatistics") as? Bool ?? false
+        self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? false
+        self.statisticsSyncMode = defaults.string(forKey: "statisticsSyncMode")
+            .flatMap(StatisticsSyncMode.init) ?? .merge
     }
     
     private static func saveColor(_ color: Color, key: String) {

@@ -21,6 +21,7 @@ struct WebViewState: Hashable {
 }
 
 struct ReaderLoader: View {
+    @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderLoaderViewModel
     
     init(book: BookMetadata) {
@@ -30,7 +31,7 @@ struct ReaderLoader: View {
     var body: some View {
         Group {
             if let doc = viewModel.document, let root = viewModel.rootURL {
-                ReaderView(document: doc, rootURL: root)
+                ReaderView(document: doc, rootURL: root, enableStatistics: userConfig.enableStatistics)
                     .interactiveDismissDisabled()
             } else {
                 ProgressView()
@@ -45,6 +46,7 @@ struct ReaderLoader: View {
 struct ReaderView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
@@ -73,8 +75,8 @@ struct ReaderView: View {
         }
     }
     
-    init(document: EPUBDocument, rootURL: URL) {
-        _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL))
+    init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool) {
+        _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL, enableStatistics: enableStatistics))
     }
     
     var progressString: String {
@@ -147,6 +149,9 @@ struct ReaderView: View {
             HStack {
                 CircleButton(systemName: "chevron.left")
                     .onTapGesture {
+                        if viewModel.isTracking {
+                            viewModel.stopTracking()
+                        }
                         dismiss()
                     }
                     .opacity(focusMode ? 0 : 1)
@@ -164,6 +169,14 @@ struct ReaderView: View {
                         viewModel.activeSheet = .appearance
                     } label: {
                         Label("Appearance", systemImage: "paintbrush.pointed")
+                    }
+                    
+                    if userConfig.enableStatistics {
+                        Button {
+                            viewModel.activeSheet = .statistics
+                        } label: {
+                            Label("Statistics", systemImage: "chart.xyaxis.line")
+                        }
                     }
                 } label: {
                     CircleButton(systemName: "slider.horizontal.3")
@@ -228,6 +241,32 @@ struct ReaderView: View {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium, .large])
+            case .statistics:
+                StatisticsView(viewModel: viewModel)
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        .task(id: viewModel.isTracking) {
+            guard viewModel.isTracking, !viewModel.isPaused else {
+                return
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                if !viewModel.isPaused {
+                    viewModel.updateStats()
+                }
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard viewModel.isTracking else {
+                return
+            }
+            if phase == .active {
+                viewModel.lastTimestamp = .now
+                viewModel.isPaused = false
+            }
+            else {
+                viewModel.isPaused = true
             }
         }
         .navigationBarBackButtonHidden(true)

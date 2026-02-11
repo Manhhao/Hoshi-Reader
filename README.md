@@ -30,6 +30,7 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 - **AnkiMobile integration** with one-click mining
 - Support for all core handlebars used by [Lapis](https://github.com/donkuri/lapis)
 - **ッツ Reader sync**
+- **Reading statistics**
 - Dictionary search
 - Bookshelves
 - Custom themes, fonts and css
@@ -55,6 +56,7 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 | :--- | :--- | :--- |
 | [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPLv3 |
 | [Yomitan](https://github.com/yomidevs/yomitan) | Pitch accent implementation, Furigana Segmenter | GPLv3 |
+| [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader) | Statistics | BSD-3 |
 | [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | MIT |
 | [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | Apache-2.0 |
 | [Kanji alive](https://github.com/kanjialive/kanji-data-media) | Default audio source | CC-BY-4.0 |
