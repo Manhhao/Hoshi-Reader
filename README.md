@@ -30,6 +30,7 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 - **AnkiMobile integration** with one-click mining
 - Support for all core handlebars used by [Lapis](https://github.com/donkuri/lapis)
 - **ッツ Reader sync**
+- **Reading statistics**
 - Dictionary search
 - Bookshelves
 - Custom themes, fonts and css
