@@ -25,7 +25,7 @@ class LocalFileServer {
     private var coverData: Data?
     private var localAudioEnabled = false
     
-    private static let defaultSources = ["nhk16", "daijisen", "shinmeikai8", "forvo", "jpod", "jpod_alternate", "ozk5"]
+    private static let defaultSources = ["nhk16", "daijisen", "shinmeikai8", "jpod", "jpod_alternate", "taas", "ozk5", "forvo", "forvo_ext", "forvo_ext2"]
     private static let emptyAudioResponse = Data(#"{"type":"audioSourceList","audioSources":[]}"#.utf8)
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     
@@ -152,7 +152,7 @@ class LocalFileServer {
         
         // Technically Ankiconnect Android and the original Local Audio plugin return multiple entries
         // sort by matching reading first for more accurate results
-        let sortOrder = "CASE source " + Self.defaultSources.indices.map { "WHEN ? THEN \($0) " }.joined() + "END"
+        let sortOrder = "CASE source " + Self.defaultSources.indices.map { "WHEN ? THEN \($0) " }.joined() + "ELSE 999 END"
         let sql = """
             SELECT source, file FROM entries
             WHERE expression = ? AND (reading IS NULL OR reading = ?) AND file LIKE '%.mp3'
