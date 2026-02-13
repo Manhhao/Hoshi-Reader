@@ -15,6 +15,7 @@ struct PopupLayout {
     let maxWidth: CGFloat
     let maxHeight: CGFloat
     let isVertical: Bool
+    let isFullWidth: Bool
     
     private let popupPadding: CGFloat = 4
     private let screenBorderPadding: CGFloat = 6
@@ -44,47 +45,55 @@ struct PopupLayout {
     }
     
     var width: CGFloat {
+        if isFullWidth {
+            return screenSize.width - screenBorderPadding * 2
+        }
+        
         if isVertical {
             return min(max(spaceLeft, spaceRight) - screenBorderPadding, maxWidth)
-        } else {
-            return maxWidth
         }
+        
+        return maxWidth
     }
     
     var height: CGFloat {
-        if isVertical {
+        if isVertical || isFullWidth {
             return maxHeight
-        } else {
-            return min(max(spaceAbove, spaceBelow) - screenBorderPadding, maxHeight)
         }
+        
+        return min(max(spaceAbove, spaceBelow) - screenBorderPadding, maxHeight)
     }
     
     var position: CGPoint {
         var x: CGFloat
         var y: CGFloat
         
-        if isVertical {
-            if showOnRight {
-                x = selectionRect.maxX + popupPadding + (width / 2)
-            } else {
-                x = selectionRect.minX - popupPadding - (width / 2)
-            }
-            x = max(width / 2, min(x, screenSize.width - width / 2))
-            
-            y = selectionRect.minY + (height / 2)
-            y = max(height / 2, min(y, screenSize.height - height / 2))
+        if isFullWidth {
+            x = width / 2 + screenBorderPadding
+            y = screenSize.height - height / 2 - screenBorderPadding
         } else {
-            x = selectionRect.minX + (width / 2)
-            x = max(width / 2 + screenBorderPadding, min(x, screenSize.width - width / 2 - screenBorderPadding))
-            
-            if showBelow {
-                y = selectionRect.maxY + popupPadding + (height / 2)
+            if isVertical {
+                if showOnRight {
+                    x = selectionRect.maxX + popupPadding + (width / 2)
+                } else {
+                    x = selectionRect.minX - popupPadding - (width / 2)
+                }
+                x = max(width / 2, min(x, screenSize.width - width / 2))
+                
+                y = selectionRect.minY + (height / 2)
+                y = max(height / 2 + screenBorderPadding, min(y, screenSize.height - height / 2 - screenBorderPadding))
             } else {
-                y = selectionRect.minY - popupPadding - (height / 2)
+                x = selectionRect.minX + (width / 2)
+                x = max(width / 2 + screenBorderPadding, min(x, screenSize.width - width / 2 - screenBorderPadding))
+                
+                if showBelow {
+                    y = selectionRect.maxY + popupPadding + (height / 2)
+                } else {
+                    y = selectionRect.minY - popupPadding - (height / 2)
+                }
+                y = max(height / 2, min(y, screenSize.height - height / 2))
             }
-            y = max(height / 2, min(y, screenSize.height - height / 2))
         }
-        
         return CGPoint(x: x, y: y)
     }
 }
@@ -111,7 +120,8 @@ struct PopupView: View {
             screenSize: screenSize,
             maxWidth: CGFloat(userConfig.popupWidth),
             maxHeight: CGFloat(userConfig.popupHeight),
-            isVertical: isVertical
+            isVertical: isVertical,
+            isFullWidth: userConfig.popupFullWidth
         )
     }
     

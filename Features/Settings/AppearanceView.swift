@@ -163,6 +163,7 @@ struct AppearanceView: View {
                             get: { Double(userConfig.popupWidth) },
                             set: { userConfig.popupWidth = Int($0) }
                         ), in: 100...500, step: 10)
+                        .disabled(userConfig.popupFullWidth)
                         
                         HStack {
                             Text("Height")
@@ -175,6 +176,8 @@ struct AppearanceView: View {
                             set: { userConfig.popupHeight = Int($0) }
                         ), in: 100...350, step: 10)
                     }
+                    
+                    Toggle("Full width Popup", isOn: Bindable(userConfig).popupFullWidth)
                     
                     Toggle("Swipe to Dismiss", isOn: Bindable(userConfig).popupSwipeToDismiss)
                     if userConfig.popupSwipeToDismiss {

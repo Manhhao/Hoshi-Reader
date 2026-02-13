@@ -125,6 +125,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(popupHeight, forKey: "popupHeight") }
     }
     
+    var popupFullWidth: Bool {
+        didSet { UserDefaults.standard.set(popupFullWidth, forKey: "popupFullWidth") }
+    }
+    
     var popupSwipeToDismiss: Bool {
         didSet { UserDefaults.standard.set(popupSwipeToDismiss, forKey: "popupSwipeToDismiss") }
     }
@@ -226,6 +230,7 @@ class UserConfig {
         
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupFullWidth = defaults.object(forKey: "popupFullWidth") as? Bool ?? false
         self.popupSwipeToDismiss = defaults.object(forKey: "popupSwipeToDismiss") as? Bool ?? false
         self.popupSwipeThreshold = defaults.object(forKey: "popupSwipeThreshold") as? Int ?? 40
         
