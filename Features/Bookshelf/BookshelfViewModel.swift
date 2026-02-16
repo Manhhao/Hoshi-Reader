@@ -202,18 +202,27 @@ class BookshelfViewModel {
             
             do {
                 let root = try await GoogleDriveHandler.shared.findRootFolder()
-                let books = try await GoogleDriveHandler.shared.listBooks(rootFolder: root)
-                guard let driveFolder = books.first(where: { $0.name == title }) else {
-                    showError(message: "Could not find \(title) on Google Drive")
-                    // TODO: create book on google drive
-                    return
-                }
+                
+                // Ensure book folder exists on Google Drive (search by sanitized name, create if needed)
+                let coverPath = book.cover
+                let driveFolderId = try await GoogleDriveHandler.shared.ensureBookFolder(
+                    bookTitle: title,
+                    rootFolder: root,
+                    coverImageDataProvider: coverPath.map { path in
+                        return {
+                            guard let docsDirectory = try? BookStorage.getDocumentsDirectory() else { return nil }
+                            let coverURL = docsDirectory.appendingPathComponent(path)
+                            guard FileManager.default.fileExists(atPath: coverURL.path(percentEncoded: false)) else { return nil }
+                            return try? Data(contentsOf: coverURL)
+                        }
+                    }
+                )
                 
                 let directory = try BookStorage.getBooksDirectory()
                 let url = directory.appendingPathComponent(bookFolder)
                 let localBookmark = BookStorage.loadBookmark(root: url)
                 
-                let progressFileId = try await GoogleDriveHandler.shared.findProgressFileId(folderId: driveFolder.id)
+                let progressFileId = try await GoogleDriveHandler.shared.findProgressFileId(folderId: driveFolderId)
                 let ttuProgress: TtuProgress? = if let progressFileId {
                     try await GoogleDriveHandler.shared.getProgressFile(fileId: progressFileId)
                 } else {
@@ -225,7 +234,7 @@ class BookshelfViewModel {
                 var localStats: [Statistics]?
                 if syncStats {
                     localStats = BookStorage.loadStatistics(root: url)
-                    statsFileId = try await GoogleDriveHandler.shared.findStatsFileId(folderId: driveFolder.id)
+                    statsFileId = try await GoogleDriveHandler.shared.findStatsFileId(folderId: driveFolderId)
                     ttuStats = if let statsFileId {
                         try await GoogleDriveHandler.shared.getStatsFile(fileId: statsFileId)
                     } else {
@@ -250,14 +259,14 @@ class BookshelfViewModel {
                     try await exportProgress(
                         localBookmark: localBookmark,
                         ttuProgress: ttuProgress,
-                        folderId: driveFolder.id,
+                        folderId: driveFolderId,
                         fileId: progressFileId,
                         url: url
                     )
                     if syncStats {
                         let mergedStats = mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode)
                         if !mergedStats.isEmpty {
-                            try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolder.id, fileId: statsFileId, stats: mergedStats)
+                            try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolderId, fileId: statsFileId, stats: mergedStats)
                         }
                     }
                     showSuccess(message: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters")
