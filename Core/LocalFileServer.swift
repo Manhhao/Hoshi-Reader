@@ -30,6 +30,17 @@ class LocalFileServer {
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     
     private init() {}
+
+    private func katakanaToHiragana(_ text: String) -> String {
+        let scalars = text.unicodeScalars.map { scalar -> UnicodeScalar in
+            let value = scalar.value
+            if value >= 0x30A1 && value <= 0x30F6 {
+                return UnicodeScalar(value - 0x60)!
+            }
+            return scalar
+        }
+        return String(String.UnicodeScalarView(scalars))
+    }
     
     private func startServer() {
         guard listener == nil else {
@@ -141,7 +152,8 @@ class LocalFileServer {
     // https://github.com/KamWithK/AnkiconnectAndroid/blob/d79d7543df63894cac726f255780369cd0e6b177/app/src/main/java/com/kamwithk/ankiconnectandroid/routing/LocalAudioAPIRouting.java#L102
     private func getAudioSources(_ request: Request, to connection: NWConnection) {
         let term = request.query["term"] ?? ""
-        let reading = request.query["reading"] ?? ""
+        let rawReading = request.query["reading"] ?? ""
+        let reading = katakanaToHiragana(rawReading)
         let dbURL = try! BookStorage.getDocumentsDirectory().appendingPathComponent(Self.localAudioPath)
         
         var db: OpaquePointer?
@@ -153,12 +165,22 @@ class LocalFileServer {
         // Technically Ankiconnect Android and the original Local Audio plugin return multiple entries
         // sort by matching reading first for more accurate results
         let sortOrder = "CASE source " + Self.defaultSources.indices.map { "WHEN ? THEN \($0) " }.joined() + "ELSE 999 END"
-        let sql = """
-            SELECT source, file FROM entries
-            WHERE expression = ? AND (reading IS NULL OR reading = ?) AND file LIKE '%.mp3'
-            ORDER BY CASE WHEN reading = ? THEN 0 ELSE 1 END, \(sortOrder)
-            LIMIT 1;
-            """
+        let sql: String
+        if reading.isEmpty {
+            sql = """
+                SELECT source, file FROM entries
+                WHERE expression = ? AND file LIKE '%.mp3'
+                ORDER BY \(sortOrder)
+                LIMIT 1;
+                """
+        } else {
+            sql = """
+                SELECT source, file FROM entries
+                WHERE (expression = ? OR reading = ?) AND file LIKE '%.mp3'
+                ORDER BY CASE WHEN reading = ? THEN 0 ELSE 1 END, \(sortOrder)
+                LIMIT 1;
+                """
+        }
         
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) != SQLITE_OK {
@@ -170,10 +192,14 @@ class LocalFileServer {
         }
         
         sqlite3_bind_text(stmt, 1, term, -1, Self.sqliteTransient)
-        sqlite3_bind_text(stmt, 2, reading, -1, Self.sqliteTransient)
-        sqlite3_bind_text(stmt, 3, reading, -1, Self.sqliteTransient)
+        var bindIndex = 2
+        if !reading.isEmpty {
+            sqlite3_bind_text(stmt, 2, reading, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, 3, reading, -1, Self.sqliteTransient)
+            bindIndex = 4
+        }
         for (i, source) in Self.defaultSources.enumerated() {
-            sqlite3_bind_text(stmt, Int32(i + 4), source, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, Int32(i + bindIndex), source, -1, Self.sqliteTransient)
         }
         
         if sqlite3_step(stmt) == SQLITE_ROW {
