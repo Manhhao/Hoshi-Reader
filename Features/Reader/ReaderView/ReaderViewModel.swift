@@ -111,6 +111,7 @@ class ReaderViewModel {
         }
         
         if let url = getCurrentChapter() {
+            bridge.updateState(url: url, progress: currentProgress)
             bridge.send(.loadChapter(url: url, progress: currentProgress))
         }
     }
@@ -166,6 +167,7 @@ class ReaderViewModel {
     
     func saveBookmark(progress: Double) {
         currentProgress = progress
+        bridge.updateProgress(progress)
         let bookmark = Bookmark(
             chapterIndex: index,
             progress: progress,
@@ -183,6 +185,7 @@ class ReaderViewModel {
         self.index = index
         saveBookmark(progress: progress)
         if let url = getCurrentChapter() {
+            bridge.updateState(url: url, progress: progress)
             bridge.send(.loadChapter(url: url, progress: progress))
         }
     }

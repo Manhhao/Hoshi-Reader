@@ -305,6 +305,7 @@ struct ReaderView: View {
         }
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
     }
 }

@@ -30,16 +30,21 @@ enum WebViewCommand {
 @Observable
 @MainActor
 class WebViewBridge {
-    private(set) var lastLoadedURL: URL?
-    private(set) var lastLoadedProgress: Double = 0
+    private(set) var chapterURL: URL?
+    private(set) var progress: Double = 0
     var pendingCommands: [WebViewCommand] = []
     
     func send(_ command: WebViewCommand) {
         pendingCommands.append(command)
-        if case .loadChapter(let url, let progress) = command {
-            lastLoadedURL = url
-            lastLoadedProgress = progress
-        }
+    }
+    
+    func updateState(url: URL, progress: Double) {
+        self.chapterURL = url
+        self.progress = progress
+    }
+    
+    func updateProgress(_ progress: Double) {
+        self.progress = progress
     }
 }
 
@@ -121,9 +126,9 @@ struct ReaderWebView: UIViewRepresentable {
             return
         }
         
-        if context.coordinator.currentURL == nil, let url = bridge.lastLoadedURL {
+        if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
             context.coordinator.currentURL = url
-            context.coordinator.pendingProgress = bridge.lastLoadedProgress
+            context.coordinator.pendingProgress = bridge.progress
             guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else { return }
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
