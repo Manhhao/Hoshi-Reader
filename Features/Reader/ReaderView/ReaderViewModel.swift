@@ -192,12 +192,18 @@ class ReaderViewModel {
     
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
+        stopTracking()
         if result.spineIndex == self.index {
             saveBookmark(progress: result.progress)
             bridge.send(.restoreProgress(result.progress))
         } else {
             setIndex(index: result.spineIndex, progress: result.progress)
         }
+    }
+    
+    func jumpToChapter(index: Int) {
+        stopTracking()
+        setIndex(index: index, progress: 0)
     }
     
     func nextChapter() -> Bool {

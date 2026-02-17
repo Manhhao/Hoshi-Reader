@@ -248,7 +248,7 @@ struct ReaderView: View {
                     .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
             case .chapters:
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex in
-                    viewModel.setIndex(index: spineIndex, progress: 0)
+                    viewModel.jumpToChapter(index: spineIndex)
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
                     viewModel.closePopup()
@@ -265,7 +265,7 @@ struct ReaderView: View {
             }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                if !viewModel.isPaused {
+                if !viewModel.isPaused && viewModel.isTracking {
                     viewModel.updateStats()
                 }
             }
