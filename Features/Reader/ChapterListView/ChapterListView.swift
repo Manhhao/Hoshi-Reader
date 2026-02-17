@@ -15,7 +15,7 @@ struct ChapterListView: View {
     let currentIndex: Int
     let currentCharacter: Int
     let coverURL: URL?
-    let onSelect: (Int) -> Void
+    let onJumpToChapter: (Int) -> Void
     let onJumpToCharacter: (Int) -> Void
     
     @Environment(\.dismiss) var dismiss
@@ -45,7 +45,7 @@ struct ChapterListView: View {
                     if let vm = viewModel {
                         ForEach(vm.rows) { row in
                             ChapterView(row: row) {
-                                onSelect(row.spineIndex)
+                                onJumpToChapter(row.spineIndex)
                             }
                         }
                     }
