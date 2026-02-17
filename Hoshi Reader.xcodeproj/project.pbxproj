@@ -459,9 +459,9 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		487789CB2F1F01D600118D1E /* XCRemoteSwiftPackageReference "yomitandicts-cpp" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "git@github.com:Manhhao/yomitandicts-cpp.git";
+			repositoryURL = "https://github.com/Manhhao/yomitandicts-cpp.git";
 			requirement = {
-				branch = main;
+				branch = glaze;
 				kind = branch;
 			};
 		};

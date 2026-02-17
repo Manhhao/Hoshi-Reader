@@ -1,5 +1,5 @@
 {
-  "originHash" : "e0a90018dbc944c7bdd2b55489b2ae99a0e7c4df6776cc7ec886ef80515d70e9",
+  "originHash" : "31bc5b93dba90dcffb2ea55991ba4db94f5da6a135112e921e4e36997c81990b",
   "pins" : [
     {
       "identity" : "aexml",
@@ -13,10 +13,10 @@
     {
       "identity" : "yomitandicts-cpp",
       "kind" : "remoteSourceControl",
-      "location" : "git@github.com:Manhhao/yomitandicts-cpp.git",
+      "location" : "https://github.com/Manhhao/yomitandicts-cpp.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "e3fe865b3a07dfbb76168d2eb39d46d66b5e7da6"
+        "branch" : "glaze",
+        "revision" : "1d4aa7f539f9f8e2ce4e78109361da6243e961d8"
       }
     },
     {
