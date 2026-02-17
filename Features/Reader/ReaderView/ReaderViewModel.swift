@@ -165,38 +165,6 @@ class ReaderViewModel {
         return document.contentDirectory.appendingPathComponent(manifestItem.path)
     }
     
-    private func persistBookmark(progress: Double) {
-        currentProgress = progress
-        bridge.updateProgress(progress)
-        let bookmark = Bookmark(
-            chapterIndex: index,
-            progress: progress,
-            characterCount: currentCharacter,
-            lastModified: Date()
-        )
-        try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
-    }
-    
-    private func loadChapter(index: Int, progress: Double) {
-        self.index = index
-        persistBookmark(progress: progress)
-        if let url = getCurrentChapter() {
-            bridge.updateState(url: url, progress: progress)
-            bridge.send(.loadChapter(url: url, progress: progress))
-        }
-    }
-    
-    private func flushStats() {
-        guard isTracking else { return }
-        updateStats()
-        saveStats()
-    }
-    
-    private func resetTrackingBaseline() {
-        lastCount = currentCharacter
-        lastTimestamp = .now
-    }
-    
     func saveBookmark(progress: Double) {
         persistBookmark(progress: progress)
         flushStats()
@@ -315,6 +283,38 @@ class ReaderViewModel {
         }
         
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+    }
+    
+    private func persistBookmark(progress: Double) {
+        currentProgress = progress
+        bridge.updateProgress(progress)
+        let bookmark = Bookmark(
+            chapterIndex: index,
+            progress: progress,
+            characterCount: currentCharacter,
+            lastModified: Date()
+        )
+        try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+    }
+    
+    private func loadChapter(index: Int, progress: Double) {
+        self.index = index
+        persistBookmark(progress: progress)
+        if let url = getCurrentChapter() {
+            bridge.updateState(url: url, progress: progress)
+            bridge.send(.loadChapter(url: url, progress: progress))
+        }
+    }
+    
+    private func flushStats() {
+        guard isTracking else { return }
+        updateStats()
+        saveStats()
+    }
+    
+    private func resetTrackingBaseline() {
+        lastCount = currentCharacter
+        lastTimestamp = .now
     }
     
     static private func getDefaultStatistic(title: String) -> Statistics {

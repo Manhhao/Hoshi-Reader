@@ -16,10 +16,14 @@ struct ChapterListView: View {
     let currentCharacter: Int
     let coverURL: URL?
     let onSelect: (Int) -> Void
+    let onJumpToCharacter: (Int) -> Void
     
     @Environment(\.dismiss) var dismiss
     
     @State private var viewModel: ChapterListViewModel?
+    @State private var showJumpToAlert = false
+    @State private var showInvalidInputAlert = false
+    @State private var jumpToInput = ""
     
     var body: some View {
         NavigationStack {
@@ -28,7 +32,11 @@ struct ChapterListView: View {
                     title: document.title,
                     currentCharacterCount: currentCharacter,
                     totalCharacterCount: bookInfo.characterCount,
-                    coverURL: coverURL
+                    coverURL: coverURL,
+                    onJumpTo: {
+                        jumpToInput = ""
+                        showJumpToAlert = true
+                    }
                 )
                 
                 List {
@@ -63,6 +71,26 @@ struct ChapterListView: View {
             .navigationTitle("Chapters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            .alert("Jump to", isPresented: $showJumpToAlert) {
+                TextField("Character count", text: $jumpToInput)
+                    .keyboardType(.numberPad)
+                Button("Cancel", role: .cancel) {}
+                Button("Go") {
+                    if let count = Int(jumpToInput), count >= 0 {
+                        onJumpToCharacter(count)
+                        dismiss()
+                    } else {
+                        showInvalidInputAlert = true
+                    }
+                }
+            } message: {
+                Text("Current: \(currentCharacter) / \(bookInfo.characterCount)")
+            }
+            .alert("Invalid input", isPresented: $showInvalidInputAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Please enter a valid character count")
+            }
         }
     }
 }
@@ -72,6 +100,7 @@ struct HeaderView: View {
     let currentCharacterCount: Int
     let totalCharacterCount: Int
     let coverURL: URL?
+    let onJumpTo: () -> Void
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -88,9 +117,17 @@ struct HeaderView: View {
                     .lineLimit(2)
                 
                 let percent = totalCharacterCount > 0 ? (Double(currentCharacterCount) / Double(totalCharacterCount) * 100) : 0
-                Text("\(currentCharacterCount) / \(totalCharacterCount) (\(String(format: "%.1f%%", percent)))")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("\(currentCharacterCount) / \(totalCharacterCount) (\(String(format: "%.1f%%", percent)))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        onJumpTo()
+                    } label: {
+                        Image(systemName: "arrow.right.to.line")
+                    }
+                    .foregroundStyle(.primary)
+                }
             }
             Spacer()
         }

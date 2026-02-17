@@ -51,9 +51,6 @@ struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
     @State private var focusMode = false
-    @State private var showJumpToAlert = false
-    @State private var showInvalidInputAlert = false
-    @State private var jumpToInput = ""
     
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
@@ -162,14 +159,7 @@ struct ReaderView: View {
                 
                 Spacer()
                 
-                Menu {                   
-                    Button {
-                        jumpToInput = ""
-                        showJumpToAlert = true
-                    } label: {
-                        Label("Jump to", systemImage: "arrow.right.to.line")
-                    }
-                    
+                Menu {
                     Button {
                         viewModel.activeSheet = .chapters
                     } label: {
@@ -252,6 +242,11 @@ struct ReaderView: View {
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
                     viewModel.closePopup()
+                } onJumpToCharacter: { count in
+                    viewModel.jumpToCharacter(count)
+                    viewModel.activeSheet = nil
+                    viewModel.clearWebHighlight()
+                    viewModel.closePopup()
                 }
                 .presentationDetents([.medium, .large])
             case .statistics:
@@ -265,7 +260,7 @@ struct ReaderView: View {
             }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                if !viewModel.isPaused && viewModel.isTracking {
+                if !viewModel.isPaused {
                     viewModel.updateStats()
                 }
             }
@@ -282,30 +277,8 @@ struct ReaderView: View {
                 viewModel.isPaused = true
             }
         }
-        .alert("Jump to", isPresented: $showJumpToAlert) {
-            TextField("Character count", text: $jumpToInput)
-                .keyboardType(.numberPad)
-            Button("Cancel", role: .cancel) {}
-            Button("Go") {
-                if let count = Int(jumpToInput), count >= 0 {
-                    viewModel.jumpToCharacter(count)
-                    viewModel.clearWebHighlight()
-                    viewModel.closePopup()
-                } else {
-                    showInvalidInputAlert = true
-                }
-            }
-        } message: {
-            Text("Current: \(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
-        }
-        .alert("Invalid input", isPresented: $showInvalidInputAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Please enter a valid character count")
-        }
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)
-        .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
     }
 }
