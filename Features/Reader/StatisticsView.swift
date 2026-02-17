@@ -38,7 +38,7 @@ struct StatisticsView: View {
                     HStack {
                         Text("Time to finish Chapter:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.currentChapterCount) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.currentChapterCount - viewModel.currentCharacter) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
                     }
                 } header: {
                     HStack {
