@@ -248,7 +248,6 @@ struct ReaderView: View {
                     viewModel.clearWebHighlight()
                     viewModel.closePopup()
                 }
-                .presentationDetents([.medium, .large])
             case .statistics:
                 StatisticsView(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
@@ -279,6 +278,7 @@ struct ReaderView: View {
         }
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
     }
 }

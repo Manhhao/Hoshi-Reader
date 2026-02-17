@@ -24,6 +24,7 @@ struct ChapterListView: View {
     @State private var showJumpToAlert = false
     @State private var showInvalidInputAlert = false
     @State private var jumpToInput = ""
+    @State private var detent: PresentationDetent = .medium
     
     var body: some View {
         NavigationStack {
@@ -34,6 +35,7 @@ struct ChapterListView: View {
                     totalCharacterCount: bookInfo.characterCount,
                     coverURL: coverURL,
                     onJumpTo: {
+                        detent = .large
                         jumpToInput = ""
                         showJumpToAlert = true
                     }
@@ -91,6 +93,7 @@ struct ChapterListView: View {
             } message: {
                 Text("Please enter a valid character count")
             }
+            .presentationDetents([.medium, .large], selection: $detent)
         }
     }
 }
