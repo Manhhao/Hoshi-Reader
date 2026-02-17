@@ -9,7 +9,7 @@
 import SwiftUI
 import WebKit
 
-class ProxyHandler: NSObject, WKURLSchemeHandler {
+class AudioHandler: NSObject, WKURLSchemeHandler {
     private var tasks = Set<ObjectIdentifier>()
     
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
@@ -58,6 +58,26 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+// image://dictname/path/to/file.png
+class ImageHandler: NSObject, WKURLSchemeHandler {
+    func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
+        guard let requestUrl = task.request.url,
+              let dictName = requestUrl.host else {
+            task.didFailWithError(URLError(.badURL))
+            return
+        }
+        let filePath = String(requestUrl.path.dropFirst())
+        if filePath.isEmpty {
+            task.didFailWithError(URLError(.fileDoesNotExist))
+            return
+        }
+        print(filePath)
+    }
+    
+    func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {
+    }
+}
+
 struct PopupWebView: UIViewRepresentable {
     let content: String
     var onMine: (([String: String]) -> Void)? = nil
@@ -86,7 +106,8 @@ struct PopupWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "mineEntry")
         config.userContentController.add(context.coordinator, name: "openLink")
-        config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
+        config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
+        config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.mediaTypesRequiringUserActionForPlayback = []
         
         let webView = WKWebView(frame: .zero, configuration: config)

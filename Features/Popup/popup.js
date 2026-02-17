@@ -585,6 +585,8 @@ function renderStructuredContent(parent, node) {
         renderStructuredContent(element, node.content);
     }
     
+    if node.img
+    
     parent.appendChild(element);
 }
 
@@ -746,7 +748,7 @@ async function fetchAudioUrl(expression, reading) {
             .replace('{term}', encodeURIComponent(expression))
             .replace('{reading}', encodeURIComponent(reading));
         try {
-            const response = await fetch(`proxy://?url=${encodeURIComponent(url)}`);
+            const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
             const data = await response.json();
             if (data.type === 'audioSourceList' && data.audioSources?.[0]?.url) {
                 return data.audioSources[0].url;
