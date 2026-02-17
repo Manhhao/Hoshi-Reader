@@ -51,7 +51,9 @@ struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = 0
     @State private var focusMode = false
-    @State private var clearHighlight = false
+    @State private var showJumpToAlert = false
+    @State private var showInvalidInputAlert = false
+    @State private var jumpToInput = ""
     
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
@@ -103,11 +105,9 @@ struct ReaderView: View {
             GeometryReader { geometry in
                 ZStack {
                     ReaderWebView(
-                        fileURL: viewModel.getCurrentChapter(),
                         userConfig: userConfig,
                         viewSize: CGSize(width: geometry.size.width, height: geometry.size.height),
-                        clearHighlight: clearHighlight,
-                        currentProgress: viewModel.currentProgress,
+                        bridge: viewModel.bridge,
                         onNextChapter: viewModel.nextChapter,
                         onPreviousChapter: viewModel.previousChapter,
                         onSaveBookmark: viewModel.saveBookmark,
@@ -142,7 +142,7 @@ struct ReaderView: View {
                             viewModel.showPopup &&
                             (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
                             (abs(value.translation.height) < 20) {
-                            clearHighlight.toggle()
+                            viewModel.clearWebHighlight()
                             viewModel.closePopup()
                         }
                     }))
@@ -162,7 +162,14 @@ struct ReaderView: View {
                 
                 Spacer()
                 
-                Menu {
+                Menu {                   
+                    Button {
+                        jumpToInput = ""
+                        showJumpToAlert = true
+                    } label: {
+                        Label("Jump to", systemImage: "arrow.right.to.line")
+                    }
+                    
                     Button {
                         viewModel.activeSheet = .chapters
                     } label: {
@@ -243,6 +250,8 @@ struct ReaderView: View {
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex in
                     viewModel.setIndex(index: spineIndex, progress: 0)
                     viewModel.activeSheet = nil
+                    viewModel.clearWebHighlight()
+                    viewModel.closePopup()
                 }
                 .presentationDetents([.medium, .large])
             case .statistics:
@@ -272,6 +281,27 @@ struct ReaderView: View {
             else {
                 viewModel.isPaused = true
             }
+        }
+        .alert("Jump to", isPresented: $showJumpToAlert) {
+            TextField("Character count", text: $jumpToInput)
+                .keyboardType(.numberPad)
+            Button("Cancel", role: .cancel) {}
+            Button("Go") {
+                if let count = Int(jumpToInput), count >= 0 {
+                    viewModel.jumpToCharacter(count)
+                    viewModel.clearWebHighlight()
+                    viewModel.closePopup()
+                } else {
+                    showInvalidInputAlert = true
+                }
+            }
+        } message: {
+            Text("Current: \(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+        }
+        .alert("Invalid input", isPresented: $showInvalidInputAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please enter a valid character count")
         }
         .navigationBarBackButtonHidden(true)
         .ignoresSafeArea(edges: .top)

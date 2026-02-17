@@ -65,6 +65,7 @@ class ReaderViewModel {
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
     var bookInfo: BookInfo
+    let bridge = WebViewBridge()
     
     // lookups
     var showPopup = false
@@ -107,6 +108,10 @@ class ReaderViewModel {
         
         if enableStatistics {
             loadStatistics()
+        }
+        
+        if let url = getCurrentChapter() {
+            bridge.send(.loadChapter(url: url, progress: currentProgress))
         }
     }
     
@@ -176,8 +181,34 @@ class ReaderViewModel {
     
     func setIndex(index: Int, progress: Double) {
         self.index = index
-        currentProgress = progress
         saveBookmark(progress: progress)
+        if let url = getCurrentChapter() {
+            bridge.send(.loadChapter(url: url, progress: progress))
+        }
+    }
+    
+    func jumpToCharacter(_ characterCount: Int) {
+        let targetCount = max(0, min(characterCount, bookInfo.characterCount - 1))
+        
+        for chapter in bookInfo.chapterInfo.values {
+            guard let targetIndex = chapter.spineIndex, chapter.chapterCount > 0 else {
+                continue
+            }
+            
+            let start = chapter.currentTotal
+            let end = start + chapter.chapterCount
+            
+            if targetCount >= start && targetCount < end {
+                let chapterProgress = Double(targetCount - start) / Double(chapter.chapterCount)
+                if targetIndex == self.index {
+                    saveBookmark(progress: chapterProgress)
+                    bridge.send(.restoreProgress(chapterProgress))
+                } else {
+                    setIndex(index: targetIndex, progress: chapterProgress)
+                }
+                return
+            }
+        }
     }
     
     func nextChapter() -> Bool {
@@ -219,6 +250,10 @@ class ReaderViewModel {
         withAnimation(.default.speed(2)) {
             showPopup = false
         }
+    }
+    
+    func clearWebHighlight() {
+        bridge.send(.clearHighlight)
     }
     
     func startTracking() {
