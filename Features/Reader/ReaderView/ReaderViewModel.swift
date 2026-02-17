@@ -165,7 +165,7 @@ class ReaderViewModel {
         return document.contentDirectory.appendingPathComponent(manifestItem.path)
     }
     
-    func saveBookmark(progress: Double) {
+    private func persistBookmark(progress: Double) {
         currentProgress = progress
         bridge.updateProgress(progress)
         let bookmark = Bookmark(
@@ -174,52 +174,64 @@ class ReaderViewModel {
             characterCount: currentCharacter,
             lastModified: Date()
         )
-        if isTracking {
-            updateStats()
-            saveStats()
-        }
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
     }
     
-    func setIndex(index: Int, progress: Double) {
+    private func loadChapter(index: Int, progress: Double) {
         self.index = index
-        saveBookmark(progress: progress)
+        persistBookmark(progress: progress)
         if let url = getCurrentChapter() {
             bridge.updateState(url: url, progress: progress)
             bridge.send(.loadChapter(url: url, progress: progress))
         }
     }
     
+    private func flushStats() {
+        guard isTracking else { return }
+        updateStats()
+        saveStats()
+    }
+    
+    private func resetTrackingBaseline() {
+        lastCount = currentCharacter
+        lastTimestamp = .now
+    }
+    
+    func saveBookmark(progress: Double) {
+        persistBookmark(progress: progress)
+        flushStats()
+    }
+    
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
-        stopTracking()
+        flushStats()
         if result.spineIndex == self.index {
-            saveBookmark(progress: result.progress)
+            persistBookmark(progress: result.progress)
             bridge.send(.restoreProgress(result.progress))
         } else {
-            setIndex(index: result.spineIndex, progress: result.progress)
+            loadChapter(index: result.spineIndex, progress: result.progress)
         }
+        resetTrackingBaseline()
     }
     
     func jumpToChapter(index: Int) {
-        stopTracking()
-        setIndex(index: index, progress: 0)
+        flushStats()
+        loadChapter(index: index, progress: 0)
+        resetTrackingBaseline()
     }
     
     func nextChapter() -> Bool {
-        if index < document.spine.items.count - 1 {
-            setIndex(index: index + 1, progress: 0)
-            return true
-        }
-        return false
+        guard index < document.spine.items.count - 1 else { return false }
+        loadChapter(index: index + 1, progress: 0)
+        flushStats()
+        return true
     }
     
     func previousChapter() -> Bool {
-        if index > 0 {
-            setIndex(index: index - 1, progress: 1)
-            return true
-        }
-        return false
+        guard index > 0 else { return false }
+        loadChapter(index: index - 1, progress: 1)
+        flushStats()
+        return true
     }
     
     func handleTextSelection(_ selection: SelectionData, maxResults: Int) -> Int? {
@@ -258,12 +270,9 @@ class ReaderViewModel {
     }
     
     func stopTracking() {
-        guard isTracking else {
-            return
-        }
+        guard isTracking else { return }
+        flushStats()
         isTracking = false
-        updateStats()
-        saveStats()
     }
     
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
