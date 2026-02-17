@@ -53,6 +53,22 @@ struct BookInfo: Codable {
         let currentTotal: Int
         let chapterCount: Int
     }
+    
+    func resolveCharacterPosition(_ characterCount: Int) -> (spineIndex: Int, progress: Double)? {
+        let clamped = max(0, min(characterCount, self.characterCount - 1))
+        for chapter in chapterInfo.values {
+            guard let spineIndex = chapter.spineIndex, chapter.chapterCount > 0 else {
+                continue
+            }
+            let start = chapter.currentTotal
+            let end = start + chapter.chapterCount
+            if clamped >= start && clamped < end {
+                let progress = Double(clamped - start) / Double(chapter.chapterCount)
+                return (spineIndex, progress)
+            }
+        }
+        return nil
+    }
 }
 
 struct BookShelf: Codable {

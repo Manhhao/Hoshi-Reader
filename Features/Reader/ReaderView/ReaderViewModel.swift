@@ -188,26 +188,12 @@ class ReaderViewModel {
     }
     
     func jumpToCharacter(_ characterCount: Int) {
-        let targetCount = max(0, min(characterCount, bookInfo.characterCount - 1))
-        
-        for chapter in bookInfo.chapterInfo.values {
-            guard let targetIndex = chapter.spineIndex, chapter.chapterCount > 0 else {
-                continue
-            }
-            
-            let start = chapter.currentTotal
-            let end = start + chapter.chapterCount
-            
-            if targetCount >= start && targetCount < end {
-                let chapterProgress = Double(targetCount - start) / Double(chapter.chapterCount)
-                if targetIndex == self.index {
-                    saveBookmark(progress: chapterProgress)
-                    bridge.send(.restoreProgress(chapterProgress))
-                } else {
-                    setIndex(index: targetIndex, progress: chapterProgress)
-                }
-                return
-            }
+        guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
+        if result.spineIndex == self.index {
+            saveBookmark(progress: result.progress)
+            bridge.send(.restoreProgress(result.progress))
+        } else {
+            setIndex(index: result.spineIndex, progress: result.progress)
         }
     }
     

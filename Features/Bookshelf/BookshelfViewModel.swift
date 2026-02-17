@@ -282,27 +282,11 @@ class BookshelfViewModel {
     private func importProgress(ttuProgress: TtuProgress, to url: URL) {
         guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
         
-        var chapterIndex = 0
-        var progress = 0.0
-        
-        for chapter in bookInfo.chapterInfo.values {
-            if chapter.chapterCount == 0 {
-                continue
-            }
-            
-            let start = chapter.currentTotal
-            let end = start + chapter.chapterCount
-            
-            if ttuProgress.exploredCharCount >= start && ttuProgress.exploredCharCount <= end {
-                chapterIndex = chapter.spineIndex ?? 0
-                progress = Double(ttuProgress.exploredCharCount - start) / Double(chapter.chapterCount)
-                break
-            }
-        }
+        let resolved = bookInfo.resolveCharacterPosition(ttuProgress.exploredCharCount)
         
         let bookmark = Bookmark(
-            chapterIndex: chapterIndex,
-            progress: progress,
+            chapterIndex: resolved?.spineIndex ?? 0,
+            progress: resolved?.progress ?? 0,
             characterCount: ttuProgress.exploredCharCount,
             lastModified: ttuProgress.lastBookmarkModified
         )
