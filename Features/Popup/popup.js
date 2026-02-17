@@ -792,7 +792,7 @@ function createEntryHeader(entry, idx) {
     const buttonsContainer = el('div', { className: 'header-buttons' });
     
     if (window.audioSources?.length) {
-        buttonsContainer.appendChild(createAudioButton(expression, reading || expression, idx));
+        buttonsContainer.appendChild(createAudioButton(expression, reading, idx));
     }
     
     buttonsContainer.appendChild(el('button', {
@@ -999,4 +999,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 30);
     }
 });
-
