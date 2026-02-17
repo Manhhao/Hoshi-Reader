@@ -11,6 +11,8 @@
 const KANJI_RANGE = '\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005';
 const KANJI_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const KANJI_SEGMENT_PATTERN = new RegExp(`[${KANJI_RANGE}]+|[^${KANJI_RANGE}]+`, 'g');
+const KANA_PATTERN = /[\u3040-\u30FF\uFF66-\uFF9F]/;
+const CJK_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
@@ -49,6 +51,37 @@ function toHiragana(text) {
 
 function toKebabCase(str) {
     return str.replace(/([A-Z])/g, (_, c, i) => (i ? '-' : '') + c.toLowerCase());
+}
+
+// https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/ja/japanese.js#L332
+function isStringPartiallyJapanese(text) {
+    if (!text) {
+        return false;
+    }
+    return KANA_PATTERN.test(text) || CJK_PATTERN.test(text);
+}
+
+// https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
+function isStringPartiallyChinese(text) {
+    if (!text) {
+        return false;
+    }
+    return CJK_PATTERN.test(text) || /[\u3100-\u312F\u31A0-\u31BF]/.test(text);
+}
+
+// https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/text-utilities.js#L28
+function getLanguageFromText(text, language) {
+    const partiallyJapanese = isStringPartiallyJapanese(text);
+    const partiallyChinese = isStringPartiallyChinese(text);
+    if (!['zh', 'yue'].includes(language ?? '')) {
+        if (partiallyJapanese) {
+            return 'ja';
+        }
+        if (partiallyChinese) {
+            return 'zh';
+        }
+    }
+    return language ?? null;
 }
 
 function openExternalLink(url) {
@@ -505,13 +538,19 @@ async function mineEntry(expression, reading, frequencies, pitches, definitionTa
     });
 }
 
-function renderStructuredContent(parent, node) {
+function renderStructuredContent(parent, node, language = null) {
     if (typeof node === 'string') {
         node.split(/\r?\n/).forEach((line, i) => {
             if (i > 0) {
                 parent.appendChild(document.createElement('br'));
             }
             if (line) {
+                if (!language && !parent.hasAttribute('lang')) {
+                    const detected = getLanguageFromText(line, language);
+                    if (detected) {
+                        parent.setAttribute('lang', detected);
+                    }
+                }
                 parent.appendChild(document.createTextNode(line));
             }
         });
@@ -533,7 +572,7 @@ function renderStructuredContent(parent, node) {
             return;
         }
         
-        node.forEach(child => renderStructuredContent(parent, child));
+        node.forEach(child => renderStructuredContent(parent, child, language));
         return;
     }
     
@@ -542,11 +581,12 @@ function renderStructuredContent(parent, node) {
     }
     
     if (node.type === 'structured-content') {
-        renderStructuredContent(parent, node.content);
+        renderStructuredContent(parent, node.content, language);
         return;
     }
     
     const element = document.createElement(node.tag || 'span');
+    let nextLanguage = language;
     
     if (node.href) {
         element.setAttribute('href', node.href);
@@ -567,6 +607,7 @@ function renderStructuredContent(parent, node) {
     
     if (node.lang) {
         element.setAttribute('lang', node.lang);
+        nextLanguage = node.lang;
     }
     
     if (node.data) {
@@ -582,7 +623,7 @@ function renderStructuredContent(parent, node) {
     }
     
     if (node.content) {
-        renderStructuredContent(element, node.content);
+        renderStructuredContent(element, node.content, nextLanguage);
     }
     
     parent.appendChild(element);
