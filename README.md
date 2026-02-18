@@ -45,10 +45,11 @@ A lightweight Japanese EPUB reader designed for iOS 26 with Yomitan dictionary s
 
 ## Libraries
 
-| Name | Description | License |
-| :--- | :--- | :--- |
-| [yomitandicts-cpp](https://github.com/Manhhao/yomitandicts-cpp) | Dictionary backend | GPLv3 |
-| [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | EPUB parsing library | MIT |
+| Name | License |
+| :--- | :--- |
+| [yomitandicts-cpp](https://github.com/Manhhao/yomitandicts-cpp) | GPLv3 |
+| [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | MIT |
+| [SwiftUI Introspect](https://github.com/siteline/swiftui-introspect) | MIT |
 
 ## Attribution
 

@@ -66,6 +66,12 @@ struct AboutView: View {
                     text: nil
                 )
                 LicenseRow(
+                    name: "SwiftUI Introspect",
+                    license: "MIT",
+                    url: "https://github.com/siteline/swiftui-introspect",
+                    text: mitLicense(copyright: "Copyright 2019 Timber Software")
+                )
+                LicenseRow(
                     name: "EPUBKit",
                     license: "MIT",
                     url: "https://github.com/witekbobrowski/EPUBKit",
