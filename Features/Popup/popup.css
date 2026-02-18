@@ -88,7 +88,7 @@ body {
 .frequency-group {
     display: inline-flex;
     font-size: 11px;
-    border: 1px solid var(--frequency-color, #77aaeb);
+    border: 1px solid var(--freq-tag-color, #77aaeb);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -96,7 +96,7 @@ body {
 .frequency-dict-label {
     display: flex;
     align-items: center;
-    background-color: var(--frequency-color, #77aaeb);
+    background-color: var(--freq-tag-color, #77aaeb);
     color: #fff;
     padding: 4px 4px;
 }
@@ -168,7 +168,7 @@ hr {
 }
 
 .pitch-dict-label {
-    background-color: var(--pitch-color, #94a6eb);
+    background-color: var(--pitch-tag-color, #94a6eb);
     color: #fff;
     padding: 2px 4px;
     border-radius: 4px;
