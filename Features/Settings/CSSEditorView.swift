@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import SwiftUIIntrospect
 
 struct CSSEditorView: View {
     let dictionaryManager = DictionaryManager.shared
@@ -21,6 +22,10 @@ struct CSSEditorView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($isFocused)
+                .introspect(.textEditor, on: .iOS(.v18, .v26)) { uiTextView in
+                    uiTextView.smartQuotesType = .no
+                    uiTextView.smartDashesType = .no
+                }
         }
     }
     

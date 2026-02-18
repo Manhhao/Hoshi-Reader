@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		482B74F22F4664CB00398222 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 482B74F12F4664CB00398222 /* SwiftUIIntrospect */; };
 		48568A5B2F1E7F5C00F9C126 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 48568A462F1E7F5C00F9C126 /* Assets.xcassets */; };
 		48568A5C2F1E7F5C00F9C126 /* HoshiIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 48568A472F1E7F5C00F9C126 /* HoshiIcon.icon */; };
 		48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */ = {isa = PBXBuildFile; productRef = 48568CD22F1EC9A400F9C126 /* EPUBKit */; };
@@ -111,6 +112,7 @@
 				4877899F2F1EF46500118D1E /* CYomitanDicts in Frameworks */,
 				487789CD2F1F01D600118D1E /* CYomitanDicts in Frameworks */,
 				48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */,
+				482B74F22F4664CB00398222 /* SwiftUIIntrospect in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -155,6 +157,7 @@
 				48568CD22F1EC9A400F9C126 /* EPUBKit */,
 				4877899E2F1EF46500118D1E /* CYomitanDicts */,
 				487789CC2F1F01D600118D1E /* CYomitanDicts */,
+				482B74F12F4664CB00398222 /* SwiftUIIntrospect */,
 			);
 			productName = "Hoshi Reader";
 			productReference = 48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */;
@@ -477,6 +480,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		482B74F12F4664CB00398222 /* SwiftUIIntrospect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */;
+			productName = SwiftUIIntrospect;
+		};
 		48568CD22F1EC9A400F9C126 /* EPUBKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = EPUBKit;
