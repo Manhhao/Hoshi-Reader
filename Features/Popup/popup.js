@@ -104,7 +104,7 @@ function closeOverlay() {
 
 // https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L171
 function createFuriganaSegment(text, reading) {
-    return {text, reading};
+    return { text, reading };
 }
 
 // https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L242
@@ -130,19 +130,19 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
     if (groupCount <= 0) {
         return reading.length === 0 ? [] : null;
     }
-
+    
     const group = groups[groupsStart];
-    const {isKana, text} = group;
+    const { isKana, text } = group;
     const textLength = text.length;
     if (isKana) {
-        const {textNormalized} = group;
+        const { textNormalized } = group;
         if (textNormalized !== null && readingNormalized.startsWith(textNormalized)) {
             const segments = segmentizeFurigana(
-                reading.substring(textLength),
-                readingNormalized.substring(textLength),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(textLength),
+                                                readingNormalized.substring(textLength),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (reading.startsWith(text)) {
                     segments.unshift(createFuriganaSegment(text, ''));
@@ -157,11 +157,11 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
         let result = null;
         for (let i = reading.length; i >= textLength; --i) {
             const segments = segmentizeFurigana(
-                reading.substring(i),
-                readingNormalized.substring(i),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(i),
+                                                readingNormalized.substring(i),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (result !== null) {
                     // More than one way to segmentize the tail; mark as ambiguous
@@ -184,22 +184,22 @@ function segmentFurigana(expression, reading) {
     if (!reading || reading === expression) {
         return [[expression, '']];
     }
-
+    
     const groups = [];
     const segmentMatches = expression.match(KANJI_SEGMENT_PATTERN) || [];
     for (const text of segmentMatches) {
         const isKana = !KANJI_PATTERN.test(text[0]);
         const textNormalized = isKana ? toHiragana(text) : null;
-        groups.push({isKana, text, textNormalized});
+        groups.push({ isKana, text, textNormalized });
     }
-
+    
     const readingNormalized = toHiragana(reading);
     const segments = segmentizeFurigana(reading, readingNormalized, groups, 0);
-
+    
     if (segments !== null) {
         return segments.map(seg => [seg.text, seg.reading]);
     }
-
+    
     return [[expression, reading]];
 }
 
@@ -750,49 +750,55 @@ function createTags(entry) {
     const hasDeinflection = deinflectionTrace?.length;
     const hasFrequencies = frequencies?.length;
     const hasPitches = pitches?.length;
-
+    
     if (!hasDeinflection && !hasFrequencies && !hasPitches) {
         return null;
     }
-
+    
     const container = el('div', { className: 'entry-tags' });
-
+    
     if (hasDeinflection) {
         const deinflectionDiv = el('div', { className: 'tag-row' });
         deinflectionTrace.forEach(tag => deinflectionDiv.appendChild(createDeinflectionTag(tag)));
         container.appendChild(deinflectionDiv);
     }
-
+    
     if (hasFrequencies) {
         const freqContainer = el('div', { className: 'tag-row' });
         frequencies.forEach(freq => freqContainer.appendChild(createFrequencyGroup(freq)));
         container.appendChild(freqContainer);
     }
-
+    
     if (hasPitches) {
         const pitchContainer = el('div', { className: 'pitch-list' });
         pitches.forEach(pitch => pitchContainer.appendChild(createPitchGroup(pitch, reading)));
         container.appendChild(pitchContainer);
     }
-
+    
     return container;
 }
 
 async function fetchAudioUrl(expression, reading) {
     const templates = window.audioSources;
     if (!templates?.length) return null;
-
+    
     for (const template of templates) {
-        const url = template
+        if (template.startsWith('tts://')) {
+            return template
             .replace('{term}', encodeURIComponent(expression))
             .replace('{reading}', encodeURIComponent(reading));
+        }
+        
+        const url = template
+        .replace('{term}', encodeURIComponent(expression))
+        .replace('{reading}', encodeURIComponent(reading));
         try {
             const response = await fetch(`proxy://?url=${encodeURIComponent(url)}`);
             const data = await response.json();
             if (data.type === 'audioSourceList' && data.audioSources?.[0]?.url) {
                 return data.audioSources[0].url;
             }
-        } catch {}
+        } catch { }
     }
     return null;
 }
@@ -802,13 +808,20 @@ function createAudioButton(expression, reading, entryIndex) {
         className: 'audio-button',
         textContent: '♪',
         onclick: async () => {
-            if (!audioUrls[entryIndex]) {
+            if (!audioUrls[entryIndex] && window.audioSources?.length) {
                 audioUrls[entryIndex] = await fetchAudioUrl(expression, reading);
             }
-            if (audioUrls[entryIndex]) {
+            
+            const url = audioUrls[entryIndex];
+            if (url) {
                 if (currentAudio) currentAudio.pause();
-                currentAudio = new Audio(audioUrls[entryIndex]);
-                currentAudio.play().catch(() => {});
+                
+                if (url.startsWith('tts://')) {
+                    webkit.messageHandlers.speakText.postMessage(url);
+                } else {
+                    currentAudio = new Audio(url);
+                    currentAudio.play().catch(() => { });
+                }
             } else {
                 button.textContent = '✕';
                 setTimeout(() => button.textContent = '♪', 1500);
@@ -855,11 +868,11 @@ function createGlossarySection(dictName, contents, isFirst) {
     if (!window.collapseDictionaries || isFirst) {
         details.open = true;
     }
-
+    
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
     details.appendChild(summary);
-
+    
     const dictWrapper = document.createElement('div');
     dictWrapper.setAttribute('data-dictionary', dictName);
     const compactCss = window.compactGlossaries ? `
@@ -887,7 +900,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             content: "";
         }
     ` : '';
-
+    
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
         textContent: `
@@ -939,12 +952,12 @@ function createGlossarySection(dictName, contents, isFirst) {
     
     const termTags = [...new Set(parseTags(contents[0]?.termTags))];
     const firstDefTags = new Set(parseTags(contents[0]?.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
-
+    
     const getFilteredDefTags = (definitionTags, isFirst) => {
         const tags = parseTags(definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
         return isFirst ? tags : tags.filter(tag => !firstDefTags.has(tag));
     };
-
+    
     const renderContent = (parent, content) => {
         try {
             renderStructuredContent(parent, JSON.parse(content));
@@ -952,12 +965,12 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderStructuredContent(parent, content);
         }
     };
-
+    
     const termTagsRow = createGlossaryTags(termTags);
     if (termTagsRow) {
         dictWrapper.appendChild(termTagsRow);
     }
-
+    
     if (contents.length > 1) {
         const ol = el('ol');
         contents.forEach((item, idx) => {
@@ -985,7 +998,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             dictWrapper.appendChild(wrapper);
         });
     }
-
+    
     details.appendChild(dictWrapper);
     return details;
 }
@@ -1024,13 +1037,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         container.appendChild(entryDiv);
     });
-
+    
     if (window.customCSS) {
         const customStyle = document.createElement('style');
         customStyle.textContent = window.customCSS;
         document.body.appendChild(customStyle);
     }
-
+    
     if (window.audioEnableAutoplay && window.audioSources?.length && window.lookupEntries.length > 0) {
         setTimeout(() => {
             const audioButton = document.querySelector('.audio-button');

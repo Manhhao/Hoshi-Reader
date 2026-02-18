@@ -47,6 +47,10 @@ struct AudioView: View {
             }
             
             Section("Add Source") {
+                NavigationLink("Add System TTS") {
+                    SystemTTSView()
+                }
+                
                 TextField("Name", text: $nameInput)
                 HStack {
                     TextField("URL", text: $urlInput)
