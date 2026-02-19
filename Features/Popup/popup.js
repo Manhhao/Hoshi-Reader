@@ -652,6 +652,14 @@ function renderStructuredContent(parent, node, language = null) {
         renderStructuredContent(element, node.content, nextLanguage);
     }
     
+    if (node.colSpan) {
+      element.setAttribute('colspan', node.colSpan);
+    }
+    
+    if (node.rowSpan) {
+      element.setAttribute('rowspan', node.rowSpan);
+    }
+    
     parent.appendChild(element);
 }
 
