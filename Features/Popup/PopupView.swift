@@ -133,9 +133,12 @@ struct PopupView: View {
                 if isVisible, let selectionData, let layout {
                     PopupWebView(
                         content: constructHtml(selectionData: selectionData),
+                        position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
                         onMine: { content in
                             AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
-                        }
+                        },
+                        onTextSelected: onTextSelected,
+                        onTapOutside: onTapOutside
                     )
                     .frame(width: layout.width, height: layout.height)
                     .glassEffect(.regular, in: .rect(cornerRadius: 8))
@@ -149,9 +152,12 @@ struct PopupView: View {
             if isVisible, let selectionData, let layout {
                 PopupWebView(
                     content: constructHtml(selectionData: selectionData),
+                    position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
                     onMine: { content in
                         AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
-                    }
+                    },
+                    onTextSelected: onTextSelected,
+                    onTapOutside: onTapOutside
                 )
                 .frame(width: layout.width, height: layout.height)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))

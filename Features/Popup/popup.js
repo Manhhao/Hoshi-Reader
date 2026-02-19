@@ -1039,4 +1039,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 30);
     }
+    
+    container.addEventListener('click', (e) => {
+        const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+        if (!target?.closest('.glossary-content')) {
+            webkit.messageHandlers.tapOutside.postMessage(null);
+            return;
+        }
+        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, 16);
+        if (!selected) {
+            webkit.messageHandlers.tapOutside.postMessage(null);
+            return;
+        }
+    });
 });

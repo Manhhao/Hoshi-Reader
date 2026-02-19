@@ -214,13 +214,19 @@ class ReaderViewModel {
         return true
     }
     
-    func handleTextSelection(_ selection: SelectionData, maxResults: Int) -> Int? {
+    func handleTextSelection(_ selection: SelectionData, maxResults: Int, isVertical: Bool) -> Int? {
         let lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults)
         var dictionaryStyles: [String: String] = [:]
         for style in LookupEngine.shared.getStyles() {
             dictionaryStyles[String(style.dict_name)] = String(style.styles)
         }
-        let popup = PopupItem(showPopup: false, currentSelection: selection, lookupResults: LookupEngine.shared.lookup(selection.text, maxResults: maxResults), dictionaryStyles: dictionaryStyles, isVertical: true)
+        let popup = PopupItem(
+            showPopup: false,
+            currentSelection: selection,
+            lookupResults: LookupEngine.shared.lookup(selection.text, maxResults: maxResults),
+            dictionaryStyles: dictionaryStyles,
+            isVertical: isVertical
+        )
         popups.append(popup)
         
         if let firstResult = lookupResults.first {
@@ -228,10 +234,8 @@ class ReaderViewModel {
                 popups[popups.count - 1].showPopup = true
             }
             return String(firstResult.matched).count
-        } else {
-            closePopups()
-            return nil
         }
+        return nil
     }
     
     func closePopups() {

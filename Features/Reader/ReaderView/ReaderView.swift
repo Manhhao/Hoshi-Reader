@@ -110,7 +110,7 @@ struct ReaderView: View {
                         onSaveBookmark: viewModel.saveBookmark,
                         onTextSelected: {
                             viewModel.closePopups()
-                            return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults)
+                            return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: userConfig.verticalWriting)
                         },
                         onTapOutside: viewModel.closePopups,
                         onPageTurn: {
@@ -142,7 +142,7 @@ struct ReaderView: View {
                             documentTitle: viewModel.document.title,
                             onTextSelected: {
                                 viewModel.closeChildPopups(parent: index)
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
                             },
                             onTapOutside: { viewModel.closeChildPopups(parent: index) },
                         )

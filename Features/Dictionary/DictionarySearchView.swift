@@ -23,6 +23,7 @@ struct DictionarySearchView: View {
     var body: some View {
         PopupWebView(
             content: content,
+            position: .zero,
             onMine: { minedContent in
                 AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
             }
