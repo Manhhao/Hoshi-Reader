@@ -355,9 +355,37 @@ function constructSingleGlossaryHtml(entryIndex) {
     const entry = window.lookupEntries[entryIndex];
     const glossaries = {};
     
+    let lastDict = null;
+    let currentGlossary = '';
+    
+    const flush = () => {
+        if (!lastDict) return;
+        
+        let html = `<div style="text-align: left;" class="yomitan-glossary"><ol>${currentGlossary}</ol>`;
+        const css = window.dictionaryStyles?.[lastDict] ?? '';
+        if (css) {
+            const scopedCss = constructDictCss(css, lastDict);
+            const formatted = scopedCss
+            .replace(/\s+/g, ' ')
+            .replace(/\s*\{\s*/g, ' { ')
+            .replace(/\s*\}\s*/g, ' }\n')
+            .replace(/;\s*/g, '; ')
+            .trim();
+            html += `<style>${formatted}</style>`;
+        }
+        html += `</div>`;
+        
+        glossaries[lastDict] = html;
+        currentGlossary = '';
+    };
+    
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
-        if (glossaries[dictName]) return;
+        const dictChanged = lastDict !== dictName;
+        if (dictChanged) {
+            flush();
+            lastDict = dictName;
+        }
         
         const tempDiv = document.createElement('div');
         try {
@@ -366,10 +394,13 @@ function constructSingleGlossaryHtml(entryIndex) {
             renderStructuredContent(tempDiv, g.content);
         }
         
-        const css = window.dictionaryStyles?.[dictName] ?? '';
-        glossaries[dictName] = `<div style="text-align: left;" class="yomitan-glossary"><ol>${glossaryLiElement(dictName, tempDiv.innerHTML, css)}</ol></div>`;
+        const content = applyTableStyles(tempDiv.innerHTML);
+        currentGlossary += dictChanged
+        ? `<li data-dictionary="${dictName}"><i>(${dictName})</i> <span>${content}</span></li>`
+        : `<li data-dictionary="${dictName}"><i>()</i> <span>${content}</span></li>`;
     });
     
+    flush();
     return glossaries;
 }
 
@@ -543,6 +574,8 @@ async function mineEntry(expression, reading, frequencies, pitches, definitionTa
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, definitionTags);
+    
+    console.log(singleGlossaries);
     
     if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);

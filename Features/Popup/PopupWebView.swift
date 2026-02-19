@@ -94,7 +94,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
-        
+        webView.isInspectable = true
         return webView
     }
     
