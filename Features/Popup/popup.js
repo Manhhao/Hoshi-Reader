@@ -448,6 +448,8 @@ function constructPitchCategories(pitches, reading, definitionTags) {
     return categories.join(',');
 }
 
+// Yomitan reference:
+// https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/data/anki-note-data-creator.js#L177-L221
 function getFrequencyHarmonicRank(frequencies) {
     if (!frequencies || frequencies.length === 0) {
         return DEFAULT_HARMONIC_RANK;
