@@ -454,13 +454,37 @@ function getFrequencyHarmonicRank(frequencies) {
     }
     
     const values = [];
+    const seenDictionaries = new Set();
     frequencies.forEach(freqGroup => {
-        freqGroup.frequencies?.forEach(freq => {
-            const val = freq.value;
-            if (val && val > 0) {
-                values.push(val);
+        const dictionary = freqGroup?.dictionary;
+        if (dictionary && seenDictionaries.has(dictionary)) {
+            return;
+        }
+        if (dictionary) {
+            seenDictionaries.add(dictionary);
+        }
+        
+        const firstFreq = freqGroup?.frequencies?.[0];
+        if (!firstFreq) {
+            return;
+        }
+        
+        const displayValue = firstFreq.displayValue;
+        if (displayValue != null) {
+            const match = String(displayValue).match(/^\d+/);
+            if (match) {
+                const parsed = Number.parseInt(match[0], 10);
+                if (parsed > 0) {
+                    values.push(parsed);
+                    return;
+                }
             }
-        });
+        }
+        
+        const val = firstFreq.value;
+        if (val && val > 0) {
+            values.push(val);
+        }
     });
     
     if (values.length === 0) {
@@ -468,7 +492,7 @@ function getFrequencyHarmonicRank(frequencies) {
     }
     
     const sumOfReciprocals = values.reduce((sum, val) => sum + (1 / val), 0);
-    return String(Math.round(values.length / sumOfReciprocals));
+    return String(Math.floor(values.length / sumOfReciprocals));
 }
 
 async function mineEntry(expression, reading, frequencies, pitches, definitionTags, matched, entryIndex, popupSelectionText) {
