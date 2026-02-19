@@ -224,7 +224,7 @@ class ReaderViewModel {
         popups.append(popup)
         
         if let firstResult = lookupResults.first {
-            withAnimation(.default.speed(2)) {
+            withAnimation(.default.speed(2.25)) {
                 popups[popups.count - 1].showPopup = true
             }
             return String(firstResult.matched).count
@@ -235,8 +235,16 @@ class ReaderViewModel {
     }
     
     func closePopups() {
-        withAnimation(.default.speed(2)) {
+        withAnimation(.default.speed(2.25)) {
             for index in popups.indices {
+                popups[index].showPopup = false
+            }
+        }
+    }
+    
+    func closeChildPopups(parent: Int) {
+        withAnimation(.default.speed(2.25)) {
+            for index in popups.indices.dropFirst(parent + 1) {
                 popups[index].showPopup = false
             }
         }

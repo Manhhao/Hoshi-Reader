@@ -108,8 +108,9 @@ struct ReaderView: View {
                         onNextChapter: viewModel.nextChapter,
                         onPreviousChapter: viewModel.previousChapter,
                         onSaveBookmark: viewModel.saveBookmark,
-                        onTextSelected: { selection in
-                            viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults)
+                        onTextSelected: {
+                            viewModel.closePopups()
+                            return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults)
                         },
                         onTapOutside: viewModel.closePopups,
                         onPageTurn: {
@@ -130,18 +131,20 @@ struct ReaderView: View {
                     ))
                     
                     ForEach(Array(viewModel.popups.enumerated()), id: \.element.id) { index, _ in
-                        PopupView(isVisible: $viewModel.popups[index].showPopup,
-                                  selectionData: viewModel.popups[index].currentSelection,
-                                  lookupResults: viewModel.popups[index].lookupResults,
-                                  dictionaryStyles: viewModel.popups[index].dictionaryStyles,
-                                  screenSize: geometry.size,
-                                  isVertical: viewModel.popups[index].isVertical,
-                                  coverURL: viewModel.coverURL,
-                                  documentTitle: viewModel.document.title,
-                                  onTextSelected: { selection in
-                                      viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults)
-                                  },
-                                  onTapOutside: {},
+                        PopupView(
+                            isVisible: $viewModel.popups[index].showPopup,
+                            selectionData: viewModel.popups[index].currentSelection,
+                            lookupResults: viewModel.popups[index].lookupResults,
+                            dictionaryStyles: viewModel.popups[index].dictionaryStyles,
+                            screenSize: geometry.size,
+                            isVertical: viewModel.popups[index].isVertical,
+                            coverURL: viewModel.coverURL,
+                            documentTitle: viewModel.document.title,
+                            onTextSelected: {
+                                viewModel.closeChildPopups(parent: index)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults)
+                            },
+                            onTapOutside: { viewModel.closeChildPopups(parent: index) },
                         )
                         .zIndex(Double(100 + index))
                     }
