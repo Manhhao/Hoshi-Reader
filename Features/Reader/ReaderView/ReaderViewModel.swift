@@ -234,6 +234,14 @@ class ReaderViewModel {
         }
     }
     
+    func closePopups() {
+        withAnimation(.default.speed(2)) {
+            for index in popups.indices {
+                popups[index].showPopup = false
+            }
+        }
+    }
+    
     func clearWebHighlight() {
         bridge.send(.clearHighlight)
     }

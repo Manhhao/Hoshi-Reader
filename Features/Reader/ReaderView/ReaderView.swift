@@ -111,7 +111,7 @@ struct ReaderView: View {
                         onTextSelected: { selection in
                             viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults)
                         },
-                        onTapOutside: {},
+                        onTapOutside: viewModel.closePopups,
                         onPageTurn: {
                             if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                 viewModel.startTracking()
@@ -238,12 +238,12 @@ struct ReaderView: View {
                     viewModel.jumpToChapter(index: spineIndex)
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
-                    //viewModel.closePopup()
+                    viewModel.closePopups()
                 } onJumpToCharacter: { count in
                     viewModel.jumpToCharacter(count)
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
-                    //viewModel.closePopup()
+                    viewModel.closePopups()
                 }
             case .statistics:
                 StatisticsView(viewModel: viewModel)
