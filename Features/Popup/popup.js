@@ -17,6 +17,9 @@ const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
 const audioUrls = {};
+// this might not cover every tag
+const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
+
 let currentAudio = null;
 let lastSelection = '';
 
@@ -663,6 +666,10 @@ function renderStructuredContent(parent, node, language = null) {
     parent.appendChild(element);
 }
 
+function isPartOfSpeech(tag) {
+    return POS_TAGS.has(tag) || tag.startsWith('v5');
+}
+
 function parseTags(raw) {
     return (raw || '').split(' ').filter(Boolean);
 }
@@ -889,11 +896,11 @@ function createGlossarySection(dictName, contents, isFirst) {
     if (!window.collapseDictionaries || isFirst) {
         details.open = true;
     }
-
+    
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
     details.appendChild(summary);
-
+    
     const dictWrapper = document.createElement('div');
     dictWrapper.setAttribute('data-dictionary', dictName);
     const compactCss = window.compactGlossaries ? `
@@ -921,7 +928,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             content: "";
         }
     ` : '';
-
+    
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
         textContent: `
@@ -972,13 +979,6 @@ function createGlossarySection(dictName, contents, isFirst) {
     }));
     
     const termTags = [...new Set(parseTags(contents[0]?.termTags))];
-    const firstDefTags = new Set(parseTags(contents[0]?.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
-
-    const getFilteredDefTags = (definitionTags, isFirst) => {
-        const tags = parseTags(definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
-        return isFirst ? tags : tags.filter(tag => !firstDefTags.has(tag));
-    };
-
     const renderContent = (parent, content) => {
         try {
             renderStructuredContent(parent, JSON.parse(content));
@@ -986,17 +986,22 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderStructuredContent(parent, content);
         }
     };
-
+    
     const termTagsRow = createGlossaryTags(termTags);
     if (termTagsRow) {
         dictWrapper.appendChild(termTagsRow);
     }
-
+    
     if (contents.length > 1) {
         const ol = el('ol');
-        contents.forEach((item, idx) => {
+        let prev = null;
+        contents.forEach((item) => {
             const li = el('li');
-            const tags = createGlossaryTags(getFilteredDefTags(item.definitionTags, idx === 0));
+            const parsedTags = parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+            const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+            const current = JSON.stringify(posTags);
+            const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prev !== null && prev === current));
+            const tags = createGlossaryTags(filteredTags);
             if (tags) {
                 li.appendChild(tags);
             }
@@ -1004,12 +1009,13 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderContent(content, item.content);
             li.appendChild(content);
             ol.appendChild(li);
+            prev = current;
         });
         dictWrapper.appendChild(ol);
     } else {
         contents.forEach((item, idx) => {
             const wrapper = el('div');
-            const tags = createGlossaryTags(getFilteredDefTags(item.definitionTags, idx === 0));
+            const tags = createGlossaryTags(parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
             if (tags) {
                 wrapper.appendChild(tags);
             }
@@ -1019,7 +1025,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             dictWrapper.appendChild(wrapper);
         });
     }
-
+    
     details.appendChild(dictWrapper);
     return details;
 }
