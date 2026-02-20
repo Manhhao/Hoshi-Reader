@@ -368,6 +368,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         if (dictChanged) {
             flush();
             lastDict = dictName;
+            prevTags = null;
         }
         
         const tempDiv = document.createElement('div');
@@ -385,11 +386,11 @@ function constructSingleGlossaryHtml(entryIndex) {
         const content = applyTableStyles(tempDiv.innerHTML);
         let listIdentifier = '';
         if (dictChanged) {
-            listIdentifier = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
+            label = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
         } else {
-            listIdentifier = tags ? `(${tags})` : '';
+            label = tags ? `(${tags})` : '';
         }
-        currentGlossary += `<li data-dictionary="${dictName}"><i>${listIdentifier}</i> <span>${content}</span></li>`
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`
         prevTags = currentTags;
     });
     
@@ -429,13 +430,13 @@ function constructGlossaryHtml(entryIndex) {
         if (dictName !== lastDict) {
             index = 1;
             lastDict = dictName;
-            label = tags ? `<i>(${index}, ${tags}, ${dictName})</i> ` : `<i>(${index}, ${dictName})</i> `
+            label = tags ? `(${index}, ${tags}, ${dictName})</i> ` : `<i>(${index}, ${dictName})`
         }
         else {
-            label = tags ? `<i>(${index}, ${tags})</i> ` : `<i>(${index})</i> `
+            label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}">${label}<span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}<i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
         prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
@@ -1025,13 +1026,13 @@ function createGlossarySection(dictName, contents, isFirst) {
     
     if (contents.length > 1) {
         const ol = el('ol');
-        let prev = null;
+        let prevTags = null;
         contents.forEach((item) => {
             const li = el('li');
             const parsedTags = parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
             const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
-            const current = JSON.stringify(posTags);
-            const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prev !== null && prev === current));
+            const currentTags = JSON.stringify(posTags);
+            const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
             const tags = createGlossaryTags(filteredTags);
             if (tags) {
                 li.appendChild(tags);
@@ -1040,7 +1041,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderContent(content, item.content);
             li.appendChild(content);
             ol.appendChild(li);
-            prev = current;
+            prevTags = currentTags;
         });
         dictWrapper.appendChild(ol);
     } else {
