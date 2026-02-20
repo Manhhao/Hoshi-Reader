@@ -28,6 +28,7 @@ struct DictionarySearchView: View {
                 AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
             }
         )
+        .id(content)
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea()
         .overlay(alignment: .bottom) {
