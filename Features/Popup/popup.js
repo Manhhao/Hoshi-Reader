@@ -17,6 +17,9 @@ const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
 const audioUrls = {};
+// this might not cover every tag
+const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
+
 let currentAudio = null;
 let lastSelection = '';
 
@@ -321,25 +324,6 @@ function applyTableStyles(html) {
     .replace(/<td(?=[>\s])/g, `<td style="${cellStyle}"`);
 }
 
-function glossaryLiElement(dictName, html, css) {
-    const content = applyTableStyles(html);
-    let result = `<li data-dictionary="${dictName}"><i>(${dictName})</i> <span>${content}</span>`;
-    
-    if (css) {
-        const scopedCss = constructDictCss(css, dictName);
-        const formatted = scopedCss
-        .replace(/\s+/g, ' ')
-        .replace(/\s*\{\s*/g, ' { ')
-        .replace(/\s*\}\s*/g, ' }\n')
-        .replace(/;\s*/g, '; ')
-        .trim();
-        result += `<style>${formatted}</style>`;
-    }
-    
-    result += '</li>';
-    return result;
-}
-
 // the following two should roughly match the glossary format of yomitan and keep compatibility with notetypes like lapis
 // 23.01.2026: this still has some differences
 // 24.01.2026: should be a bit closer now
@@ -352,9 +336,40 @@ function constructSingleGlossaryHtml(entryIndex) {
     const entry = window.lookupEntries[entryIndex];
     const glossaries = {};
     
+    let lastDict = null;
+    let currentGlossary = '';
+    let prevTags = null;
+    const flush = () => {
+        if (!lastDict) {
+            return;
+        }
+        
+        let html = `<div style="text-align: left;" class="yomitan-glossary"><ol>${currentGlossary}</ol>`;
+        const css = window.dictionaryStyles?.[lastDict] ?? '';
+        if (css) {
+            const scopedCss = constructDictCss(css, lastDict);
+            const formatted = scopedCss
+            .replace(/\s+/g, ' ')
+            .replace(/\s*\{\s*/g, ' { ')
+            .replace(/\s*\}\s*/g, ' }\n')
+            .replace(/;\s*/g, '; ')
+            .trim();
+            html += `<style>${formatted}</style>`;
+        }
+        html += `</div>`;
+        
+        glossaries[lastDict] = html;
+        currentGlossary = '';
+    };
+    
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
-        if (glossaries[dictName]) return;
+        const dictChanged = lastDict !== dictName;
+        if (dictChanged) {
+            flush();
+            lastDict = dictName;
+            prevTags = null;
+        }
         
         const tempDiv = document.createElement('div');
         try {
@@ -363,10 +378,23 @@ function constructSingleGlossaryHtml(entryIndex) {
             renderStructuredContent(tempDiv, g.content);
         }
         
-        const css = window.dictionaryStyles?.[dictName] ?? '';
-        glossaries[dictName] = `<div style="text-align: left;" class="yomitan-glossary"><ol>${glossaryLiElement(dictName, tempDiv.innerHTML, css)}</ol></div>`;
+        const parsedTags = parseTags(g.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+        const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+        const currentTags = JSON.stringify(posTags);
+        const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
+        const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
+        const content = applyTableStyles(tempDiv.innerHTML);
+        let listIdentifier = '';
+        if (dictChanged) {
+            label = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
+        } else {
+            label = tags ? `(${tags})` : '';
+        }
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`
+        prevTags = currentTags;
     });
     
+    flush();
     return glossaries;
 }
 
@@ -379,6 +407,7 @@ function constructGlossaryHtml(entryIndex) {
     let glossaryItems = '';
     const styles = {};
     let lastDict = '';
+    let prevTags = null;
     let index = 0;
     
     entry.glossaries.forEach(g => {
@@ -393,16 +422,22 @@ function constructGlossaryHtml(entryIndex) {
         
         index++;
         let label = '';
+        const parsedTags = parseTags(g.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+        const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+        const currentTags = JSON.stringify(posTags);
+        const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
+        const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
         if (dictName !== lastDict) {
             index = 1;
             lastDict = dictName;
-            label = `<i>(${index}, ${dictName})</i> `
+            label = tags ? `(${index}, ${tags}, ${dictName})</i> ` : `<i>(${index}, ${dictName})`
         }
         else {
-            label = `<i>(${index})</i> `
+            label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}">${label}<span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}<i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
         if (css && !styles[dictName]) {
@@ -663,6 +698,10 @@ function renderStructuredContent(parent, node, language = null) {
     parent.appendChild(element);
 }
 
+function isPartOfSpeech(tag) {
+    return POS_TAGS.has(tag) || tag.startsWith('v5');
+}
+
 function parseTags(raw) {
     return (raw || '').split(' ').filter(Boolean);
 }
@@ -889,11 +928,11 @@ function createGlossarySection(dictName, contents, isFirst) {
     if (!window.collapseDictionaries || isFirst) {
         details.open = true;
     }
-
+    
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
     details.appendChild(summary);
-
+    
     const dictWrapper = document.createElement('div');
     dictWrapper.setAttribute('data-dictionary', dictName);
     const compactCss = window.compactGlossaries ? `
@@ -921,7 +960,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             content: "";
         }
     ` : '';
-
+    
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
         textContent: `
@@ -972,13 +1011,6 @@ function createGlossarySection(dictName, contents, isFirst) {
     }));
     
     const termTags = [...new Set(parseTags(contents[0]?.termTags))];
-    const firstDefTags = new Set(parseTags(contents[0]?.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
-
-    const getFilteredDefTags = (definitionTags, isFirst) => {
-        const tags = parseTags(definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
-        return isFirst ? tags : tags.filter(tag => !firstDefTags.has(tag));
-    };
-
     const renderContent = (parent, content) => {
         try {
             renderStructuredContent(parent, JSON.parse(content));
@@ -986,17 +1018,22 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderStructuredContent(parent, content);
         }
     };
-
+    
     const termTagsRow = createGlossaryTags(termTags);
     if (termTagsRow) {
         dictWrapper.appendChild(termTagsRow);
     }
-
+    
     if (contents.length > 1) {
         const ol = el('ol');
-        contents.forEach((item, idx) => {
+        let prevTags = null;
+        contents.forEach((item) => {
             const li = el('li');
-            const tags = createGlossaryTags(getFilteredDefTags(item.definitionTags, idx === 0));
+            const parsedTags = parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+            const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+            const currentTags = JSON.stringify(posTags);
+            const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
+            const tags = createGlossaryTags(filteredTags);
             if (tags) {
                 li.appendChild(tags);
             }
@@ -1004,12 +1041,13 @@ function createGlossarySection(dictName, contents, isFirst) {
             renderContent(content, item.content);
             li.appendChild(content);
             ol.appendChild(li);
+            prevTags = currentTags;
         });
         dictWrapper.appendChild(ol);
     } else {
         contents.forEach((item, idx) => {
             const wrapper = el('div');
-            const tags = createGlossaryTags(getFilteredDefTags(item.definitionTags, idx === 0));
+            const tags = createGlossaryTags(parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
             if (tags) {
                 wrapper.appendChild(tags);
             }
@@ -1019,7 +1057,7 @@ function createGlossarySection(dictName, contents, isFirst) {
             dictWrapper.appendChild(wrapper);
         });
     }
-
+    
     details.appendChild(dictWrapper);
     return details;
 }
