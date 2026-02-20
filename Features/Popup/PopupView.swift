@@ -109,6 +109,7 @@ struct PopupView: View {
     let isVertical: Bool
     let coverURL: URL?
     let documentTitle: String?
+    var clearHighlightTrigger: Int = 0
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     
@@ -134,6 +135,7 @@ struct PopupView: View {
                     PopupWebView(
                         content: constructHtml(selectionData: selectionData),
                         position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
+                        clearHighlightTrigger: clearHighlightTrigger,
                         onMine: { content in
                             AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
                         },
@@ -153,6 +155,7 @@ struct PopupView: View {
                 PopupWebView(
                     content: constructHtml(selectionData: selectionData),
                     position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
+                    clearHighlightTrigger: clearHighlightTrigger,
                     onMine: { content in
                         AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
                     },

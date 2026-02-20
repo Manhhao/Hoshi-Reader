@@ -216,6 +216,18 @@ class ReaderViewModel {
         closeChildLookupPopups(&popups, parent: parent)
     }
     
+    func closePopupBranch(from index: Int) {
+        closeLookupPopupBranch(&popups, from: index)
+    }
+    
+    func visiblePopupAncestor(before index: Int) -> Int? {
+        visibleLookupPopupAncestor(in: popups, before: index)
+    }
+    
+    func clearPopupHighlight(at index: Int) {
+        markLookupPopupHighlightForClearing(&popups, at: index)
+    }
+    
     func clearWebHighlight() {
         bridge.send(.clearHighlight)
     }

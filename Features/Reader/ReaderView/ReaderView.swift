@@ -140,6 +140,7 @@ struct ReaderView: View {
                             isVertical: viewModel.popups[index].isVertical,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
+                            clearHighlightTrigger: viewModel.popups[index].clearHighlightTrigger,
                             onTextSelected: {
                                 viewModel.closeChildPopups(parent: index)
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
@@ -147,6 +148,22 @@ struct ReaderView: View {
                             onTapOutside: { viewModel.closeChildPopups(parent: index) },
                         )
                         .zIndex(Double(100 + index))
+                        .simultaneousGesture(DragGesture().onEnded({ value in
+                            guard userConfig.popupSwipeToDismiss,
+                                  viewModel.popups.indices.contains(index),
+                                  viewModel.popups[index].showPopup,
+                                  abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                                  abs(value.translation.height) < 20 else {
+                                return
+                            }
+                            
+                            if let ancestorIndex = viewModel.visiblePopupAncestor(before: index) {
+                                viewModel.clearPopupHighlight(at: ancestorIndex)
+                            } else {
+                                viewModel.clearWebHighlight()
+                            }
+                            viewModel.closePopupBranch(from: index)
+                        }))
                     }
                 }
             }

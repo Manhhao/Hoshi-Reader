@@ -16,6 +16,7 @@ struct PopupItem: Identifiable {
     var lookupResults: [LookupResult] = []
     var dictionaryStyles: [String: String] = [:]
     var isVertical: Bool
+    var clearHighlightTrigger: Int = 0
 }
 
 private let popupAnimationSpeed: Double = 2.25
@@ -63,4 +64,34 @@ func closeChildLookupPopups(_ popups: inout [PopupItem], parent: Int) {
             popups[index].showPopup = false
         }
     }
+}
+
+@MainActor
+func closeLookupPopupBranch(_ popups: inout [PopupItem], from index: Int) {
+    withAnimation(.default.speed(popupAnimationSpeed)) {
+        for popupIndex in popups.indices.dropFirst(index) {
+            popups[popupIndex].showPopup = false
+        }
+    }
+}
+
+func visibleLookupPopupAncestor(in popups: [PopupItem], before index: Int) -> Int? {
+    guard index > 0 else {
+        return nil
+    }
+    
+    for popupIndex in stride(from: index - 1, through: 0, by: -1) {
+        if popups[popupIndex].showPopup {
+            return popupIndex
+        }
+    }
+    
+    return nil
+}
+
+func markLookupPopupHighlightForClearing(_ popups: inout [PopupItem], at index: Int) {
+    guard popups.indices.contains(index) else {
+        return
+    }
+    popups[index].clearHighlightTrigger = popups[index].clearHighlightTrigger &+ 1
 }

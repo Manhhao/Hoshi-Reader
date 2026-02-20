@@ -15,6 +15,7 @@ struct DictionarySearchView: View {
     @State private var lastQuery: String = ""
     @State private var content: String = ""
     @State private var popups: [PopupItem] = []
+    @State private var rootClearHighlightTrigger: Int = 0
     @State private var hasSearched = false
     @State private var searchFocused = false
     @State private var didInitialQuery = false
@@ -27,6 +28,7 @@ struct DictionarySearchView: View {
                 PopupWebView(
                     content: content,
                     position: .zero,
+                    clearHighlightTrigger: rootClearHighlightTrigger,
                     onMine: { minedContent in
                         AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
                     },
@@ -48,6 +50,7 @@ struct DictionarySearchView: View {
                         isVertical: popups[index].isVertical,
                         coverURL: nil,
                         documentTitle: nil,
+                        clearHighlightTrigger: popups[index].clearHighlightTrigger,
                         onTextSelected: {
                             closeChildLookupPopups(&popups, parent: index)
                             return appendLookupPopup(to: &popups, selection: $0, maxResults: userConfig.maxResults, isVertical: false)
@@ -55,6 +58,22 @@ struct DictionarySearchView: View {
                         onTapOutside: { closeChildLookupPopups(&popups, parent: index) }
                     )
                     .zIndex(Double(100 + index))
+                    .simultaneousGesture(DragGesture().onEnded({ value in
+                        guard userConfig.popupSwipeToDismiss,
+                              popups.indices.contains(index),
+                              popups[index].showPopup,
+                              abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                              abs(value.translation.height) < 20 else {
+                            return
+                        }
+                        
+                        if let ancestorIndex = visibleLookupPopupAncestor(in: popups, before: index) {
+                            markLookupPopupHighlightForClearing(&popups, at: ancestorIndex)
+                        } else {
+                            rootClearHighlightTrigger = rootClearHighlightTrigger &+ 1
+                        }
+                        closeLookupPopupBranch(&popups, from: index)
+                    }))
                 }
             }
         }

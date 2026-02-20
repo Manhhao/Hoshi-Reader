@@ -61,6 +61,7 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
+    var clearHighlightTrigger: Int = 0
     var onMine: (([String: String]) -> Void)? = nil
     var onTextSelected: ((SelectionData) -> Int?)? = nil
     var onTapOutside: (() -> Void)? = nil
@@ -111,13 +112,20 @@ struct PopupWebView: UIViewRepresentable {
     
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
-        guard !context.coordinator.wasLoaded else {
+        
+        if !context.coordinator.wasLoaded {
+            context.coordinator.currentContent = content
+            context.coordinator.wasLoaded = true
+            context.coordinator.lastClearHighlightTrigger = clearHighlightTrigger
+            let html = buildHTML(content: content)
+            webView.loadHTMLString(html, baseURL: nil)
             return
         }
-        context.coordinator.currentContent = content
-        context.coordinator.wasLoaded = true
-        let html = buildHTML(content: content)
-        webView.loadHTMLString(html, baseURL: nil)
+        
+        if context.coordinator.lastClearHighlightTrigger != clearHighlightTrigger {
+            context.coordinator.lastClearHighlightTrigger = clearHighlightTrigger
+            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+        }
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -132,6 +140,7 @@ struct PopupWebView: UIViewRepresentable {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
+        var lastClearHighlightTrigger: Int = 0
         
         init(parent: PopupWebView) {
             self.parent = parent
@@ -160,7 +169,13 @@ struct PopupWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
-                let rect = CGRect(x: parent.position.x + x, y: parent.position.y + y, width: w, height: h)
+                let adjustedInset = message.webView?.scrollView.adjustedContentInset ?? .zero
+                let rect = CGRect(
+                    x: parent.position.x + x + adjustedInset.left,
+                    y: parent.position.y + y + adjustedInset.top,
+                    width: w,
+                    height: h
+                )
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
                 
                 if let highlightCount = parent.onTextSelected?(selectionData) {
