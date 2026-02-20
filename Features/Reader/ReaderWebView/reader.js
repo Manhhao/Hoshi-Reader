@@ -42,8 +42,14 @@ window.hoshiReader = {
         });
     },
     
+    getScrollElement() {
+        return document.scrollingElement || document.documentElement || document.body;
+    },
+    
     calculateProgress() {
         var vertical = this.isVertical();
+        var scrollEl = this.getScrollElement();
+        var currentScroll = vertical ? scrollEl.scrollTop : scrollEl.scrollLeft;
         var walker = this.createWalker();
         var totalChars = 0;
         var exploredChars = 0;
@@ -57,7 +63,8 @@ window.hoshiReader = {
                 var range = document.createRange();
                 range.selectNodeContents(node);
                 var rect = range.getBoundingClientRect();
-                if ((vertical ? rect.top : rect.left) < 0) {
+                var anchor = (vertical ? rect.top : rect.left) + currentScroll;
+                if (anchor < currentScroll) {
                     exploredChars += nodeLen;
                 }
             }
@@ -75,18 +82,29 @@ window.hoshiReader = {
         
         var vertical = this.isVertical();
         window.addEventListener('scroll', function () {
+            var scrollEl = window.hoshiReader.getScrollElement();
             if (vertical) {
-                var pageHeight = window.innerHeight;
-                var snappedScroll = Math.round(window.scrollY / pageHeight) * pageHeight;
-                if (Math.abs(window.scrollY - snappedScroll) > 1) {
+                var pageHeight = scrollEl.clientHeight;
+                if (pageHeight <= 0) {
+                    return;
+                }
+                var currentScroll = scrollEl.scrollTop;
+                var snappedScroll = Math.round(currentScroll / pageHeight) * pageHeight;
+                if (Math.abs(currentScroll - snappedScroll) > 1) {
+                    scrollEl.scrollTop = window.lastPageScroll;
                     window.scrollTo(0, window.lastPageScroll);
                 } else {
                     window.lastPageScroll = snappedScroll;
                 }
             } else {
-                var pageWidth = window.innerWidth;
-                var snappedScroll = Math.round(window.scrollX / pageWidth) * pageWidth;
-                if (Math.abs(window.scrollX - snappedScroll) > 1) {
+                var pageWidth = scrollEl.clientWidth;
+                if (pageWidth <= 0) {
+                    return;
+                }
+                var currentScroll = scrollEl.scrollLeft;
+                var snappedScroll = Math.round(currentScroll / pageWidth) * pageWidth;
+                if (Math.abs(currentScroll - snappedScroll) > 1) {
+                    scrollEl.scrollLeft = window.lastPageScroll;
                     window.scrollTo(window.lastPageScroll, 0);
                 } else {
                     window.lastPageScroll = snappedScroll;
@@ -112,23 +130,38 @@ window.hoshiReader = {
     
     paginate(direction) {
         var vertical = this.isVertical();
-        var pageSize = vertical ? window.innerHeight : window.innerWidth;
+        var scrollEl = this.getScrollElement();
+        var pageSize = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
         if (pageSize <= 0) return "limit";
         
         if (direction === "forward") {
-            var totalSize = vertical ? document.body.scrollHeight : document.body.scrollWidth;
+            var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
             var maxScroll = Math.max(0, totalSize - pageSize);
             var maxAlignedScroll = Math.floor(maxScroll / pageSize) * pageSize;
-            var currentScroll = vertical ? window.scrollY : window.scrollX;
+            var currentScroll = vertical ? scrollEl.scrollTop : scrollEl.scrollLeft;
             if ((currentScroll + pageSize) <= (maxAlignedScroll + 1)) {
-                if (vertical) { window.scrollBy(0, pageSize); } else { window.scrollBy(pageSize, 0); }
+                var targetScroll = Math.min(currentScroll + pageSize, maxScroll);
+                if (vertical) {
+                    scrollEl.scrollTop = targetScroll;
+                    window.scrollTo(0, targetScroll);
+                } else {
+                    scrollEl.scrollLeft = targetScroll;
+                    window.scrollTo(targetScroll, 0);
+                }
                 return "scrolled";
             }
             return "limit";
         } else {
-            var currentScroll = vertical ? window.scrollY : window.scrollX;
+            var currentScroll = vertical ? scrollEl.scrollTop : scrollEl.scrollLeft;
             if (currentScroll > 0) {
-                if (vertical) { window.scrollBy(0, -pageSize); } else { window.scrollBy(-pageSize, 0); }
+                var targetScroll = Math.max(0, currentScroll - pageSize);
+                if (vertical) {
+                    scrollEl.scrollTop = targetScroll;
+                    window.scrollTo(0, targetScroll);
+                } else {
+                    scrollEl.scrollLeft = targetScroll;
+                    window.scrollTo(targetScroll, 0);
+                }
                 return "scrolled";
             }
             return "limit";
@@ -138,7 +171,7 @@ window.hoshiReader = {
     restoreProgress(progress) {
         var notifyComplete = () => window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
         var vertical = this.isVertical();
-        var scrollEl = document.scrollingElement || document.documentElement || document.body;
+        var scrollEl = this.getScrollElement();
         var pageSize = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
         var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
         var maxScroll = Math.max(0, totalSize - pageSize);
