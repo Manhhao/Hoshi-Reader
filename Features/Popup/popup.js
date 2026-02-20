@@ -324,25 +324,6 @@ function applyTableStyles(html) {
     .replace(/<td(?=[>\s])/g, `<td style="${cellStyle}"`);
 }
 
-function glossaryLiElement(dictName, html, css) {
-    const content = applyTableStyles(html);
-    let result = `<li data-dictionary="${dictName}"><i>(${dictName})</i> <span>${content}</span>`;
-    
-    if (css) {
-        const scopedCss = constructDictCss(css, dictName);
-        const formatted = scopedCss
-        .replace(/\s+/g, ' ')
-        .replace(/\s*\{\s*/g, ' { ')
-        .replace(/\s*\}\s*/g, ' }\n')
-        .replace(/;\s*/g, '; ')
-        .trim();
-        result += `<style>${formatted}</style>`;
-    }
-    
-    result += '</li>';
-    return result;
-}
-
 // the following two should roughly match the glossary format of yomitan and keep compatibility with notetypes like lapis
 // 23.01.2026: this still has some differences
 // 24.01.2026: should be a bit closer now
@@ -357,9 +338,11 @@ function constructSingleGlossaryHtml(entryIndex) {
     
     let lastDict = null;
     let currentGlossary = '';
-    
+    let prevTags = null;
     const flush = () => {
-        if (!lastDict) return;
+        if (!lastDict) {
+            return;
+        }
         
         let html = `<div style="text-align: left;" class="yomitan-glossary"><ol>${currentGlossary}</ol>`;
         const css = window.dictionaryStyles?.[lastDict] ?? '';
@@ -394,10 +377,20 @@ function constructSingleGlossaryHtml(entryIndex) {
             renderStructuredContent(tempDiv, g.content);
         }
         
+        const parsedTags = parseTags(g.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+        const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+        const currentTags = JSON.stringify(posTags);
+        const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
+        const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
         const content = applyTableStyles(tempDiv.innerHTML);
-        currentGlossary += dictChanged
-        ? `<li data-dictionary="${dictName}"><i>(${dictName})</i> <span>${content}</span></li>`
-        : `<li data-dictionary="${dictName}"><i>()</i> <span>${content}</span></li>`;
+        let listIdentifier = '';
+        if (dictChanged) {
+            listIdentifier = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
+        } else {
+            listIdentifier = tags ? `(${tags})` : '';
+        }
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${listIdentifier}</i> <span>${content}</span></li>`
+        prevTags = currentTags;
     });
     
     flush();
@@ -413,6 +406,7 @@ function constructGlossaryHtml(entryIndex) {
     let glossaryItems = '';
     const styles = {};
     let lastDict = '';
+    let prevTags = null;
     let index = 0;
     
     entry.glossaries.forEach(g => {
@@ -427,16 +421,22 @@ function constructGlossaryHtml(entryIndex) {
         
         index++;
         let label = '';
+        const parsedTags = parseTags(g.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
+        const posTags = [...new Set(parsedTags.filter(isPartOfSpeech))].sort();
+        const currentTags = JSON.stringify(posTags);
+        const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
+        const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
         if (dictName !== lastDict) {
             index = 1;
             lastDict = dictName;
-            label = `<i>(${index}, ${dictName})</i> `
+            label = tags ? `<i>(${index}, ${tags}, ${dictName})</i> ` : `<i>(${index}, ${dictName})</i> `
         }
         else {
-            label = `<i>(${index})</i> `
+            label = tags ? `<i>(${index}, ${tags})</i> ` : `<i>(${index})</i> `
         }
         
         glossaryItems += `<li data-dictionary="${dictName}">${label}<span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
         if (css && !styles[dictName]) {
@@ -574,8 +574,6 @@ async function mineEntry(expression, reading, frequencies, pitches, definitionTa
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, definitionTags);
-    
-    console.log(singleGlossaries);
     
     if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);
