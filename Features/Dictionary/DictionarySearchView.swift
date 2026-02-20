@@ -14,6 +14,8 @@ struct DictionarySearchView: View {
     @State private var query: String = ""
     @State private var lastQuery: String = ""
     @State private var content: String = ""
+    @State private var popups: [PopupItem] = []
+    @State private var rootClearHighlightTrigger: Int = 0
     @State private var hasSearched = false
     @State private var searchFocused = false
     @State private var didInitialQuery = false
@@ -21,12 +23,60 @@ struct DictionarySearchView: View {
     var initialAutofocus: Bool = true
     
     var body: some View {
-        PopupWebView(
-            content: content,
-            onMine: { minedContent in
-                AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+        GeometryReader { geometry in
+            ZStack {
+                PopupWebView(
+                    content: content,
+                    position: .zero,
+                    clearHighlightTrigger: rootClearHighlightTrigger,
+                    onMine: { minedContent in
+                        AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+                    },
+                    onTextSelected: {
+                        closeLookupPopups(&popups)
+                        return appendLookupPopup(to: &popups, selection: $0, maxResults: userConfig.maxResults, isVertical: false)
+                    },
+                    onTapOutside: { closeLookupPopups(&popups) }
+                )
+                .id(content)
+                
+                ForEach(Array(popups.enumerated()), id: \.element.id) { index, _ in
+                    PopupView(
+                        isVisible: $popups[index].showPopup,
+                        selectionData: popups[index].currentSelection,
+                        lookupResults: popups[index].lookupResults,
+                        dictionaryStyles: popups[index].dictionaryStyles,
+                        screenSize: geometry.size,
+                        isVertical: popups[index].isVertical,
+                        coverURL: nil,
+                        documentTitle: nil,
+                        clearHighlightTrigger: popups[index].clearHighlightTrigger,
+                        onTextSelected: {
+                            closeChildLookupPopups(&popups, parent: index)
+                            return appendLookupPopup(to: &popups, selection: $0, maxResults: userConfig.maxResults, isVertical: false)
+                        },
+                        onTapOutside: { closeChildLookupPopups(&popups, parent: index) }
+                    )
+                    .zIndex(Double(100 + index))
+                    .simultaneousGesture(DragGesture().onEnded({ value in
+                        guard userConfig.popupSwipeToDismiss,
+                              popups.indices.contains(index),
+                              popups[index].showPopup,
+                              abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                              abs(value.translation.height) < 20 else {
+                            return
+                        }
+                        
+                        if let ancestorIndex = visibleLookupPopupAncestor(in: popups, before: index) {
+                            markLookupPopupHighlightForClearing(&popups, at: ancestorIndex)
+                        } else {
+                            rootClearHighlightTrigger = rootClearHighlightTrigger &+ 1
+                        }
+                        closeLookupPopupBranch(&popups, from: index)
+                    }))
+                }
             }
-        )
+        }
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea()
         .overlay(alignment: .bottom) {
@@ -55,6 +105,7 @@ struct DictionarySearchView: View {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         hasSearched = true
         lastQuery = trimmed
+        popups.removeAll()
         
         guard !trimmed.isEmpty else {
             content = ""

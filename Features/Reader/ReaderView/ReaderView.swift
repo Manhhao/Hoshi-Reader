@@ -108,10 +108,11 @@ struct ReaderView: View {
                         onNextChapter: viewModel.nextChapter,
                         onPreviousChapter: viewModel.previousChapter,
                         onSaveBookmark: viewModel.saveBookmark,
-                        onTextSelected: { selection in
-                            viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults)
+                        onTextSelected: {
+                            viewModel.closePopups()
+                            return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: userConfig.verticalWriting)
                         },
-                        onTapOutside: viewModel.closePopup,
+                        onTapOutside: viewModel.closePopups,
                         onPageTurn: {
                             if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                 viewModel.startTracking()
@@ -129,26 +130,41 @@ struct ReaderView: View {
                         hideFurigana: userConfig.readerHideFurigana
                     ))
                     
-                    PopupView(
-                        isVisible: $viewModel.showPopup,
-                        selectionData: viewModel.currentSelection,
-                        lookupResults: viewModel.lookupResults,
-                        dictionaryStyles: viewModel.dictionaryStyles,
-                        screenSize: geometry.size,
-                        isVertical: userConfig.verticalWriting,
-                        coverURL: viewModel.coverURL,
-                        documentTitle: viewModel.document.title
-                    )
-                    .simultaneousGesture(DragGesture().onEnded({ value in
-                        if userConfig.popupSwipeToDismiss &&
-                            viewModel.showPopup &&
-                            (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
-                            (abs(value.translation.height) < 20) {
-                            viewModel.clearWebHighlight()
-                            viewModel.closePopup()
-                        }
-                    }))
-                    .zIndex(100)
+                    ForEach(Array(viewModel.popups.enumerated()), id: \.element.id) { index, _ in
+                        PopupView(
+                            isVisible: $viewModel.popups[index].showPopup,
+                            selectionData: viewModel.popups[index].currentSelection,
+                            lookupResults: viewModel.popups[index].lookupResults,
+                            dictionaryStyles: viewModel.popups[index].dictionaryStyles,
+                            screenSize: geometry.size,
+                            isVertical: viewModel.popups[index].isVertical,
+                            coverURL: viewModel.coverURL,
+                            documentTitle: viewModel.document.title,
+                            clearHighlightTrigger: viewModel.popups[index].clearHighlightTrigger,
+                            onTextSelected: {
+                                viewModel.closeChildPopups(parent: index)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
+                            },
+                            onTapOutside: { viewModel.closeChildPopups(parent: index) },
+                        )
+                        .zIndex(Double(100 + index))
+                        .simultaneousGesture(DragGesture().onEnded({ value in
+                            guard userConfig.popupSwipeToDismiss,
+                                  viewModel.popups.indices.contains(index),
+                                  viewModel.popups[index].showPopup,
+                                  abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                                  abs(value.translation.height) < 20 else {
+                                return
+                            }
+                            
+                            if let ancestorIndex = viewModel.visiblePopupAncestor(before: index) {
+                                viewModel.clearPopupHighlight(at: ancestorIndex)
+                            } else {
+                                viewModel.clearWebHighlight()
+                            }
+                            viewModel.closePopupBranch(from: index)
+                        }))
+                    }
                 }
             }
             
@@ -246,12 +262,12 @@ struct ReaderView: View {
                     viewModel.jumpToChapter(index: spineIndex)
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
-                    viewModel.closePopup()
+                    viewModel.closePopups()
                 } onJumpToCharacter: { count in
                     viewModel.jumpToCharacter(count)
                     viewModel.activeSheet = nil
                     viewModel.clearWebHighlight()
-                    viewModel.closePopup()
+                    viewModel.closePopups()
                 }
             case .statistics:
                 StatisticsView(viewModel: viewModel)

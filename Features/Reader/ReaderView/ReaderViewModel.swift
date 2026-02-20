@@ -9,7 +9,6 @@
 
 import EPUBKit
 import SwiftUI
-import CYomitanDicts
 
 enum ActiveSheet: Identifiable {
     case appearance
@@ -69,10 +68,7 @@ class ReaderViewModel {
     let bridge = WebViewBridge()
     
     // lookups
-    var showPopup = false
-    var currentSelection: SelectionData?
-    var lookupResults: [LookupResult] = []
-    var dictionaryStyles: [String: String] = [:]
+    var popups: [PopupItem] = []
     
     // stats
     var isTracking = false
@@ -208,29 +204,28 @@ class ReaderViewModel {
         return true
     }
     
-    func handleTextSelection(_ selection: SelectionData, maxResults: Int) -> Int? {
-        currentSelection = selection
-        lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults)
-        dictionaryStyles = [:]
-        for style in LookupEngine.shared.getStyles() {
-            dictionaryStyles[String(style.dict_name)] = String(style.styles)
-        }
-        
-        if let firstResult = lookupResults.first {
-            withAnimation(.default.speed(2)) {
-                showPopup = true
-            }
-            return String(firstResult.matched).count
-        } else {
-            closePopup()
-            return nil
-        }
+    func handleTextSelection(_ selection: SelectionData, maxResults: Int, isVertical: Bool) -> Int? {
+        appendLookupPopup(to: &popups, selection: selection, maxResults: maxResults, isVertical: isVertical)
     }
     
-    func closePopup() {
-        withAnimation(.default.speed(2)) {
-            showPopup = false
-        }
+    func closePopups() {
+        closeLookupPopups(&popups)
+    }
+    
+    func closeChildPopups(parent: Int) {
+        closeChildLookupPopups(&popups, parent: parent)
+    }
+    
+    func closePopupBranch(from index: Int) {
+        closeLookupPopupBranch(&popups, from: index)
+    }
+    
+    func visiblePopupAncestor(before index: Int) -> Int? {
+        visibleLookupPopupAncestor(in: popups, before: index)
+    }
+    
+    func clearPopupHighlight(at index: Int) {
+        markLookupPopupHighlightForClearing(&popups, at: index)
     }
     
     func clearWebHighlight() {

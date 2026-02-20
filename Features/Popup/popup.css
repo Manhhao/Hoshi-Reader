@@ -204,6 +204,11 @@ hr {
     margin-right: 1px;
 }
 
+::highlight(hoshi-selection) {
+    background-color: rgba(160, 160, 160, 0.4) !important;
+    color: inherit;
+}
+
 @media (prefers-color-scheme: light) {
     
     html,

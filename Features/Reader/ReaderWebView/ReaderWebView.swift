@@ -177,6 +177,14 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
         
+        private var selectionJs: String {
+            guard let url = Bundle.main.url(forResource: "selection", withExtension: "js"),
+                  let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
+                return ""
+            }
+            return js
+        }
+        
         private var readerJs: String {
             guard let url = Bundle.main.url(forResource: "reader", withExtension: "js"),
                   let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
@@ -308,6 +316,7 @@ struct ReaderWebView: UIViewRepresentable {
                 document.head.appendChild(style);
                 
                 \(spacerJs)
+                \(selectionJs)
                 \(readerJs)
                 window.hoshiReader.registerCopyText();
                 
@@ -411,7 +420,7 @@ struct ReaderWebView: UIViewRepresentable {
             let point = gesture.location(in: webView)
             let maxLength = parent.maxSelectionLength
             
-            let script = "window.hoshiReader.selectText(\(point.x), \(point.y), \(maxLength))"
+            let script = "window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength))"
             
             webView.evaluateJavaScript(script) { result, _ in
                 if result is NSNull || result == nil {
@@ -439,14 +448,14 @@ struct ReaderWebView: UIViewRepresentable {
                 return
             }
             
-            webView.evaluateJavaScript("window.hoshiReader.highlightSelection(\(count))") { _, _ in }
+            webView.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(count))") { _, _ in }
         }
         
         func clearHighlight() {
             guard let webView = webView else {
                 return
             }
-            webView.evaluateJavaScript("window.hoshiReader.clearHighlight()") { _, _ in }
+            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()") { _, _ in }
         }
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {

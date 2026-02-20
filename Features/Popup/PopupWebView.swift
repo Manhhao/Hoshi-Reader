@@ -60,7 +60,17 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
 
 struct PopupWebView: UIViewRepresentable {
     let content: String
+    let position: CGPoint
+    var clearHighlightTrigger: Int = 0
     var onMine: (([String: String]) -> Void)? = nil
+    var onTextSelected: ((SelectionData) -> Int?)? = nil
+    var onTapOutside: (() -> Void)? = nil
+    
+    private static let selectionJs: String = {
+        guard let url = Bundle.main.url(forResource: "selection", withExtension: "js"),
+              let js = try? String(contentsOf: url, encoding: .utf8) else { return "" }
+        return js
+    }()
     
     private static let popupJs: String = {
         guard let url = Bundle.main.url(forResource: "popup", withExtension: "js"),
@@ -79,13 +89,15 @@ struct PopupWebView: UIViewRepresentable {
     }()
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(onMine: onMine)
+        Coordinator(parent: self)
     }
     
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "mineEntry")
         config.userContentController.add(context.coordinator, name: "openLink")
+        config.userContentController.add(context.coordinator, name: "textSelected")
+        config.userContentController.add(context.coordinator, name: "tapOutside")
         config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
         config.mediaTypesRequiringUserActionForPlayback = []
         
@@ -98,11 +110,20 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.onMine = onMine
-        if context.coordinator.currentContent != content {
+        context.coordinator.parent = self
+        
+        if !context.coordinator.wasLoaded {
             context.coordinator.currentContent = content
+            context.coordinator.wasLoaded = true
+            context.coordinator.lastClearHighlightTrigger = clearHighlightTrigger
             let html = buildHTML(content: content)
             webView.loadHTMLString(html, baseURL: nil)
+            return
+        }
+        
+        if context.coordinator.lastClearHighlightTrigger != clearHighlightTrigger {
+            context.coordinator.lastClearHighlightTrigger = clearHighlightTrigger
+            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
         }
     }
     
@@ -110,23 +131,55 @@ struct PopupWebView: UIViewRepresentable {
         webView.evaluateJavaScript("stopAudio()")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "openLink")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "textSelected")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "tapOutside")
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler {
-        var onMine: (([String: String]) -> Void)?
+        var parent: PopupWebView
         var currentContent: String = ""
+        var wasLoaded: Bool = false
+        var lastClearHighlightTrigger: Int = 0
         
-        init(onMine: (([String: String]) -> Void)?) {
-            self.onMine = onMine
+        init(parent: PopupWebView) {
+            self.parent = parent
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "mineEntry", let content = message.body as? [String: String] {
-                onMine?(content)
+                parent.onMine?(content)
             }
-            if message.name == "openLink", let urlString = message.body as? String,
+            else if message.name == "openLink", let urlString = message.body as? String,
                let url = URL(string: urlString) {
                 UIApplication.shared.open(url)
+            }
+            else if message.name == "tapOutside" {
+                parent.onTapOutside?()
+                message.webView?.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+            }
+            else if message.name == "textSelected" {
+                guard let body = message.body as? [String: Any],
+                      let text = body["text"] as? String,
+                      let sentence = body["sentence"] as? String,
+                      let rectData = body["rect"] as? [String: Any],
+                      let x = rectData["x"] as? CGFloat,
+                      let y = rectData["y"] as? CGFloat,
+                      let w = rectData["width"] as? CGFloat,
+                      let h = rectData["height"] as? CGFloat else {
+                    return
+                }
+                let adjustedInset = message.webView?.scrollView.adjustedContentInset ?? .zero
+                let rect = CGRect(
+                    x: parent.position.x + x + adjustedInset.left,
+                    y: parent.position.y + y + adjustedInset.top,
+                    width: w,
+                    height: h
+                )
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
+                
+                if let highlightCount = parent.onTextSelected?(selectionData) {
+                    message.webView?.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(highlightCount))")
+                }
             }
         }
     }
@@ -138,6 +191,7 @@ struct PopupWebView: UIViewRepresentable {
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <style>\(Self.popupCss)</style>
+            <script>\(Self.selectionJs)</script>
             <script>\(Self.popupJs)</script>
         </head>
         <body>
