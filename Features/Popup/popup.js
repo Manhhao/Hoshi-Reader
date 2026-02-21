@@ -22,11 +22,47 @@ const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'v
 
 let currentAudio = null;
 let lastSelection = '';
+const WORD_AUDIO_PLAY_TIMEOUT_MS = 8000;
+let wordAudioPlayRequestId = 0;
+let latestAudioPlaybackAttemptId = 0;
+let activeWordAudioRequestId = null;
+const pendingWordAudioPlayRequests = new Map();
+
+function settleWordAudioPlayRequest(requestId, success) {
+    const pendingRequest = pendingWordAudioPlayRequests.get(requestId);
+    if (!pendingRequest) return;
+    clearTimeout(pendingRequest.timeoutId);
+    pendingRequest.resolve(Boolean(success));
+    pendingWordAudioPlayRequests.delete(requestId);
+}
+
+function rejectPendingWordAudioPlayRequests() {
+    const pendingRequestIds = Array.from(pendingWordAudioPlayRequests.keys());
+    for (const requestId of pendingRequestIds) {
+        settleWordAudioPlayRequest(requestId, false);
+    }
+    activeWordAudioRequestId = null;
+}
+
+function resolveWordAudioPlayRequest(requestId, success) {
+    settleWordAudioPlayRequest(requestId, success);
+    if (activeWordAudioRequestId === requestId) {
+        activeWordAudioRequestId = null;
+    }
+}
+
+window.__onNativeWordAudioResult = resolveWordAudioPlayRequest;
 
 function stopAudio() {
+    latestAudioPlaybackAttemptId += 1;
+    rejectPendingWordAudioPlayRequests();
     if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.src = '';
+        if (typeof currentAudio.pause === 'function') {
+            currentAudio.pause();
+        }
+        if ('src' in currentAudio) {
+            currentAudio.src = '';
+        }
         currentAudio = null;
     }
 }
@@ -870,21 +906,93 @@ async function fetchAudioUrl(expression, reading) {
     return null;
 }
 
+function stopNativeWordAudio() {
+    const stopHandler = window.webkit?.messageHandlers?.stopWordAudio;
+    if (!stopHandler) return;
+    stopHandler.postMessage(null);
+}
+
+async function playWordAudio(audioUrl) {
+    const playHandler = window.webkit?.messageHandlers?.playWordAudio;
+    if (!playHandler) {
+        return false;
+    }
+
+    if (activeWordAudioRequestId !== null) {
+        settleWordAudioPlayRequest(activeWordAudioRequestId, false);
+    }
+
+    return await new Promise(resolve => {
+        const requestId = ++wordAudioPlayRequestId;
+        activeWordAudioRequestId = requestId;
+        const timeoutId = setTimeout(() => {
+            if (activeWordAudioRequestId === requestId) {
+                activeWordAudioRequestId = null;
+            }
+            settleWordAudioPlayRequest(requestId, false);
+        }, WORD_AUDIO_PLAY_TIMEOUT_MS);
+
+        pendingWordAudioPlayRequests.set(requestId, { resolve, timeoutId });
+
+        try {
+            playHandler.postMessage({
+                url: audioUrl,
+                mode: window.audioPlaybackMode || 'interrupt',
+                requestId
+            });
+        } catch {
+            if (activeWordAudioRequestId === requestId) {
+                activeWordAudioRequestId = null;
+            }
+            settleWordAudioPlayRequest(requestId, false);
+        }
+    });
+}
+
+function showAudioError(button, attemptId) {
+    button.textContent = '✕';
+    setTimeout(() => {
+        if (attemptId === latestAudioPlaybackAttemptId) {
+            button.textContent = '♪';
+        }
+    }, 1500);
+}
+
 function createAudioButton(expression, reading, entryIndex) {
     const button = el('button', {
         className: 'audio-button',
         textContent: '♪',
         onclick: async () => {
+            const playbackAttemptId = ++latestAudioPlaybackAttemptId;
             if (!audioUrls[entryIndex]) {
                 audioUrls[entryIndex] = await fetchAudioUrl(expression, reading);
+                if (playbackAttemptId !== latestAudioPlaybackAttemptId) {
+                    return;
+                }
             }
             if (audioUrls[entryIndex]) {
                 if (currentAudio) currentAudio.pause();
-                currentAudio = new Audio(audioUrls[entryIndex]);
-                currentAudio.play().catch(() => {});
+                try {
+                    const didPlay = await playWordAudio(audioUrls[entryIndex]);
+                    if (playbackAttemptId !== latestAudioPlaybackAttemptId) {
+                        return;
+                    }
+                    if (!didPlay) {
+                        throw new Error('native playback failed');
+                    }
+                    currentAudio = { pause: stopNativeWordAudio };
+                } catch {
+                    if (playbackAttemptId !== latestAudioPlaybackAttemptId) {
+                        return;
+                    }
+                    currentAudio = null;
+                    showAudioError(button, playbackAttemptId);
+                }
             } else {
-                button.textContent = '✕';
-                setTimeout(() => button.textContent = '♪', 1500);
+                if (playbackAttemptId !== latestAudioPlaybackAttemptId) {
+                    return;
+                }
+                showAudioError(button, playbackAttemptId);
             }
         }
     });
