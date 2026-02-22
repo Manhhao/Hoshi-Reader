@@ -16,20 +16,11 @@ const CJK_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
-const audioUrls = {};
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
-
+const audioUrls = {};
 let currentAudio = null;
 let lastSelection = '';
-
-function stopAudio() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.src = '';
-        currentAudio = null;
-    }
-}
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -854,13 +845,13 @@ function createTags(entry) {
 async function fetchAudioUrl(expression, reading) {
     const templates = window.audioSources;
     if (!templates?.length) return null;
-
+    
     for (const template of templates) {
         const url = template
-            .replace('{term}', encodeURIComponent(expression))
-            .replace('{reading}', encodeURIComponent(reading));
+        .replace('{term}', encodeURIComponent(expression))
+        .replace('{reading}', encodeURIComponent(reading));
         try {
-            const response = await fetch(`proxy://?url=${encodeURIComponent(url)}`);
+            const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
             const data = await response.json();
             if (data.type === 'audioSourceList' && data.audioSources?.[0]?.url) {
                 return data.audioSources[0].url;
@@ -868,6 +859,30 @@ async function fetchAudioUrl(expression, reading) {
         } catch {}
     }
     return null;
+}
+
+function playWordAudio(audioUrl) {
+    const playHandler = window.webkit?.messageHandlers?.playWordAudio;
+    if (!playHandler) {
+        return false;
+    }
+    
+    try {
+        playHandler.postMessage({
+            url: audioUrl,
+            mode: window.audioPlaybackMode || 'interrupt'
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function showAudioError(button) {
+    button.textContent = '✕';
+    setTimeout(() => {
+        button.textContent = '♪';
+    }, 1500);
 }
 
 function createAudioButton(expression, reading, entryIndex) {
@@ -878,13 +893,12 @@ function createAudioButton(expression, reading, entryIndex) {
             if (!audioUrls[entryIndex]) {
                 audioUrls[entryIndex] = await fetchAudioUrl(expression, reading);
             }
-            if (audioUrls[entryIndex]) {
-                if (currentAudio) currentAudio.pause();
-                currentAudio = new Audio(audioUrls[entryIndex]);
-                currentAudio.play().catch(() => {});
-            } else {
-                button.textContent = '✕';
-                setTimeout(() => button.textContent = '♪', 1500);
+            if (!audioUrls[entryIndex]) {
+                showAudioError(button);
+                return;
+            }
+            if (!playWordAudio(audioUrls[entryIndex])) {
+                showAudioError(button);
             }
         }
     });

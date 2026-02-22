@@ -14,6 +14,12 @@ enum SyncMode: String, CaseIterable, Codable {
     case manual = "Manual"
 }
 
+enum AudioPlaybackMode: String, CaseIterable, Codable {
+    case interrupt = "interrupt"
+    case duck = "duck"
+    case mix = "mix"
+}
+
 enum Themes: String, CaseIterable, Codable {
     case system = "System"
     case light = "Light"
@@ -159,6 +165,10 @@ class UserConfig {
     var audioEnableAutoplay: Bool {
         didSet { UserDefaults.standard.set(audioEnableAutoplay, forKey: "audioEnableAutoplay") }
     }
+
+    var audioPlaybackMode: AudioPlaybackMode {
+        didSet { UserDefaults.standard.set(audioPlaybackMode.rawValue, forKey: "audioPlaybackMode") }
+    }
     
     var enabledAudioSources: [String] {
         audioSources.filter { $0.isEnabled }.map { $0.url }
@@ -246,6 +256,8 @@ class UserConfig {
         }
         self.enableLocalAudio = defaults.object(forKey: "enableLocalAudio") as? Bool ?? false
         self.audioEnableAutoplay = defaults.object(forKey: "audioEnableAutoplay") as? Bool ?? false
+        self.audioPlaybackMode = defaults.string(forKey: "audioPlaybackMode")
+            .flatMap(AudioPlaybackMode.init) ?? .interrupt
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
         
         self.enableStatistics = defaults.object(forKey: "enableStatistics") as? Bool ?? false

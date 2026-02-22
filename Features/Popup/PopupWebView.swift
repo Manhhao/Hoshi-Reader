@@ -9,7 +9,7 @@
 import SwiftUI
 import WebKit
 
-class ProxyHandler: NSObject, WKURLSchemeHandler {
+class AudioHandler: NSObject, WKURLSchemeHandler {
     private var tasks = Set<ObjectIdentifier>()
     
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
@@ -86,7 +86,8 @@ struct PopupWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "mineEntry")
         config.userContentController.add(context.coordinator, name: "openLink")
-        config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
+        config.userContentController.add(context.coordinator, name: "playWordAudio")
+        config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.mediaTypesRequiringUserActionForPlayback = []
         
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -107,9 +108,10 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
-        webView.evaluateJavaScript("stopAudio()")
+        WordAudioPlayer.shared.stop()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "openLink")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler {
@@ -127,6 +129,12 @@ struct PopupWebView: UIViewRepresentable {
             if message.name == "openLink", let urlString = message.body as? String,
                let url = URL(string: urlString) {
                 UIApplication.shared.open(url)
+            }
+            if message.name == "playWordAudio",
+               let content = message.body as? [String: Any],
+               let urlString = content["url"] as? String {
+                let requestedMode = (content["mode"] as? String).flatMap(AudioPlaybackMode.init) ?? .interrupt
+                WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode)
             }
         }
     }
