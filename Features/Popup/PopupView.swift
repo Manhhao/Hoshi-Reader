@@ -147,7 +147,6 @@ struct PopupView: View {
                     .glassEffectID("popup", in: namespace)
                     .glassEffectTransition(.materialize)
                     .position(layout.position)
-                    .animation(nil, value: layout.position)
                 }
             }
         } else {
@@ -164,8 +163,8 @@ struct PopupView: View {
                 )
                 .frame(width: layout.width, height: layout.height)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
                 .position(layout.position)
-                .animation(nil, value: layout.position)
             }
         }
     }
