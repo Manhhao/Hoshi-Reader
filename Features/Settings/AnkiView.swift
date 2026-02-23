@@ -57,14 +57,14 @@ struct AnkiView: View {
                                 .foregroundStyle(.secondary)
                             
                             HStack {
-                                TextField("-", text: Binding(
+                                TextField("None", text: Binding(
                                     get: { ankiManager.fieldMappings[field] ?? "" },
-                                    set: { newValue in
-                                        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    set: { value in
+                                        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
                                         if trimmed.isEmpty {
                                             ankiManager.fieldMappings.removeValue(forKey: field)
                                         } else {
-                                            ankiManager.fieldMappings[field] = newValue
+                                            ankiManager.fieldMappings[field] = value
                                         }
                                     }
                                 ))

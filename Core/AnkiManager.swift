@@ -42,6 +42,8 @@ class AnkiManager {
     
     private static let ankiConfig = "anki_config.json"
     
+    private static let handlebarRegex = /\{.*?\}/
+    
     private init() { load() }
     
     func requestInfo() {
@@ -100,8 +102,7 @@ class AnkiManager {
     
     func addNote(content: [String: String], context: MiningContext) {
         guard let deck = selectedDeck,
-              let noteType = selectedNoteType,
-              let matched = content["matched"] else {
+              let noteType = selectedNoteType else {
             return
         }
         
@@ -114,56 +115,15 @@ class AnkiManager {
             singleGlossaries = [:]
         }
         
-        var coverPath: String?
-        if let coverURL = context.coverURL {
-            try? LocalFileServer.shared.setCover(file: coverURL)
-            coverPath = "http://localhost:\(LocalFileServer.port)/cover/cover.\(coverURL.pathExtension)"
-        }
-        
         var urlComponents = URLComponents(string: Self.addNoteCallback)
         var queryItems = [
             URLQueryItem(name: "deck", value: deck),
             URLQueryItem(name: "type", value: noteType)
         ]
         
-        for (field, handlebar) in fieldMappings {
-            let value: String
-            if handlebar.hasPrefix(Handlebars.singleGlossaryPrefix) {
-                let dictName = String(handlebar.dropFirst(Handlebars.singleGlossaryPrefix.count).dropLast())
-                value = singleGlossaries[dictName] ?? ""
-            } else if let standardHandlebar = Handlebars(rawValue: handlebar) {
-                switch standardHandlebar {
-                case .expression:
-                    value = content["expression"] ?? ""
-                case .reading:
-                    value = content["reading"] ?? ""
-                case .furiganaPlain:
-                    value = content["furiganaPlain"] ?? ""
-                case .glossary:
-                    value = content["glossary"] ?? ""
-                case .glossaryFirst:
-                    value = content["glossaryFirst"] ?? ""
-                case .frequencies:
-                    value = content["frequenciesHtml"] ?? ""
-                case .frequencyHarmonicRank:
-                    value = content["freqHarmonicRank"] ?? ""
-                case .pitchPositions:
-                    value = content["pitchPositions"] ?? ""
-                case .pitchCategories:
-                    value = content["pitchCategories"] ?? ""
-                case .sentence:
-                    value = context.sentence.replacingOccurrences(of: matched, with: "<b>\(matched)</b>")
-                case .documentTitle:
-                    value = context.documentTitle ?? ""
-                case .popupSelectionText:
-                    value = content["popupSelectionText"] ?? ""
-                case .bookCover:
-                    value = coverPath ?? ""
-                case .audio:
-                    value = content["audio"] ?? ""
-                }
-            } else {
-                value = ""
+        for (field, fieldContent) in fieldMappings {
+            let value = fieldContent.replacing(Self.handlebarRegex) { match in
+                return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
             }
             queryItems.append(URLQueryItem(name: "fld" + field, value: value))
         }
@@ -200,6 +160,52 @@ class AnkiManager {
             return
         }
         try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
+    }
+    
+    private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
+        let error = String(handlebar.dropLast()) + "-render-error}"
+        if handlebar.hasPrefix(Handlebars.singleGlossaryPrefix) {
+            let dictName = String(handlebar.dropFirst(Handlebars.singleGlossaryPrefix.count).dropLast())
+            return singleGlossaries[dictName] ?? error
+        } else if let standardHandlebar = Handlebars(rawValue: handlebar) {
+            switch standardHandlebar {
+            case .expression:
+                return content["expression"] ?? ""
+            case .reading:
+                return content["reading"] ?? ""
+            case .furiganaPlain:
+                return content["furiganaPlain"] ?? ""
+            case .glossary:
+                return content["glossary"] ?? ""
+            case .glossaryFirst:
+                return content["glossaryFirst"] ?? ""
+            case .frequencies:
+                return content["frequenciesHtml"] ?? ""
+            case .frequencyHarmonicRank:
+                return content["freqHarmonicRank"] ?? ""
+            case .pitchPositions:
+                return content["pitchPositions"] ?? ""
+            case .pitchCategories:
+                return content["pitchCategories"] ?? ""
+            case .sentence:
+                guard let matched = content["matched"] else { return context.sentence }
+                return context.sentence.replacingOccurrences(of: matched, with: "<b>\(matched)</b>")
+            case .documentTitle:
+                return context.documentTitle ?? ""
+            case .popupSelectionText:
+                return content["popupSelectionText"] ?? ""
+            case .bookCover:
+                var coverPath: String?
+                if let coverURL = context.coverURL {
+                    try? LocalFileServer.shared.setCover(file: coverURL)
+                    coverPath = "http://localhost:\(LocalFileServer.port)/cover/cover.\(coverURL.pathExtension)"
+                }
+                return coverPath ?? ""
+            case .audio:
+                return content["audio"] ?? ""
+            }
+        }
+        return error
     }
     
     private func load() {
