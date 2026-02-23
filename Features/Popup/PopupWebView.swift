@@ -9,7 +9,7 @@
 import SwiftUI
 import WebKit
 
-class ProxyHandler: NSObject, WKURLSchemeHandler {
+class AudioHandler: NSObject, WKURLSchemeHandler {
     private var tasks = Set<ObjectIdentifier>()
     
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
@@ -98,7 +98,8 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "openLink")
         config.userContentController.add(context.coordinator, name: "textSelected")
         config.userContentController.add(context.coordinator, name: "tapOutside")
-        config.setURLSchemeHandler(ProxyHandler(), forURLScheme: "proxy")
+        config.userContentController.add(context.coordinator, name: "playWordAudio")
+        config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.mediaTypesRequiringUserActionForPlayback = []
         
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -106,7 +107,6 @@ struct PopupWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
-        
         return webView
     }
     
@@ -126,11 +126,12 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
-        webView.evaluateJavaScript("stopAudio()")
+        WordAudioPlayer.shared.stop()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "openLink")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "textSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "tapOutside")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler {
@@ -178,6 +179,12 @@ struct PopupWebView: UIViewRepresentable {
                 if let highlightCount = parent.onTextSelected?(selectionData) {
                     message.webView?.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(highlightCount))")
                 }
+            }
+            else if message.name == "playWordAudio",
+               let content = message.body as? [String: Any],
+               let urlString = content["url"] as? String {
+                let requestedMode = (content["mode"] as? String).flatMap(AudioPlaybackMode.init) ?? .interrupt
+                WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode)
             }
         }
     }

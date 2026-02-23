@@ -111,6 +111,10 @@ hr {
     margin: 0;
 }
 
+a {
+    color: rgba(66, 108, 245, 1);
+}
+
 .glossary-group summary {
     list-style: none;
 }

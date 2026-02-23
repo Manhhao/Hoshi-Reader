@@ -70,6 +70,11 @@ struct AudioView: View {
             
             Section {
                 Toggle("Auto-play on Lookup", isOn: $userConfig.audioEnableAutoplay)
+                Picker("Background Audio", selection: $userConfig.audioPlaybackMode) {
+                    Text("Interrupt").tag(AudioPlaybackMode.interrupt)
+                    Text("Lower Volume").tag(AudioPlaybackMode.duck)
+                    Text("Keep Volume").tag(AudioPlaybackMode.mix)
+                }
             }
             
             Section {
