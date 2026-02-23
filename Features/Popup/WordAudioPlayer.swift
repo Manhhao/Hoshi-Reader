@@ -9,38 +9,29 @@
 import Foundation
 import AVFoundation
 
-@MainActor
-final class WordAudioPlayer {
+actor WordAudioPlayer {
     static let shared = WordAudioPlayer()
     
     private var player: AVPlayer?
     private var playToEndObserver: NSObjectProtocol?
     private var failedToEndObserver: NSObjectProtocol?
+    private var id: UUID?
     
     private init() {}
     
-    func stop() {
-        player?.pause()
-        player = nil
-        
-        if let playToEndObserver {
-            NotificationCenter.default.removeObserver(playToEndObserver)
-            self.playToEndObserver = nil
+    func stop(id: UUID? = nil) {
+        if let id, id != self.id {
+            return
         }
-        if let failedToEndObserver {
-            NotificationCenter.default.removeObserver(failedToEndObserver)
-            self.failedToEndObserver = nil
-        }
-        
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        stopPlayback(deactivateSession: true)
     }
     
-    func play(urlString: String, requestedMode: AudioPlaybackMode) {
+    func play(urlString: String, requestedMode: AudioPlaybackMode, id: UUID) {
         guard let url = URL(string: urlString) else {
             return
         }
         
-        stop()
+        stopPlayback(deactivateSession: false)
         let session = AVAudioSession.sharedInstance()
         
         do {
@@ -53,28 +44,50 @@ final class WordAudioPlayer {
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
         self.player = player
+        self.id = id
         
         playToEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
-            queue: .main
+            queue: nil
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.stop()
+            guard let self else { return }
+            Task {
+                await self.stop()
             }
         }
         
         failedToEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemFailedToPlayToEndTime,
             object: item,
-            queue: .main
+            queue: nil
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.stop()
+            guard let self else { return }
+            Task {
+                await self.stop()
             }
         }
         
         player.play()
+    }
+    
+    private func stopPlayback(deactivateSession: Bool) {
+        player?.pause()
+        player = nil
+        id = nil
+        
+        if let playToEndObserver {
+            NotificationCenter.default.removeObserver(playToEndObserver)
+            self.playToEndObserver = nil
+        }
+        if let failedToEndObserver {
+            NotificationCenter.default.removeObserver(failedToEndObserver)
+            self.failedToEndObserver = nil
+        }
+        
+        if deactivateSession {
+            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        }
     }
     
     private func categoryOptions(for mode: AudioPlaybackMode) -> AVAudioSession.CategoryOptions {

@@ -126,7 +126,9 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
-        WordAudioPlayer.shared.stop()
+        Task {
+            await WordAudioPlayer.shared.stop(id: coordinator.id)
+        }
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "openLink")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "textSelected")
@@ -139,6 +141,7 @@ struct PopupWebView: UIViewRepresentable {
         var currentContent: String = ""
         var wasLoaded: Bool = false
         var clearHighlight: Bool = false
+        let id = UUID()
         
         init(parent: PopupWebView) {
             self.parent = parent
@@ -184,7 +187,9 @@ struct PopupWebView: UIViewRepresentable {
                let content = message.body as? [String: Any],
                let urlString = content["url"] as? String {
                 let requestedMode = (content["mode"] as? String).flatMap(AudioPlaybackMode.init) ?? .interrupt
-                WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode)
+                Task(priority: .userInitiated) {
+                    await WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode, id: self.id)
+                }
             }
         }
     }
