@@ -421,13 +421,13 @@ function constructGlossaryHtml(entryIndex) {
         if (dictName !== lastDict) {
             index = 1;
             lastDict = dictName;
-            label = tags ? `(${index}, ${tags}, ${dictName})</i> ` : `<i>(${index}, ${dictName})`
+            label = tags ? `(${index}, ${tags}, ${dictName})` : `(${index}, ${dictName})`
         }
         else {
             label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}<i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
         prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
