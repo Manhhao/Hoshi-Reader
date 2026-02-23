@@ -146,6 +146,15 @@ struct ReaderView: View {
                             },
                             onTapOutside: { viewModel.closeChildPopups(parent: index) },
                         )
+                        .simultaneousGesture(DragGesture().onEnded({ value in
+                            if userConfig.popupSwipeToDismiss &&
+                                viewModel.popups[index].showPopup &&
+                                (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
+                                (abs(value.translation.height) < 20) {
+                                if index == 0 { viewModel.clearWebHighlight() }
+                                viewModel.closeChildPopups(parent: index - 1)
+                            }
+                        }))
                         .zIndex(Double(100 + index))
                     }
                 }

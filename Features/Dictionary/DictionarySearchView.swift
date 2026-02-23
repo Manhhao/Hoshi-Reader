@@ -54,6 +54,14 @@ struct DictionarySearchView: View {
                         },
                         onTapOutside: { closeChildPopups(parent: index) }
                     )
+                    .simultaneousGesture(DragGesture().onEnded({ value in
+                        if userConfig.popupSwipeToDismiss &&
+                            popups[index].showPopup &&
+                            (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
+                            (abs(value.translation.height) < 20) {
+                            closeChildPopups(parent: index - 1)
+                        }
+                    }))
                     .zIndex(Double(100 + index))
                 }
             }
@@ -133,6 +141,8 @@ struct DictionarySearchView: View {
             for index in popups.indices {
                 popups[index].showPopup = false
             }
+        } completion: {
+            popups.removeAll()
         }
     }
     
@@ -141,6 +151,8 @@ struct DictionarySearchView: View {
             for index in popups.indices.dropFirst(parent + 1) {
                 popups[index].showPopup = false
             }
+        } completion: {
+            popups.removeLast(popups.count - parent)
         }
     }
     

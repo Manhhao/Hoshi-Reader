@@ -243,6 +243,8 @@ class ReaderViewModel {
             for index in popups.indices {
                 popups[index].showPopup = false
             }
+        } completion: {
+            self.popups.removeAll()
         }
     }
     
@@ -251,6 +253,8 @@ class ReaderViewModel {
             for index in popups.indices.dropFirst(parent + 1) {
                 popups[index].showPopup = false
             }
+        } completion: {
+            self.popups.removeLast(self.popups.count - (parent + 1))
         }
     }
     
