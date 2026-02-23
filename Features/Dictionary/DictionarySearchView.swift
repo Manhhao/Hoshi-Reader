@@ -36,7 +36,7 @@ struct DictionarySearchView: View {
                     },
                     onTapOutside: closePopups
                 )
-                .id(content)
+                .id(lastQuery)
                 
                 ForEach(Array(popups.enumerated()), id: \.element.id) { index, _ in
                     PopupView(
