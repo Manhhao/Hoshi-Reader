@@ -51,30 +51,54 @@ struct AnkiView: View {
                let noteType = ankiManager.availableNoteTypes.first(where: { $0.name == typeName }) {
                 Section("Fields") {
                     ForEach(noteType.fields, id: \.self) { field in
-                        HStack {
-                            Picker(field, selection: Binding(
-                                get: { ankiManager.fieldMappings[field] },
-                                set: {
-                                    if let v = $0 {
-                                        ankiManager.fieldMappings[field] = v
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(field)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack {
+                                TextField("-", text: Binding(
+                                    get: { ankiManager.fieldMappings[field] ?? "" },
+                                    set: { newValue in
+                                        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        if trimmed.isEmpty {
+                                            ankiManager.fieldMappings.removeValue(forKey: field)
+                                        } else {
+                                            ankiManager.fieldMappings[field] = newValue
+                                        }
                                     }
-                                    else {
-                                        ankiManager.fieldMappings.removeValue(forKey: field)
-                                    }
+                                ))
+                                .submitLabel(.done)
+                                .onSubmit {
                                     ankiManager.save()
-                                }))
-                            {
-                                Text("-").tag(nil as String?)
-                                ForEach(availableHandlebars, id: \.self) { option in
-                                    Text(option).tag(option as String?)
                                 }
+                                
+                                Menu {
+                                    Button("-") {
+                                        ankiManager.fieldMappings.removeValue(forKey: field)
+                                        ankiManager.save()
+                                    }
+                                    Divider()
+                                    ForEach(availableHandlebars, id: \.self) { option in
+                                        Button(option) {
+                                            ankiManager.fieldMappings[field] = option
+                                            ankiManager.save()
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "chevron.up.chevron.down")
+                                }
+                                .foregroundStyle(.secondary)
                             }
                         }
                     }
                     
-                    LabeledContent("Tags") {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Tags")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        
                         TextField("None", text: $ankiManager.tags)
-                            .multilineTextAlignment(.trailing)
                             .submitLabel(.done)
                             .onSubmit {
                                 ankiManager.save()
