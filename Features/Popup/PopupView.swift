@@ -211,7 +211,7 @@ struct PopupView: View {
                 pitches.append(PitchData(dictionary: String(pitchEntry.dict_name), pitchPositions: pitchPositions))
             }
             
-            let definitionTags = String(result.term.definition_tags).split(separator: " ").map { String($0) }
+            let rules = String(result.term.rules).split(separator: " ").map { String($0) }
             
             entries.append(EntryData(
                 expression: expression,
@@ -221,7 +221,7 @@ struct PopupView: View {
                 glossaries: glossaries,
                 frequencies: frequencies,
                 pitches: pitches,
-                definitionTags: definitionTags
+                rules: rules
             ))
         }
         

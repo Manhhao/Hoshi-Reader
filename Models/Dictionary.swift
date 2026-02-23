@@ -61,7 +61,7 @@ struct EntryData: Encodable {
     let glossaries: [GlossaryData]
     let frequencies: [FrequencyData]
     let pitches: [PitchData]
-    let definitionTags: [String]
+    let rules: [String]
 }
 
 struct DeinflectionTag: Encodable {

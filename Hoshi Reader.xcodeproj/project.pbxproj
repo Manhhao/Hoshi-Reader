@@ -467,7 +467,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Manhhao/yomitandicts-cpp.git";
 			requirement = {
-				branch = main;
+				branch = "rm-sqlite";
 				kind = branch;
 			};
 		};

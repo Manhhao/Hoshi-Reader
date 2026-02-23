@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Manhhao/yomitandicts-cpp.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "8a66275cbef10940f1cea8ebdd6de90195b7793a"
+        "branch" : "rm-sqlite",
+        "revision" : "83d25bc699092fbd0f17091d71338796750b71a4"
       }
     },
     {
