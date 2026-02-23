@@ -128,7 +128,7 @@ struct DictionarySearchView: View {
         popups.append(popup)
         
         if let firstResult = lookupResults.first {
-            withAnimation(.default.speed(2.25)) {
+            withAnimation(.default.speed(2)) {
                 popups[popups.count - 1].showPopup = true
             }
             return String(firstResult.matched).count
@@ -137,22 +137,25 @@ struct DictionarySearchView: View {
     }
     
     private func closePopups() {
-        withAnimation(.default.speed(2.25)) {
+        let popupIds = Set(popups.map(\.id))
+        withAnimation(.default.speed(2)) {
             for index in popups.indices {
                 popups[index].showPopup = false
             }
         } completion: {
-            popups.removeAll()
+            popups.removeAll { popupIds.contains($0.id) }
         }
     }
     
     private func closeChildPopups(parent: Int) {
-        withAnimation(.default.speed(2.25)) {
+        var popupIds: Set<UUID> = []
+        withAnimation(.default.speed(2)) {
             for index in popups.indices.dropFirst(parent + 1) {
                 popups[index].showPopup = false
+                popupIds.insert(popups[index].id)
             }
         } completion: {
-            popups.removeLast(popups.count - parent)
+            popups.removeAll { popupIds.contains($0.id) }
         }
     }
     
