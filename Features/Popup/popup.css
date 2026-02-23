@@ -37,7 +37,7 @@ body {
 }
 
 .expression rt {
-    font-size: 12px;
+    font-size: 13px;
     -webkit-user-select: none;
 }
 
@@ -129,6 +129,10 @@ hr {
     content: '▼ ';
 }
 
+.glossary-content {
+    font-size: 15px;
+}
+
 .dict-label {
     font-size: 10px;
     opacity: 0.7;
@@ -149,7 +153,7 @@ hr {
 }
 
 .overlay-content {
-    font-size: 14px;
+    font-size: 15px;
     padding-right: 20px;
     white-space: pre-wrap;
 }
@@ -164,7 +168,7 @@ hr {
 
 .pitch-list {
     margin: 3px 0 0 0;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .pitch-dict-label {
