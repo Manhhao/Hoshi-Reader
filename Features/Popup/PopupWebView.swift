@@ -142,7 +142,7 @@ struct PopupWebView: UIViewRepresentable {
                 parent.onMine?(content)
             }
             else if message.name == "openLink", let urlString = message.body as? String,
-               let url = URL(string: urlString) {
+                    let url = URL(string: urlString) {
                 UIApplication.shared.open(url)
             }
             else if message.name == "tapOutside" {
@@ -160,7 +160,13 @@ struct PopupWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
-                let rect = CGRect(x: parent.position.x + x, y: parent.position.y + y, width: w, height: h)
+                let adjustedInset = message.webView?.scrollView.adjustedContentInset ?? .zero
+                let rect = CGRect(
+                    x: parent.position.x + x + adjustedInset.left,
+                    y: parent.position.y + y + adjustedInset.top,
+                    width: w,
+                    height: h
+                )
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
                 
                 if let highlightCount = parent.onTextSelected?(selectionData) {
