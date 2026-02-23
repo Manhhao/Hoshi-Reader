@@ -37,7 +37,7 @@ body {
 }
 
 .expression rt {
-    font-size: 12px;
+    font-size: 13px;
     -webkit-user-select: none;
 }
 
@@ -111,6 +111,10 @@ hr {
     margin: 0;
 }
 
+a {
+    color: rgba(66, 108, 245, 1);
+}
+
 .glossary-group summary {
     list-style: none;
 }
@@ -127,6 +131,10 @@ hr {
 
 .glossary-group[open] summary::before {
     content: '▼ ';
+}
+
+.glossary-content {
+    font-size: 15px;
 }
 
 .dict-label {
@@ -149,7 +157,7 @@ hr {
 }
 
 .overlay-content {
-    font-size: 14px;
+    font-size: 15px;
     padding-right: 20px;
     white-space: pre-wrap;
 }
@@ -164,7 +172,7 @@ hr {
 
 .pitch-list {
     margin: 3px 0 0 0;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .pitch-dict-label {
@@ -202,6 +210,11 @@ hr {
 .pronunciation-mora[data-pitch="high"][data-pitch-next="low"] {
     padding-right: 1px;
     margin-right: 1px;
+}
+
+::highlight(hoshi-selection) {
+    background-color: rgba(160, 160, 160, 0.4) !important;
+    color: inherit;
 }
 
 @media (prefers-color-scheme: light) {

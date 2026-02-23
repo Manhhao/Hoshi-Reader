@@ -17,16 +17,63 @@ struct DictionarySearchView: View {
     @State private var hasSearched = false
     @State private var searchFocused = false
     @State private var didInitialQuery = false
+    @State private var popups: [PopupItem] = []
+    @State private var clearHighlight: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     
     var body: some View {
-        PopupWebView(
-            content: content,
-            onMine: { minedContent in
-                AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+        GeometryReader { geometry in
+            ZStack {
+                PopupWebView(
+                    content: content,
+                    position: .zero,
+                    clearHighlight: clearHighlight,
+                    onMine: { minedContent in
+                        AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+                    },
+                    onTextSelected: {
+                        closePopups()
+                        return handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
+                    },
+                    onTapOutside: closePopups
+                )
+                .id(lastQuery)
+                
+                ForEach(Array(popups.enumerated()), id: \.element.id) { index, _ in
+                    PopupView(
+                        isVisible: $popups[index].showPopup,
+                        selectionData: popups[index].currentSelection,
+                        lookupResults: popups[index].lookupResults,
+                        dictionaryStyles: popups[index].dictionaryStyles,
+                        screenSize: geometry.size,
+                        isVertical: popups[index].isVertical,
+                        coverURL: nil,
+                        documentTitle: nil,
+                        clearHighlight: popups[index].clearHighlight,
+                        onTextSelected: {
+                            closeChildPopups(parent: index)
+                            return handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
+                        },
+                        onTapOutside: { closeChildPopups(parent: index) }
+                    )
+                    .simultaneousGesture(DragGesture().onEnded({ value in
+                        if userConfig.popupSwipeToDismiss &&
+                            popups[index].showPopup &&
+                            (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
+                            (abs(value.translation.height) < 20) {
+                            if index == 0 {
+                                clearHighlight.toggle()
+                            } else {
+                                popups[index - 1].clearHighlight.toggle()
+                            }
+                            closeChildPopups(parent: index - 1)
+                        }
+                    }))
+                    .zIndex(Double(100 + index))
+                }
             }
-        )
+        }
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea()
         .overlay(alignment: .bottom) {
@@ -52,6 +99,8 @@ struct DictionarySearchView: View {
     }
     
     private func runLookup() {
+        closePopups()
+        
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         hasSearched = true
         lastQuery = trimmed
@@ -69,6 +118,54 @@ struct DictionarySearchView: View {
         
         let styles = LookupEngine.shared.getStyles()
         content = buildHtml(results: results, styles: styles)
+    }
+    
+    private func handleTextSelection(_ selection: SelectionData, maxResults: Int, isVertical: Bool) -> Int? {
+        let lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults)
+        var dictionaryStyles: [String: String] = [:]
+        for style in LookupEngine.shared.getStyles() {
+            dictionaryStyles[String(style.dict_name)] = String(style.styles)
+        }
+        let popup = PopupItem(
+            showPopup: false,
+            currentSelection: selection,
+            lookupResults: lookupResults,
+            dictionaryStyles: dictionaryStyles,
+            isVertical: isVertical,
+            clearHighlight: false
+        )
+        popups.append(popup)
+        
+        if let firstResult = lookupResults.first {
+            withAnimation(.default.speed(2)) {
+                popups[popups.count - 1].showPopup = true
+            }
+            return String(firstResult.matched).count
+        }
+        return nil
+    }
+    
+    private func closePopups() {
+        let popupIds = Set(popups.map(\.id))
+        withAnimation(.default.speed(2)) {
+            for index in popups.indices {
+                popups[index].showPopup = false
+            }
+        } completion: {
+            popups.removeAll { popupIds.contains($0.id) }
+        }
+    }
+    
+    private func closeChildPopups(parent: Int) {
+        var popupIds: Set<UUID> = []
+        withAnimation(.default.speed(2)) {
+            for index in popups.indices.dropFirst(parent + 1) {
+                popups[index].showPopup = false
+                popupIds.insert(popups[index].id)
+            }
+        } completion: {
+            popups.removeAll { popupIds.contains($0.id) }
+        }
     }
     
     private func buildHtml(results: [LookupResult], styles: [DictionaryStyle]) -> String {
