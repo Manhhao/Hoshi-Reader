@@ -25,6 +25,7 @@ struct PopupItem: Identifiable {
     var lookupResults: [LookupResult] = []
     var dictionaryStyles: [String: String] = [:]
     var isVertical: Bool
+    var clearHighlight: Bool
 }
 
 @Observable
@@ -225,7 +226,8 @@ class ReaderViewModel {
             currentSelection: selection,
             lookupResults: LookupEngine.shared.lookup(selection.text, maxResults: maxResults),
             dictionaryStyles: dictionaryStyles,
-            isVertical: isVertical
+            isVertical: isVertical,
+            clearHighlight: false
         )
         popups.append(popup)
         

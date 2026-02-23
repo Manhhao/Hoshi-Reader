@@ -140,6 +140,7 @@ struct ReaderView: View {
                             isVertical: viewModel.popups[index].isVertical,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
+                            clearHighlight: viewModel.popups[index].clearHighlight,
                             onTextSelected: {
                                 viewModel.closeChildPopups(parent: index)
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
@@ -151,7 +152,11 @@ struct ReaderView: View {
                                 viewModel.popups[index].showPopup &&
                                 (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
                                 (abs(value.translation.height) < 20) {
-                                if index == 0 { viewModel.clearWebHighlight() }
+                                if index == 0 {
+                                    viewModel.clearWebHighlight()
+                                } else {
+                                    viewModel.popups[index - 1].clearHighlight.toggle()
+                                }
                                 viewModel.closeChildPopups(parent: index - 1)
                             }
                         }))

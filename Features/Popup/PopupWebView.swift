@@ -61,6 +61,7 @@ class ProxyHandler: NSObject, WKURLSchemeHandler {
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
+    var clearHighlight: Bool
     var onMine: (([String: String]) -> Void)? = nil
     var onTextSelected: ((SelectionData) -> Int?)? = nil
     var onTapOutside: (() -> Void)? = nil
@@ -111,13 +112,17 @@ struct PopupWebView: UIViewRepresentable {
     
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
-        guard !context.coordinator.wasLoaded else {
-            return
+        if !context.coordinator.wasLoaded {
+            context.coordinator.currentContent = content
+            context.coordinator.wasLoaded = true
+            let html = buildHTML(content: content)
+            webView.loadHTMLString(html, baseURL: nil)
         }
-        context.coordinator.currentContent = content
-        context.coordinator.wasLoaded = true
-        let html = buildHTML(content: content)
-        webView.loadHTMLString(html, baseURL: nil)
+        
+        if context.coordinator.clearHighlight != clearHighlight {
+            context.coordinator.clearHighlight = clearHighlight
+            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+        }
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -132,6 +137,7 @@ struct PopupWebView: UIViewRepresentable {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
+        var clearHighlight: Bool = false
         
         init(parent: PopupWebView) {
             self.parent = parent

@@ -18,6 +18,7 @@ struct DictionarySearchView: View {
     @State private var searchFocused = false
     @State private var didInitialQuery = false
     @State private var popups: [PopupItem] = []
+    @State private var clearHighlight: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     
@@ -27,6 +28,7 @@ struct DictionarySearchView: View {
                 PopupWebView(
                     content: content,
                     position: .zero,
+                    clearHighlight: clearHighlight,
                     onMine: { minedContent in
                         AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
                     },
@@ -48,6 +50,7 @@ struct DictionarySearchView: View {
                         isVertical: popups[index].isVertical,
                         coverURL: nil,
                         documentTitle: nil,
+                        clearHighlight: popups[index].clearHighlight,
                         onTextSelected: {
                             closeChildPopups(parent: index)
                             return handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
@@ -59,6 +62,11 @@ struct DictionarySearchView: View {
                             popups[index].showPopup &&
                             (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
                             (abs(value.translation.height) < 20) {
+                            if index == 0 {
+                                clearHighlight.toggle()
+                            } else {
+                                popups[index - 1].clearHighlight.toggle()
+                            }
                             closeChildPopups(parent: index - 1)
                         }
                     }))
@@ -123,7 +131,8 @@ struct DictionarySearchView: View {
             currentSelection: selection,
             lookupResults: lookupResults,
             dictionaryStyles: dictionaryStyles,
-            isVertical: isVertical
+            isVertical: isVertical,
+            clearHighlight: false
         )
         popups.append(popup)
         
