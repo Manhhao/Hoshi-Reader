@@ -87,16 +87,16 @@ class UserConfig {
         didSet { UserDefaults.standard.set(verticalWriting, forKey: "verticalWriting") }
     }
     
+    var selectedFont: String {
+        didSet { UserDefaults.standard.set(selectedFont, forKey: "selectedFont") }
+    }
+    
     var fontSize: Int {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
     }
-
-    var lineHeight: Double {
-        didSet { UserDefaults.standard.set(lineHeight, forKey: "lineHeight") }
-    }
     
-    var selectedFont: String {
-        didSet { UserDefaults.standard.set(selectedFont, forKey: "selectedFont") }
+    var readerHideFurigana: Bool {
+        didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
     }
     
     var horizontalPadding: Int {
@@ -107,8 +107,16 @@ class UserConfig {
         didSet { UserDefaults.standard.set(verticalPadding, forKey: "verticalPadding") }
     }
     
-    var readerHideFurigana: Bool {
-        didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
+    var layoutAdvanced: Bool {
+        didSet { UserDefaults.standard.set(layoutAdvanced, forKey: "layoutAdvanced") }
+    }
+    
+    var lineHeight: Double {
+        didSet { UserDefaults.standard.set(lineHeight, forKey: "lineHeight") }
+    }
+    
+    var characterSpacing: Double {
+        didSet { UserDefaults.standard.set(characterSpacing, forKey: "characterSpacing") }
     }
     
     var readerShowTitle: Bool {
@@ -234,13 +242,15 @@ class UserConfig {
         self.customTextColor = UserConfig.loadColor(key: "customTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
-        self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
-        self.lineHeight = defaults.object(forKey: "lineHeight") as? Double ?? 1.65
         self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
+        self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
+        self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
         
         self.horizontalPadding = defaults.object(forKey: "horizontalPadding") as? Int ?? 10
         self.verticalPadding = defaults.object(forKey: "verticalPadding") as? Int ?? 0
-        self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
+        self.layoutAdvanced = defaults.object(forKey: "layoutAdvanced") as? Bool ?? false
+        self.lineHeight = defaults.object(forKey: "lineHeight") as? Double ?? 1.65
+        self.characterSpacing = defaults.object(forKey: "characterSpacing") as? Double ?? 0
         
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true

@@ -12,13 +12,15 @@ import EPUBKit
 struct WebViewState: Hashable {
     var verticalWriting: Bool
     var fontSize: Int
-    var lineHeight: Double
-    var horizontalPadding: Int
-    var verticalPadding: Int
-    var size: CGSize
-    var textColor: Color
     var selectedFont: String
     var hideFurigana: Bool
+    var horizontalPadding: Int
+    var verticalPadding: Int
+    var layoutAdvanced: Bool
+    var lineHeight: Double
+    var characterSpacing: Double
+    var size: CGSize
+    var textColor: Color
 }
 
 struct ReaderLoader: View {
@@ -123,13 +125,15 @@ struct ReaderView: View {
                     .id(WebViewState(
                         verticalWriting: userConfig.verticalWriting,
                         fontSize: userConfig.fontSize,
-                        lineHeight: userConfig.lineHeight,
+                        selectedFont: userConfig.selectedFont,
+                        hideFurigana: userConfig.readerHideFurigana,
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
+                        layoutAdvanced: userConfig.layoutAdvanced,
+                        lineHeight: userConfig.lineHeight,
+                        characterSpacing: userConfig.characterSpacing,
                         size: geometry.size,
                         textColor: readerTextColor,
-                        selectedFont: userConfig.selectedFont,
-                        hideFurigana: userConfig.readerHideFurigana
                     ))
                     
                     ForEach(Array(viewModel.popups.enumerated()), id: \.element.id) { index, _ in
