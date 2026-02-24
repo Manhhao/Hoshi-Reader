@@ -110,6 +110,15 @@ struct AppearanceView: View {
                         Stepper("", value: $userConfig.fontSize, in: 16...40)
                             .labelsHidden()
                     }
+
+                    HStack {
+                        Text("Line Height")
+                        Spacer()
+                        Text("\(userConfig.lineHeight, specifier: "%.2f")")
+                            .fontWeight(.semibold)
+                        Stepper("", value: $userConfig.lineHeight, in: 1.0...2.5, step: 0.05)
+                            .labelsHidden()
+                    }
                     
                     HStack {
                         Text("Horizontal Padding")

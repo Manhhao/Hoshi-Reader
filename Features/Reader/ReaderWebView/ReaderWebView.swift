@@ -240,6 +240,7 @@ struct ReaderWebView: UIViewRepresentable {
                 writing-mode: \(writingMode) !important;
                 font-family: \(parent.userConfig.selectedFont), serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
+                line-height: \(parent.userConfig.lineHeight) !important;
                 box-sizing: border-box !important;
                 column-width: var(--page-height, 100vh) !important;
                 column-height: var(--page-width, 100vw) !important;

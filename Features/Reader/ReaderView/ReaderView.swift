@@ -12,6 +12,7 @@ import EPUBKit
 struct WebViewState: Hashable {
     var verticalWriting: Bool
     var fontSize: Int
+    var lineHeight: Double
     var horizontalPadding: Int
     var verticalPadding: Int
     var size: CGSize
@@ -122,6 +123,7 @@ struct ReaderView: View {
                     .id(WebViewState(
                         verticalWriting: userConfig.verticalWriting,
                         fontSize: userConfig.fontSize,
+                        lineHeight: userConfig.lineHeight,
                         horizontalPadding: userConfig.horizontalPadding,
                         verticalPadding: userConfig.verticalPadding,
                         size: geometry.size,

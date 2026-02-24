@@ -90,6 +90,10 @@ class UserConfig {
     var fontSize: Int {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
     }
+
+    var lineHeight: Double {
+        didSet { UserDefaults.standard.set(lineHeight, forKey: "lineHeight") }
+    }
     
     var selectedFont: String {
         didSet { UserDefaults.standard.set(selectedFont, forKey: "selectedFont") }
@@ -231,6 +235,7 @@ class UserConfig {
         
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
+        self.lineHeight = defaults.object(forKey: "lineHeight") as? Double ?? 1.65
         self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
         
         self.horizontalPadding = defaults.object(forKey: "horizontalPadding") as? Int ?? 10
