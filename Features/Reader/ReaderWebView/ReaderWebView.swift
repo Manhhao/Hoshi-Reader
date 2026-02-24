@@ -206,7 +206,6 @@ struct ReaderWebView: UIViewRepresentable {
                     html, body { color: \(hex) !important; }
                     """
                 } else {
-                    guard parent.userConfig.horizontalPadding > 0 else { return "" }
                     return """
                     @media (prefers-color-scheme: light) { html, body { color: #000 !important; } }
                     @media (prefers-color-scheme: dark) { html, body { color: #fff !important; } }
