@@ -39,7 +39,7 @@ struct AppearanceView: View {
                     }
                 }
                 
-                Section("Reader Layout") {
+                Section("Text") {
                     if #available(iOS 26, *) {
                         HStack {
                             Text("Text Orientation")
@@ -111,6 +111,10 @@ struct AppearanceView: View {
                             .labelsHidden()
                     }
                     
+                    Toggle("Hide Furigana", isOn: $userConfig.readerHideFurigana)
+                }
+                
+                Section("Layout") {
                     HStack {
                         Text("Horizontal Padding")
                         Spacer()
@@ -129,10 +133,30 @@ struct AppearanceView: View {
                             .labelsHidden()
                     }
                     
-                    Toggle("Hide Furigana", isOn: $userConfig.readerHideFurigana)
+                    Toggle("Advanced", isOn: $userConfig.layoutAdvanced)
+                    if userConfig.layoutAdvanced {
+                        VStack {
+                            HStack {
+                                Text("Line Height")
+                                Spacer()
+                                Text("\(userConfig.lineHeight, specifier: "%.2f")")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: $userConfig.lineHeight, in: 1.0...2.5, step: 0.05)
+                        }
+                        VStack {
+                            HStack {
+                                Text("Character Spacing")
+                                Spacer()
+                                Text("\(Int(userConfig.characterSpacing))%")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: $userConfig.characterSpacing, in: -10...10, step: 1)
+                        }
+                    }
                 }
                 
-                Section("Reader Display") {
+                Section("Display") {
                     Toggle("Show Title", isOn: $userConfig.readerShowTitle)
                     Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
                     Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
@@ -177,7 +201,7 @@ struct AppearanceView: View {
                         ), in: 100...350, step: 10)
                     }
                     
-                    Toggle("Full width Popup", isOn: Bindable(userConfig).popupFullWidth)
+                    Toggle("Full-width", isOn: Bindable(userConfig).popupFullWidth)
                     
                     Toggle("Swipe to Dismiss", isOn: Bindable(userConfig).popupSwipeToDismiss)
                     if userConfig.popupSwipeToDismiss {

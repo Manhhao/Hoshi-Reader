@@ -226,6 +226,13 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }
             
+            var textSpacingCss = ""
+            if parent.userConfig.layoutAdvanced {
+                textSpacingCss = """
+                line-height: \(parent.userConfig.lineHeight) !important;
+                letter-spacing: \((parent.userConfig.characterSpacing / 100.0))em !important;
+                """
+            }
             
             let css = """
             \(fontFaceCss)
@@ -239,6 +246,7 @@ struct ReaderWebView: UIViewRepresentable {
                 writing-mode: \(writingMode) !important;
                 font-family: \(parent.userConfig.selectedFont), serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
+                \(textSpacingCss)
                 box-sizing: border-box !important;
                 column-width: var(--page-height, 100vh) !important;
                 column-height: var(--page-width, 100vw) !important;
