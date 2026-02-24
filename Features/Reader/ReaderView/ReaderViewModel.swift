@@ -224,7 +224,7 @@ class ReaderViewModel {
         let popup = PopupItem(
             showPopup: false,
             currentSelection: selection,
-            lookupResults: LookupEngine.shared.lookup(selection.text, maxResults: maxResults),
+            lookupResults: lookupResults,
             dictionaryStyles: dictionaryStyles,
             isVertical: isVertical,
             clearHighlight: false
@@ -233,7 +233,13 @@ class ReaderViewModel {
         
         if let firstResult = lookupResults.first {
             withAnimation(.default.speed(2)) {
-                popups[popups.count - 1].showPopup = true
+                popups = popups.map {
+                    var p = $0
+                    if p.id == popup.id {
+                        p.showPopup = true
+                    }
+                    return p
+                }
             }
             return String(firstResult.matched).count
         }

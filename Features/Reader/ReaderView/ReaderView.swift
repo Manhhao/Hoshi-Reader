@@ -130,37 +130,49 @@ struct ReaderView: View {
                         hideFurigana: userConfig.readerHideFurigana
                     ))
                     
-                    ForEach(Array(viewModel.popups.enumerated()), id: \.element.id) { index, _ in
+                    ForEach($viewModel.popups) { $popup in
+                        let popupId = popup.id
                         PopupView(
-                            isVisible: $viewModel.popups[index].showPopup,
-                            selectionData: viewModel.popups[index].currentSelection,
-                            lookupResults: viewModel.popups[index].lookupResults,
-                            dictionaryStyles: viewModel.popups[index].dictionaryStyles,
+                            isVisible: $popup.showPopup,
+                            selectionData: popup.currentSelection,
+                            lookupResults: popup.lookupResults,
+                            dictionaryStyles: popup.dictionaryStyles,
                             screenSize: geometry.size,
-                            isVertical: viewModel.popups[index].isVertical,
+                            isVertical: popup.isVertical,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
-                            clearHighlight: viewModel.popups[index].clearHighlight,
+                            clearHighlight: popup.clearHighlight,
                             onTextSelected: {
-                                viewModel.closeChildPopups(parent: index)
+                                if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
+                                    viewModel.closeChildPopups(parent: index)
+                                }
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
                             },
-                            onTapOutside: { viewModel.closeChildPopups(parent: index) },
+                            onTapOutside: {
+                                if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
+                                    viewModel.closeChildPopups(parent: index)
+                                }
+                            }
                         )
                         .simultaneousGesture(DragGesture().onEnded({ value in
-                            if userConfig.popupSwipeToDismiss &&
-                                viewModel.popups[index].showPopup &&
-                                (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
-                                (abs(value.translation.height) < 20) {
-                                if index == 0 {
-                                    viewModel.clearWebHighlight()
-                                } else {
-                                    viewModel.popups[index - 1].clearHighlight.toggle()
-                                }
+                            guard userConfig.popupSwipeToDismiss,
+                                  abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                                  abs(value.translation.height) < 20,
+                                  let index = viewModel.popups.firstIndex(where: { $0.id == popupId }),
+                                  viewModel.popups.indices.contains(index),
+                                  viewModel.popups[index].showPopup else {
+                                return
+                            }
+                            
+                            if index == 0 {
+                                viewModel.clearWebHighlight()
+                                viewModel.closePopups()
+                            } else if viewModel.popups.indices.contains(index - 1) {
+                                viewModel.popups[index - 1].clearHighlight.toggle()
                                 viewModel.closeChildPopups(parent: index - 1)
                             }
                         }))
-                        .zIndex(Double(100 + index))
+                        .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                     }
                 }
             }

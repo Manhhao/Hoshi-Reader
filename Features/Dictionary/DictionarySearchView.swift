@@ -40,37 +40,49 @@ struct DictionarySearchView: View {
                 )
                 .id(lastQuery)
                 
-                ForEach(Array(popups.enumerated()), id: \.element.id) { index, _ in
+                ForEach($popups) { $popup in
+                    let popupId = popup.id
                     PopupView(
-                        isVisible: $popups[index].showPopup,
-                        selectionData: popups[index].currentSelection,
-                        lookupResults: popups[index].lookupResults,
-                        dictionaryStyles: popups[index].dictionaryStyles,
+                        isVisible: $popup.showPopup,
+                        selectionData: popup.currentSelection,
+                        lookupResults: popup.lookupResults,
+                        dictionaryStyles: popup.dictionaryStyles,
                         screenSize: geometry.size,
-                        isVertical: popups[index].isVertical,
+                        isVertical: popup.isVertical,
                         coverURL: nil,
                         documentTitle: nil,
-                        clearHighlight: popups[index].clearHighlight,
+                        clearHighlight: popup.clearHighlight,
                         onTextSelected: {
-                            closeChildPopups(parent: index)
+                            if let index = popups.firstIndex(where: { $0.id == popupId }) {
+                                closeChildPopups(parent: index)
+                            }
                             return handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: false)
                         },
-                        onTapOutside: { closeChildPopups(parent: index) }
+                        onTapOutside: {
+                            if let index = popups.firstIndex(where: { $0.id == popupId }) {
+                                closeChildPopups(parent: index)
+                            }
+                        }
                     )
                     .simultaneousGesture(DragGesture().onEnded({ value in
-                        if userConfig.popupSwipeToDismiss &&
-                            popups[index].showPopup &&
-                            (abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold)) &&
-                            (abs(value.translation.height) < 20) {
-                            if index == 0 {
-                                clearHighlight.toggle()
-                            } else {
-                                popups[index - 1].clearHighlight.toggle()
-                            }
+                        guard userConfig.popupSwipeToDismiss,
+                              abs(value.translation.width) > CGFloat(userConfig.popupSwipeThreshold),
+                              abs(value.translation.height) < 20,
+                              let index = popups.firstIndex(where: { $0.id == popupId }),
+                              popups.indices.contains(index),
+                              popups[index].showPopup else {
+                            return
+                        }
+                        
+                        if index == 0 {
+                            clearHighlight.toggle()
+                            closePopups()
+                        } else if popups.indices.contains(index - 1) {
+                            popups[index - 1].clearHighlight.toggle()
                             closeChildPopups(parent: index - 1)
                         }
                     }))
-                    .zIndex(Double(100 + index))
+                    .zIndex(Double(100 + (popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                 }
             }
         }
@@ -138,7 +150,13 @@ struct DictionarySearchView: View {
         
         if let firstResult = lookupResults.first {
             withAnimation(.default.speed(2)) {
-                popups[popups.count - 1].showPopup = true
+                popups = popups.map {
+                    var p = $0
+                    if p.id == popup.id {
+                        p.showPopup = true
+                    }
+                    return p
+                }
             }
             return String(firstResult.matched).count
         }
