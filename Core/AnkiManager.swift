@@ -125,7 +125,9 @@ class AnkiManager {
             let value = fieldContent.replacing(Self.handlebarRegex) { match in
                 return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
             }
-            queryItems.append(URLQueryItem(name: "fld" + field, value: value))
+            if !value.isEmpty {
+                queryItems.append(URLQueryItem(name: "fld" + field, value: value))
+            }
         }
         
         if !tags.isEmpty {
@@ -163,10 +165,9 @@ class AnkiManager {
     }
     
     private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
-        let error = String(handlebar.dropLast()) + "-render-error}"
         if handlebar.hasPrefix(Handlebars.singleGlossaryPrefix) {
             let dictName = String(handlebar.dropFirst(Handlebars.singleGlossaryPrefix.count).dropLast())
-            return singleGlossaries[dictName] ?? error
+            return singleGlossaries[dictName] ?? ""
         } else if let standardHandlebar = Handlebars(rawValue: handlebar) {
             switch standardHandlebar {
             case .expression:
@@ -205,7 +206,7 @@ class AnkiManager {
                 return content["audio"] ?? ""
             }
         }
-        return error
+        return ""
     }
     
     private func load() {
