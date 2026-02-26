@@ -142,7 +142,7 @@ struct PopupView: View {
                         onTextSelected: onTextSelected,
                         onTapOutside: onTapOutside
                     )
-                    .frame(width: layout.width, height: layout.height)
+                    .frame(width: max(1, layout.width), height: max(1, layout.height))
                     .glassEffect(.regular, in: .rect(cornerRadius: 8))
                     .glassEffectID("popup", in: namespace)
                     .glassEffectTransition(.materialize)
@@ -161,7 +161,7 @@ struct PopupView: View {
                     onTextSelected: onTextSelected,
                     onTapOutside: onTapOutside
                 )
-                .frame(width: layout.width, height: layout.height)
+                .frame(width: max(1, layout.width), height: max(1, layout.height))
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
                 .position(layout.position)
