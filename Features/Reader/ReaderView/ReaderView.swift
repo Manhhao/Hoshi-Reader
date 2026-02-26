@@ -111,6 +111,8 @@ struct ReaderView: View {
                         onNextChapter: viewModel.nextChapter,
                         onPreviousChapter: viewModel.previousChapter,
                         onSaveBookmark: viewModel.saveBookmark,
+                        onInternalLink: viewModel.jumpToLink,
+                        onInternalJump: viewModel.syncProgressAfterLinkJump,
                         onTextSelected: {
                             viewModel.closePopups()
                             return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, isVertical: userConfig.verticalWriting)

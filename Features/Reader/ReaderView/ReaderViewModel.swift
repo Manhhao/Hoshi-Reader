@@ -125,7 +125,7 @@ class ReaderViewModel {
         
         if let url = getCurrentChapter() {
             bridge.updateState(url: url, progress: currentProgress)
-            bridge.send(.loadChapter(url: url, progress: currentProgress))
+            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil))
         }
     }
     
@@ -198,6 +198,36 @@ class ReaderViewModel {
     func jumpToChapter(index: Int) {
         flushStats()
         loadChapter(index: index, progress: 0)
+        resetTrackingBaseline()
+    }
+    
+    func jumpToLink(_ url: URL) -> Bool {
+        guard let destination = resolveSpineDestination(for: url) else {
+            return false
+        }
+        
+        flushStats()
+        
+        if destination.spineIndex == self.index {
+            if let fragment = destination.fragment {
+                bridge.send(.jumpToFragment(fragment))
+            } else {
+                persistBookmark(progress: 0)
+                bridge.send(.restoreProgress(0))
+                resetTrackingBaseline()
+            }
+            return true
+        }
+        
+        loadChapter(index: destination.spineIndex, progress: 0, fragment: destination.fragment)
+        if destination.fragment == nil {
+            resetTrackingBaseline()
+        }
+        return true
+    }
+    
+    func syncProgressAfterLinkJump(_ progress: Double) {
+        persistBookmark(progress: progress)
         resetTrackingBaseline()
     }
     
@@ -339,13 +369,41 @@ class ReaderViewModel {
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
     }
     
-    private func loadChapter(index: Int, progress: Double) {
+    private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
         self.index = index
         persistBookmark(progress: progress)
         if let url = getCurrentChapter() {
             bridge.updateState(url: url, progress: progress)
-            bridge.send(.loadChapter(url: url, progress: progress))
+            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment))
         }
+    }
+    
+    private func resolveSpineDestination(for url: URL) -> (spineIndex: Int, fragment: String?)? {
+        let targetPath = normalizedFilePath(url)
+        
+        for (spineIndex, spineItem) in document.spine.items.enumerated() {
+            guard let manifestItem = document.manifest.items[spineItem.idref] else {
+                continue
+            }
+            let chapterPath = normalizedFilePath(document.contentDirectory.appendingPathComponent(manifestItem.path))
+            if chapterPath == targetPath {
+                return (spineIndex, normalizeFragment(url.fragment))
+            }
+        }
+        
+        return nil
+    }
+    
+    private func normalizedFilePath(_ url: URL) -> String {
+        let normalized = url.standardizedFileURL.resolvingSymlinksInPath().path
+        return normalized.removingPercentEncoding ?? normalized
+    }
+    
+    private func normalizeFragment(_ fragment: String?) -> String? {
+        guard let fragment, !fragment.isEmpty else {
+            return nil
+        }
+        return fragment.removingPercentEncoding ?? fragment
     }
     
     private func flushStats() {
