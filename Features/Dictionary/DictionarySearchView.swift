@@ -129,7 +129,7 @@ struct DictionarySearchView: View {
         }
         
         let styles = LookupEngine.shared.getStyles()
-        content = buildHtml(results: results, styles: styles)
+        content = constructHtml(results: results, styles: styles)
     }
     
     private func handleTextSelection(_ selection: SelectionData, maxResults: Int, isVertical: Bool) -> Int? {
@@ -186,7 +186,7 @@ struct DictionarySearchView: View {
         }
     }
     
-    private func buildHtml(results: [LookupResult], styles: [DictionaryStyle]) -> String {
+    private func constructHtml(results: [LookupResult], styles: [DictionaryStyle]) -> String {
         var entries: [EntryData] = []
         
         for result in results {
@@ -267,6 +267,7 @@ struct DictionarySearchView: View {
             window.customCSS = \(customCSS);
         </script>
         <div id="entries-container"></div>
+        <div style="height: 50px;"></div>
         """
     }
 }

@@ -116,7 +116,7 @@ struct PopupWebView: UIViewRepresentable {
         if !context.coordinator.wasLoaded {
             context.coordinator.currentContent = content
             context.coordinator.wasLoaded = true
-            let html = buildHTML(content: content)
+            let html = constructHtml(content: content)
             webView.loadHTMLString(html, baseURL: nil)
         }
         
@@ -195,7 +195,7 @@ struct PopupWebView: UIViewRepresentable {
         }
     }
     
-    private func buildHTML(content: String) -> String {
+    private func constructHtml(content: String) -> String {
         """
         <!DOCTYPE html>
         <html>
