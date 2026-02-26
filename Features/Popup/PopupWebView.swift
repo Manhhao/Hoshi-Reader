@@ -26,7 +26,8 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
         
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: targetUrl)
+                let request = URLRequest(url: targetUrl, timeoutInterval: 1.2)
+                let (data, _) = try await URLSession.shared.data(for: request)
                 
                 await MainActor.run {
                     guard self.tasks.contains(taskId) else { return }
