@@ -19,30 +19,44 @@
     {
       "layers" : [
         {
-          "blend-mode" : "normal",
           "fill" : {
-            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+            "automatic-gradient" : "display-p3:1.00000,1.00000,1.00000,1.00000",
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 1
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 0.1982420609354929
+              }
+            }
           },
-          "glass" : true,
-          "hidden" : false,
-          "image-name" : "1118-sei.png",
-          "name" : "1118-sei",
+          "image-name" : "hoshi 2.svg",
+          "name" : "hoshi",
           "position" : {
-            "scale" : 1.95,
+            "scale" : 1,
             "translation-in-points" : [
-              -10,
-              -21
+              -6.354123873186779,
+              -16.655248711488355
             ]
           }
         }
       ],
+      "position" : {
+        "scale" : 1.29,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 0.5
+        "value" : 0.56
       }
     }
   ],
