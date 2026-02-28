@@ -25,7 +25,7 @@ window.hoshiSelection = {
     
     findParagraph(node) {
         let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        return el?.closest('p') || null;
+        return el?.closest('p, .glossary-content') || null;
     },
     
     createWalker(rootNode) {
