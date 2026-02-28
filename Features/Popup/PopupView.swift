@@ -118,7 +118,7 @@ struct PopupView: View {
             return nil
         }
         
-        return PopupLayout(
+        let result = PopupLayout(
             selectionRect: selectionData.rect,
             screenSize: screenSize,
             maxWidth: CGFloat(userConfig.popupWidth),
@@ -126,6 +126,15 @@ struct PopupView: View {
             isVertical: isVertical,
             isFullWidth: userConfig.popupFullWidth
         )
+        
+        guard result.width.isFinite,
+              result.height.isFinite,
+              result.position.x.isFinite,
+              result.position.y.isFinite else {
+            return nil
+        }
+        
+        return result
     }
     
     var body: some View {
