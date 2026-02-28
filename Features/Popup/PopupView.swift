@@ -53,7 +53,7 @@ struct PopupLayout {
             return min(max(spaceLeft, spaceRight) - screenBorderPadding, maxWidth)
         }
         
-        return maxWidth
+        return min(screenSize.width - screenBorderPadding * 2, maxWidth)
     }
     
     var height: CGFloat {
