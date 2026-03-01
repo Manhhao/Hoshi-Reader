@@ -106,6 +106,39 @@ window.hoshiReader = {
         }, true);
     },
     
+    notifyRestoreComplete() {
+        window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
+    },
+    
+    getScrollContext() {
+        var vertical = this.isVertical();
+        var scrollEl = document.scrollingElement || document.documentElement || document.body;
+        var pageSize = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
+        var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
+        var maxScroll = Math.max(0, totalSize - pageSize);
+        return { vertical, scrollEl, pageSize, maxScroll };
+    },
+    
+    setScrollOffset(context, scroll) {
+        var clampedScroll = Math.min(Math.max(0, scroll), context.maxScroll);
+        if (context.vertical) {
+            context.scrollEl.scrollTop = clampedScroll;
+            window.scrollTo(0, clampedScroll);
+        } else {
+            context.scrollEl.scrollLeft = clampedScroll;
+            window.scrollTo(clampedScroll, 0);
+        }
+        return clampedScroll;
+    },
+    
+    alignToPage(context, anchor) {
+        if (context.pageSize <= 0) {
+            return 0;
+        }
+        var pageIndex = Math.floor(Math.max(0, anchor) / context.pageSize);
+        return Math.min(Math.max(0, pageIndex * context.pageSize), context.maxScroll);
+    },
+    
     paginate(direction) {
         var vertical = this.isVertical();
         var pageSize = vertical ? window.innerHeight : window.innerWidth;
@@ -132,44 +165,27 @@ window.hoshiReader = {
     },
     
     restoreProgress(progress) {
-        var notifyComplete = () => window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
-        var vertical = this.isVertical();
-        var scrollEl = document.scrollingElement || document.documentElement || document.body;
-        var pageSize = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
-        var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
-        var maxScroll = Math.max(0, totalSize - pageSize);
+        var context = this.getScrollContext();
         
-        if (pageSize <= 0) {
+        if (context.pageSize <= 0) {
             this.registerSnapScroll(0);
-            notifyComplete();
+            this.notifyRestoreComplete();
             return;
         }
         
         if (progress <= 0) {
-            if (vertical) {
-                scrollEl.scrollTop = 0;
-                window.scrollTo(0, 0);
-            } else {
-                scrollEl.scrollLeft = 0;
-                window.scrollTo(0, 0);
-            }
+            this.setScrollOffset(context, 0);
             this.registerSnapScroll(0);
-            notifyComplete();
+            this.notifyRestoreComplete();
             return;
         }
         
         if (progress >= 0.99) {
-            var lastPage = Math.floor(maxScroll / pageSize) * pageSize;
+            var lastPage = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
             lastPage = Math.max(0, lastPage);
-            if (vertical) {
-                scrollEl.scrollTop = lastPage;
-                window.scrollTo(0, lastPage);
-            } else {
-                scrollEl.scrollLeft = lastPage;
-                window.scrollTo(lastPage, 0);
-            }
+            this.setScrollOffset(context, lastPage);
             this.registerSnapScroll(lastPage);
-            notifyComplete();
+            this.notifyRestoreComplete();
             return;
         }
         
@@ -183,7 +199,7 @@ window.hoshiReader = {
         
         if (totalChars <= 0) {
             this.registerSnapScroll(0);
-            notifyComplete();
+            this.notifyRestoreComplete();
             return;
         }
         
@@ -205,30 +221,67 @@ window.hoshiReader = {
             range.setStart(targetNode, 0);
             range.setEnd(targetNode, 1);
             var rect = range.getBoundingClientRect();
-            var anchor = (vertical ? rect.top : rect.left) + (vertical ? scrollEl.scrollTop : scrollEl.scrollLeft);
-            var pageIndex = Math.floor(anchor / pageSize);
-            var targetScroll = Math.min(pageIndex * pageSize, maxScroll);
+            var anchor = (context.vertical ? rect.top : rect.left) + (context.vertical ? context.scrollEl.scrollTop : context.scrollEl.scrollLeft);
+            var targetScroll = this.alignToPage(context, anchor);
             
-            if (vertical) {
-                scrollEl.scrollTop = targetScroll;
-                window.scrollTo(0, targetScroll);
-            } else {
-                scrollEl.scrollLeft = targetScroll;
-                window.scrollTo(targetScroll, 0);
-            }
+            this.setScrollOffset(context, targetScroll);
             requestAnimationFrame(() => {
-                if (vertical) {
-                    scrollEl.scrollTop = targetScroll;
-                    window.scrollTo(0, targetScroll);
-                } else {
-                    scrollEl.scrollLeft = targetScroll;
-                    window.scrollTo(targetScroll, 0);
-                }
-                window.hoshiReader.registerSnapScroll(targetScroll);
+                this.setScrollOffset(context, targetScroll);
+                this.registerSnapScroll(targetScroll);
             });
         } else {
             this.registerSnapScroll(0);
         }
-        notifyComplete();
+        this.notifyRestoreComplete();
+    },
+    
+    jumpToFragment(fragment) {
+        var context = this.getScrollContext();
+        
+        if (context.pageSize <= 0) {
+            this.registerSnapScroll(0);
+            this.notifyRestoreComplete();
+            return false;
+        }
+        
+        var rawFragment = (fragment || '').trim();
+        if (rawFragment.startsWith('#')) {
+            rawFragment = rawFragment.slice(1);
+        }
+        if (!rawFragment) {
+            this.registerSnapScroll(0);
+            this.notifyRestoreComplete();
+            return false;
+        }
+        
+        try {
+            rawFragment = decodeURIComponent(rawFragment);
+        } catch (_) {}
+        
+        var target = document.getElementById(rawFragment) ||
+            document.getElementsByName(rawFragment)[0];
+        if (!target && window.CSS?.escape) {
+            target = document.querySelector(`[id="${CSS.escape(rawFragment)}"]`) ||
+                document.querySelector(`[name="${CSS.escape(rawFragment)}"]`);
+        }
+        
+        if (!target) {
+            this.registerSnapScroll(0);
+            this.notifyRestoreComplete();
+            return false;
+        }
+        
+        var rect = target.getBoundingClientRect();
+        var anchor = (context.vertical ? rect.top : rect.left) + (context.vertical ? context.scrollEl.scrollTop : context.scrollEl.scrollLeft);
+        var targetScroll = this.alignToPage(context, anchor);
+        
+        this.setScrollOffset(context, targetScroll);
+        
+        requestAnimationFrame(() => {
+            this.setScrollOffset(context, targetScroll);
+            this.registerSnapScroll(targetScroll);
+            this.notifyRestoreComplete();
+        });
+        return true;
     },
 };

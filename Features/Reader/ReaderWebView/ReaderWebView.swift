@@ -8,7 +8,7 @@
 
 import WebKit
 import SwiftUI
-import UniformTypeIdentifiers
+import UIKit
 
 private enum NavigationDirection {
     case forward
@@ -22,8 +22,9 @@ struct SelectionData {
 }
 
 enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double)
+    case loadChapter(url: URL, progress: Double, fragment: String?)
     case restoreProgress(Double)
+    case jumpToFragment(String)
     case clearHighlight
 }
 
@@ -55,6 +56,8 @@ struct ReaderWebView: UIViewRepresentable {
     var onNextChapter: () -> Bool
     var onPreviousChapter: () -> Bool
     var onSaveBookmark: (Double) -> Void
+    var onInternalLink: (URL) -> Bool
+    var onInternalJump: (Double) -> Void
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     var onPageTurn: (() -> Void)?
@@ -110,16 +113,21 @@ struct ReaderWebView: UIViewRepresentable {
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress):
+                case .loadChapter(let url, let progress, let fragment):
                     context.coordinator.currentURL = url
                     context.coordinator.pendingProgress = progress
+                    context.coordinator.pendingFragment = fragment
                     if let documentsDirectory = try? BookStorage.getDocumentsDirectory() {
                         webView.alpha = 0
                         webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
                     }
                 case .restoreProgress(let progress):
                     context.coordinator.pendingProgress = progress
+                    context.coordinator.pendingFragment = nil
+                    context.coordinator.shouldSyncProgressAfterRestore = false
                     webView.evaluateJavaScript("window.hoshiReader.restoreProgress(\(progress))") { _, _ in }
+                case .jumpToFragment(let fragment):
+                    context.coordinator.jumpToFragment(fragment)
                 case .clearHighlight:
                     context.coordinator.clearHighlight()
                 }
@@ -130,6 +138,7 @@ struct ReaderWebView: UIViewRepresentable {
         if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
             context.coordinator.currentURL = url
             context.coordinator.pendingProgress = bridge.progress
+            context.coordinator.pendingFragment = nil
             guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else { return }
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
@@ -146,6 +155,8 @@ struct ReaderWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         var currentURL: URL?
         var pendingProgress: Double = 0
+        var pendingFragment: String?
+        var shouldSyncProgressAfterRestore = false
         
         init(_ parent: ReaderWebView) {
             self.parent = parent
@@ -153,6 +164,10 @@ struct ReaderWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "restoreCompleted" {
+                if shouldSyncProgressAfterRestore {
+                    shouldSyncProgressAfterRestore = false
+                    syncLinkJumpProgress()
+                }
                 UIView.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
@@ -175,6 +190,22 @@ struct ReaderWebView: UIViewRepresentable {
                     highlightSelection(count: highlightCount)
                 }
             }
+        }
+        
+        @MainActor
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
+            guard navigationAction.navigationType == .linkActivated,
+                  let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            
+            if handleInternalLink(url: url) {
+                decisionHandler(.cancel)
+                return
+            }
+            
+            decisionHandler(.allow)
         }
         
         private var selectionJs: String {
@@ -305,6 +336,16 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }()
             
+            let initialRestoreScript: String = {
+                if let fragment = pendingFragment {
+                    shouldSyncProgressAfterRestore = true
+                    return "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)));"
+                }
+                shouldSyncProgressAfterRestore = false
+                return "window.hoshiReader.restoreProgress(\(self.pendingProgress));"
+            }()
+            pendingFragment = nil
+            
             let script = """
             (function() {
                 var viewport = document.querySelector('meta[name="viewport"]');
@@ -368,7 +409,7 @@ struct ReaderWebView: UIViewRepresentable {
                 }).then(() => {
                     return new Promise(resolve => setTimeout(resolve, 50));
                 }).then(() => {
-                    window.hoshiReader.restoreProgress(\(self.pendingProgress));
+                    \(initialRestoreScript)
                 });
             })();
             """
@@ -437,17 +478,64 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func saveBookmark() {
+            fetchCurrentProgress { [weak self] progress in
+                guard let self else { return }
+                self.parent.onSaveBookmark(progress)
+            }
+        }
+        
+        func jumpToFragment(_ fragment: String) {
+            guard let webView = webView else {
+                return
+            }
+            shouldSyncProgressAfterRestore = true
+            let script = "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)))"
+            webView.evaluateJavaScript(script) { _, _ in }
+        }
+        
+        private func syncLinkJumpProgress() {
+            fetchCurrentProgress { [weak self] progress in
+                guard let self else { return }
+                self.parent.onInternalJump(progress)
+            }
+        }
+        
+        private func fetchCurrentProgress(_ completion: @escaping (Double) -> Void) {
             guard let webView = webView else {
                 return
             }
             
-            let script = "window.hoshiReader.calculateProgress()"
-            
-            webView.evaluateJavaScript(script) { (result, _) in
-                if let progress = result as? Double {
-                    self.parent.onSaveBookmark(progress)
+            webView.evaluateJavaScript("window.hoshiReader.calculateProgress()") { result, _ in
+                guard let progress = result as? Double else {
+                    return
                 }
+                completion(progress)
             }
+        }
+        
+        private func javaScriptStringLiteral(_ value: String) -> String {
+            let escaped = value
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
+            return "'\(escaped)'"
+        }
+        
+        @discardableResult
+        private func handleInternalLink(url: URL) -> Bool {
+            if url.isFileURL {
+                return parent.onInternalLink(url)
+            }
+            
+            guard let scheme = url.scheme?.lowercased() else {
+                return false
+            }
+            if scheme == "http" || scheme == "https" {
+                UIApplication.shared.open(url)
+                return true
+            }
+            return false
         }
         
         func highlightSelection(count: Int) {
