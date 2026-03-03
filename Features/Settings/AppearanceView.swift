@@ -164,7 +164,7 @@ struct AppearanceView: View {
                     
                     if userConfig.readerShowCharacters || userConfig.readerShowPercentage {
                         HStack {
-                            Text("Position")
+                            Text("Progress Position")
                             Spacer()
                             Picker("", selection: $userConfig.readerShowProgressTop) {
                                 Text("Top").tag(true)
@@ -173,6 +173,11 @@ struct AppearanceView: View {
                             .pickerStyle(.segmented)
                             .frame(width: 120)
                         }
+                    }
+                    
+                    if userConfig.enableStatistics {
+                        Toggle("Show Reading Speed", isOn: $userConfig.readerShowReadingSpeed)
+                        Toggle("Show Reading Time", isOn: $userConfig.readerShowReadingTime)
                     }
                 }
                 

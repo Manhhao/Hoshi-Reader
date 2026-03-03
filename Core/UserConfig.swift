@@ -135,6 +135,14 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerShowProgressTop, forKey: "readerShowProgressTop") }
     }
     
+    var readerShowReadingSpeed: Bool {
+        didSet { UserDefaults.standard.set(readerShowReadingSpeed, forKey: "readerShowReadingSpeed") }
+    }
+    
+    var readerShowReadingTime: Bool {
+        didSet { UserDefaults.standard.set(readerShowReadingTime, forKey: "readerShowReadingTime") }
+    }
+    
     var popupWidth: Int {
         didSet { UserDefaults.standard.set(popupWidth, forKey: "popupWidth") }
     }
@@ -256,6 +264,8 @@ class UserConfig {
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
+        self.readerShowReadingSpeed = defaults.object(forKey: "readerShowReadingSpeed") as? Bool ?? false
+        self.readerShowReadingTime = defaults.object(forKey: "readerShowReadingTime") as? Bool ?? false
         
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250

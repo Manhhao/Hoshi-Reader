@@ -94,6 +94,17 @@ struct ReaderView: View {
         return result.joined(separator: " ")
     }
     
+    var statisticsString: String {
+        var result: [String] = []
+        if userConfig.readerShowReadingSpeed {
+            result.append("\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
+        }
+        if userConfig.readerShowReadingTime {
+            result.append("\(Duration.seconds(viewModel.sessionStatistics.readingTime).formatted(.time(pattern: .hourMinute)))")
+        }
+        return result.joined(separator: " ")
+    }
+    
     var body: some View {
         // on ipad on first load, the geometry reader includes the safearea at the top
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
@@ -252,6 +263,7 @@ struct ReaderView: View {
                         Text(progressString)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .monospacedDigit()
                     }
                 }
             }
@@ -259,12 +271,20 @@ struct ReaderView: View {
         }
         .overlay(alignment: .bottom) {
             VStack {
-                if !focusMode && !userConfig.readerShowProgressTop && !progressString.isEmpty {
-                    Text(progressString)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if !focusMode {
+                    if userConfig.enableStatistics && !statisticsString.isEmpty {
+                        Text(statisticsString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !userConfig.readerShowProgressTop && !progressString.isEmpty {
+                        Text(progressString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .monospacedDigit()
         }
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
