@@ -150,10 +150,8 @@ struct BookshelfView: View {
                     .navigationDestination(isPresented: $showAbout) {
                         AboutView()
                     }
-                    .sheet(isPresented: $showAppearance) {
-                        AppearanceView(userConfig: userConfig)
-                            .presentationDetents([.medium])
-                            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
+                    .navigationDestination(isPresented: $showAppearance) {
+                        AppearanceView(userConfig: userConfig, showDismiss: false)
                     }
                 }
             }

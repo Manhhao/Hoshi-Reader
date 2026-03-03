@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct AppearanceView: View {
     let userConfig: UserConfig
+    let showDismiss: Bool
     @Environment(\.dismiss) var dismiss
     @State private var isImportingFont = false
     @State private var importedFonts: [String] = []
@@ -223,11 +224,13 @@ struct AppearanceView: View {
             .navigationTitle("Appearance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
+                if showDismiss {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
                     }
                 }
             }

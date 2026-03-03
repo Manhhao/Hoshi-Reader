@@ -269,7 +269,7 @@ struct ReaderView: View {
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
             case .appearance:
-                AppearanceView(userConfig: userConfig)
+                AppearanceView(userConfig: userConfig, showDismiss: true)
                     .presentationDetents([.medium])
                     .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
             case .chapters:
