@@ -15,8 +15,8 @@ struct HoshiReaderApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var userConfig = UserConfig()
     @State private var pendingImportURL: URL?
+    @State private var pendingRemoteImportURL: URL?
     @State private var pendingLookup: String?
-    @State private var remoteDownloadHandler = RemoteDownloadHandler()
     
     init() {
         WebViewPreloader.shared.warmup()
@@ -37,8 +37,8 @@ struct HoshiReaderApp: App {
         WindowGroup {
             BookshelfView(
                 pendingImportURL: $pendingImportURL,
-                pendingLookup: $pendingLookup,
-                remoteDownloadHandler: remoteDownloadHandler
+                pendingRemoteImportURL: $pendingRemoteImportURL,
+                pendingLookup: $pendingLookup
             )
                 .environment(userConfig)
                 .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
@@ -74,16 +74,7 @@ struct HoshiReaderApp: App {
             } else if url.host == "open", let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                       let urlString = components.queryItems?.first(where: { $0.name == "url" })?.value,
                       let remoteURL = URL(string: urlString) {
-                // Download remote EPUB file
-                Task {
-                    do {
-                        let localURL = try await remoteDownloadHandler.downloadEPUB(from: remoteURL)
-                        pendingImportURL = localURL
-                    } catch {
-                        remoteDownloadHandler.errorMessage = "Download failed: \(error.localizedDescription)"
-                        remoteDownloadHandler.shouldShowError = true
-                    }
-                }
+                pendingRemoteImportURL = remoteURL
             }
         } else if url.isFileURL {
             pendingImportURL = url

@@ -20,6 +20,7 @@ class BookshelfViewModel {
     var shouldShowSuccess: Bool = false
     var successMessage: String = ""
     var isSyncing: Bool = false
+    var isDownloading: Bool = false
     
     private var bookProgress: [UUID: Double] = [:]
     
@@ -167,7 +168,22 @@ class BookshelfViewModel {
             showError(message: error.localizedDescription)
         }
     }
-    
+
+    func importRemoteBook(from url: URL) {
+        isDownloading = true
+        Task {
+            defer {
+                isDownloading = false
+            }
+            do {
+                let (tempURL, _) = try await URLSession.shared.download(from: url)
+                try processImport(sourceURL: tempURL)
+            } catch {
+                showError(message: "Download failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     private func determineSyncDirection(local: Bookmark?, ttuProgress: TtuProgress?) -> SyncDirection {
         guard let local = local, let lastModified = local.lastModified else {
             if ttuProgress != nil {
