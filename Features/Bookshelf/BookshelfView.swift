@@ -28,6 +28,7 @@ struct BookshelfView: View {
     @State private var showBulkDeleteConfirmation = false
     @Binding var pendingImportURL: URL?
     @Binding var pendingLookup: String?
+    @Bindable var remoteDownloadHandler: RemoteDownloadHandler
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -180,6 +181,14 @@ struct BookshelfView: View {
             if viewModel.isSyncing {
                 LoadingOverlay("Syncing...")
             }
+            if remoteDownloadHandler.isDownloading {
+                LoadingOverlay("Downloading EPUB...")
+            }
+        }
+        .alert("Download Error", isPresented: $remoteDownloadHandler.shouldShowError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(remoteDownloadHandler.errorMessage)
         }
     }
     

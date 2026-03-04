@@ -350,11 +350,8 @@ class BookshelfViewModel {
     
     private func processImport(sourceURL: URL) throws {
         let tempDir = FileManager.default.temporaryDirectory
-        let tempURL = tempDir.appendingPathComponent(sourceURL.lastPathComponent)
-        
-        try? FileManager.default.removeItem(at: tempURL)
-        try? FileManager.default.removeItem(at: tempURL.deletingPathExtension())
-        
+        let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
+
         try FileManager.default.copyItem(at: sourceURL, to: tempURL)
         
         defer {
