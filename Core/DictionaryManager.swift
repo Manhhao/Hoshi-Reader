@@ -8,7 +8,7 @@
 
 import Foundation
 import SwiftUI
-import CYomitanDicts
+import CHoshiDicts
 import CxxStdlib
 
 enum DictionaryType: String {
@@ -91,8 +91,7 @@ class DictionaryManager {
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )
-        .filter { $0.pathExtension == "db" }
-        .map { DictionaryInfo(name: $0.deletingPathExtension().lastPathComponent, path: $0) }
+        .map { DictionaryInfo(name: $0.lastPathComponent, path: $0) }
     }
     
     private func loadDictionaryConfig() throws -> DictionaryConfig? {

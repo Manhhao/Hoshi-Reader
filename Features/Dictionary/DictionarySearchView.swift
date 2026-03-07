@@ -7,7 +7,7 @@
 //
 
 import SwiftUI
-import CYomitanDicts
+import CHoshiDicts
 
 struct DictionarySearchView: View {
     @Environment(UserConfig.self) private var userConfig
@@ -232,7 +232,7 @@ struct DictionarySearchView: View {
                 pitches.append(PitchData(dictionary: String(pitchEntry.dict_name), pitchPositions: pitchPositions))
             }
             
-            let definitionTags = String(result.term.definition_tags).split(separator: " ").map { String($0) }
+            let rules = String(result.term.rules).split(separator: " ").map { String($0) }
             
             entries.append(EntryData(
                 expression: expression,
@@ -242,7 +242,7 @@ struct DictionarySearchView: View {
                 glossaries: glossaries,
                 frequencies: frequencies,
                 pitches: pitches,
-                definitionTags: definitionTags
+                rules: rules
             ))
         }
         

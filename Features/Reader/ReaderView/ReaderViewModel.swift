@@ -9,7 +9,7 @@
 
 import EPUBKit
 import SwiftUI
-import CYomitanDicts
+import CHoshiDicts
 
 enum ActiveSheet: Identifiable {
     case appearance

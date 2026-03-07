@@ -489,12 +489,12 @@ function constructPitchPositionHtml(pitches) {
     return result;
 }
 
-function constructPitchCategories(pitches, reading, definitionTags) {
+function constructPitchCategories(pitches, reading, rules) {
     if (!pitches?.length) {
         return '';
     }
     
-    const verbOrAdj = isVerbOrAdjective(definitionTags);
+    const verbOrAdj = isVerbOrAdjective(rules);
     const categories = [];
     pitches.forEach(pitchGroup => {
         pitchGroup.pitchPositions.forEach(pos => {
@@ -556,7 +556,7 @@ function getFrequencyHarmonicRank(frequencies) {
     return String(Math.floor(values.length / sumOfReciprocals));
 }
 
-async function mineEntry(expression, reading, frequencies, pitches, definitionTags, matched, entryIndex, popupSelectionText) {
+async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
     const glossary = constructGlossaryHtml(idx);
@@ -565,7 +565,7 @@ async function mineEntry(expression, reading, frequencies, pitches, definitionTa
     const singleGlossaries = constructSingleGlossaryHtml(idx);
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
-    const pitchCategories = constructPitchCategories(pitches, reading, definitionTags);
+    const pitchCategories = constructPitchCategories(pitches, reading, rules);
     
     if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);
@@ -747,8 +747,8 @@ function getKanaMorae(text) {
 }
 
 // this might be unreliable
-function isVerbOrAdjective(definitionTags) {
-    return definitionTags?.some(tag => tag.startsWith('v') || tag.startsWith('adj-i')) ?? false;
+function isVerbOrAdjective(rules) {
+    return rules?.some(tag => tag.startsWith('v') || tag.startsWith('adj-i')) ?? false;
 }
 
 // https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L366
@@ -906,7 +906,7 @@ function createAudioButton(expression, reading, entryIndex) {
 }
 
 function createEntryHeader(entry, idx) {
-    const { expression, reading, matched, frequencies, pitches, definitionTags } = entry;
+    const { expression, reading, matched, frequencies, pitches, rules } = entry;
     const header = el('div', { className: 'entry-header' });
     
     const expressionSpan = el('span', { className: 'expression' });
@@ -929,7 +929,7 @@ function createEntryHeader(entry, idx) {
         ontouchstart: () => {
             lastSelection = window.getSelection()?.toString() || '';
         },
-        onclick: () => mineEntry(expression, reading, frequencies, pitches, definitionTags, matched, idx, lastSelection)
+        onclick: () => mineEntry(expression, reading, frequencies, pitches, rules, matched, idx, lastSelection)
     }));
     
     header.appendChild(buttonsContainer);
