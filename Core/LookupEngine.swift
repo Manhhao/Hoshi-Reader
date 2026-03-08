@@ -41,4 +41,9 @@ class LookupEngine {
     func getStyles() -> [DictionaryStyle] {
         return Array(dictQuery?.get_styles() ?? [])
     }
+    
+    func getMediaFile(dictName: String, mediaPath: String) -> Data {
+        let bytes = dictQuery!.get_media_file(std.string(dictName), std.string(mediaPath))
+        return Data(bytes.map { UInt8(bitPattern: $0) })
+    }
 }
