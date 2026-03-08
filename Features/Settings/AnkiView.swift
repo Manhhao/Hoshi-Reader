@@ -15,7 +15,7 @@ struct AnkiView: View {
     private var availableHandlebars: [String] {
         var options = Handlebars.allCases.map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {
-            options.append("\(Handlebars.singleGlossaryPrefix)\(dict.name)}")
+            options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)}")
         }
         return options
     }

@@ -74,9 +74,9 @@ struct CSSEditorView: View {
     private var dictionaryMenu: some View {
         Menu {
             ForEach(dictionaryManager.termDictionaries) { dict in
-                Button(dict.name) {
+                Button(dict.index.title) {
                     text += """
-                    [data-dictionary="\(dict.name)"] {
+                    [data-dictionary="\(dict.index.title)"] {
                         
                     }
                     

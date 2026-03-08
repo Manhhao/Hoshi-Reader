@@ -91,7 +91,7 @@ struct BookStorage {
         try data.write(to: targetURL, options: .atomic)
     }
     
-    private static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
+    static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let data = try? Data(contentsOf: url) else {
             return nil

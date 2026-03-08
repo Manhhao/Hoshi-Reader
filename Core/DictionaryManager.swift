@@ -89,10 +89,22 @@ class DictionaryManager {
         
         return try FileManager.default.contentsOfDirectory(
             at: directory,
-            includingPropertiesForKeys: nil,
+            includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
         )
-        .map { DictionaryInfo(name: $0.lastPathComponent, path: $0) }
+        .compactMap {
+            let values = try $0.resourceValues(forKeys: [.isDirectoryKey])
+            guard values.isDirectory == true else {
+                try? BookStorage.delete(at: $0)
+                return nil
+            }
+            guard let index = BookStorage.load(DictionaryIndex.self, from: $0.appendingPathComponent("index.json")) else {
+                try? BookStorage.delete(at: $0)
+                return nil
+            }
+            print(index)
+            return DictionaryInfo(index: index, path: $0)
+        }
     }
     
     private func loadDictionaryConfig() throws -> DictionaryConfig? {

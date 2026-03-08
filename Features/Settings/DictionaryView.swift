@@ -53,7 +53,7 @@ struct DictionaryView: View {
             
             Section("Term Dictionaries") {
                 ForEach(dictionaryManager.termDictionaries) { dict in
-                    Toggle(dict.name, isOn: Binding(
+                    Toggle(dict.index.title, isOn: Binding(
                         get: { dict.isEnabled },
                         set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .term) }
                     ))
@@ -68,7 +68,7 @@ struct DictionaryView: View {
             
             Section("Frequency Dictionaries") {
                 ForEach(dictionaryManager.frequencyDictionaries) { dict in
-                    Toggle(dict.name, isOn: Binding(
+                    Toggle(dict.index.title, isOn: Binding(
                         get: { dict.isEnabled },
                         set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .frequency) }
                     ))
@@ -83,7 +83,7 @@ struct DictionaryView: View {
             
             Section("Pitch Dictionaries") {
                 ForEach(dictionaryManager.pitchDictionaries) { dict in
-                    Toggle(dict.name, isOn: Binding(
+                    Toggle(dict.index.title, isOn: Binding(
                         get: { dict.isEnabled },
                         set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .pitch) }
                     ))
