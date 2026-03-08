@@ -28,6 +28,7 @@ class DictionaryManager {
     private(set) var isImporting = false
     var shouldShowError = false
     var errorMessage = ""
+    var currentImport = ""
     
     private static let configFileName = "config.json"
     
@@ -65,7 +66,7 @@ class DictionaryManager {
             }
         }
         
-        // append remaining dict that was imported, currently this shouldn't be more than one
+        // append remaining dicts that were imported
         let currentResult = Set(result.map({ $0.path.lastPathComponent }))
         for storedDict in storedDicts {
             if !currentResult.contains(storedDict.path.lastPathComponent) {
@@ -169,12 +170,16 @@ class DictionaryManager {
             }
             
             do {
-                for (url, type) in recommendedDictionaries {
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: url)!)
+                for (index, dictionary) in recommendedDictionaries.enumerated() {
+                    await MainActor.run {
+                        self.currentImport = "\(index + 1) / \(recommendedDictionaries.count)"
+                    }
+                    
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: dictionary.url)!)
                     tempFiles.append(temp)
                     
                     let destinationPath = try await Self.getDictionariesDirectory()
-                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
+                        .appendingPathComponent(dictionary.type.rawValue).path(percentEncoded: false)
                     
                     let importResult = dictionary_importer.import(
                         std.string(temp.path(percentEncoded: false)),
@@ -201,13 +206,7 @@ class DictionaryManager {
         }
     }
     
-    func importDictionary(from url: URL, type: DictionaryType) {
-        guard url.startAccessingSecurityScopedResource() else {
-            showError("failed to access dictionary")
-            return
-        }
-        let sourcePath = url.path(percentEncoded: false)
-        
+    func importDictionary(from urls: [URL], type: DictionaryType) {
         let destinationPath: String
         do {
             destinationPath = try Self.getDictionariesDirectory()
@@ -220,19 +219,47 @@ class DictionaryManager {
         isImporting = true
         
         Task.detached {
-            defer { url.stopAccessingSecurityScopedResource() }
+            var imported: [String] = []
+            var failed: [String] = []
             
-            let importResult = dictionary_importer.import(
-                std.string(sourcePath),
-                std.string(destinationPath)
-            )
+            for (index, url) in urls.enumerated() {
+                await MainActor.run {
+                    self.currentImport = "\(index + 1) / \(urls.count)"
+                }
+                
+                let current = url.lastPathComponent
+                guard url.startAccessingSecurityScopedResource() else {
+                    failed.append(current)
+                    continue
+                }
+                
+                defer { url.stopAccessingSecurityScopedResource() }
+                
+                let importResult = dictionary_importer.import(
+                    std.string(url.path(percentEncoded: false)),
+                    std.string(destinationPath)
+                )
+                
+                if importResult.term_count > 0 || importResult.meta_count > 0 {
+                    imported.append(current)
+                } else {
+                    failed.append(current)
+                }
+            }
             
             await MainActor.run {
                 self.isImporting = false
-                if importResult.term_count > 0 || importResult.meta_count > 0 {
+                
+                if !imported.isEmpty {
                     self.loadDictionaries()
                     self.saveDictionaryConfig()
                     self.rebuildLookupQuery()
+                }
+                
+                if imported.isEmpty {
+                    self.showError("failed to import dictionary")
+                } else if !failed.isEmpty {
+                    self.showError("some dictionaries could not be imported:\n\(failed.joined(separator: "\n"))")
                 }
             }
         }

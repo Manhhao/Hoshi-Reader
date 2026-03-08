@@ -134,9 +134,10 @@ struct DictionaryView: View {
                 .fileImporter(
                     isPresented: $isImporting,
                     allowedContentTypes: [.zip],
+                    allowsMultipleSelection: true,
                     onCompletion: { result in
-                        if case .success(let url) = result {
-                            dictionaryManager.importDictionary(from: url, type: importType)
+                        if case .success(let urls) = result {
+                            dictionaryManager.importDictionary(from: urls, type: importType)
                         }
                     }
                 )
@@ -145,7 +146,7 @@ struct DictionaryView: View {
         }
         .overlay {
             if dictionaryManager.isImporting {
-                LoadingOverlay("Importing...")
+                LoadingOverlay("Importing \(dictionaryManager.currentImport)")
             }
         }
         .navigationTitle("Dictionaries")

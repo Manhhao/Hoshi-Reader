@@ -73,6 +73,7 @@ struct LoadingOverlay: View {
                 }
                 .padding(24)
                 .glassEffect()
+                .monospacedDigit()
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -80,6 +81,7 @@ struct LoadingOverlay: View {
                 }
                 .padding(24)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .monospacedDigit()
             }
         }
     }
