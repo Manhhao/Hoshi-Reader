@@ -11,26 +11,38 @@ import SwiftUI
 struct AdvancedView: View {
     var body: some View {
         List {
-            NavigationLink {
-                AudioView()
-            } label: {
-                Label("Audio", systemImage: "speaker.wave.2")
+            Section {
+                NavigationLink {
+                    AudioView()
+                } label: {
+                    Label("Audio", systemImage: "speaker.wave.2")
+                }
+                .foregroundStyle(.primary)
+                
+                NavigationLink {
+                    StatisticsSettingsView()
+                } label: {
+                    Label("Statistics", systemImage: "chart.xyaxis.line")
+                }
+                .foregroundStyle(.primary)
+                
+                NavigationLink {
+                    SyncView()
+                } label: {
+                    Label("ッツ Sync", systemImage: "cloud")
+                }
+                .foregroundStyle(.primary)
             }
-            .foregroundStyle(.primary)
             
-            NavigationLink {
-                StatisticsSettingsView()
-            } label: {
-                Label("Statistics", systemImage: "chart.xyaxis.line")
+            Section {
+                NavigationLink {
+                    BackupView()
+                } label: {
+                    Label("Backup", systemImage: "externaldrive")
+                }
+                .foregroundStyle(.primary)
             }
-            .foregroundStyle(.primary)
             
-            NavigationLink {
-                SyncView()
-            } label: {
-                Label("ッツ Sync", systemImage: "cloud")
-            }
-            .foregroundStyle(.primary)
         }
         .navigationTitle("Advanced")
     }
