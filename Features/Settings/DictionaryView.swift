@@ -21,7 +21,7 @@ struct DictionaryView: View {
     var body: some View {
         List {
             Section {
-                Button("Get recommended dictionaries") {
+                Button("Get recommended Dictionaries") {
                     showDownloadConfirmation = true
                 }
                 .disabled(dictionaryManager.isImporting)
@@ -31,11 +31,19 @@ struct DictionaryView: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("This will download the latest JMdict Yomitan (Term) and Jiten.moe (Frequency) dictionaries.")
+                    Text("This will download the following Dictionaries:\nJMdict Yomitan (Term)\nJiten.moe (Frequency)")
                 }
                 if (dictionaryManager.updatableDictionaries.count > 0) {
-                    Button("Update dictionaries") {
-                        dictionaryManager.updateDictionaries()
+                    Button("Update Dictionaries") {
+                        showUpdateConfirmation = true
+                    }
+                    .alert("Update Dictionaries", isPresented: $showUpdateConfirmation) {
+                        Button("Update") {
+                            dictionaryManager.updateDictionaries()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will check for and install updates for these dictionaries:\n\(dictionaryManager.updatableDictionaries.map(\.0.index.title).joined(separator: "\n"))")
                     }
                 }
             }

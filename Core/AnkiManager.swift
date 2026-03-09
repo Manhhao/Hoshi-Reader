@@ -147,6 +147,15 @@ class AnkiManager {
         }
     }
     
+    func updateHandlebar(old: String, new: String) {
+        guard old != new else { return }
+        fieldMappings = fieldMappings.mapValues {
+            $0.replacingOccurrences(of: "\(Handlebars.singleGlossaryPrefix)\(old)}", with: "\(Handlebars.singleGlossaryPrefix)\(new)}")
+        }
+
+        save()
+    }
+    
     func save() {
         let data = AnkiConfig(
             selectedDeck: selectedDeck,

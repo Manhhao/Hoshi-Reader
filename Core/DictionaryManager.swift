@@ -122,7 +122,7 @@ class DictionaryManager {
                 return nil
             }
             let result = DictionaryInfo(index: index, path: $0)
-            if index.isUpdatable {
+            if index.isUpdatable && !index.indexUrl.isEmpty && !index.downloadUrl.isEmpty {
                 updatableDictionaries.append((result, type))
             }
             return result
@@ -316,10 +316,6 @@ class DictionaryManager {
                         self.currentImport = index.title
                     }
                     
-                    if index.indexUrl.isEmpty || index.downloadUrl.isEmpty {
-                        continue
-                    }
-                    
                     let (data, _) = try await URLSession.shared.data(from: URL(string: index.indexUrl)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
@@ -348,6 +344,7 @@ class DictionaryManager {
                             self.deleteDictionary(indexSet: IndexSet(integer: currentIndex), type: type)
                             let importedIndex = self.getDictionaryIndex(title: String(importResult.title), type: type)!
                             self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
+                            AnkiManager.shared.updateHandlebar(old: dictionary.index.title, new: String(importResult.title))
                         }
                     }
                 }
