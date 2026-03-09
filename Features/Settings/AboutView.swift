@@ -48,22 +48,28 @@ struct AboutView: View {
                     text: mitLicense(copyright: "Copyright (c) 2013-2021, ZipArchive, https://github.com/ZipArchive")
                 )
                 LicenseRow(
-                    name: "zip (yomitandicts-cpp)",
+                    name: "zip (hoshidicts)",
                     license: "MIT",
                     url: "https://github.com/kuba--/zip",
                     text: mitLicense(copyright: "All Rights Reserved")
                 )
                 LicenseRow(
-                    name: "zstd (yomitandicts-cpp)",
+                    name: "zstd (hoshidicts)",
                     license: "BSD-3",
                     url: "https://github.com/facebook/zstd",
                     text: bsdLicenseZstd
                 )
                 LicenseRow(
-                    name: "utfcpp (yomitandicts-cpp)",
+                    name: "utfcpp (hoshidicts)",
                     license: "BSL-1.0",
                     url: "https://github.com/nemtrif/utfcpp",
                     text: nil
+                )
+                LicenseRow(
+                    name: "glaze (hoshidicts)",
+                    license: "MIT",
+                    url: "https://github.com/stephenberry/glaze",
+                    text: mitLicense(copyright: "Copyright (c) 2019 - present, Stephen Berry")
                 )
                 LicenseRow(
                     name: "SwiftUI Introspect",
@@ -78,9 +84,9 @@ struct AboutView: View {
                     text: mitLicense(copyright: "Copyright (c) 2022 Witek Bobrowski")
                 )
                 LicenseRow(
-                    name: "yomitandicts-cpp",
+                    name: "hoshidicts",
                     license: "GPLv3",
-                    url: "https://github.com/Manhhao/yomitandicts-cpp",
+                    url: "https://github.com/Manhhao/hoshidicts",
                     text: nil
                 )
             }
@@ -106,7 +112,7 @@ struct AboutView: View {
                 )
                 LicenseRow(
                     name: "JMdict for Yomitan",
-                    license: "MIT",
+                    license: "CC-BY-SA-4.0",
                     url: "https://github.com/yomidevs/jmdict-yomitan",
                     text: nil
                 )

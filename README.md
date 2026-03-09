@@ -51,7 +51,7 @@ If you're planning on contributing a feature or significant change, please open 
 
 | Name | License |
 | :--- | :--- |
-| [yomitandicts-cpp](https://github.com/Manhhao/yomitandicts-cpp) | GPLv3 |
+| [hoshidicts](https://github.com/Manhhao/hoshidicts) | GPLv3 |
 | [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | MIT |
 | [SwiftUI Introspect](https://github.com/siteline/swiftui-introspect) | MIT |
 
@@ -62,7 +62,7 @@ If you're planning on contributing a feature or significant change, please open 
 | [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPLv3 |
 | [Yomitan](https://github.com/yomidevs/yomitan) | Pitch accent implementation, Furigana Segmenter | GPLv3 |
 | [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader) | Statistics | BSD-3 |
-| [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | MIT |
+| [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | CC-BY-SA-4.0 |
 | [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | Apache-2.0 |
 | [Kanji alive](https://github.com/kanjialive/kanji-data-media) | Default audio source | CC-BY-4.0 |
 | [Tofugu/WaniKani Audio](https://github.com/tofugu/japanese-vocabulary-pronunciation-audio) | Default audio source | CC-BY-SA-4.0 |
