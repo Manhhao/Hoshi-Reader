@@ -40,25 +40,25 @@ struct HoshiReaderApp: App {
                 pendingRemoteImportURL: $pendingRemoteImportURL,
                 pendingLookup: $pendingLookup
             )
-                .environment(userConfig)
-                .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
-                .onChange(of: scenePhase, initial: true) { _, phase in
-                    switch phase {
-                    case .active:
-                        LocalFileServer.shared.endBackgroundTask()
-                        LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
-                    case .background:
-                        LocalFileServer.shared.startBackgroundTask()
-                    default:
-                        break
-                    }
-                }
-                .onChange(of: userConfig.enableLocalAudio) { _, _ in
+            .environment(userConfig)
+            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                switch phase {
+                case .active:
+                    LocalFileServer.shared.endBackgroundTask()
                     LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                case .background:
+                    LocalFileServer.shared.startBackgroundTask()
+                default:
+                    break
                 }
-                .onOpenURL { url in
-                    handleURL(url)
-                }
+            }
+            .onChange(of: userConfig.enableLocalAudio) { _, _ in
+                LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+            }
+            .onOpenURL { url in
+                handleURL(url)
+            }
         }
     }
     
