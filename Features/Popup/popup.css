@@ -133,6 +133,54 @@ a {
     content: '▼ ';
 }
 
+.glossary-group > div[data-dictionary] {
+    display: block;
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 0;
+}
+
+:where(.glossary-group > div[data-dictionary]) ul,
+:where(.glossary-group > div[data-dictionary]) ol {
+    padding-left: 1.2em;
+    margin: 2px 0;
+}
+
+:where(.glossary-group > div[data-dictionary]) li {
+    margin: 1px 0;
+}
+
+.glossary-group > div[data-dictionary] .glossary-tags {
+    display: inline-flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin: 0 0 2px 0;
+}
+
+.glossary-group > div[data-dictionary] .glossary-tag {
+    font-size: 10px;
+    padding: 2px 4px;
+    background-color: rgba(128, 128, 128, 0.2);
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.glossary-group > div[data-dictionary] table {
+    table-layout: auto;
+    border-collapse: collapse;
+}
+
+.glossary-group > div[data-dictionary] th,
+.glossary-group > div[data-dictionary] td {
+    border: 1px solid currentColor;
+    padding: 0.25em;
+    vertical-align: top;
+}
+
+.glossary-group > div[data-dictionary] th {
+    font-weight: bold;
+}
+
 .glossary-content {
     font-size: 15px;
 }

@@ -637,7 +637,9 @@ function renderStructuredContent(parent, node, language = null) {
         return;
     }
     
-    const element = document.createElement(node.tag || 'span');
+    const tagName = node.tag || 'span';
+    const element = document.createElement(tagName);
+    element.classList.add(`gloss-sc-${tagName}`);
     let nextLanguage = language;
     
     if (node.href) {
@@ -979,43 +981,6 @@ function createGlossarySection(dictName, contents, isFirst) {
     dictWrapper.appendChild(el('style', {
         textContent: `
             [data-dictionary="${dictName}"] {
-                display: block;
-                font-size: 14px;
-                line-height: 1.4;
-                padding: 0;
-            
-                ul, ol {
-                    padding-left: 1.2em;
-                    margin: 2px 0; 
-                }
-                li { 
-                    margin: 1px 0;
-                }
-                .glossary-tags {
-                    display: inline-flex;
-                    gap: 4px;
-                    flex-wrap: wrap;
-                    margin: 0 0 2px 0;
-                }
-                .glossary-tag {
-                    font-size: 10px;
-                    padding: 2px 4px;
-                    background-color: rgba(128, 128, 128, 0.2);
-                    border-radius: 4px;
-                    line-height: 1;
-                }
-                table {
-                    table-layout: auto;
-                    border-collapse: collapse;
-                }
-                th, td {
-                    border: 1px solid currentColor;
-                    padding: 0.25em;
-                    vertical-align: top;
-                }
-                th {
-                    font-weight: bold;
-                }
                 @media (prefers-color-scheme: light) { color: #000; }
                 @media (prefers-color-scheme: dark) { color: #fff; }
                 ${dictStyle}
