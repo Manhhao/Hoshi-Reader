@@ -36,7 +36,7 @@ struct DictionaryConfig: Codable {
     }
 }
 
-struct DictionaryIndex: Codable {
+nonisolated struct DictionaryIndex: Codable {
     let title: String
     let format: Int
     let revision: String

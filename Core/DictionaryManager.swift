@@ -25,7 +25,9 @@ class DictionaryManager {
     private(set) var termDictionaries: [DictionaryInfo] = []
     private(set) var frequencyDictionaries: [DictionaryInfo] = []
     private(set) var pitchDictionaries: [DictionaryInfo] = []
+    private(set) var updatableDictionaries: [(DictionaryInfo, DictionaryType)] = []
     private(set) var isImporting = false
+    private(set) var isUpdating = false
     var shouldShowError = false
     var errorMessage = ""
     var currentImport = ""
@@ -34,9 +36,11 @@ class DictionaryManager {
     
     private init() {
         loadDictionaries()
+        rebuildLookupQuery()
     }
     
     func loadDictionaries() {
+        updatableDictionaries = []
         let storedTermDicts = (try? getDictionariesFromStorage(type: .term)) ?? []
         let storedFreqDicts = (try? getDictionariesFromStorage(type: .frequency)) ?? []
         let storedPitchDicts = (try? getDictionariesFromStorage(type: .pitch)) ?? []
@@ -50,8 +54,23 @@ class DictionaryManager {
             frequencyDictionaries = storedFreqDicts
             pitchDictionaries = storedPitchDicts
         }
-        rebuildLookupQuery()
     }
+    
+    func rebuildLookupQuery() {
+       let enabledTermPaths = termDictionaries
+           .filter { $0.isEnabled }
+           .map { $0.path }
+       
+       let enabledFreqPaths = frequencyDictionaries
+           .filter { $0.isEnabled }
+           .map { $0.path }
+       
+       let enabledPitchPaths = pitchDictionaries
+           .filter { $0.isEnabled }
+           .map { $0.path }
+       
+       LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+   }
     
     func collectDictionaries(storedDicts: [DictionaryInfo], configDicts: [DictionaryConfig.DictionaryEntry]) -> [DictionaryInfo] {
         var result: [DictionaryInfo] = []
@@ -102,8 +121,11 @@ class DictionaryManager {
                 try? BookStorage.delete(at: $0)
                 return nil
             }
-            print(index)
-            return DictionaryInfo(index: index, path: $0)
+            let result = DictionaryInfo(index: index, path: $0)
+            if index.isUpdatable {
+                updatableDictionaries.append((result, type))
+            }
+            return result
         }
     }
     
@@ -166,9 +188,9 @@ class DictionaryManager {
     }
     
     func importRecommendedDictionaries() {
-        let recommendedDictionaries: [(url: String, type: DictionaryType)] = [
-            ("https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.zip", .term),
-            ("https://api.jiten.moe/api/frequency-list/download", .frequency),
+        let recommendedDictionaries: [(file: String, url: String, type: DictionaryType)] = [
+            ("JMdict_english.zip", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.zip", .term),
+            ("jiten_freq_global.zip", "https://api.jiten.moe/api/frequency-list/download", .frequency),
         ]
         
         isImporting = true
@@ -182,23 +204,23 @@ class DictionaryManager {
             }
             
             do {
-                for (index, dictionary) in recommendedDictionaries.enumerated() {
+                for (file, url, type) in recommendedDictionaries {
                     await MainActor.run {
-                        self.currentImport = "\(index + 1) / \(recommendedDictionaries.count)"
+                        self.currentImport = "\(file)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: dictionary.url)!)
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: url)!)
                     tempFiles.append(temp)
                     
                     let destinationPath = try await Self.getDictionariesDirectory()
-                        .appendingPathComponent(dictionary.type.rawValue).path(percentEncoded: false)
+                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
                     
                     let importResult = dictionary_importer.import(
                         std.string(temp.path(percentEncoded: false)),
                         std.string(destinationPath)
                     )
                     
-                    if importResult.term_count == 0 && importResult.meta_count == 0 {
+                    if !importResult.success {
                         throw URLError(.cannotParseResponse)
                     }
                 }
@@ -234,9 +256,9 @@ class DictionaryManager {
             var imported: [String] = []
             var failed: [String] = []
             
-            for (index, url) in urls.enumerated() {
+            for url in urls {
                 await MainActor.run {
-                    self.currentImport = "\(index + 1) / \(urls.count)"
+                    self.currentImport = "\(url.lastPathComponent)"
                 }
                 
                 let current = url.lastPathComponent
@@ -252,7 +274,7 @@ class DictionaryManager {
                     std.string(destinationPath)
                 )
                 
-                if importResult.term_count > 0 || importResult.meta_count > 0 {
+                if importResult.success {
                     imported.append(current)
                 } else {
                     failed.append(current)
@@ -272,6 +294,71 @@ class DictionaryManager {
                     self.showError("failed to import dictionary")
                 } else if !failed.isEmpty {
                     self.showError("some dictionaries could not be imported:\n\(failed.joined(separator: "\n"))")
+                }
+            }
+        }
+    }
+    
+    func updateDictionaries() {
+        let dictionaries = updatableDictionaries
+        isUpdating = true
+        Task.detached {
+            var tempFiles: [URL] = []
+            defer {
+                for file in tempFiles {
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
+            do {
+                for (dictionary, type) in dictionaries {
+                    let index = dictionary.index
+                    await MainActor.run {
+                        self.currentImport = index.title
+                    }
+                    
+                    if index.indexUrl.isEmpty || index.downloadUrl.isEmpty {
+                        continue
+                    }
+                    
+                    let (data, _) = try await URLSession.shared.data(from: URL(string: index.indexUrl)!)
+                    let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
+                    
+                    if index.revision == remoteIndex.revision {
+                        continue
+                    }
+                    
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: index.downloadUrl)!)
+                    tempFiles.append(temp)
+                    
+                    let destinationPath = try await Self.getDictionariesDirectory()
+                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
+                    
+                    let importResult = dictionary_importer.import(
+                        std.string(temp.path(percentEncoded: false)),
+                        std.string(destinationPath)
+                    )
+                    
+                    if !importResult.success {
+                        continue
+                    }
+                    
+                    await MainActor.run {
+                        self.loadDictionaries()
+                        if let currentIndex = self.getDictionaryIndex(title: dictionary.index.title, type: type) {
+                            self.deleteDictionary(indexSet: IndexSet(integer: currentIndex), type: type)
+                            let importedIndex = self.getDictionaryIndex(title: String(importResult.title), type: type)!
+                            self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
+                        }
+                    }
+                }
+                
+                await MainActor.run {
+                    self.isUpdating = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.isUpdating = false
+                    self.showError("failed to update dictionaries: \(error.localizedDescription)")
                 }
             }
         }
@@ -331,18 +418,21 @@ class DictionaryManager {
                 let dictionary = termDictionaries[index]
                 try? BookStorage.delete(at: dictionary.path)
                 termDictionaries.remove(at: index)
+                updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
             }
         case .frequency:
             for index in indexSet {
                 let dictionary = frequencyDictionaries[index]
                 try? BookStorage.delete(at: dictionary.path)
                 frequencyDictionaries.remove(at: index)
+                updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
             }
         case .pitch:
             for index in indexSet {
                 let dictionary = pitchDictionaries[index]
                 try? BookStorage.delete(at: dictionary.path)
                 pitchDictionaries.remove(at: index)
+                updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
             }
         }
         updateOrder(type: type)
@@ -350,24 +440,19 @@ class DictionaryManager {
         rebuildLookupQuery()
     }
     
-    private static func getDictionariesDirectory() throws -> URL {
-        try BookStorage.getDocumentsDirectory().appendingPathComponent("Dictionaries")
+    private func getDictionaryIndex(title: String, type: DictionaryType) -> Int? {
+        switch type {
+        case .term:
+            termDictionaries.firstIndex { $0.index.title == title }
+        case .frequency:
+            frequencyDictionaries.firstIndex { $0.index.title == title }
+        case .pitch:
+            pitchDictionaries.firstIndex { $0.index.title == title }
+        }
     }
     
-    private func rebuildLookupQuery() {
-        let enabledTermPaths = termDictionaries
-            .filter { $0.isEnabled }
-            .map { $0.path }
-        
-        let enabledFreqPaths = frequencyDictionaries
-            .filter { $0.isEnabled }
-            .map { $0.path }
-        
-        let enabledPitchPaths = pitchDictionaries
-            .filter { $0.isEnabled }
-            .map { $0.path }
-        
-        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+    private static func getDictionariesDirectory() throws -> URL {
+        try BookStorage.getDocumentsDirectory().appendingPathComponent("Dictionaries")
     }
     
     private func showError(_ message: String) {
