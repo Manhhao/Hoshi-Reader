@@ -364,9 +364,9 @@ function constructSingleGlossaryHtml(entryIndex) {
         
         const tempDiv = document.createElement('div');
         try {
-            renderStructuredContent(tempDiv, JSON.parse(g.content));
+            renderStructuredContent(tempDiv, JSON.parse(g.content), null, dictName);
         } catch {
-            renderStructuredContent(tempDiv, g.content);
+            renderStructuredContent(tempDiv, g.content, null, dictName);
         }
         
         const parsedTags = parseTags(g.definitionTags).filter(tag => !NUMERIC_TAG.test(tag));
@@ -406,9 +406,9 @@ function constructGlossaryHtml(entryIndex) {
         
         const tempDiv = document.createElement('div');
         try {
-            renderStructuredContent(tempDiv, JSON.parse(g.content));
+            renderStructuredContent(tempDiv, JSON.parse(g.content), null, dictName);
         } catch {
-            renderStructuredContent(tempDiv, g.content);
+            renderStructuredContent(tempDiv, g.content, null, dictName);
         }
         
         index++;
@@ -507,7 +507,95 @@ function constructPitchCategories(pitches, reading, rules) {
     return categories.join(',');
 }
 
-// Yomitan reference:
+// https://github.com/yomidevs/yomitan/blob/d810b2f0842536d24ab82b6cd75d00841710e57b/ext/js/display/structured-content-generator.js#L64
+function createDefinitionImage(data, dictionary) {
+    const {
+        path,
+        width = 100,
+        height = 100,
+        preferredWidth,
+        preferredHeight,
+        title,
+        pixelated,
+        imageRendering,
+        appearance,
+        background,
+        collapsed,
+        collapsible,
+        verticalAlign,
+        border,
+        borderRadius,
+        sizeUnits,
+        data: nodeData,
+    } = data;
+    
+    const hasPreferredWidth = (typeof preferredWidth === 'number');
+    const hasPreferredHeight = (typeof preferredHeight === 'number');
+    const invAspectRatio = (
+                            hasPreferredWidth && hasPreferredHeight ?
+                            preferredHeight / preferredWidth :
+                            height / width
+                            );
+    const usedWidth = (
+                       hasPreferredWidth ?
+                       preferredWidth :
+                       (hasPreferredHeight ? preferredHeight / invAspectRatio : width)
+                       );
+    
+    const node = document.createElement('a');
+    node.classList.add('gloss-image-link');
+    node.target = '_blank';
+    node.rel = 'noreferrer noopener';
+    
+    const imageContainer = document.createElement('span');
+    imageContainer.classList.add('gloss-image-container');
+    node.appendChild(imageContainer);
+    
+    const aspectRatioSizer = document.createElement('span');
+    aspectRatioSizer.classList.add('gloss-image-sizer');
+    imageContainer.appendChild(aspectRatioSizer);
+    
+    const imageBackground = document.createElement('span');
+    imageBackground.classList.add('gloss-image-background');
+    imageContainer.appendChild(imageBackground);
+    
+    const overlay = document.createElement('span');
+    overlay.classList.add('gloss-image-container-overlay');
+    imageContainer.appendChild(overlay);
+    
+    node.dataset.path = path;
+    node.dataset.dictionary = dictionary;
+    node.dataset.hasAspectRatio = 'true';
+    node.dataset.imageRendering = typeof imageRendering === 'string' ? imageRendering : (pixelated ? 'pixelated' : 'auto');
+    node.dataset.appearance = typeof appearance === 'string' ? appearance : 'auto';
+    node.dataset.background = typeof background === 'boolean' ? `${background}` : 'true';
+    node.dataset.collapsed = typeof collapsed === 'boolean' ? `${collapsed}` : 'false';
+    node.dataset.collapsible = typeof collapsible === 'boolean' ? `${collapsible}` : 'true';
+    if (typeof verticalAlign === 'string') {
+        node.dataset.verticalAlign = verticalAlign;
+    }
+    if (typeof sizeUnits === 'string') {
+        node.dataset.sizeUnits = sizeUnits;
+    }
+    
+    aspectRatioSizer.style.paddingTop = `${invAspectRatio * 100}%`;
+    
+    if (typeof border === 'string') { imageContainer.style.border = border; }
+    if (typeof borderRadius === 'string') { imageContainer.style.borderRadius = borderRadius; }
+    imageContainer.style.width = `${usedWidth}em`;
+    if (typeof title === 'string') {
+        imageContainer.title = title;
+    }
+    
+    const image = document.createElement('img');
+    image.classList.add('gloss-image');
+    image.alt = nodeData?.alt || title || '';
+    image.src = `image://?dictionary=${encodeURIComponent(dictionary)}&path=${encodeURIComponent(path)}`;
+    
+    imageContainer.appendChild(image);
+    return node;
+}
+
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/data/anki-note-data-creator.js#L177-L221
 function getFrequencyHarmonicRank(frequencies) {
     if (!frequencies || frequencies.length === 0) {
@@ -590,7 +678,7 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
     });
 }
 
-function renderStructuredContent(parent, node, language = null) {
+function renderStructuredContent(parent, node, language = null, dictName = null) {
     if (typeof node === 'string') {
         node.split(/\r?\n/).forEach((line, i) => {
             if (i > 0) {
@@ -624,7 +712,7 @@ function renderStructuredContent(parent, node, language = null) {
             return;
         }
         
-        node.forEach(child => renderStructuredContent(parent, child, language));
+        node.forEach(child => renderStructuredContent(parent, child, language, dictName));
         return;
     }
     
@@ -633,7 +721,12 @@ function renderStructuredContent(parent, node, language = null) {
     }
     
     if (node.type === 'structured-content') {
-        renderStructuredContent(parent, node.content, language);
+        renderStructuredContent(parent, node.content, language, dictName);
+        return;
+    }
+    
+    if (node.tag === 'img') {
+        parent.appendChild(createDefinitionImage(node, dictName));
         return;
     }
     
@@ -677,15 +770,15 @@ function renderStructuredContent(parent, node, language = null) {
     }
     
     if (node.content) {
-        renderStructuredContent(element, node.content, nextLanguage);
+        renderStructuredContent(element, node.content, nextLanguage, dictName);
     }
     
     if (node.colSpan) {
-      element.setAttribute('colspan', node.colSpan);
+        element.setAttribute('colspan', node.colSpan);
     }
     
     if (node.rowSpan) {
-      element.setAttribute('rowspan', node.rowSpan);
+        element.setAttribute('rowspan', node.rowSpan);
     }
     
     parent.appendChild(element);
@@ -992,9 +1085,9 @@ function createGlossarySection(dictName, contents, isFirst) {
     const termTags = [...new Set(parseTags(contents[0]?.termTags))];
     const renderContent = (parent, content) => {
         try {
-            renderStructuredContent(parent, JSON.parse(content));
+            renderStructuredContent(parent, JSON.parse(content), null, dictName);
         } catch {
-            renderStructuredContent(parent, content);
+            renderStructuredContent(parent, content, null, dictName);
         }
     };
     

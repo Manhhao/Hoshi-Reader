@@ -59,6 +59,49 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+class ImageHandler: NSObject, WKURLSchemeHandler {
+    func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
+        guard let requestUrl = task.request.url,
+              let components = URLComponents(url: requestUrl, resolvingAgainstBaseURL: false),
+              let dictionary = components.queryItems?.first(where: { $0.name == "dictionary" })?.value,
+              let mediaPath = components.queryItems?.first(where: { $0.name == "path" })?.value else {
+            task.didFailWithError(URLError(.badURL))
+            return
+        }
+        
+        let data = LookupEngine.shared.getMediaFile(dictName: dictionary, mediaPath: mediaPath)
+        guard !data.isEmpty else {
+            task.didFailWithError(URLError(.fileDoesNotExist))
+            return
+        }
+        
+        let response = URLResponse(
+            url: requestUrl,
+            mimeType: mimeType(for: mediaPath),
+            expectedContentLength: data.count,
+            textEncodingName: nil
+        )
+        task.didReceive(response)
+        task.didReceive(data)
+        task.didFinish()
+    }
+    
+    func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
+    
+    private func mimeType(for path: String) -> String {
+        switch URL(fileURLWithPath: path).pathExtension.lowercased() {
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "gif": return "image/gif"
+        case "webp": return "image/webp"
+        case "avif": return "image/avif"
+        case "heic": return "image/heic"
+        case "svg": return "image/svg+xml"
+        default: return "application/octet-stream"
+        }
+    }
+}
+
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
@@ -101,6 +144,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "tapOutside")
         config.userContentController.add(context.coordinator, name: "playWordAudio")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
+        config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.mediaTypesRequiringUserActionForPlayback = []
         
         let webView = WKWebView(frame: .zero, configuration: config)
