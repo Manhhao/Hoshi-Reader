@@ -182,7 +182,7 @@ struct PopupView: View {
             let expression = String(result.term.expression)
             let reading = String(result.term.reading)
             let matched = String(result.matched)
-            let deinflectionTrace = result.trace.map { DeinflectionTag(name: String($0.name), description: String($0.description)) }
+            let deinflectionTrace = result.trace.reversed().map { DeinflectionTag(name: String($0.name), description: String($0.description)) }
             
             var glossaries: [GlossaryData] = []
             for glossary in result.term.glossaries {
