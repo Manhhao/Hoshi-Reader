@@ -12,6 +12,11 @@ import SwiftUI
 class SearchField: UITextField {
     var targetLanguage: String? // avoid modifying `init`
     var onTransitionComplete: (() -> Void)?
+
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        return CGSize(width: UIView.noIntrinsicMetric, height: size.height)
+    }
     
     override func didMoveToWindow() {
         super.didMoveToWindow()

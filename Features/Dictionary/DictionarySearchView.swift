@@ -289,6 +289,7 @@ struct DictionarySearchBar: View {
                     .foregroundStyle(.secondary)
                 
                 CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 if !text.isEmpty {
                     Button {
@@ -305,6 +306,7 @@ struct DictionarySearchBar: View {
             .padding(.vertical, 12)
             .glassEffect(.regular.interactive())
             .contentShape(Capsule())
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
         }
         else {
@@ -314,6 +316,7 @@ struct DictionarySearchBar: View {
                     .foregroundStyle(.secondary)
                 
                 CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 if !text.isEmpty {
                     Button {
@@ -331,6 +334,7 @@ struct DictionarySearchBar: View {
             .background(.ultraThinMaterial, in: Capsule())
             .overlay(Capsule().stroke(Color.primary.opacity(0.2), lineWidth: 1))
             .contentShape(Capsule())
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
         }
     }
