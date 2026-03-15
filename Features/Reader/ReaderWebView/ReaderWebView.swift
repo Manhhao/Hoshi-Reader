@@ -380,6 +380,8 @@ struct ReaderWebView: UIViewRepresentable {
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)
+                window.hoshiReader.pageHeight = \(pageHeight);
+                window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
                 
                 if (\(parent.userConfig.readerHideFurigana)) {

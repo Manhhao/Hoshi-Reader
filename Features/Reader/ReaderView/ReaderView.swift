@@ -111,14 +111,14 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: topSafeArea + webViewPadding + (userConfig.readerShowProgressTop && !progressString.isEmpty ? lineHeight : 0) + (userConfig.readerShowTitle ? lineHeight : 0))
+                .frame(height: max(topSafeArea, 25) + webViewPadding + (userConfig.readerShowProgressTop && !progressString.isEmpty ? lineHeight : 0) + (userConfig.readerShowTitle ? lineHeight : 0))
                 .contentShape(Rectangle())
             
             GeometryReader { geometry in
                 ZStack {
                     ReaderWebView(
                         userConfig: userConfig,
-                        viewSize: CGSize(width: geometry.size.width, height: geometry.size.height),
+                        viewSize: CGSize(width: geometry.size.width.rounded(), height: geometry.size.height.rounded()),
                         bridge: viewModel.bridge,
                         onNextChapter: viewModel.nextChapter,
                         onPreviousChapter: viewModel.previousChapter,
@@ -237,7 +237,7 @@ struct ReaderView: View {
                 .opacity(focusMode ? 0 : 1)
             }
             .padding(.horizontal, 20)
-            .frame(height: (UIApplication.bottomSafeArea != 0 ? UIApplication.bottomSafeArea : 44) + 8, alignment: .top)
+            .frame(height: (UIApplication.bottomSafeArea > 25 ? UIApplication.bottomSafeArea : 44) + 10, alignment: .top)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.default.speed(2)) {
@@ -272,7 +272,7 @@ struct ReaderView: View {
                     }
                 }
             }
-            .padding(.top, topSafeArea)
+            .padding(.top, max(topSafeArea, 25))
         }
         .overlay(alignment: .bottom) {
             VStack {

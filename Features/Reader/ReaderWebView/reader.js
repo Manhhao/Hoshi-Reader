@@ -70,9 +70,10 @@ window.hoshiReader = {
         window.lastPageScroll = initialScroll;
         
         var vertical = this.isVertical();
+        var pageHeight = this.pageHeight;
+        var pageWidth = this.pageWidth;
         window.addEventListener('scroll', function () {
             if (vertical) {
-                var pageHeight = window.innerHeight;
                 var snappedScroll = Math.round(window.scrollY / pageHeight) * pageHeight;
                 if (Math.abs(window.scrollY - snappedScroll) > 1) {
                     window.scrollTo(0, window.lastPageScroll);
@@ -80,7 +81,6 @@ window.hoshiReader = {
                     window.lastPageScroll = snappedScroll;
                 }
             } else {
-                var pageWidth = window.innerWidth;
                 var snappedScroll = Math.round(window.scrollX / pageWidth) * pageWidth;
                 if (Math.abs(window.scrollX - snappedScroll) > 1) {
                     window.scrollTo(window.lastPageScroll, 0);
@@ -113,7 +113,7 @@ window.hoshiReader = {
     getScrollContext() {
         var vertical = this.isVertical();
         var scrollEl = document.scrollingElement || document.documentElement || document.body;
-        var pageSize = vertical ? scrollEl.clientHeight : scrollEl.clientWidth;
+        var pageSize = vertical ? this.pageHeight : this.pageWidth;
         var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
         var maxScroll = Math.max(0, totalSize - pageSize);
         return { vertical, scrollEl, pageSize, maxScroll };
@@ -141,7 +141,7 @@ window.hoshiReader = {
     
     paginate(direction) {
         var vertical = this.isVertical();
-        var pageSize = vertical ? window.innerHeight : window.innerWidth;
+        var pageSize = vertical ? this.pageHeight : this.pageWidth;
         if (pageSize <= 0) return "limit";
         
         if (direction === "forward") {
