@@ -9,7 +9,6 @@
 import SwiftUI
 
 struct ShelfView: View {
-    @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) var userConfig
     @State private var selectedBook: BookMetadata?
     @State private var readerWindow = ReaderWindow()
@@ -116,7 +115,6 @@ struct ShelfView: View {
                 readerWindow.present(content: {
                     ReaderLoader(book: book)
                         .environment(userConfig)
-                        .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
                 }) {
                     selectedBook = nil
                 }

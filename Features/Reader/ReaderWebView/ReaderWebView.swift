@@ -26,6 +26,7 @@ enum WebViewCommand {
     case restoreProgress(Double)
     case jumpToFragment(String)
     case clearHighlight
+    case updateTextColor(String?)
 }
 
 @Observable
@@ -130,6 +131,12 @@ struct ReaderWebView: UIViewRepresentable {
                     context.coordinator.jumpToFragment(fragment)
                 case .clearHighlight:
                     context.coordinator.clearHighlight()
+                case .updateTextColor(let hex):
+                    if let hex {
+                        webView.evaluateJavaScript("document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)')") { _, _ in }
+                    } else {
+                        webView.evaluateJavaScript("document.documentElement.style.removeProperty('--hoshi-text-color')") { _, _ in }
+                    }
                 }
             }
             return
@@ -230,19 +237,18 @@ struct ReaderWebView: UIViewRepresentable {
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             let columnGap = parent.userConfig.verticalWriting ? parent.userConfig.verticalPadding * 2 : parent.userConfig.horizontalPadding * 2
             
-            let textColorCss: String = {
-                if parent.userConfig.theme == .custom {
-                    let hex = UIColor(parent.userConfig.customTextColor).hexString
-                    return """
-                    html, body { color: \(hex) !important; }
-                    """
-                } else {
-                    return """
-                    @media (prefers-color-scheme: light) { html, body { color: #000 !important; } }
-                    @media (prefers-color-scheme: dark) { html, body { color: #fff !important; } }
-                    """
-                }
-            }()
+            var textColorCss = """
+            @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
+            @media (prefers-color-scheme: dark) { :root { --hoshi-text-color: #fff; } }
+            html, body { color: var(--hoshi-text-color) !important; }
+            """
+            
+            var textColorOverrideJs = ""
+            if parent.userConfig.theme == .custom {
+                let hex = UIColor(parent.userConfig.customTextColor).hexString
+                textColorOverrideJs = "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
+            }
+        
             
             var fontFaceCss = ""
             if !FontManager.shared.isDefaultFont(name: parent.userConfig.selectedFont) {
@@ -376,7 +382,8 @@ struct ReaderWebView: UIViewRepresentable {
                 var style = document.createElement('style');
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
-                
+                \(textColorOverrideJs)
+
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)

@@ -21,7 +21,6 @@ struct WebViewState: Hashable {
     var lineHeight: Double
     var characterSpacing: Double
     var size: CGSize
-    var textColor: Color
 }
 
 struct ReaderLoader: View {
@@ -51,7 +50,7 @@ struct ReaderView: View {
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
     
-    var readerBackgroundColor: Color {
+    private var readerBackgroundColor: Color {
         switch userConfig.theme {
         case .sepia:
             return Color(red: 0.949, green: 0.886, blue: 0.788)
@@ -62,20 +61,15 @@ struct ReaderView: View {
         }
     }
     
-    var readerTextColor: Color {
-        switch userConfig.theme {
-        case .custom:
-            return userConfig.customTextColor
-        default:
-            return Color(.label)
-        }
+    private var readerTextColor: String? {
+        userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
     
     init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool, autostartStatistics: Bool) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL, enableStatistics: enableStatistics, autostartStatistics: autostartStatistics))
     }
     
-    var progressString: String {
+    private var progressString: String {
         var result: [String] = []
         if userConfig.readerShowCharacters {
             result.append("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
@@ -87,7 +81,7 @@ struct ReaderView: View {
         return result.joined(separator: " ")
     }
     
-    var statisticsString: String {
+    private var statisticsString: String {
         var result: [String] = []
         if userConfig.readerShowReadingSpeed {
             result.append("\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
@@ -140,7 +134,6 @@ struct ReaderView: View {
                         lineHeight: userConfig.lineHeight,
                         characterSpacing: userConfig.characterSpacing,
                         size: geometry.size,
-                        textColor: readerTextColor,
                     ))
                     
                     ForEach($viewModel.popups) { $popup in
@@ -313,6 +306,9 @@ struct ReaderView: View {
                 }
             }
         }
+        .onChange(of: readerTextColor) { _, hex in
+            viewModel.bridge.send(.updateTextColor(hex))
+        }
         .onChange(of: scenePhase) { _, phase in
             guard viewModel.isTracking else {
                 return
@@ -329,5 +325,6 @@ struct ReaderView: View {
         .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
         .persistentSystemOverlays(focusMode ? .hidden : .automatic)
+        .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
     }
 }
