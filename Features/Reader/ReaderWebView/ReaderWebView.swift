@@ -237,7 +237,7 @@ struct ReaderWebView: UIViewRepresentable {
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             let columnGap = parent.userConfig.verticalWriting ? parent.userConfig.verticalPadding * 2 : parent.userConfig.horizontalPadding * 2
             
-            var textColorCss = """
+            let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
             @media (prefers-color-scheme: dark) { :root { --hoshi-text-color: #fff; } }
             html, body { color: var(--hoshi-text-color) !important; }
@@ -444,7 +444,6 @@ struct ReaderWebView: UIViewRepresentable {
             guard let webView = webView else { return }
             
             clearHighlight()
-            parent.onTapOutside?()
             parent.onPageTurn?()
             
             let script = paginationScript(direction: direction)
