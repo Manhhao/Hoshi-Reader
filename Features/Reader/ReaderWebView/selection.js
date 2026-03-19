@@ -36,6 +36,20 @@ window.hoshiSelection = {
         });
     },
     
+    inCharRange(charRange, x, y) {
+        const rects = charRange.getClientRects();
+        if (rects.length) {
+            for (const rect of rects) {
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        const rect = charRange.getBoundingClientRect();
+        return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    },
+    
     getCaretRange(x, y) {
         if (document.caretPositionFromPoint) {
             const pos = document.caretPositionFromPoint(x, y);
@@ -62,8 +76,7 @@ window.hoshiSelection = {
                 for (let i = 0; i < node.textContent.length; i++) {
                     range.setStart(node, i);
                     range.setEnd(node, i + 1);
-                    const rect = range.getBoundingClientRect();
-                    if (rect.left <= x && x <= rect.right && rect.top <= y && y <= rect.bottom) {
+                    if (this.inCharRange(range, x, y)) {
                         range.collapse(true);
                         return range;
                     }
@@ -99,12 +112,7 @@ window.hoshiSelection = {
             const charRange = document.createRange();
             charRange.setStart(node, offset);
             charRange.setEnd(node, offset + 1);
-            const rect = charRange.getBoundingClientRect();
-            
-            const inside = x >= rect.left && x <= rect.right
-            && y >= rect.top && y <= rect.bottom;
-            
-            if (inside) {
+            if (this.inCharRange(charRange, x, y)) {
                 if (this.isScanBoundary(text[offset])) {
                     return null;
                 }
