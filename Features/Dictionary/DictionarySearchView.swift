@@ -254,6 +254,7 @@ struct DictionarySearchView: View {
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         return """
+        <style>.overlay { padding-bottom: 90px; }</style>
         <script>
             window.dictionaryStyles = \(stylesJson);
             window.lookupEntries = \(entriesJson);
