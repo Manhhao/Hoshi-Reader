@@ -264,6 +264,8 @@ struct DictionarySearchView: View {
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
         </script>
         <div style="height: 50px;"></div>

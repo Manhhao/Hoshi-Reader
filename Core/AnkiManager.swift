@@ -26,6 +26,7 @@ class AnkiManager {
     var availableNoteTypes: [AnkiNoteType] = []
     
     var allowDupes: Bool = false
+    var compactGlossaries: Bool = false
     
     var errorMessage: String?
     
@@ -175,6 +176,7 @@ class AnkiManager {
             selectedDeck: selectedDeck,
             selectedNoteType: selectedNoteType,
             allowDupes: allowDupes,
+            compactGlossaries: compactGlossaries,
             fieldMappings: fieldMappings,
             tags: tags,
             availableDecks: availableDecks,
@@ -247,6 +249,7 @@ class AnkiManager {
         selectedDeck = config.selectedDeck
         selectedNoteType = config.selectedNoteType
         allowDupes = config.allowDupes
+        compactGlossaries = config.compactGlossaries ?? false
         fieldMappings = config.fieldMappings
         tags = config.tags ?? ""
         availableDecks = config.availableDecks

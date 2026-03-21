@@ -52,6 +52,9 @@ struct AnkiView: View {
                     Toggle("Allow Duplicates", isOn: $ankiManager.allowDupes)
                         .onChange(of: ankiManager.allowDupes) { _, _ in ankiManager.save() }
                     
+                    Toggle("Compact Glossaries", isOn: $ankiManager.compactGlossaries)
+                        .onChange(of: ankiManager.compactGlossaries) { _, _ in ankiManager.save() }
+                    
                     Button("Import .colpkg (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
                         isImporting = true
                     }

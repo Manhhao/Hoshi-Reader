@@ -315,6 +315,10 @@ function applyTableStyles(html) {
     .replace(/<td(?=[>\s])/g, `<td style="${cellStyle}"`);
 }
 
+const COMPACT_GLOSSARIES_ANKI = `.yomitan-glossary ul[data-sc-content="glossary"] > li:not(:first-child)::before { white-space: pre-wrap; content: " | "; display: inline; color: rgb(119, 119, 119); }
+.yomitan-glossary ul[data-sc-content="glossary"] > li { display: inline; }
+.yomitan-glossary ul[data-sc-content="glossary"] { display: inline; list-style: none; padding-left: 0px; }`;
+
 // the following two should roughly match the glossary format of yomitan and keep compatibility with notetypes like lapis
 // 23.01.2026: this still has some differences
 // 24.01.2026: should be a bit closer now
@@ -346,6 +350,9 @@ function constructSingleGlossaryHtml(entryIndex) {
             .replace(/;\s*/g, '; ')
             .trim();
             html += `<style>${formatted}</style>`;
+        }
+        if (window.compactGlossariesAnki) {
+            html += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
         }
         html += `</div>`;
         
@@ -450,7 +457,9 @@ function constructGlossaryHtml(entryIndex) {
         .trim();
         result += `<style>${formatted}</style>`;
     }
-    
+    if (window.compactGlossariesAnki) {
+        result += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
+    }
     result += '</div>';
     return result;
 }
