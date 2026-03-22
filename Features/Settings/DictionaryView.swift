@@ -31,7 +31,7 @@ struct DictionaryView: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("This will download the latest versions of the following dictionaries (22mb):\nJMdict (Term)\nJiten (Frequency)")
+                    Text("This will download the latest versions of the following dictionaries (22 MB):\nJMdict (Term)\nJiten (Frequency)")
                 }
                 if (dictionaryManager.updatableDictionaries.count > 0) {
                     Button("Update Dictionaries") {

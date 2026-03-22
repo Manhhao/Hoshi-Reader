@@ -46,7 +46,7 @@ struct AudioView: View {
                 }
             }
             
-            Section("Add Source") {
+            Section {
                 TextField("Name", text: $nameInput)
                 HStack {
                     TextField("URL", text: $urlInput)
@@ -66,6 +66,10 @@ struct AudioView: View {
                     .disabled(urlInput.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty || nameInput.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty)
                     .buttonStyle(.plain)
                 }
+            } header: {
+                Text("Add Source")
+            } footer: {
+                Text("Yomitan JSON audio sources are supported")
             }
             
             Section {

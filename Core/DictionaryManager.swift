@@ -188,9 +188,9 @@ class DictionaryManager {
     }
     
     func importRecommendedDictionaries() {
-        let recommendedDictionaries: [(file: String, url: String, type: DictionaryType)] = [
-            ("JMdict_english.zip", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.zip", .term),
-            ("jiten_freq_global.zip", "https://api.jiten.moe/api/frequency-list/download", .frequency),
+        let recommendedDictionaries: [(name: String, url: String, type: DictionaryType)] = [
+            ("JMdict", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.json", .term),
+            ("Jiten", "https://api.jiten.moe/api/frequency-list/index", .frequency),
         ]
         
         isImporting = true
@@ -204,16 +204,23 @@ class DictionaryManager {
             }
             
             do {
-                for (file, url, type) in recommendedDictionaries {
+                for (name, url, type) in recommendedDictionaries {
                     await MainActor.run {
-                        self.currentImport = "Downloading \(file)"
+                        self.currentImport = "Fetching \(name)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: url)!)
+                    let (data, _) = try await URLSession.shared.data(from: URL(string: url)!)
+                    let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
+                    
+                    await MainActor.run {
+                        self.currentImport = "Downloading \(remoteIndex.title)"
+                    }
+                    
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
-                        self.currentImport = "Importing \(file)"
+                        self.currentImport = "Importing \(remoteIndex.title)"
                     }
                     
                     let destinationPath = try await Self.getDictionariesDirectory()
@@ -328,14 +335,14 @@ class DictionaryManager {
                     }
                     
                     await MainActor.run {
-                        self.currentImport = "Downloading \(index.title)"
+                        self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
                     let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
-                        self.currentImport = "Importing \(index.title)"
+                        self.currentImport = "Importing \(remoteIndex.title)"
                     }
                     
                     let destinationPath = try await Self.getDictionariesDirectory()
