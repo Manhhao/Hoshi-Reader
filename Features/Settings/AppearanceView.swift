@@ -194,7 +194,6 @@ struct AppearanceView: View {
                             get: { Double(userConfig.popupWidth) },
                             set: { userConfig.popupWidth = Int($0) }
                         ), in: 100...500, step: 10)
-                        .disabled(userConfig.popupFullWidth)
                         
                         HStack {
                             Text("Height")
