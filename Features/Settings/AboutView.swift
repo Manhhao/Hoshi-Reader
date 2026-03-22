@@ -32,6 +32,9 @@ struct AboutView: View {
                 Link(destination: URL(string: "https://github.com/Manhhao/Hoshi-Reader")!) {
                     Label("GitHub", systemImage: "link")
                 }
+                Link(destination: URL(string: "https://github.com/Manhhao/Hoshi-Reader/blob/main/PRIVACY.md")!) {
+                    Label("Privacy Policy", systemImage: "hand.raised")
+                }
             }
             
             Section("Dependencies") {
