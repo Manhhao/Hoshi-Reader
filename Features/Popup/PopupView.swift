@@ -16,6 +16,8 @@ struct PopupLayout {
     let maxHeight: CGFloat
     let isVertical: Bool
     let isFullWidth: Bool
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
     
     private let popupPadding: CGFloat = 4
     private let screenBorderPadding: CGFloat = 6
@@ -33,11 +35,11 @@ struct PopupLayout {
     }
     
     private var spaceAbove: CGFloat {
-        selectionRect.minY - popupPadding
+        selectionRect.minY - topInset - popupPadding
     }
     
     private var spaceBelow: CGFloat {
-        screenSize.height - selectionRect.maxY - popupPadding
+        screenSize.height - bottomInset - selectionRect.maxY - popupPadding
     }
     
     private var showBelow: Bool {
@@ -81,7 +83,7 @@ struct PopupLayout {
                 x = max(width / 2, min(x, screenSize.width - width / 2))
                 
                 y = selectionRect.minY + (height / 2)
-                y = max(height / 2 + screenBorderPadding, min(y, screenSize.height - height / 2 - screenBorderPadding))
+                y = max(height / 2 + screenBorderPadding + topInset, min(y, screenSize.height - bottomInset - height / 2 - screenBorderPadding))
             } else {
                 x = selectionRect.minX + (width / 2)
                 x = max(width / 2 + screenBorderPadding, min(x, screenSize.width - width / 2 - screenBorderPadding))
@@ -91,7 +93,7 @@ struct PopupLayout {
                 } else {
                     y = selectionRect.minY - popupPadding - (height / 2)
                 }
-                y = max(height / 2, min(y, screenSize.height - height / 2))
+                y = max(height / 2 + topInset, min(y, screenSize.height - bottomInset - height / 2))
             }
         }
         return CGPoint(x: x, y: y)
@@ -107,6 +109,8 @@ struct PopupView: View {
     let screenSize: CGSize
     let isVertical: Bool
     let isFullWidth: Bool
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
     let coverURL: URL?
     let documentTitle: String?
     var clearHighlight: Bool
@@ -125,7 +129,9 @@ struct PopupView: View {
             maxWidth: CGFloat(userConfig.popupWidth),
             maxHeight: CGFloat(userConfig.popupHeight),
             isVertical: isVertical,
-            isFullWidth: isFullWidth
+            isFullWidth: isFullWidth,
+            topInset: topInset,
+            bottomInset: bottomInset
         )
         
         guard result.width.isFinite,

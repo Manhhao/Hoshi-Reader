@@ -50,6 +50,8 @@ struct DictionarySearchView: View {
                         screenSize: geometry.size,
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
+                        topInset: UIApplication.topSafeArea + 50,
+                        bottomInset: UIApplication.bottomSafeArea + 45,
                         coverURL: nil,
                         documentTitle: nil,
                         clearHighlight: popup.clearHighlight,
