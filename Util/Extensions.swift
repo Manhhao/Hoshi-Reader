@@ -41,6 +41,14 @@ extension BookMetadata {
     }
 }
 
+extension URL {
+    mutating func excludeFromBackup() throws {
+        var resource = URLResourceValues()
+        resource.isExcludedFromBackup = true
+        try self.setResourceValues(resource)
+    }
+}
+
 extension UIApplication {
     static var topSafeArea: CGFloat {
         (shared.connectedScenes.first as? UIWindowScene)?

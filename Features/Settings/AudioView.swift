@@ -122,6 +122,8 @@ struct AudioView: View {
               let _ = try? BookStorage.copySecurityScopedFile(from: sourceURL, to: LocalFileServer.localAudioPath) else {
             return
         }
+        var url = audioDbURL
+        try? url.excludeFromBackup()
         calcAudioDbSize()
     }
     
