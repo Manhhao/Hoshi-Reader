@@ -51,20 +51,18 @@ struct ReaderView: View {
     private let lineHeight: CGFloat = 16
     
     private var readerBackgroundColor: Color {
-        switch userConfig.theme {
-        case .sepia:
+        if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
             return Color(red: 0.949, green: 0.886, blue: 0.788)
-        case .custom:
-            return userConfig.customBackgroundColor
-        default:
-            return Color(.systemBackground)
         }
+        if userConfig.theme == .custom {
+            return userConfig.customBackgroundColor
+        }
+        return Color(.systemBackground)
     }
     
     private var readerTextColor: String? {
         userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
-
     
     init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool, autostartStatistics: Bool) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL, enableStatistics: enableStatistics, autostartStatistics: autostartStatistics))

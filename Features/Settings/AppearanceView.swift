@@ -29,6 +29,9 @@ struct AppearanceView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    if userConfig.theme == .system {
+                        Toggle("Use Sepia as Light Theme", isOn: $userConfig.systemLightSepia)
+                    }
                     if userConfig.theme == .custom {
                         Picker("Interface", selection: $userConfig.uiTheme) {
                             Text("System").tag(Themes.system)

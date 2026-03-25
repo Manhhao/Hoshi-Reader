@@ -79,6 +79,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(uiTheme.rawValue, forKey: "uiTheme") }
     }
     
+    var systemLightSepia: Bool {
+        didSet { UserDefaults.standard.set(systemLightSepia, forKey: "systemLightSepia") }
+    }
+    
     var customBackgroundColor: Color {
         didSet { Self.saveColor(customBackgroundColor, key: "customBackgroundColor") }
     }
@@ -259,6 +263,7 @@ class UserConfig {
             .flatMap(Themes.init) ?? .system
         self.uiTheme = defaults.string(forKey: "uiTheme")
             .flatMap(Themes.init) ?? .system
+        self.systemLightSepia = defaults.object(forKey: "systemLightSepia") as? Bool ?? false
         self.customBackgroundColor = UserConfig.loadColor(key: "customBackgroundColor") ?? Color(.sRGB, red: 1, green: 1, blue: 1)
         self.customTextColor = UserConfig.loadColor(key: "customTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         self.customInfoColor = UserConfig.loadColor(key: "customInfoColor") ?? Color(.sRGB, red: 0.6, green: 0.6, blue: 0.6)
