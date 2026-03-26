@@ -25,7 +25,13 @@ struct AnkiView: View {
     var body: some View {
         List {
             Section {
-                Button("Fetch decks and models from Anki") { ankiManager.requestInfo() }
+                Button("Fetch decks and models from Anki") {
+                    if !ankiManager.useAnkiConnect {
+                        ankiManager.requestInfo()
+                    } else {
+                        Task { await ankiManager.fetchAnkiConnect() }
+                    }
+                }
             } footer: {
                 if !ankiManager.isConnected {
                     Text("AnkiMobile or a hosted AnkiConnect instance is required to mine words.")
@@ -54,17 +60,22 @@ struct AnkiView: View {
                     Toggle("Compact Glossaries", isOn: $ankiManager.compactGlossaries)
                         .onChange(of: ankiManager.compactGlossaries) { _, _ in ankiManager.save() }
                     
-                    Button("Import .colpkg (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
-                        isImporting = true
+                    if !ankiManager.useAnkiConnect {
+                        Button("Import .colpkg (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
+                            isImporting = true
+                        }
                     }
                 } header: {
                     Text("Settings");
                 } footer: {
-                    Text("Importing a .colpkg backup from Anki will allow duplicate checks before sending to Anki. It's recommended to do this periodically to reduce drift.")
+                    if !ankiManager.useAnkiConnect {
+                        Text("Importing a .colpkg backup from Anki will allow duplicate checks before sending to Anki. It's recommended to do this periodically to reduce drift.")
+                    }
                 }
             }
             
-            if let typeName = ankiManager.selectedNoteType,
+            if ankiManager.isConnected,
+               let typeName = ankiManager.selectedNoteType,
                let noteType = ankiManager.availableNoteTypes.first(where: { $0.name == typeName }) {
                 Section("Fields") {
                     ForEach(noteType.fields, id: \.self) { field in

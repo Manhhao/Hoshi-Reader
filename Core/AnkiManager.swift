@@ -66,7 +66,7 @@ class AnkiManager {
         load()
         loadWords()
         if ankiConnectConfig?.url != nil {
-            Task { await checkConnection() }
+            Task { await pingAnkiConnect() }
         }
     }
     
@@ -81,7 +81,7 @@ class AnkiManager {
         }
     }
     
-    func checkConnection() async {
+    func pingAnkiConnect() async {
         do {
             _ = try await ankiConnectRequest(action: "version")
             isAnkiConnectReachable = true
@@ -132,6 +132,43 @@ class AnkiManager {
         }
         
         save()
+    }
+    
+    func fetchAnkiConnect() async {
+        do {
+            guard let decks = try await ankiConnectRequest(action: "deckNames") as? [String],
+                  let models = try await ankiConnectRequest(action: "modelNames") as? [String] else {
+                return
+            }
+            
+            var noteTypes: [AnkiNoteType] = []
+            for model in models {
+                if let fields = try await ankiConnectRequest(action: "modelFieldNames", params: ["modelName": model]) as? [String] {
+                    noteTypes.append(AnkiNoteType(name: model, fields: fields))
+                }
+            }
+            
+            availableDecks = decks
+            availableNoteTypes = noteTypes
+            
+            if let deck = decks.first(where: { $0.caseInsensitiveCompare("Default") != .orderedSame }) {
+                selectedDeck = deck
+            } else {
+                selectedDeck = decks.first
+            }
+            
+            if let noteType = noteTypes.first {
+                selectedNoteType = noteType.name
+                fieldMappings.removeAll()
+            } else {
+                selectedNoteType = nil
+                fieldMappings.removeAll()
+            }
+            
+            save()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
     
     func addNote(content: [String: String], context: MiningContext) {

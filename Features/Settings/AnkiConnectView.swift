@@ -32,7 +32,7 @@ struct AnkiConnectView: View {
                             }
                         ))
                     }
-                    Button("Connect") { Task { await ankiManager.checkConnection() } }
+                    Button("Connect") { Task { await ankiManager.pingAnkiConnect() } }
                 }
             } header: {
                 Text("Connection")
