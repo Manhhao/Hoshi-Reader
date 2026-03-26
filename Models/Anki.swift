@@ -35,6 +35,21 @@ struct AnkiConfig: Codable {
     var tags: String?
     let availableDecks: [String]
     let availableNoteTypes: [AnkiNoteType]
+    let useAnkiConnect: Bool?
+    let ankiConnectConfig: AnkiConnectConfig?
+}
+
+enum DuplicateScope: String, Codable, CaseIterable {
+    case collection
+    case deck
+    case deckroot
+}
+
+struct AnkiConnectConfig: Codable {
+    var url: String?
+    var timeout: Int
+    var duplicateScope: DuplicateScope
+    var forceSync: Bool
 }
 
 struct MiningContext {

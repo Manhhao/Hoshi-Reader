@@ -32,11 +32,22 @@ class AnkiManager {
     
     var savedWords: Set<String> = []
     
-    var isConnected: Bool { !availableDecks.isEmpty }
+    var isConnected: Bool {
+        if useAnkiConnect {
+            isAnkiConnectReachable
+        }
+        else {
+            !availableDecks.isEmpty
+        }
+    }
     
     var needsAudio: Bool {
         fieldMappings.values.contains(Handlebars.audio.rawValue)
     }
+    
+    var useAnkiConnect: Bool = false
+    var ankiConnectConfig: AnkiConnectConfig?
+    var isAnkiConnectReachable = false
     
     private static let scheme = "hoshi://"
     private static let fetchCallback = scheme + "ankiFetch"
@@ -54,6 +65,9 @@ class AnkiManager {
     private init() {
         load()
         loadWords()
+        if ankiConnectConfig?.url != nil {
+            Task { await checkConnection() }
+        }
     }
     
     func requestInfo() {
@@ -64,6 +78,16 @@ class AnkiManager {
         
         if let url = urlComponents?.url {
             UIApplication.shared.open(url)
+        }
+    }
+    
+    func checkConnection() async {
+        do {
+            _ = try await ankiConnectRequest(action: "version")
+            isAnkiConnectReachable = true
+            save()
+        } catch {
+            isAnkiConnectReachable = false
         }
     }
     
@@ -177,7 +201,9 @@ class AnkiManager {
             fieldMappings: fieldMappings,
             tags: tags,
             availableDecks: availableDecks,
-            availableNoteTypes: availableNoteTypes
+            availableNoteTypes: availableNoteTypes,
+            useAnkiConnect: useAnkiConnect,
+            ankiConnectConfig: ankiConnectConfig
         )
         
         guard let directory = try? BookStorage.getDocumentsDirectory() else {
@@ -251,6 +277,8 @@ class AnkiManager {
         tags = config.tags ?? ""
         availableDecks = config.availableDecks
         availableNoteTypes = config.availableNoteTypes
+        useAnkiConnect = config.useAnkiConnect ?? false
+        ankiConnectConfig = config.ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     }
     
     func importColpkg(from url: URL) throws {
@@ -346,6 +374,45 @@ class AnkiManager {
             }
         }
         return words
+    }
+    
+    private func ankiConnectRequest(action: String, params: [String: Any]? = nil) async throws -> Any? {
+        guard let urlString = ankiConnectConfig?.url,
+              let url = URL(string: urlString) else {
+            throw AnkiConnectError.invalidUrl
+        }
+        
+        var body: [String: Any] = ["action": action, "version": 6]
+        if let params {
+            body["params"] = params
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 10
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        
+        if let error = json["error"] as? String {
+            throw AnkiConnectError.ankiconnectError(error)
+        }
+        
+        return json["result"]
+    }
+    
+    enum AnkiConnectError: LocalizedError {
+        case invalidUrl
+        case ankiconnectError(String)
+        
+        var errorDescription: String? {
+            switch self {
+            case .invalidUrl: "Invalid URL specified"
+            case .ankiconnectError(let error): error
+            }
+        }
     }
     
     enum ColpkgError: LocalizedError {

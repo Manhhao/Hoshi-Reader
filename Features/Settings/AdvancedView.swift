@@ -32,6 +32,13 @@ struct AdvancedView: View {
                     Label("ッツ Sync", systemImage: "cloud")
                 }
                 .foregroundStyle(.primary)
+                
+                NavigationLink {
+                    AnkiConnectView()
+                } label: {
+                    Label("AnkiConnect", systemImage: "app.connected.to.app.below.fill")
+                }
+                .foregroundStyle(.primary)
             }
             
             Section {
