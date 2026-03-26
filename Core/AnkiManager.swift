@@ -177,6 +177,11 @@ class AnkiManager {
             return
         }
         
+        if useAnkiConnect {
+            Task { await addNoteAnkiConnect(content: content, context: context, deck: deck, noteType: noteType) }
+            return
+        }
+        
         let singleGlossaries: [String: String]
         if let json = content["singleGlossaries"],
            let data = json.data(using: .utf8),
@@ -218,6 +223,120 @@ class AnkiManager {
         if let url = urlComponents?.url {
             UIApplication.shared.open(url)
         }
+    }
+    
+    private func addNoteAnkiConnect(content: [String: String], context: MiningContext, deck: String, noteType: String) async {
+        let singleGlossaries: [String: String]
+        if let json = content["singleGlossaries"],
+           let data = json.data(using: .utf8),
+           let parsed = try? JSONDecoder().decode([String: String].self, from: data) {
+            singleGlossaries = parsed
+        } else {
+            singleGlossaries = [:]
+        }
+        
+        var fields: [String: String] = [:]
+        var audioFields: [String] = []
+        var pictureFields: [String] = []
+        
+        for (field, fieldContent) in fieldMappings {
+            if fieldContent == Handlebars.audio.rawValue {
+                audioFields.append(field)
+            } else if fieldContent == Handlebars.bookCover.rawValue {
+                pictureFields.append(field)
+            } else {
+                fields[field] = fieldContent.replacing(Self.handlebarRegex) { match in
+                    handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
+                }
+            }
+        }
+        
+        var options: [String: Any] = ["allowDuplicate": allowDupes]
+        if ankiConnectConfig?.duplicateScope != .collection {
+            options["duplicateScope"] = "deck"
+            if ankiConnectConfig?.duplicateScope == .deckroot {
+                options["duplicateScopeOptions"] = ["checkChildren": true]
+            }
+        }
+        var note: [String: Any] = [
+            "deckName": deck,
+            "modelName": noteType,
+            "fields": fields,
+            "options": options
+        ]
+        
+        if !audioFields.isEmpty, let audioURL = content["audio"],
+           let url = URL(string: audioURL),
+           let audioData = try? await URLSession.shared.data(from: url).0 {
+            let timestamp = Self.mediaTimestamp()
+            note["audio"] = [[
+                "data": audioData.base64EncodedString(),
+                "filename": "hoshi_audio_\(timestamp).mp3",
+                "fields": audioFields
+            ]]
+        }
+        
+        if !pictureFields.isEmpty, let coverURL = context.coverURL,
+           let coverData = try? Data(contentsOf: coverURL) {
+            let hash = coverData.hashValue
+            note["picture"] = [[
+                "data": coverData.base64EncodedString(),
+                "filename": "hoshi_cover_\(hash).\(coverURL.pathExtension)",
+                "fields": pictureFields
+            ]]
+        }
+        
+        let tagList = tags.split(separator: " ").map(String.init)
+        if !tagList.isEmpty {
+            note["tags"] = tagList
+        }
+        
+        do {
+            _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
+            addWord(content["expression"] ?? "")
+            LocalFileServer.shared.clearCover()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func checkDuplicate(word: String) async -> Bool {
+        guard useAnkiConnect else {
+            return savedWords.contains(word)
+        }
+        
+        guard let noteTypeName = selectedNoteType,
+              let noteType = availableNoteTypes.first(where: { $0.name == selectedNoteType }),
+              let firstField = noteType.fields.first,
+              let deck = selectedDeck else {
+            return savedWords.contains(word)
+        }
+        
+        var options: [String: Any] = [:]
+        if ankiConnectConfig?.duplicateScope != .collection {
+            options["duplicateScope"] = "deck"
+            if ankiConnectConfig?.duplicateScope == .deckroot {
+                options["duplicateScopeOptions"] = ["checkChildren": true]
+            }
+        }
+        let note: [String: Any] = [
+            "deckName": deck,
+            "modelName": noteTypeName,
+            "fields": [firstField: word],
+            "options": options
+        ]
+        
+        do {
+            let result = try await ankiConnectRequest(action: "canAddNotesWithErrorDetail", params: ["notes": [note]])
+            if let results = result as? [[String: Any]],
+               let first = results.first,
+               let canAdd = first["canAdd"] as? Bool {
+                if !canAdd { savedWords.insert(word) }
+                return !canAdd
+            }
+        } catch {}
+        
+        return savedWords.contains(word)
     }
     
     func updateHandlebar(old: String, new: String) {
@@ -359,7 +478,7 @@ class AnkiManager {
         savedWords.insert(word)
         try? Self.saveWords(savedWords)
     }
-
+    
     private static func saveWords(_ words: Set<String>) throws {
         let file = try BookStorage.getDocumentsDirectory().appendingPathComponent(ankiWords)
         try JSONEncoder().encode(words).write(to: file)
@@ -438,6 +557,12 @@ class AnkiManager {
         }
         
         return json["result"]
+    }
+    
+    private static func mediaTimestamp() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
+        return f.string(from: Date())
     }
     
     enum AnkiConnectError: LocalizedError {

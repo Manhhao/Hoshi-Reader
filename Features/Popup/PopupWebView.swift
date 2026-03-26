@@ -242,7 +242,7 @@ struct PopupWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
             if message.name == "duplicateCheck", let word = message.body as? String {
-                return (AnkiManager.shared.savedWords.contains(word), nil)
+                return (await AnkiManager.shared.checkDuplicate(word: word), nil)
             }
             return (nil, nil)
         }

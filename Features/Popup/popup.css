@@ -101,7 +101,7 @@ body {
     transform: translateY(0.5px);
 }
 
-.mine-button.duplicate.disabled {
+.mine-button:disabled {
     opacity: 0.15;
 }
 
