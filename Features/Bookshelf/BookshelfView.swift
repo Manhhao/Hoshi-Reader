@@ -21,6 +21,7 @@ struct BookshelfView: View {
     @State private var showAbout = false
     @State private var showShelfManagement = false
     @State private var selectedTab = 0
+    @State private var setInitialTab = false
     @State private var navigationPath = NavigationPath()
     @State private var dictionaryRoute = DictionaryRoute()
     @State private var isSelecting = false
@@ -212,6 +213,13 @@ struct BookshelfView: View {
             if viewModel.isDownloading {
                 LoadingOverlay("Downloading EPUB...")
             }
+        }
+        .onAppear {
+            guard !setInitialTab else {
+                return
+            }
+            selectedTab = userConfig.dictionaryTabDefault ? 1 : 0
+            setInitialTab = true
         }
     }
     

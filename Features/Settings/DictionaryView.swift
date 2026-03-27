@@ -51,6 +51,10 @@ struct DictionaryView: View {
             }
             
             Section {
+                Toggle("Default to Dictionary Tab", isOn: Bindable(userConfig).dictionaryTabDefault)
+            }
+            
+            Section {
                 HStack {
                     Text("Max Results")
                     Spacer()

@@ -43,6 +43,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
     
+    var dictionaryTabDefault: Bool {
+        didSet { UserDefaults.standard.set(dictionaryTabDefault, forKey: "dictionaryTabDefault") }
+    }
+    
     var maxResults: Int {
         didSet { UserDefaults.standard.set(maxResults, forKey: "maxResults") }
     }
@@ -249,6 +253,7 @@ class UserConfig {
         self.bookshelfSortOption = defaults.string(forKey: "bookshelfSortOption")
             .flatMap(SortOption.init) ?? .recent
         
+        self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
         self.collapseDictionaries = defaults.object(forKey: "collapseDictionaries") as? Bool ?? false
