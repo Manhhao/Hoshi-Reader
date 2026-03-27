@@ -72,17 +72,18 @@ struct ShelfView: View {
                                 isCollapsed = false
                             }
                         } label: {
-                            if let coverURL = book.coverURL,
-                               let image = UIImage(contentsOfFile: coverURL.path(percentEncoded: false)) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .aspectRatio(0.709, contentMode: .fit)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    .shadow(color: .primary.opacity(0.3), radius: 5)
-                            } else {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.gray.opacity(0.3))
-                                    .aspectRatio(0.709, contentMode: .fit)
+                            AsyncImage(url: book.coverURL) { phase in
+                                if let image = phase.image {
+                                    image
+                                        .resizable()
+                                        .aspectRatio(0.709, contentMode: .fit)
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .shadow(color: .primary.opacity(0.3), radius: 5)
+                                } else {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.gray.opacity(0.3))
+                                        .aspectRatio(0.709, contentMode: .fit)
+                                }
                             }
                         }
                         .buttonStyle(.plain)

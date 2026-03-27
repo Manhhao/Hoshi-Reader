@@ -1294,13 +1294,17 @@ function createGlossarySection(dictName, contents, isFirst) {
 
 window.renderPopup = function() {
     const container = document.getElementById('entries-container');
-    if (!window.lookupEntries) {
+    if (!window.entryCount) {
         return;
     }
     
     (async () => {
-        for (let idx = 0; idx < window.lookupEntries.length; idx++) {
-            const entry = window.lookupEntries[idx];
+        for (let idx = 0; idx < window.entryCount; idx++) {
+            const entry = await webkit.messageHandlers.getEntry.postMessage(idx);
+            if (!entry) continue;
+            
+            window.lookupEntries ??= [];
+            window.lookupEntries[idx] = entry;
             
             if (idx > 0) {
                 container.appendChild(document.createElement('hr'));

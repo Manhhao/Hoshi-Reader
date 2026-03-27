@@ -51,10 +51,10 @@ struct AboutView: View {
                     text: mitLicense(copyright: "Copyright (c) 2013-2021, ZipArchive, https://github.com/ZipArchive")
                 )
                 LicenseRow(
-                    name: "zip (hoshidicts)",
+                    name: "libdeflate (hoshidicts)",
                     license: "MIT",
-                    url: "https://github.com/kuba--/zip",
-                    text: mitLicense(copyright: "All Rights Reserved")
+                    url: "https://github.com/ebiggers/libdeflate",
+                    text: mitLicense(copyright: "Copyright 2016 Eric Biggers\nCopyright 2024 Google LLC")
                 )
                 LicenseRow(
                     name: "utfcpp (hoshidicts)",

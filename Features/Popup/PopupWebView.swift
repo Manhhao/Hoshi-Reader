@@ -170,6 +170,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "swipeDismiss")
         config.userContentController.add(context.coordinator, name: "playWordAudio")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntry")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -210,6 +211,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "swipeDismiss")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntry", contentWorld: .page)
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
@@ -227,12 +229,12 @@ struct PopupWebView: UIViewRepresentable {
             webView.callAsyncJavaScript(
                 """
                 window.dictionaryStyles = dictionaryStyles;
-                window.lookupEntries = lookupEntries;
+                window.entryCount = entryCount;
                 window.renderPopup();
                 """,
                 arguments: [
                     "dictionaryStyles": parent.dictionaryStyles,
-                    "lookupEntries": parent.lookupEntries,
+                    "entryCount": parent.lookupEntries.count,
                 ],
                 in: nil,
                 in: .page,
@@ -243,6 +245,9 @@ struct PopupWebView: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
             if message.name == "duplicateCheck", let word = message.body as? String {
                 return (await AnkiManager.shared.checkDuplicate(word: word), nil)
+            }
+            if message.name == "getEntry", let index = message.body as? Int {
+                return (parent.lookupEntries[index], nil)
             }
             return (nil, nil)
         }

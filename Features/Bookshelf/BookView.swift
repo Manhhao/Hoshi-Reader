@@ -15,41 +15,42 @@ struct BookView: View {
     
     var body: some View {
         VStack(spacing: 6) {
-            if let coverURL = book.coverURL,
-               let image = UIImage(contentsOfFile: coverURL.path(percentEncoded: false)) {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(0.709, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .shadow(color: .primary.opacity(0.3), radius: 5)
-                    .overlay(alignment: .topTrailing) {
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.white, .blue)
-                                .padding(6)
+            AsyncImage(url: book.coverURL) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(0.709, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .shadow(color: .primary.opacity(0.3), radius: 5)
+                        .overlay(alignment: .topTrailing) {
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(.white, .blue)
+                                    .padding(6)
+                            }
                         }
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        if !isSelected && progress >= 0.999 {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.white, .gray)
-                                .padding(6)
+                        .overlay(alignment: .bottomTrailing) {
+                            if !isSelected && progress >= 0.999 {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(.white, .gray)
+                                    .padding(6)
+                            }
                         }
-                    }
-            } else {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.3))
-                    .aspectRatio(0.709, contentMode: .fit)
-                    .overlay(alignment: .topTrailing) {
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.white, .blue)
-                                .padding(6)
+                } else {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.3))
+                        .aspectRatio(0.709, contentMode: .fit)
+                        .overlay(alignment: .topTrailing) {
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(.white, .blue)
+                                    .padding(6)
+                            }
                         }
-                    }
+                }
             }
             
             HStack(spacing: 4) {
