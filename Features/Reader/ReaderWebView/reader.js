@@ -99,7 +99,13 @@ window.hoshiReader = {
         }
         window.copyTextRegistered = true
         document.addEventListener('copy', function (event) {
-            let text = window.getSelection()?.toString();
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) {
+                return;
+            }
+            const fragment = selection.getRangeAt(0).cloneContents();
+            fragment.querySelectorAll('rt, rp').forEach(el => el.remove());
+            const text = fragment.textContent;
             if (!text) {
                 return;
             }
