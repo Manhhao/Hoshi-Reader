@@ -29,6 +29,7 @@ struct AnkiConnectView: View {
                             get: { ankiManager.ankiConnectConfig?.url ?? "" },
                             set: { value in
                                 ankiManager.ankiConnectConfig?.url = value
+                                ankiManager.save()
                             }
                         ))
                     }

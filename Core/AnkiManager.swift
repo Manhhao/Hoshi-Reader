@@ -295,9 +295,11 @@ class AnkiManager {
             _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
             addWord(content["expression"] ?? "")
             LocalFileServer.shared.clearCover()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+            
+            if ankiConnectConfig?.forceSync == true {
+                await syncAnkiConnect()
+            }
+        } catch {}
     }
     
     func checkDuplicate(word: String) async -> Bool {
@@ -337,6 +339,12 @@ class AnkiManager {
         } catch {}
         
         return savedWords.contains(word)
+    }
+    
+    func syncAnkiConnect() async  {
+        do {
+            _ = try await ankiConnectRequest(action: "sync")
+        } catch {}
     }
     
     func updateHandlebar(old: String, new: String) {
