@@ -452,17 +452,17 @@ struct ScrollReaderWebView: UIViewRepresentable {
             let maxOffset = max(contentSize - viewSize, 0)
             let threshold: CGFloat = 50
             
-            let atEnd = vertical ? offset < -threshold : offset > maxOffset + threshold
-            let atStart = vertical ? offset > maxOffset + threshold : offset < -threshold
+            let scrolledPastEnd = vertical ? offset < -threshold : offset > maxOffset + threshold
+            let scrolledPastStart = vertical ? offset > maxOffset + threshold : offset < -threshold
             
-            if atEnd {
+            if scrolledPastEnd {
                 webView?.scrollView.delegate = nil
                 if parent.onNextChapter() {
                     webView?.alpha = 0
                 } else {
                     webView?.scrollView.delegate = self
                 }
-            } else if atStart {
+            } else if scrolledPastStart {
                 webView?.scrollView.delegate = nil
                 if parent.onPreviousChapter() {
                     webView?.alpha = 0
@@ -474,12 +474,14 @@ struct ScrollReaderWebView: UIViewRepresentable {
         
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             saveBookmark()
+            clearHighlight()
             parent.onScroll?()
         }
         
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
             if !decelerate {
                 saveBookmark()
+                clearHighlight()
                 parent.onScroll?()
             }
         }

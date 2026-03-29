@@ -18,11 +18,6 @@ window.hoshiReader = {
         return !!el?.closest('rt, rp');
     },
     
-    findParagraph(node) {
-        let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        return el?.closest('p') || null;
-    },
-    
     countChars(text) {
         return text.replace(this.ttuRegex, '').length;
     },
