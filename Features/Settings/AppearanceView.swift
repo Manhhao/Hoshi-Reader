@@ -119,6 +119,17 @@ struct AppearanceView: View {
                 
                 Section("Layout") {
                     HStack {
+                        Text("Mode")
+                        Spacer()
+                        Picker("", selection: $userConfig.continuousMode) {
+                            Text("Paginated").tag(false)
+                            Text("Continuous").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 180)
+                    }
+                    
+                    HStack {
                         Text("Horizontal Padding")
                         Spacer()
                         Text("\(userConfig.horizontalPadding)%")

@@ -101,40 +101,76 @@ struct ReaderView: View {
             
             GeometryReader { geometry in
                 ZStack {
-                    ReaderWebView(
-                        userConfig: userConfig,
-                        viewSize: CGSize(width: geometry.size.width.rounded(), height: geometry.size.height.rounded()),
-                        bridge: viewModel.bridge,
-                        onNextChapter: viewModel.nextChapter,
-                        onPreviousChapter: viewModel.previousChapter,
-                        onSaveBookmark: viewModel.saveBookmark,
-                        onInternalLink: viewModel.jumpToLink,
-                        onInternalJump: viewModel.syncProgressAfterLinkJump,
-                        onTextSelected: {
-                            viewModel.closePopups()
-                            return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth)
-                        },
-                        onTapOutside: viewModel.closePopups,
-                        onPageTurn: {
-                            viewModel.closePopups()
-                            if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
-                                viewModel.startTracking()
+                    if userConfig.continuousMode {
+                        ScrollReaderWebView(
+                            userConfig: userConfig,
+                            bridge: viewModel.bridge,
+                            onNextChapter: viewModel.nextChapter,
+                            onPreviousChapter: viewModel.previousChapter,
+                            onSaveBookmark: viewModel.saveBookmark,
+                            onInternalLink: viewModel.jumpToLink,
+                            onInternalJump: viewModel.syncProgressAfterLinkJump,
+                            onTextSelected: {
+                                viewModel.closePopups()
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth)
+                            },
+                            onTapOutside: viewModel.closePopups,
+                            onScroll: {
+                                viewModel.closePopups()
+                                if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
+                                    viewModel.startTracking()
+                                }
                             }
-                        }
-                    )
-                    .id(WebViewState(
-                        verticalWriting: userConfig.verticalWriting,
-                        fontSize: userConfig.fontSize,
-                        selectedFont: userConfig.selectedFont,
-                        hideFurigana: userConfig.readerHideFurigana,
-                        horizontalPadding: userConfig.horizontalPadding,
-                        verticalPadding: userConfig.verticalPadding,
-                        avoidPageBreak: userConfig.avoidPageBreak,
-                        layoutAdvanced: userConfig.layoutAdvanced,
-                        lineHeight: userConfig.lineHeight,
-                        characterSpacing: userConfig.characterSpacing,
-                        size: geometry.size,
-                    ))
+                        )
+                        .id(WebViewState(
+                            verticalWriting: userConfig.verticalWriting,
+                            fontSize: userConfig.fontSize,
+                            selectedFont: userConfig.selectedFont,
+                            hideFurigana: userConfig.readerHideFurigana,
+                            horizontalPadding: userConfig.horizontalPadding,
+                            verticalPadding: userConfig.verticalPadding,
+                            avoidPageBreak: userConfig.avoidPageBreak,
+                            layoutAdvanced: userConfig.layoutAdvanced,
+                            lineHeight: userConfig.lineHeight,
+                            characterSpacing: userConfig.characterSpacing,
+                            size: geometry.size,
+                        ))
+                    } else {
+                        ReaderWebView(
+                            userConfig: userConfig,
+                            viewSize: CGSize(width: geometry.size.width.rounded(), height: geometry.size.height.rounded()),
+                            bridge: viewModel.bridge,
+                            onNextChapter: viewModel.nextChapter,
+                            onPreviousChapter: viewModel.previousChapter,
+                            onSaveBookmark: viewModel.saveBookmark,
+                            onInternalLink: viewModel.jumpToLink,
+                            onInternalJump: viewModel.syncProgressAfterLinkJump,
+                            onTextSelected: {
+                                viewModel.closePopups()
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth)
+                            },
+                            onTapOutside: viewModel.closePopups,
+                            onPageTurn: {
+                                viewModel.closePopups()
+                                if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
+                                    viewModel.startTracking()
+                                }
+                            }
+                        )
+                        .id(WebViewState(
+                            verticalWriting: userConfig.verticalWriting,
+                            fontSize: userConfig.fontSize,
+                            selectedFont: userConfig.selectedFont,
+                            hideFurigana: userConfig.readerHideFurigana,
+                            horizontalPadding: userConfig.horizontalPadding,
+                            verticalPadding: userConfig.verticalPadding,
+                            avoidPageBreak: userConfig.avoidPageBreak,
+                            layoutAdvanced: userConfig.layoutAdvanced,
+                            lineHeight: userConfig.lineHeight,
+                            characterSpacing: userConfig.characterSpacing,
+                            size: geometry.size,
+                        ))
+                    }
                     
                     ForEach($viewModel.popups) { $popup in
                         let popupId = popup.id

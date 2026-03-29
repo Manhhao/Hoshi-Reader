@@ -1,5 +1,5 @@
 //
-//  ReaderWebView.swift
+//  ScrollReaderWebView.swift
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
@@ -10,49 +10,8 @@ import WebKit
 import SwiftUI
 import UIKit
 
-enum NavigationDirection {
-    case forward
-    case backward
-}
-
-struct SelectionData {
-    let text: String
-    let sentence: String
-    let rect: CGRect
-}
-
-enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double, fragment: String?)
-    case restoreProgress(Double)
-    case jumpToFragment(String)
-    case clearHighlight
-    case updateTextColor(String?)
-}
-
-@Observable
-@MainActor
-class WebViewBridge {
-    private(set) var chapterURL: URL?
-    private(set) var progress: Double = 0
-    var pendingCommands: [WebViewCommand] = []
-    
-    func send(_ command: WebViewCommand) {
-        pendingCommands.append(command)
-    }
-    
-    func updateState(url: URL, progress: Double) {
-        self.chapterURL = url
-        self.progress = progress
-    }
-    
-    func updateProgress(_ progress: Double) {
-        self.progress = progress
-    }
-}
-
-struct ReaderWebView: UIViewRepresentable {
+struct ScrollReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
-    let viewSize: CGSize
     let bridge: WebViewBridge
     var onNextChapter: () -> Bool
     var onPreviousChapter: () -> Bool
@@ -61,7 +20,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onInternalJump: (Double) -> Void
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
-    var onPageTurn: (() -> Void)?
+    var onScroll: (() -> Void)?
     let maxSelectionLength: Int = 16
     
     func makeCoordinator() -> Coordinator {
@@ -78,23 +37,15 @@ struct ReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.delegate = context.coordinator
+        webView.scrollView.alwaysBounceVertical = !userConfig.verticalWriting
+        webView.scrollView.alwaysBounceHorizontal = userConfig.verticalWriting
+        webView.scrollView.showsVerticalScrollIndicator = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
         webView.navigationDelegate = context.coordinator
-        
-        let swipeLeft = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeLeft(_:)))
-        swipeLeft.direction = .left
-        swipeLeft.delegate = context.coordinator
-        webView.addGestureRecognizer(swipeLeft)
-        
-        let swipeRight = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeRight(_:)))
-        swipeRight.direction = .right
-        swipeRight.delegate = context.coordinator
-        webView.addGestureRecognizer(swipeRight)
         
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         tap.delegate = context.coordinator
-        tap.require(toFail: swipeLeft)
-        tap.require(toFail: swipeRight)
         webView.addGestureRecognizer(tap)
         
         context.coordinator.webView = webView
@@ -119,6 +70,7 @@ struct ReaderWebView: UIViewRepresentable {
                     context.coordinator.pendingProgress = progress
                     context.coordinator.pendingFragment = fragment
                     if let documentsDirectory = try? BookStorage.getDocumentsDirectory() {
+                        webView.scrollView.delegate = nil
                         webView.alpha = 0
                         webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
                     }
@@ -147,6 +99,7 @@ struct ReaderWebView: UIViewRepresentable {
             context.coordinator.pendingProgress = bridge.progress
             context.coordinator.pendingFragment = nil
             guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else { return }
+            webView.scrollView.delegate = nil
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
         }
@@ -157,20 +110,21 @@ struct ReaderWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "restoreCompleted")
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler {
-        var parent: ReaderWebView
+    class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
+        var parent: ScrollReaderWebView
         weak var webView: WKWebView?
         var currentURL: URL?
         var pendingProgress: Double = 0
         var pendingFragment: String?
         var shouldSyncProgressAfterRestore = false
         
-        init(_ parent: ReaderWebView) {
+        init(_ parent: ScrollReaderWebView) {
             self.parent = parent
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "restoreCompleted" {
+                webView?.scrollView.delegate = self
                 if shouldSyncProgressAfterRestore {
                     shouldSyncProgressAfterRestore = false
                     syncLinkJumpProgress()
@@ -224,7 +178,7 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         private var readerJs: String {
-            guard let url = Bundle.main.url(forResource: "reader", withExtension: "js"),
+            guard let url = Bundle.main.url(forResource: "scrollreader", withExtension: "js"),
                   let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
                 return ""
             }
@@ -232,13 +186,17 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            let pageHeight = Int(parent.viewSize.height)
-            let pageWidth = Int(parent.viewSize.width)
+            webView.scrollView.subviews.forEach { subview in
+                subview.gestureRecognizers?.forEach { recognizer in
+                    if let tapRecognizer = recognizer as? UITapGestureRecognizer,
+                       tapRecognizer.numberOfTapsRequired == 2,
+                       tapRecognizer.numberOfTouchesRequired == 1 {
+                        subview.removeGestureRecognizer(recognizer)
+                    }
+                }
+            }
+            
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
-            let columnGapUnit = parent.userConfig.verticalWriting ? "vh" : "vw"
-            let columnGapValue = parent.userConfig.verticalWriting
-                ? parent.userConfig.verticalPadding
-                : parent.userConfig.horizontalPadding
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -251,7 +209,7 @@ struct ReaderWebView: UIViewRepresentable {
                 let hex = UIColor(parent.userConfig.customTextColor).hexString
                 textColorOverrideJs = "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
             }
-        
+            
             
             var fontFaceCss = ""
             if !FontManager.shared.isDefaultFont(name: parent.userConfig.selectedFont) {
@@ -266,16 +224,6 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }
             
-            var pageBreakCss = ""
-            if parent.userConfig.avoidPageBreak {
-                pageBreakCss = """
-                p {
-                    break-inside: avoid !important;
-                    -webkit-column-break-inside: avoid !important;
-                }
-                """
-            }
-            
             var textSpacingCss = ""
             if parent.userConfig.layoutAdvanced {
                 textSpacingCss = """
@@ -287,9 +235,6 @@ struct ReaderWebView: UIViewRepresentable {
             let css = """
             \(fontFaceCss)
             html, body {
-                overflow: hidden !important;
-                height: var(--page-height, 100vh) !important;
-                width: var(--page-width, 100vw) !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
@@ -299,30 +244,20 @@ struct ReaderWebView: UIViewRepresentable {
                 font-size: \(parent.userConfig.fontSize)px !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
-                column-width: var(--page-width, 100vw) !important;
-                column-gap: \(columnGapValue)\(columnGapUnit);
                 padding: \(Double(parent.userConfig.verticalPadding) / 2)vh \(Double(parent.userConfig.horizontalPadding) / 2)vw !important;
             }
             img.block-img {
-                max-width: \(100 - parent.userConfig.horizontalPadding)vw !important;
-                max-height: \(100 - parent.userConfig.verticalPadding)vh !important;
                 width: auto !important;
                 height: auto !important;
                 display: block !important;
                 margin: auto !important;
-                break-inside: avoid !important;
-                -webkit-column-break-inside: avoid !important;
                 object-fit: contain !important;
             }
             svg {
-                max-width: \(100 - parent.userConfig.horizontalPadding)vw !important;
-                max-height: \(100 - parent.userConfig.verticalPadding)vh !important;
                 width: 100% !important;
                 height: 100% !important;
                 display: block !important;
                 margin: auto !important;
-                break-inside: avoid !important;
-                -webkit-column-break-inside: avoid !important;
             }
             ::highlight(hoshi-selection) {
                 background-color: rgba(160, 160, 160, 0.4) !important;
@@ -331,33 +266,8 @@ struct ReaderWebView: UIViewRepresentable {
             a {
                 color: rgba(66, 108, 245, 1) !important;
             }
-            \(pageBreakCss)
             \(textColorCss)
             """
-            
-            let spacerJs: String = {
-                if parent.userConfig.verticalWriting {
-                    guard parent.userConfig.verticalPadding > 0 else { return "" }
-                    return """
-                    var spacer = document.createElement('div');
-                    spacer.style.height = '\(Double(parent.userConfig.verticalPadding) / 2)vh';
-                    spacer.style.width = '100%';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                    """
-                } else {
-                    guard parent.userConfig.horizontalPadding > 0 else { return "" }
-                    return """
-                    var spacer = document.createElement('div');
-                    spacer.style.height = '100%';
-                    spacer.style.width = '\(Double(parent.userConfig.horizontalPadding) / 2)vw';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                    """
-                }
-            }()
             
             let initialRestoreScript: String = {
                 if let fragment = pendingFragment {
@@ -379,19 +289,13 @@ struct ReaderWebView: UIViewRepresentable {
                 newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
                 document.head.appendChild(newViewport);
                 
-                document.documentElement.style.setProperty('--page-height', '\(pageHeight)px');
-                document.documentElement.style.setProperty('--page-width', '\(pageWidth)px');
-                
                 var style = document.createElement('style');
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 \(textColorOverrideJs)
-
-                \(spacerJs)
+            
                 \(selectionJs)
                 \(readerJs)
-                window.hoshiReader.pageHeight = \(pageHeight);
-                window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
                 
                 if (\(parent.userConfig.readerHideFurigana)) {
@@ -443,50 +347,8 @@ struct ReaderWebView: UIViewRepresentable {
             webView.evaluateJavaScript(script, completionHandler: nil)
         }
         
-        private func navigate(_ direction: NavigationDirection) {
-            guard let webView = webView else { return }
-            
-            clearHighlight()
-            parent.onPageTurn?()
-            
-            let script = paginationScript(direction: direction)
-            
-            webView.evaluateJavaScript(script) { [weak self] result, _ in
-                guard let self = self else { return }
-                
-                if let res = result as? String, res == "scrolled" {
-                    self.saveBookmark()
-                } else {
-                    let chapterChanged = direction == .forward ? self.parent.onNextChapter() : self.parent.onPreviousChapter()
-                    if chapterChanged {
-                        webView.alpha = 0
-                    }
-                }
-            }
-        }
-        
-        private func paginationScript(direction: NavigationDirection) -> String {
-            let jsDirection = direction == .forward ? "forward" : "backward"
-            return """
-            (function() {
-                if (!window.hoshiReader || typeof window.hoshiReader.paginate !== 'function') {
-                    return "limit";
-                }
-                return window.hoshiReader.paginate('\(jsDirection)');
-            })()
-            """
-        }
-        
-        @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
-            navigate(parent.userConfig.verticalWriting ? .backward : .forward)
-        }
-        
-        @objc func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
-            navigate(parent.userConfig.verticalWriting ? .forward : .backward)
-        }
-        
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let webView = webView else {
+            guard let webView = webView, !webView.scrollView.isDecelerating else {
                 return
             }
             
@@ -580,6 +442,46 @@ struct ReaderWebView: UIViewRepresentable {
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
             return true
+        }
+        
+        func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+            let vertical = parent.userConfig.verticalWriting
+            let offset = vertical ? scrollView.contentOffset.x : scrollView.contentOffset.y
+            let contentSize = vertical ? scrollView.contentSize.width : scrollView.contentSize.height
+            let viewSize = vertical ? scrollView.bounds.width : scrollView.bounds.height
+            let maxOffset = max(contentSize - viewSize, 0)
+            let threshold: CGFloat = 50
+            
+            let atEnd = vertical ? offset < -threshold : offset > maxOffset + threshold
+            let atStart = vertical ? offset > maxOffset + threshold : offset < -threshold
+            
+            if atEnd {
+                webView?.scrollView.delegate = nil
+                if parent.onNextChapter() {
+                    webView?.alpha = 0
+                } else {
+                    webView?.scrollView.delegate = self
+                }
+            } else if atStart {
+                webView?.scrollView.delegate = nil
+                if parent.onPreviousChapter() {
+                    webView?.alpha = 0
+                } else {
+                    webView?.scrollView.delegate = self
+                }
+            }
+        }
+        
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            saveBookmark()
+            parent.onScroll?()
+        }
+        
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            if !decelerate {
+                saveBookmark()
+                parent.onScroll?()
+            }
         }
     }
 }

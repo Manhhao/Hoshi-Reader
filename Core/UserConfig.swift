@@ -115,6 +115,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
     }
     
+    var continuousMode: Bool {
+        didSet { UserDefaults.standard.set(continuousMode, forKey: "continuousMode") }
+    }
+    
     var horizontalPadding: Int {
         didSet { UserDefaults.standard.set(horizontalPadding, forKey: "layoutHorizontalPadding") }
     }
@@ -278,6 +282,7 @@ class UserConfig {
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
         self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
         
+        self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
         self.avoidPageBreak = defaults.object(forKey: "avoidPageBreak") as? Bool ?? false
