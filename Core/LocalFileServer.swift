@@ -88,6 +88,8 @@ class LocalFileServer {
             return
         }
         backgroundTask = UIApplication.shared.beginBackgroundTask {
+            self.listener?.cancel()
+            self.listener = nil
             self.endBackgroundTask()
         }
     }
@@ -101,6 +103,12 @@ class LocalFileServer {
     }
     
     func setAudioServer(enabled: Bool) {
+        guard localAudioEnabled != enabled else {
+            if enabled {
+                startServer()
+            }
+            return
+        }
         localAudioEnabled = enabled
         if enabled {
             listener?.cancel()
