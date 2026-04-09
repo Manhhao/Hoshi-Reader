@@ -213,7 +213,7 @@ class UserConfig {
     var audioEnableAutoplay: Bool {
         didSet { UserDefaults.standard.set(audioEnableAutoplay, forKey: "audioEnableAutoplay") }
     }
-
+    
     var audioPlaybackMode: AudioPlaybackMode {
         didSet { UserDefaults.standard.set(audioPlaybackMode.rawValue, forKey: "audioPlaybackMode") }
     }
@@ -253,6 +253,26 @@ class UserConfig {
     
     var statisticsAutostartMode: StatisticsAutostartMode {
         didSet { UserDefaults.standard.set(statisticsAutostartMode.rawValue, forKey: "statisticsAutostartMode") }
+    }
+    
+    var enableSasayaki: Bool {
+        didSet { UserDefaults.standard.set(enableSasayaki, forKey: "enableSasayaki") }
+    }
+    
+    var sasayakiAutoScroll: Bool {
+        didSet { UserDefaults.standard.set(sasayakiAutoScroll, forKey: "sasayakiAutoScroll") }
+    }
+    
+    var sasayakiEnableSync: Bool {
+        didSet { UserDefaults.standard.set(sasayakiEnableSync, forKey: "sasayakiEnableSync") }
+    }
+    
+    var sasayakiTextColor: Color {
+        didSet { Self.saveColor(sasayakiTextColor, key: "sasayakiTextColor") }
+    }
+    
+    var sasayakiBackgroundColor: Color {
+        didSet { Self.saveColor(sasayakiBackgroundColor, key: "sasayakiBackgroundColor") }
     }
     
     init() {
@@ -326,6 +346,12 @@ class UserConfig {
             .flatMap(StatisticsSyncMode.init) ?? .merge
         self.statisticsAutostartMode = defaults.string(forKey: "statisticsAutostartMode")
             .flatMap(StatisticsAutostartMode.init) ?? .off
+        
+        self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
+        self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
+        self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
+        self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
+        self.sasayakiBackgroundColor = UserConfig.loadColor(key: "sasayakiBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)
     }
     
     private static func saveColor(_ color: Color, key: String) {

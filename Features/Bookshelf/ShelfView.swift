@@ -20,6 +20,7 @@ struct ShelfView: View {
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
     @Binding var pendingLookup: String?
+    var onMatch: (BookMetadata) -> Void
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
     ]
@@ -103,6 +104,7 @@ struct ShelfView: View {
                             viewModel: viewModel,
                             currentShelf: section.shelf?.name,
                             onSelect: { selectedBook = book },
+                            onMatch: { onMatch(book) },
                             isSelecting: isSelecting,
                             selectedBooks: $selectedBooks
                         )

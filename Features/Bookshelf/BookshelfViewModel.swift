@@ -29,7 +29,7 @@ class BookshelfViewModel {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
-            print(try BookStorage.getDocumentsDirectory().path(percentEncoded: false))
+            print(try BookStorage.getAppDirectory().path(percentEncoded: false))
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -76,7 +76,7 @@ class BookshelfViewModel {
             moveBook(book.id, to: name)
         }
     }
-
+    
     func deleteBooks(_ books: Set<BookMetadata>) {
         for book in books {
             deleteBook(book)
@@ -192,7 +192,7 @@ class BookshelfViewModel {
             }
         }
     }
-
+    
     private func determineSyncDirection(local: Bookmark?, ttuProgress: TtuProgress?) -> SyncDirection {
         guard let local = local, let lastModified = local.lastModified else {
             if ttuProgress != nil {
@@ -215,7 +215,7 @@ class BookshelfViewModel {
         }
     }
     
-    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode) {
+    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
         guard let title = book.title,
               let bookFolder = book.folder else { return }
         
@@ -235,8 +235,8 @@ class BookshelfViewModel {
                     rootFolder: root,
                     coverImageDataProvider: coverPath.map { path in
                         return {
-                            guard let docsDirectory = try? BookStorage.getDocumentsDirectory() else { return nil }
-                            let coverURL = docsDirectory.appendingPathComponent(path)
+                            guard let appDirectory = try? BookStorage.getAppDirectory() else { return nil }
+                            let coverURL = appDirectory.appendingPathComponent(path)
                             guard FileManager.default.fileExists(atPath: coverURL.path(percentEncoded: false)) else { return nil }
                             return try? Data(contentsOf: coverURL)
                         }
@@ -267,6 +267,19 @@ class BookshelfViewModel {
                     }
                 }
                 
+                var audioBookFileId: String?
+                var ttuAudioBook: TtuAudioBook?
+                var playbackData: SasayakiPlaybackData?
+                if syncAudioBook {
+                    playbackData = BookStorage.loadSasayakiPlayback(root: url)
+                    audioBookFileId = try await GoogleDriveHandler.shared.findAudioBookFileId(folderId: driveFolderId)
+                    ttuAudioBook = if let audioBookFileId {
+                        try await GoogleDriveHandler.shared.getAudioBookFile(fileId: audioBookFileId)
+                    } else {
+                        nil
+                    }
+                }
+                
                 let syncDirection = direction ?? determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress)
                 switch syncDirection {
                 case .importFromTtu:
@@ -277,6 +290,9 @@ class BookshelfViewModel {
                         if !mergedStats.isEmpty {
                             try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
                         }
+                    }
+                    if syncAudioBook, let ttuAudioBook {
+                        importAudioBook(ttuAudioBook: ttuAudioBook, to: url)
                     }
                     showSuccess(message: "Synced \(title) from ッツ\n\(ttuProgress.exploredCharCount) characters")
                 case .exportToTtu:
@@ -293,6 +309,14 @@ class BookshelfViewModel {
                         if !mergedStats.isEmpty {
                             try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolderId, fileId: statsFileId, stats: mergedStats)
                         }
+                    }
+                    if syncAudioBook, let playbackData {
+                        try await exportAudioBook(
+                            title: title,
+                            playbackData: playbackData,
+                            folderId: driveFolderId,
+                            fileId: audioBookFileId
+                        )
                     }
                     showSuccess(message: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters")
                 case .synced:
@@ -322,7 +346,7 @@ class BookshelfViewModel {
     }
     
     func clearInbox() {
-        guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return
         }
         
@@ -338,6 +362,40 @@ class BookshelfViewModel {
         for item in inboxContents {
             try? FileManager.default.removeItem(at: item)
         }
+    }
+    
+    func runSasayakiMatch(book: BookMetadata, srtURL: URL, searchWindow: Int) async throws -> SasayakiMatchData {
+        guard let folder = book.folder else {
+            throw URLError(.fileDoesNotExist)
+        }
+        
+        let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
+        let accessing = srtURL.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                srtURL.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        let srtData = try Data(contentsOf: srtURL)
+        let cues = SasayakiParser.parseCues(from: srtData)
+        let result = try SasayakiMatcher.match(
+            rootURL: rootURL,
+            cues: cues,
+            searchWindow: searchWindow
+        )
+        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        return result
+    }
+    
+    func loadSasayakiMatch(book: BookMetadata) -> SasayakiMatchData? {
+        guard let folder = book.folder,
+              let books = try? BookStorage.getBooksDirectory() else {
+            return nil
+        }
+        
+        let root = books.appendingPathComponent(folder)
+        return BookStorage.loadSasayakiMatch(root: root)
     }
     
     private func importProgress(ttuProgress: TtuProgress, to url: URL) {
@@ -409,10 +467,29 @@ class BookshelfViewModel {
         return Array(grouped.values)
     }
     
+    private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {
+        var playback = BookStorage.loadSasayakiPlayback(root: url) ?? SasayakiPlaybackData(lastPosition: 0)
+        playback.lastPosition = ttuAudioBook.playbackPosition
+        try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback)
+    }
+    
+    private func exportAudioBook(title: String, playbackData: SasayakiPlaybackData, folderId: String, fileId: String?) async throws {
+        let audioBook = TtuAudioBook(
+            title: title,
+            playbackPosition: playbackData.lastPosition,
+            lastAudioBookModified: Int(Date().timeIntervalSince1970 * 1000)
+        )
+        try await GoogleDriveHandler.shared.updateAudioBookFile(
+            folderId: folderId,
+            fileId: fileId,
+            audioBook: audioBook
+        )
+    }
+    
     private func processImport(sourceURL: URL) throws {
         let tempDir = FileManager.default.temporaryDirectory
         let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
-
+        
         try FileManager.default.copyItem(at: sourceURL, to: tempURL)
         
         defer {

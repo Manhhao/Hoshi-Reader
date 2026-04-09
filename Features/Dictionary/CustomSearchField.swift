@@ -10,9 +10,9 @@ import UIKit
 import SwiftUI
 
 class SearchField: UITextField {
-    var targetLanguage: String? // avoid modifying `init`
+    var targetLanguage: String?
     var onTransitionComplete: (() -> Void)?
-
+    
     override var intrinsicContentSize: CGSize {
         let size = super.intrinsicContentSize
         return CGSize(width: UIView.noIntrinsicMetric, height: size.height)
@@ -21,7 +21,6 @@ class SearchField: UITextField {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil else { return }
-        // get the coordinator of the transition of navigation push
         let transitionCoordinator = self.parentViewController?.transitionCoordinator
         if let transitionCoordinator {
             transitionCoordinator.animate(alongsideTransition: nil) { _ in
@@ -37,7 +36,6 @@ class SearchField: UITextField {
             return super.textInputMode
         }
         
-        // add explanation in PrivacyInfo.xcprivacy
         for inputMode in UITextInputMode.activeInputModes {
             if let lang = inputMode.primaryLanguage, lang.hasPrefix(targetLanguage) {
                 return inputMode
@@ -73,7 +71,6 @@ struct CustomSearchField: UIViewRepresentable {
     func updateUIView(_ uiView: UITextField, context: Context) {
         context.coordinator.updateSelf(searchText: $searchText, isFocused: $isFocused)
         
-        // detect `isFocused` after the first `updateUIView` search field and the navigation push
         if uiView.window != nil {
             if isFocused {
                 uiView.becomeFirstResponder()
@@ -130,10 +127,7 @@ struct CustomSearchField: UIViewRepresentable {
             self._isFocused = isFocused
         }
     }
-    
 }
-
-// MARK: - Extensions
 
 extension UIView {
     var parentViewController: UIViewController? {

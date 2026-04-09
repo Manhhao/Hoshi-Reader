@@ -165,7 +165,7 @@ window.hoshiSelection = {
             for (let i = start; i < text.length; i++) {
                 if (this.sentenceDelimiters.includes(text[i])) {
                     let end = i + 1;
-
+                    
                     while (end < text.length) {
                         if (!trailingSentenceChars.includes(text[end])) break;
                         end += 1;
@@ -197,7 +197,6 @@ window.hoshiSelection = {
             return null;
         }
         
-        // Dismiss popup if tapping on the first character of the current selection
         if (this.selection &&
             hit.node === this.selection.startNode &&
             hit.offset === this.selection.startOffset) {
@@ -253,10 +252,12 @@ window.hoshiSelection = {
         };
         
         const sentence = this.getSentence(hit.node, hit.offset);
+        const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
         webkit.messageHandlers.textSelected.postMessage({
             text,
             sentence,
-            rect: this.getSelectionRect(x, y)
+            rect: this.getSelectionRect(x, y),
+            normalizedOffset
         });
         
         return text;
@@ -304,9 +305,20 @@ window.hoshiSelection = {
         CSS.highlights?.set('hoshi-selection', new Highlight(...highlights));
     },
     
+    getNormalizedOffset(targetNode, offset) {
+        let count = window.hoshiReader.nodeStartOffsets.get(targetNode) ?? 0;
+        const text = targetNode.textContent;
+        for (let i = 0; i < offset; i++) {
+            if (window.hoshiReader.isMatchableChar(text[i])) {
+                count++;
+            }
+        }
+        return count;
+    },
+    
     clearHighlight() {
         window.getSelection()?.removeAllRanges();
-        CSS.highlights?.clear();
+        CSS.highlights?.get('hoshi-selection')?.clear();
         this.selection = null;
     }
 };

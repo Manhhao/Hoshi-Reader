@@ -124,7 +124,7 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
     if (groupCount <= 0) {
         return reading.length === 0 ? [] : null;
     }
-
+    
     const group = groups[groupsStart];
     const {isKana, text} = group;
     const textLength = text.length;
@@ -132,11 +132,11 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
         const {textNormalized} = group;
         if (textNormalized !== null && readingNormalized.startsWith(textNormalized)) {
             const segments = segmentizeFurigana(
-                reading.substring(textLength),
-                readingNormalized.substring(textLength),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(textLength),
+                                                readingNormalized.substring(textLength),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (reading.startsWith(text)) {
                     segments.unshift(createFuriganaSegment(text, ''));
@@ -151,11 +151,11 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
         let result = null;
         for (let i = reading.length; i >= textLength; --i) {
             const segments = segmentizeFurigana(
-                reading.substring(i),
-                readingNormalized.substring(i),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(i),
+                                                readingNormalized.substring(i),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (result !== null) {
                     // More than one way to segmentize the tail; mark as ambiguous
@@ -178,7 +178,7 @@ function segmentFurigana(expression, reading) {
     if (!reading || reading === expression) {
         return [[expression, '']];
     }
-
+    
     const groups = [];
     const segmentMatches = expression.match(KANJI_SEGMENT_PATTERN) || [];
     for (const text of segmentMatches) {
@@ -186,14 +186,14 @@ function segmentFurigana(expression, reading) {
         const textNormalized = isKana ? toHiragana(text) : null;
         groups.push({isKana, text, textNormalized});
     }
-
+    
     const readingNormalized = toHiragana(reading);
     const segments = segmentizeFurigana(reading, readingNormalized, groups, 0);
-
+    
     if (segments !== null) {
         return segments.map(seg => [seg.text, seg.reading]);
     }
-
+    
     return [[expression, reading]];
 }
 
@@ -305,7 +305,6 @@ function constructDictCss(css, dictName) {
     return parts.join('');
 }
 
-// table styles taken from a jitendex glossary
 function applyTableStyles(html) {
     const tableStyle = 'table-layout:auto;border-collapse:collapse;';
     const cellStyle = 'border-style:solid;padding:0.25em;vertical-align:top;border-width:1px;border-color:currentColor;';
@@ -817,8 +816,8 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
         }
         
         const items = node.map(item =>
-            item?.type === 'structured-content' ? item.content : item
-        );
+                               item?.type === 'structured-content' ? item.content : item
+                               );
         const isLinkArray = items.every(item => item?.tag === 'a');
         if (isLinkArray && node.length > 1) {
             const ul = document.createElement('ul');
@@ -1040,31 +1039,31 @@ function createTags(entry) {
     const hasDeinflection = deinflectionTrace?.length;
     const hasFrequencies = frequencies?.length;
     const hasPitches = pitches?.length;
-
+    
     if (!hasDeinflection && !hasFrequencies && !hasPitches) {
         return null;
     }
-
+    
     const container = el('div', { className: 'entry-tags' });
-
+    
     if (hasDeinflection) {
         const deinflectionDiv = el('div', { className: 'tag-row' });
         deinflectionTrace.forEach(tag => deinflectionDiv.appendChild(createDeinflectionTag(tag)));
         container.appendChild(deinflectionDiv);
     }
-
+    
     if (hasFrequencies) {
         const freqContainer = el('div', { className: 'tag-row' });
         frequencies.forEach(freq => freqContainer.appendChild(createFrequencyGroup(freq)));
         container.appendChild(freqContainer);
     }
-
+    
     if (hasPitches) {
         const pitchContainer = el('div', { className: 'pitch-list' });
         pitches.forEach(pitch => pitchContainer.appendChild(createPitchGroup(pitch, reading)));
         container.appendChild(pitchContainer);
     }
-
+    
     return container;
 }
 

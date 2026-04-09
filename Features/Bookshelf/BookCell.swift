@@ -15,6 +15,7 @@ struct BookCell: View {
     var viewModel: BookshelfViewModel
     var currentShelf: String?
     var onSelect: () -> Void
+    var onMatch: () -> Void
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
     
@@ -63,12 +64,12 @@ struct BookCell: View {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
-                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                         } label: {
                             Label("Import", systemImage: "arrow.down")
                         }
                         Button {
-                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                         } label: {
                             Label("Export", systemImage: "arrow.up")
                         }
@@ -77,10 +78,18 @@ struct BookCell: View {
                     }
                 } else {
                     Button {
-                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
+                }
+            }
+            
+            if userConfig.enableSasayaki {
+                Button {
+                    onMatch()
+                } label: {
+                    Label("Match", systemImage: "waveform.badge.magnifyingglass")
                 }
             }
             

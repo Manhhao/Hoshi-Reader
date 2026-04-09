@@ -63,6 +63,13 @@ struct ReaderView: View {
         userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
     
+    private func updateSasayakiColors() {
+        viewModel.bridge.send(.updateSasayakiColors(
+            textHex: UIColor(userConfig.sasayakiTextColor).hexString,
+            backgroundHex: UIColor(userConfig.sasayakiBackgroundColor).hexString
+        ))
+    }
+    
     init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool, autostartStatistics: Bool) {
         _viewModel = State(initialValue: ReaderViewModel(document: document, rootURL: rootURL, enableStatistics: enableStatistics, autostartStatistics: autostartStatistics))
     }
@@ -119,6 +126,9 @@ struct ReaderView: View {
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
+                            },
+                            onRestoreCompleted: {
+                                viewModel.handleRestoreCompleted()
                             }
                         )
                         .id(WebViewState(
@@ -154,6 +164,9 @@ struct ReaderView: View {
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
+                            },
+                            onRestoreCompleted: {
+                                viewModel.handleRestoreCompleted()
                             }
                         )
                         .id(WebViewState(
@@ -208,9 +221,17 @@ struct ReaderView: View {
                                     viewModel.popups[index - 1].clearHighlight.toggle()
                                     viewModel.closeChildPopups(parent: index - 1)
                                 }
-                            }
+                            },
+                            sasayakiCue: popup.sasayakiCue,
+                            sasayakiPlayer: viewModel.sasayakiPlayer
                         )
                         .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
+                    }
+                    
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .controlSize(.regular)
+                            .tint(.secondary)
                     }
                 }
             }
@@ -245,6 +266,14 @@ struct ReaderView: View {
                             viewModel.activeSheet = .statistics
                         } label: {
                             Label("Statistics", systemImage: "chart.xyaxis.line")
+                        }
+                    }
+                    
+                    if userConfig.enableSasayaki && viewModel.sasayakiPlayer.hasMatch {
+                        Button {
+                            viewModel.activeSheet = .sasayaki
+                        } label: {
+                            Label("Sasayaki", systemImage: "waveform")
                         }
                     }
                 } label: {
@@ -325,6 +354,13 @@ struct ReaderView: View {
             case .statistics:
                 StatisticsView(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
+            case .sasayaki:
+                SasayakiSheet(player: viewModel.sasayakiPlayer, onImportAudio: { url in
+                    try viewModel.importSasayakiAudio(from: url)
+                }) {
+                    viewModel.activeSheet = nil
+                }
+                .presentationDetents([.medium])
             }
         }
         .task(id: viewModel.isTracking) {
@@ -341,11 +377,13 @@ struct ReaderView: View {
         .onChange(of: readerTextColor) { _, hex in
             viewModel.bridge.send(.updateTextColor(hex))
         }
+        .onChange(of: userConfig.sasayakiTextColor) { _, _ in updateSasayakiColors() }
+        .onChange(of: userConfig.sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             guard viewModel.isTracking else {
                 return
             }
-            viewModel.lastTimestamp = .now
+            viewModel.resetTrackingBaseline()
             viewModel.isPaused = false
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -353,6 +391,9 @@ struct ReaderView: View {
                 return
             }
             viewModel.isPaused = true
+        }
+        .onDisappear {
+            viewModel.sasayakiPlayer.teardown()
         }
         .ignoresSafeArea(edges: .top)
         .ignoresSafeArea(.keyboard)

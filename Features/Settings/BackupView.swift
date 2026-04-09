@@ -73,7 +73,7 @@ struct BackupView: View {
     private func backupFolder(folder: String) {
         isLoading = true
         loadingString = "Archiving..."
-        let directory = try! BookStorage.getDocumentsDirectory().appendingPathComponent(folder)
+        let directory = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
@@ -108,7 +108,7 @@ struct BackupView: View {
         guard url.startAccessingSecurityScopedResource() else { return }
         isLoading = true
         loadingString = "Restoring..."
-        let destination = try! BookStorage.getDocumentsDirectory().appendingPathComponent(folder)
+        let destination = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             defer { url.stopAccessingSecurityScopedResource() }
             try? FileManager.default.removeItem(at: destination)

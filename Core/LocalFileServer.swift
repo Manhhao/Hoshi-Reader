@@ -23,6 +23,7 @@ class LocalFileServer {
     private var listener: NWListener?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var coverData: Data?
+    private var sasayakiAudioData: Data?
     private var localAudioEnabled = false
     
     private static let defaultSources = ["nhk16", "daijisen", "shinmeikai8", "jpod", "jpod_alternate", "taas", "ozk5", "forvo", "forvo_ext", "forvo_ext2"]
@@ -30,7 +31,7 @@ class LocalFileServer {
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     
     private init() {}
-
+    
     private func katakanaToHiragana(_ text: String) -> String {
         let scalars = text.unicodeScalars.map { scalar -> UnicodeScalar in
             let value = scalar.value
@@ -75,7 +76,7 @@ class LocalFileServer {
     
     private func stopServer() {
         // only stop if no more files are served
-        guard coverData == nil && !localAudioEnabled else {
+        guard coverData == nil && sasayakiAudioData == nil && !localAudioEnabled else {
             return
         }
         
@@ -124,8 +125,14 @@ class LocalFileServer {
         startServer()
     }
     
-    func clearCover() {
+    func setSasayakiAudio(_ data: Data) {
+        sasayakiAudioData = data
+        startServer()
+    }
+    
+    func clearMedia() {
         coverData = nil
+        sasayakiAudioData = nil
         stopServer()
     }
     
@@ -144,6 +151,8 @@ class LocalFileServer {
         
         if path.hasPrefix("/cover/cover.") {
             getCover(to: connection)
+        } else if path == "/sasayaki/audio.m4a" {
+            getSasayakiAudio(to: connection)
         } else if path == "/localaudio/get/" {
             getAudioSources(request, to: connection)
         } else if path.hasPrefix("/localaudio/") {
@@ -162,7 +171,7 @@ class LocalFileServer {
         let term = request.query["term"] ?? ""
         let rawReading = request.query["reading"] ?? ""
         let reading = katakanaToHiragana(rawReading)
-        let dbURL = try! BookStorage.getDocumentsDirectory().appendingPathComponent(Self.localAudioPath)
+        let dbURL = try! BookStorage.getAppDirectory().appendingPathComponent(Self.localAudioPath)
         
         var db: OpaquePointer?
         sqlite3_open(dbURL.path(percentEncoded: false), &db)
@@ -234,7 +243,7 @@ class LocalFileServer {
         
         let source = String(parts.first ?? "")
         let file = String(parts[1]).removingPercentEncoding
-        let dbURL = try! BookStorage.getDocumentsDirectory().appendingPathComponent(Self.localAudioPath)
+        let dbURL = try! BookStorage.getAppDirectory().appendingPathComponent(Self.localAudioPath)
         
         var db: OpaquePointer?
         sqlite3_open(dbURL.path(percentEncoded: false), &db)
@@ -271,6 +280,15 @@ class LocalFileServer {
         }
         
         send(coverData, status: "200 OK", contentType: "application/octet-stream", to: connection)
+    }
+    
+    private func getSasayakiAudio(to connection: NWConnection) {
+        guard let sasayakiAudioData else {
+            send(Data(), status: "404 Not Found", contentType: "text/plain; charset=utf-8", to: connection)
+            return
+        }
+        
+        send(sasayakiAudioData, status: "200 OK", contentType: "audio/x-m4a", to: connection)
     }
     
     private func parseRequest(from requestData: Data) -> Request {

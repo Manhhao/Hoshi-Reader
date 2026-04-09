@@ -104,6 +104,15 @@ struct StatisticsView: View {
             .monospacedDigit()
             .navigationTitle("Statistics")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        viewModel.activeSheet = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+            }
         }
     }
 }
