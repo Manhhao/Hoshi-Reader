@@ -224,7 +224,7 @@ struct AppearanceView: View {
                         Slider(value: .init(
                             get: { Double(userConfig.popupWidth) },
                             set: { userConfig.popupWidth = Int($0) }
-                        ), in: 100...500, step: 10)
+                        ), in: 100...700, step: 10)
                         
                         HStack {
                             Text("Height")
@@ -235,7 +235,7 @@ struct AppearanceView: View {
                         Slider(value: .init(
                             get: { Double(userConfig.popupHeight) },
                             set: { userConfig.popupHeight = Int($0) }
-                        ), in: 100...350, step: 10)
+                        ), in: 100...500, step: 10)
                     }
                     
                     Toggle("Full-width", isOn: Bindable(userConfig).popupFullWidth)
