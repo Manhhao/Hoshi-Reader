@@ -24,6 +24,7 @@ struct DictionarySearchView: View {
     @State private var clearHighlight: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
+    var shouldFocus: Bool = false
     
     private var usesTopTabBarLayout: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
@@ -112,6 +113,9 @@ struct DictionarySearchView: View {
             DictionarySearchBar(text: $query, isFocused: $searchFocused) {
                 runLookup()
             }
+        }
+        .onChange(of: shouldFocus) {
+            searchFocused = true
         }
         .onAppear {
             if !didInitialQuery && !initialQuery.isEmpty {

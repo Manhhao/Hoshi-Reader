@@ -21,6 +21,7 @@ struct BookshelfView: View {
     @State private var showAbout = false
     @State private var showShelfManagement = false
     @State private var selectedTab = 0
+    @State private var focusDictionarySearch = false
     @State private var setInitialTab = false
     @State private var navigationPath = NavigationPath()
     @State private var dictionaryRoute = DictionaryRoute()
@@ -34,7 +35,12 @@ struct BookshelfView: View {
     @Binding var pendingTab: Int?
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: Binding(get: { selectedTab }, set: { newTab in
+            if newTab == 1 && selectedTab == 1 {
+                focusDictionarySearch.toggle()
+            }
+            selectedTab = newTab
+        })) {
             Tab("Books", systemImage: "books.vertical", value: 0) {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
@@ -104,7 +110,8 @@ struct BookshelfView: View {
                 NavigationStack {
                     DictionarySearchView(
                         initialQuery: dictionaryRoute.query,
-                        initialAutofocus: dictionaryRoute.autofocus
+                        initialAutofocus: dictionaryRoute.autofocus,
+                        shouldFocus: focusDictionarySearch
                     )
                     .id(dictionaryRoute.id)
                 }
