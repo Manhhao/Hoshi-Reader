@@ -282,13 +282,14 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 margin: 0 !important;
                 padding: 0 !important;
                 writing-mode: \(writingMode) !important;
+                \(parent.userConfig.verticalWriting ? "overflow-y: hidden" : "overflow-x: hidden") !important;
             }
             body {
                 font-family: \(parent.userConfig.selectedFont), serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
-                padding: \(verticalPadding) / 2)vh \(horizontalPadding) / 2)vw !important;
+                padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
                 \(gridCss)
             }
             img.block-img {
