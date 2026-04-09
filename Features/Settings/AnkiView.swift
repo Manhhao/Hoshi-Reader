@@ -13,7 +13,7 @@ struct AnkiView: View {
     @State private var ankiManager = AnkiManager.shared
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
-
+    
     private var availableHandlebars: [String] {
         var options = Handlebars.allCases.map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {

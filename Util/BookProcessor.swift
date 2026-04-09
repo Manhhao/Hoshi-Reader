@@ -19,7 +19,7 @@ struct BookProcessor {
             }
             let path = document.contentDirectory.appendingPathComponent(manifestItem.path)
             if let content = try? String(contentsOf: path, encoding: .utf8) {
-                let count = content.characterCount()
+                let count = content.filtered().count
                 chapterInfo[manifestItem.path] = BookInfo.ChapterInfo(spineIndex: index, currentTotal: total, chapterCount: count)
                 total += count
             }

@@ -209,7 +209,7 @@ struct DictionaryDetailSettingView: View {
     @Environment(UserConfig.self) var userConfig
     @Environment(\.dismiss) private var dismiss
     @State private var customCSS: String = ""
-
+    
     var body: some View {
         NavigationStack {
             CSSEditorView(text: $customCSS)

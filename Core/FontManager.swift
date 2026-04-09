@@ -13,7 +13,7 @@ class FontManager {
     static let defaultFonts = ["Hiragino Mincho ProN", "Hiragino Kaku Gothic ProN"]
     
     private static func getFontsDirectory() throws -> URL {
-        try BookStorage.getDocumentsDirectory().appendingPathComponent("Fonts")
+        try BookStorage.getAppDirectory().appendingPathComponent("Fonts")
     }
     
     func importFont(from: URL) throws {

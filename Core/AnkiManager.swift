@@ -45,6 +45,10 @@ class AnkiManager {
         fieldMappings.values.contains(Handlebars.audio.rawValue)
     }
     
+    var needsSasayakiAudio: Bool {
+        fieldMappings.values.contains(Handlebars.sasayakiAudio.rawValue)
+    }
+    
     var useAnkiConnect: Bool = false
     var ankiConnectConfig: AnkiConnectConfig? = AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     var isAnkiConnectReachable = false
@@ -238,11 +242,14 @@ class AnkiManager {
         
         var fields: [String: String] = [:]
         var audioFields: [String] = []
+        var sasayakiAudioFields: [String] = []
         var pictureFields: [String] = []
         
         for (field, fieldContent) in fieldMappings {
             if fieldContent == Handlebars.audio.rawValue {
                 audioFields.append(field)
+            } else if fieldContent == Handlebars.sasayakiAudio.rawValue {
+                sasayakiAudioFields.append(field)
             } else if fieldContent == Handlebars.bookCover.rawValue {
                 pictureFields.append(field)
             } else {
@@ -277,23 +284,32 @@ class AnkiManager {
             "options": options
         ]
         
+        var audio: [[String: Any]] = []
         if !audioFields.isEmpty, let audioURL = content["audio"],
            let url = URL(string: audioURL),
            let audioData = try? await URLSession.shared.data(from: url).0 {
-            let timestamp = Self.mediaTimestamp()
-            note["audio"] = [[
+            audio.append([
                 "data": audioData.base64EncodedString(),
-                "filename": "hoshi_audio_\(timestamp).mp3",
+                "filename": "hoshi_audio_\(audioData.sha1).mp3",
                 "fields": audioFields
-            ]]
+            ])
+        }
+        if !sasayakiAudioFields.isEmpty, let audioData = context.sasayakiAudioData {
+            audio.append([
+                "data": audioData.base64EncodedString(),
+                "filename": "hoshi_sasayaki_\(audioData.sha1).m4a",
+                "fields": sasayakiAudioFields
+            ])
+        }
+        if !audio.isEmpty {
+            note["audio"] = audio
         }
         
         if !pictureFields.isEmpty, let coverURL = context.coverURL,
            let coverData = try? Data(contentsOf: coverURL) {
-            let hash = coverData.hashValue
             note["picture"] = [[
                 "data": coverData.base64EncodedString(),
-                "filename": "hoshi_cover_\(hash).\(coverURL.pathExtension)",
+                "filename": "hoshi_cover_\(coverData.sha1).\(coverURL.pathExtension)",
                 "fields": pictureFields
             ]]
         }
@@ -306,7 +322,7 @@ class AnkiManager {
         do {
             _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
             addWord(content["expression"] ?? "")
-            LocalFileServer.shared.clearCover()
+            LocalFileServer.shared.clearMedia()
             
             if ankiConnectConfig?.forceSync == true {
                 await syncAnkiConnect()
@@ -396,7 +412,7 @@ class AnkiManager {
             ankiConnectConfig: ankiConnectConfig
         )
         
-        guard let directory = try? BookStorage.getDocumentsDirectory() else {
+        guard let directory = try? BookStorage.getAppDirectory() else {
             return
         }
         try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
@@ -442,13 +458,17 @@ class AnkiManager {
                 return coverPath ?? ""
             case .audio:
                 return content["audio"] ?? ""
+            case .sasayakiAudio:
+                guard let data = context.sasayakiAudioData else { return "" }
+                LocalFileServer.shared.setSasayakiAudio(data)
+                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.m4a"
             }
         }
         return ""
     }
     
     private func load() {
-        guard let directory = try? BookStorage.getDocumentsDirectory() else {
+        guard let directory = try? BookStorage.getAppDirectory() else {
             return
         }
         let url = directory.appendingPathComponent(Self.ankiConfig)
@@ -500,7 +520,7 @@ class AnkiManager {
     }
     
     private func loadWords() {
-        guard let url = try? BookStorage.getDocumentsDirectory().appendingPathComponent(AnkiManager.ankiWords),
+        guard let url = try? BookStorage.getAppDirectory().appendingPathComponent(AnkiManager.ankiWords),
               let data = try? Data(contentsOf: url),
               let words = try? JSONDecoder().decode(Set<String>.self, from: data) else {
             return
@@ -514,7 +534,7 @@ class AnkiManager {
     }
     
     private static func saveWords(_ words: Set<String>) throws {
-        let file = try BookStorage.getDocumentsDirectory().appendingPathComponent(ankiWords)
+        let file = try BookStorage.getAppDirectory().appendingPathComponent(ankiWords)
         try JSONEncoder().encode(words).write(to: file)
     }
     
@@ -591,12 +611,6 @@ class AnkiManager {
         }
         
         return json["result"]
-    }
-    
-    private static func mediaTimestamp() -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
-        return f.string(from: Date())
     }
     
     enum AnkiConnectError: LocalizedError {

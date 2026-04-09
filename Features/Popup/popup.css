@@ -417,7 +417,7 @@ a {
 }
 
 @media (prefers-color-scheme: light) {
-
+    
     html,
     body {
         --background-color: #fff;
@@ -427,7 +427,7 @@ a {
 }
 
 @media (prefers-color-scheme: dark) {
-
+    
     html,
     body {
         --background-color: #000;
@@ -439,7 +439,7 @@ a {
         --text-color-light4: #777777;
         --background-color-dark1: #333333;
     }
-
+    
     .overlay {
         background: #222;
     }

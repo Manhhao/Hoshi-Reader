@@ -129,7 +129,7 @@ struct HeaderView: View {
                     } label: {
                         Image(systemName: "arrow.right.to.line")
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.secondary)
                 }
             }
             Spacer()

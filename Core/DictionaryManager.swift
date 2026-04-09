@@ -57,20 +57,20 @@ class DictionaryManager {
     }
     
     func rebuildLookupQuery() {
-       let enabledTermPaths = termDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       let enabledFreqPaths = frequencyDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       let enabledPitchPaths = pitchDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
-   }
+        let enabledTermPaths = termDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        let enabledFreqPaths = frequencyDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        let enabledPitchPaths = pitchDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+    }
     
     func collectDictionaries(storedDicts: [DictionaryInfo], configDicts: [DictionaryConfig.DictionaryEntry]) -> [DictionaryInfo] {
         var result: [DictionaryInfo] = []
@@ -474,7 +474,7 @@ class DictionaryManager {
     }
     
     private static func getDictionariesDirectory() throws -> URL {
-        try BookStorage.getDocumentsDirectory().appendingPathComponent("Dictionaries")
+        try BookStorage.getAppDirectory().appendingPathComponent("Dictionaries")
     }
     
     private func showError(_ message: String) {

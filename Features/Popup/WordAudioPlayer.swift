@@ -16,14 +16,19 @@ actor WordAudioPlayer {
     private var playToEndObserver: NSObjectProtocol?
     private var failedToEndObserver: NSObjectProtocol?
     private var id: UUID?
+    private var otherAudioActive = false
     
     private init() {}
+    
+    func setOtherAudioActive(_ active: Bool) {
+        otherAudioActive = active
+    }
     
     func stop(id: UUID? = nil) {
         if let id, id != self.id {
             return
         }
-        stopPlayback(deactivateSession: true)
+        cleanupPlayback()
     }
     
     func play(urlString: String, requestedMode: AudioPlaybackMode, id: UUID) {
@@ -31,12 +36,14 @@ actor WordAudioPlayer {
             return
         }
         
-        stopPlayback(deactivateSession: false)
+        stopPlayer()
         let session = AVAudioSession.sharedInstance()
         
         do {
-            try session.setCategory(.playback, mode: .default, options: categoryOptions(for: requestedMode))
-            try session.setActive(true, options: [])
+            try session.setCategory(.playback, mode: .spokenAudio, options: categoryOptions(for: requestedMode))
+            if !otherAudioActive {
+                try session.setActive(true, options: [])
+            }
         } catch {
             return
         }
@@ -53,7 +60,7 @@ actor WordAudioPlayer {
         ) { [weak self] _ in
             guard let self else { return }
             Task {
-                await self.stop()
+                await self.cleanupPlayback()
             }
         }
         
@@ -64,15 +71,23 @@ actor WordAudioPlayer {
         ) { [weak self] _ in
             guard let self else { return }
             Task {
-                await self.stop()
+                await self.cleanupPlayback()
             }
         }
         
         player.play()
     }
     
-    private func stopPlayback(deactivateSession: Bool) {
+    private func cleanupPlayback() {
+        stopPlayer()
+        if !otherAudioActive {
+            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        }
+    }
+    
+    private func stopPlayer() {
         player?.pause()
+        player?.replaceCurrentItem(with: nil)
         player = nil
         id = nil
         
@@ -83,10 +98,6 @@ actor WordAudioPlayer {
         if let failedToEndObserver {
             NotificationCenter.default.removeObserver(failedToEndObserver)
             self.failedToEndObserver = nil
-        }
-        
-        if deactivateSession {
-            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         }
     }
     

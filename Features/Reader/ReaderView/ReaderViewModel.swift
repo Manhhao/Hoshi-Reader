@@ -15,6 +15,7 @@ enum ActiveSheet: Identifiable {
     case appearance
     case chapters
     case statistics
+    case sasayaki
     var id: Self { self }
 }
 
@@ -27,6 +28,7 @@ struct PopupItem: Identifiable {
     var isVertical: Bool
     var isFullWidth: Bool
     var clearHighlight: Bool
+    var sasayakiCue: SasayakiMatch?
 }
 
 @Observable
@@ -77,6 +79,7 @@ class ReaderViewModel {
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
+    var isLoading = true
     var bookInfo: BookInfo
     let bridge = WebViewBridge()
     
@@ -92,6 +95,10 @@ class ReaderViewModel {
     var sessionStatistics: Statistics
     var todaysStatistics: Statistics
     var allTimeStatistics: Statistics
+    
+    // sasayaki
+    var sasayakiPlayer: SasayakiPlayer!
+    var wasPaused = false
     
     init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool, autostartStatistics: Bool) {
         self.document = document
@@ -125,10 +132,36 @@ class ReaderViewModel {
             startTracking()
         }
         
+        sasayakiPlayer = SasayakiPlayer(
+            rootURL: rootURL,
+            bridge: bridge,
+            loadChapter: { [weak self] chapterIndex, progress in
+                self?.flushStats()
+                self?.loadChapter(index: chapterIndex, progress: progress)
+                self?.resetTrackingBaseline()
+            },
+            getCurrentIndex: { [weak self] in
+                self?.index ?? 0
+            }
+        )
+        
         if let url = getCurrentChapter() {
-            bridge.updateState(url: url, progress: currentProgress)
-            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil))
+            let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
+            bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues)
+            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues))
         }
+    }
+    
+    func handleRestoreCompleted() {
+        if !sasayakiPlayer.hasAudio {
+            sasayakiPlayer.restoreAudio()
+        }
+        isLoading = false
+        sasayakiPlayer.handleRestoreCompleted(currentIndex: index)
+    }
+    
+    func importSasayakiAudio(from url: URL) throws {
+        try sasayakiPlayer.importAudio(from: url)
     }
     
     func loadStatistics() {
@@ -251,6 +284,10 @@ class ReaderViewModel {
         for style in LookupEngine.shared.getStyles() {
             dictionaryStyles[String(style.dict_name)] = String(style.styles)
         }
+        var cue: SasayakiMatch? = nil
+        if sasayakiPlayer.hasAudio, let offset = selection.normalizedOffset {
+            cue = sasayakiPlayer.findCue(chapterIndex: index, offset: offset)
+        }
         let popup = PopupItem(
             showPopup: false,
             currentSelection: selection,
@@ -258,11 +295,16 @@ class ReaderViewModel {
             dictionaryStyles: dictionaryStyles,
             isVertical: isVertical,
             isFullWidth: isFullWidth,
-            clearHighlight: false
+            clearHighlight: false,
+            sasayakiCue: cue
         )
         popups.append(popup)
         
         if let firstResult = lookupResults.first {
+            if sasayakiPlayer.isPlaying {
+                sasayakiPlayer.togglePlayback()
+                wasPaused = true
+            }
             withAnimation(.default.speed(2.2)) {
                 popups = popups.map {
                     var p = $0
@@ -285,6 +327,12 @@ class ReaderViewModel {
             }
         } completion: {
             self.popups.removeAll { popupIds.contains($0.id) }
+            if self.popups.isEmpty {
+                if self.wasPaused, !self.sasayakiPlayer.isPlaying {
+                    self.sasayakiPlayer.togglePlayback()
+                }
+                self.wasPaused = false
+            }
         }
     }
     
@@ -358,6 +406,11 @@ class ReaderViewModel {
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
     }
     
+    func resetTrackingBaseline() {
+        lastCount = currentCharacter
+        lastTimestamp = .now
+    }
+    
     private func persistBookmark(progress: Double) {
         currentProgress = progress
         bridge.updateProgress(progress)
@@ -371,11 +424,14 @@ class ReaderViewModel {
     }
     
     private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
+        isLoading = true
+        sasayakiPlayer.prepareTransition()
         self.index = index
         persistBookmark(progress: progress)
         if let url = getCurrentChapter() {
-            bridge.updateState(url: url, progress: progress)
-            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment))
+            let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
+            bridge.updateState(url: url, progress: progress, sasayakiCues: cues)
+            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment, sasayakiCues: cues))
         }
     }
     
@@ -408,14 +464,9 @@ class ReaderViewModel {
     }
     
     private func flushStats() {
-        guard isTracking else { return }
+        guard isTracking, !isPaused else { return }
         updateStats()
         saveStats()
-    }
-    
-    private func resetTrackingBaseline() {
-        lastCount = currentCharacter
-        lastTimestamp = .now
     }
     
     static private func getDefaultStatistic(title: String) -> Statistics {

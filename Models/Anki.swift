@@ -57,6 +57,7 @@ struct MiningContext {
     let sentence: String
     let documentTitle: String?
     let coverURL: URL?
+    var sasayakiAudioData: Data? = nil
 }
 
 enum Handlebars: String, CaseIterable {
@@ -74,6 +75,7 @@ enum Handlebars: String, CaseIterable {
     case pitchCategories = "{pitch-accent-categories}"
     case documentTitle = "{document-title}"
     case bookCover = "{book-cover}"
-
+    case sasayakiAudio = "{sasayaki-audio}"
+    
     static let singleGlossaryPrefix = "{single-glossary-"
 }

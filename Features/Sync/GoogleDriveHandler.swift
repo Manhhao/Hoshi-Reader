@@ -50,6 +50,12 @@ struct TtuProgress: Codable {
     let lastBookmarkModified: Date
 }
 
+struct TtuAudioBook: Codable {
+    let title: String
+    let playbackPosition: Double
+    let lastAudioBookModified: Int
+}
+
 @MainActor
 class GoogleDriveHandler {
     static let shared = GoogleDriveHandler()
@@ -173,6 +179,28 @@ class GoogleDriveHandler {
         return list.files.first?.id
     }
     
+    func findAudioBookFileId(folderId: String) async throws -> String? {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains 'audioBook_'"
+        
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "fields", value: "files(id, name)")
+        ]
+        
+        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let data = try await performRequest(request)
+        
+        let list = try JSONDecoder().decode(DriveFileList.self, from: data)
+        return list.files.first?.id
+    }
+    
     func getProgressFile(fileId: String) async throws -> TtuProgress {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!
@@ -207,6 +235,21 @@ class GoogleDriveHandler {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
         return try decoder.decode([Statistics].self, from: data)
+    }
+    
+    func getAudioBookFile(fileId: String) async throws -> TtuAudioBook {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!
+        components.queryItems = [URLQueryItem(name: "alt", value: "media")]
+        
+        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let data = try await performRequest(request)
+        return try JSONDecoder().decode(TtuAudioBook.self, from: data)
     }
     
     func updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress) async throws {
@@ -260,6 +303,47 @@ class GoogleDriveHandler {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
         let contentData = try encoder.encode(stats)
+        
+        let boundary = UUID().uuidString
+        
+        let url: URL
+        let method: String
+        let metadata: Data
+        
+        if let fileId = fileId {
+            url = URL(string: "https://www.googleapis.com/upload/drive/v3/files/\(fileId)?uploadType=multipart")!
+            method = "PATCH"
+            metadata = try JSONEncoder().encode(["name": fileName])
+        } else {
+            url = URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")!
+            method = "POST"
+            metadata = try JSONSerialization.data(withJSONObject: ["name": fileName, "parents": [folderId]])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/json; charset=UTF-8\r\n\r\n".data(using: .utf8)!)
+        body.append(metadata)
+        body.append("\r\n--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/json\r\n\r\n".data(using: .utf8)!)
+        body.append(contentData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let _ = try await performRequest(request)
+    }
+    
+    func updateAudioBookFile(folderId: String, fileId: String?, audioBook: TtuAudioBook) async throws {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        let fileName = "audioBook_1_6_\(audioBook.lastAudioBookModified)_\(audioBook.playbackPosition).json"
+        
+        let contentData = try JSONEncoder().encode(audioBook)
         
         let boundary = UUID().uuidString
         

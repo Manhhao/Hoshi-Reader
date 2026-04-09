@@ -19,14 +19,19 @@ struct SelectionData {
     let text: String
     let sentence: String
     let rect: CGRect
+    var normalizedOffset: Int?
 }
 
 enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double, fragment: String?)
+    case loadChapter(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil)
     case restoreProgress(Double)
     case jumpToFragment(String)
     case clearHighlight
     case updateTextColor(String?)
+    case updateSasayakiColors(textHex: String, backgroundHex: String)
+    case applySasayakiCues(String, completion: (() -> Void)? = nil)
+    case highlightSasayakiCue(id: String, reveal: Bool)
+    case clearSasayakiCue
 }
 
 @Observable
@@ -34,15 +39,17 @@ enum WebViewCommand {
 class WebViewBridge {
     private(set) var chapterURL: URL?
     private(set) var progress: Double = 0
+    private(set) var sasayakiCues: String?
     var pendingCommands: [WebViewCommand] = []
     
     func send(_ command: WebViewCommand) {
         pendingCommands.append(command)
     }
     
-    func updateState(url: URL, progress: Double) {
+    func updateState(url: URL, progress: Double, sasayakiCues: String? = nil) {
         self.chapterURL = url
         self.progress = progress
+        self.sasayakiCues = sasayakiCues
     }
     
     func updateProgress(_ progress: Double) {
@@ -62,6 +69,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     var onPageTurn: (() -> Void)?
+    var onRestoreCompleted: (() -> Void)?
     let maxSelectionLength: Int = 16
     
     func makeCoordinator() -> Coordinator {
@@ -114,13 +122,14 @@ struct ReaderWebView: UIViewRepresentable {
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment):
+                case .loadChapter(let url, let progress, let fragment, let sasayakiCues):
                     context.coordinator.currentURL = url
                     context.coordinator.pendingProgress = progress
                     context.coordinator.pendingFragment = fragment
-                    if let documentsDirectory = try? BookStorage.getDocumentsDirectory() {
+                    context.coordinator.pendingSasayakiCues = sasayakiCues
+                    if let appDirectory = try? BookStorage.getAppDirectory() {
                         webView.alpha = 0
-                        webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
+                        webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
                     }
                 case .restoreProgress(let progress):
                     context.coordinator.pendingProgress = progress
@@ -137,6 +146,23 @@ struct ReaderWebView: UIViewRepresentable {
                     } else {
                         webView.evaluateJavaScript("document.documentElement.style.removeProperty('--hoshi-text-color')") { _, _ in }
                     }
+                case .updateSasayakiColors(let textHex, let backgroundHex):
+                    webView.evaluateJavaScript("""
+                        document.documentElement.style.setProperty('--hoshi-sasayaki-text-color', '\(textHex)');
+                        document.documentElement.style.setProperty('--hoshi-sasayaki-background-color', '\(backgroundHex)');
+                    """) { _, _ in }
+                case .applySasayakiCues(let cues, let completion):
+                    webView.evaluateJavaScript("window.hoshiReader.applySasayakiCues(\(cues))") { _, _ in completion?() }
+                case .highlightSasayakiCue(let id, let reveal):
+                    let revealFlag = reveal ? "true" : "false"
+                    let cue = context.coordinator.javaScriptStringLiteral(id)
+                    webView.evaluateJavaScript("window.hoshiReader.highlightSasayakiCue(\(cue), \(revealFlag))") { result, _ in
+                        if let progress = result as? Double {
+                            context.coordinator.parent.onSaveBookmark(progress)
+                        }
+                    }
+                case .clearSasayakiCue:
+                    webView.evaluateJavaScript("window.hoshiReader.clearSasayakiCue()") { _, _ in }
                 }
             }
             return
@@ -146,9 +172,10 @@ struct ReaderWebView: UIViewRepresentable {
             context.coordinator.currentURL = url
             context.coordinator.pendingProgress = bridge.progress
             context.coordinator.pendingFragment = nil
-            guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else { return }
+            context.coordinator.pendingSasayakiCues = bridge.sasayakiCues
+            guard let appDirectory = try? BookStorage.getAppDirectory() else { return }
             webView.alpha = 0
-            webView.loadFileURL(url, allowingReadAccessTo: documentsDirectory)
+            webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
         }
     }
     
@@ -163,6 +190,7 @@ struct ReaderWebView: UIViewRepresentable {
         var currentURL: URL?
         var pendingProgress: Double = 0
         var pendingFragment: String?
+        var pendingSasayakiCues: String?
         var shouldSyncProgressAfterRestore = false
         
         init(_ parent: ReaderWebView) {
@@ -178,6 +206,7 @@ struct ReaderWebView: UIViewRepresentable {
                 UIView.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
+                parent.onRestoreCompleted?()
             }
             else if message.name == "textSelected" {
                 guard let body = message.body as? [String: Any],
@@ -191,7 +220,8 @@ struct ReaderWebView: UIViewRepresentable {
                     return
                 }
                 let rect = CGRect(x: x, y: y, width: w, height: h)
-                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
+                let normalizedOffset = body["normalizedOffset"] as? Int
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
                 
                 if let highlightCount = parent.onTextSelected?(selectionData) {
                     highlightSelection(count: highlightCount)
@@ -237,8 +267,8 @@ struct ReaderWebView: UIViewRepresentable {
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             let columnGapUnit = parent.userConfig.verticalWriting ? "vh" : "vw"
             let columnGapValue = parent.userConfig.verticalWriting
-                ? parent.userConfig.verticalPadding
-                : parent.userConfig.horizontalPadding
+            ? parent.userConfig.verticalPadding
+            : parent.userConfig.horizontalPadding
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -246,12 +276,11 @@ struct ReaderWebView: UIViewRepresentable {
             html, body { color: var(--hoshi-text-color) !important; }
             """
             
-            var textColorOverrideJs = ""
-            if parent.userConfig.theme == .custom {
+            let textColorOverrideJs: String = {
+                guard parent.userConfig.theme == .custom else { return "" }
                 let hex = UIColor(parent.userConfig.customTextColor).hexString
-                textColorOverrideJs = "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
-            }
-        
+                return "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
+            }()
             
             var fontFaceCss = ""
             if !FontManager.shared.isDefaultFont(name: parent.userConfig.selectedFont) {
@@ -286,6 +315,10 @@ struct ReaderWebView: UIViewRepresentable {
             
             let css = """
             \(fontFaceCss)
+            :root {
+                --hoshi-sasayaki-text-color: \(UIColor(parent.userConfig.sasayakiTextColor).hexString);
+                --hoshi-sasayaki-background-color: \(UIColor(parent.userConfig.sasayakiBackgroundColor).hexString);
+            }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;
@@ -331,6 +364,10 @@ struct ReaderWebView: UIViewRepresentable {
             a {
                 color: rgba(66, 108, 245, 1) !important;
             }
+            .hoshi-sasayaki-cue.hoshi-sasayaki-active {
+                color: var(--hoshi-sasayaki-text-color) !important;
+                background-color: var(--hoshi-sasayaki-background-color) !important;
+            }
             \(pageBreakCss)
             \(textColorCss)
             """
@@ -359,6 +396,16 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }()
             
+            let sasayakiSetupScript: String = {
+                if let cues = pendingSasayakiCues {
+                    return """
+                    window.hoshiReader.applySasayakiCues(\(cues));
+                    """
+                }
+                return ""
+            }()
+            pendingSasayakiCues = nil
+            
             let initialRestoreScript: String = {
                 if let fragment = pendingFragment {
                     shouldSyncProgressAfterRestore = true
@@ -386,7 +433,7 @@ struct ReaderWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 \(textColorOverrideJs)
-
+            
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)
@@ -435,6 +482,8 @@ struct ReaderWebView: UIViewRepresentable {
                 }).then(() => {
                     return new Promise(resolve => setTimeout(resolve, 50));
                 }).then(() => {
+                    window.hoshiReader.buildNodeOffsets();
+                    \(sasayakiSetupScript)
                     \(initialRestoreScript)
                 });
             })();
@@ -469,9 +518,6 @@ struct ReaderWebView: UIViewRepresentable {
             let jsDirection = direction == .forward ? "forward" : "backward"
             return """
             (function() {
-                if (!window.hoshiReader || typeof window.hoshiReader.paginate !== 'function') {
-                    return "limit";
-                }
                 return window.hoshiReader.paginate('\(jsDirection)');
             })()
             """
@@ -538,7 +584,7 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
         
-        private func javaScriptStringLiteral(_ value: String) -> String {
+        func javaScriptStringLiteral(_ value: String) -> String {
             let escaped = value
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "'", with: "\\'")

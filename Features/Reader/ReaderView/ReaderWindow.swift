@@ -48,6 +48,7 @@ final class ReaderWindow {
             window.alpha = 0
         } completion: { _ in
             window.isHidden = true
+            window.rootViewController = nil
             onDismiss?()
         }
     }

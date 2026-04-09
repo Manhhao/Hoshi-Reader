@@ -134,7 +134,7 @@ struct PopupWebView: UIViewRepresentable {
         }
         return css
     }()
-
+    
     private static let swipeDismissJs = """
     (function() {
         if (!window.swipeThreshold) {
@@ -257,7 +257,7 @@ struct PopupWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "openLink", let urlString = message.body as? String,
-                    let url = URL(string: urlString) {
+               let url = URL(string: urlString) {
                 UIApplication.shared.open(url)
             }
             else if message.name == "tapOutside" {
@@ -292,8 +292,8 @@ struct PopupWebView: UIViewRepresentable {
                 }
             }
             else if message.name == "playWordAudio",
-               let content = message.body as? [String: Any],
-               let urlString = content["url"] as? String {
+                    let content = message.body as? [String: Any],
+                    let urlString = content["url"] as? String {
                 let requestedMode = (content["mode"] as? String).flatMap(AudioPlaybackMode.init) ?? .interrupt
                 Task(priority: .userInitiated) {
                     await WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode, id: self.id)
