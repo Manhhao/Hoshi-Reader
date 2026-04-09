@@ -22,7 +22,7 @@ If the match rate is low you will have to increase the search window.
 Decreasing the window might give you a slightly better rate if you already have a good match. 
 Please try to use the same `.epub` as the one that was used to generate the srt file.
 
-<img src="Pictures/ssyk_match2.PNG" width="25%" alt="match2">
+<img src="Pictures/ssyk_match2.png" width="25%" alt="match2">
 
 ## Playing an audiobook
 
