@@ -31,6 +31,7 @@ struct BookshelfView: View {
     @Binding var pendingImportURL: URL?
     @Binding var pendingRemoteImportURL: URL?
     @Binding var pendingLookup: String?
+    @Binding var pendingTab: Int?
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -56,6 +57,7 @@ struct BookshelfView: View {
                                         isSelecting: isSelecting,
                                         selectedBooks: $selectedBooks,
                                         pendingLookup: $pendingLookup,
+                                        pendingTab: $pendingTab,
                                         onMatch: { sasayakiBook = $0 }
                                     )
                                 }
@@ -165,6 +167,12 @@ struct BookshelfView: View {
                         AppearanceView(userConfig: userConfig, showDismiss: false)
                     }
                 }
+            }
+        }
+        .onChange(of: pendingTab) { _, tab in
+            if let tab {
+                selectedTab = tab
+                pendingTab = nil
             }
         }
         .onChange(of: pendingLookup) { _, text in

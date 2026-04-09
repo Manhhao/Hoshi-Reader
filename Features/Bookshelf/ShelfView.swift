@@ -20,6 +20,7 @@ struct ShelfView: View {
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
     @Binding var pendingLookup: String?
+    @Binding var pendingTab: Int?
     var onMatch: (BookMetadata) -> Void
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
@@ -128,6 +129,11 @@ struct ShelfView: View {
         }
         .onChange(of: pendingLookup) { _, text in
             if text != nil && selectedBook != nil {
+                selectedBook = nil
+            }
+        }
+        .onChange(of: pendingTab) { _, tab in
+            if tab != nil && selectedBook != nil {
                 selectedBook = nil
             }
         }

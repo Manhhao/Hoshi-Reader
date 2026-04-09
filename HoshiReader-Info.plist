@@ -38,6 +38,33 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>books.vertical</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Books</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>de.manhhao.hoshi.books</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>character.magnify.ja</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Dictionary</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>de.manhhao.hoshi.dictionary</string>
+		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -57,14 +84,6 @@
 				</array>
 			</dict>
 		</dict>
-	</array>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
 	</array>
 </dict>
 </plist>
