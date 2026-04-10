@@ -33,6 +33,10 @@ struct SasayakiParser {
                 let end = parseTimestamp(times[1])
                 
                 let text = lines[2].trimmingCharacters(in: .whitespaces)
+                if text.hasPrefix("＊") {
+                    return nil
+                }
+                
                 return SasayakiCue(
                     id: lines[0].trimmingCharacters(in: .whitespaces),
                     startTime: start,

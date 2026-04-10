@@ -37,15 +37,18 @@ struct SasayakiMatcher {
         }
         
         var start = 0
-        for cue in cues.prefix(15) {
+        var minStart: Int?
+        for cue in cues.prefix(10) {
             let text = Array(cue.text.filtered())
             if text.count < 6 {
                 continue
             }
             if let index = findText(source: source, text: text, start: 0, end: source.count) {
-                start = index
-                break
+                minStart = min(minStart ?? index, index)
             }
+        }
+        if let minStart {
+            start = minStart
         }
         
         var matches: [SasayakiMatch] = []
