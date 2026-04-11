@@ -73,7 +73,10 @@ struct CustomSearchField: UIViewRepresentable {
         
         if uiView.window != nil {
             if isFocused {
-                uiView.becomeFirstResponder()
+                if !uiView.isFirstResponder {
+                    uiView.becomeFirstResponder()
+                }
+                uiView.selectAll(nil)
             } else {
                 uiView.resignFirstResponder()
             }
