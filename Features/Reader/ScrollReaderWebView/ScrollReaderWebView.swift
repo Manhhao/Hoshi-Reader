@@ -407,8 +407,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 });
                 
                 Promise.all(imagePromises).then(() => {
-                    return document.fonts.ready;
-                }).then(() => {
                     return new Promise(resolve => setTimeout(resolve, 50));
                 }).then(() => {
                     window.hoshiReader.buildNodeOffsets();

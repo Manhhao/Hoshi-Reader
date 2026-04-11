@@ -360,7 +360,8 @@ window.hoshiReader = {
         this.activeCueId = null;
     },
     
-    restoreProgress(progress) {
+    async restoreProgress(progress) {
+        await document.fonts.ready;
         var context = this.getScrollContext();
         
         if (context.pageSize <= 0) {
@@ -437,7 +438,8 @@ window.hoshiReader = {
         });
     },
     
-    jumpToFragment(fragment) {
+    async jumpToFragment(fragment) {
+        await document.fonts.ready;
         var context = this.getScrollContext();
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);

@@ -95,7 +95,7 @@ window.hoshiReader = {
             if (nodeLen > 0) {
                 var range = document.createRange();
                 range.selectNodeContents(node);
-                var rect = this.getRect(range);
+                var rect = range.getBoundingClientRect();
                 if (vertical ? (rect.left > window.innerWidth) : (rect.bottom < 0)) {
                     exploredChars += nodeLen;
                 }
@@ -270,7 +270,8 @@ window.hoshiReader = {
         window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
     },
     
-    restoreProgress(progress) {
+    async restoreProgress(progress) {
+        await document.fonts.ready;
         if (progress <= 0) {
             this.notifyRestoreComplete();
             return;
@@ -318,7 +319,8 @@ window.hoshiReader = {
         });
     },
     
-    jumpToFragment(fragment) {
+    async jumpToFragment(fragment) {
+        await document.fonts.ready;
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);
         
