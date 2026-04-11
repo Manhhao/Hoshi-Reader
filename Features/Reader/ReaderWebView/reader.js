@@ -380,8 +380,11 @@ window.hoshiReader = {
             var lastPage = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
             lastPage = Math.max(0, lastPage);
             this.setScrollOffset(context, lastPage);
-            this.registerSnapScroll(lastPage);
-            this.notifyRestoreComplete();
+            requestAnimationFrame(() => {
+                this.setScrollOffset(context, lastPage);
+                this.registerSnapScroll(lastPage);
+                requestAnimationFrame(() => this.notifyRestoreComplete());
+            });
             return;
         }
         
@@ -428,7 +431,10 @@ window.hoshiReader = {
         } else {
             this.registerSnapScroll(0);
         }
-        this.notifyRestoreComplete();
+        
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.notifyRestoreComplete());
+        });
     },
     
     jumpToFragment(fragment) {
@@ -452,7 +458,7 @@ window.hoshiReader = {
         requestAnimationFrame(() => {
             this.setScrollOffset(context, targetScroll);
             this.registerSnapScroll(targetScroll);
-            this.notifyRestoreComplete();
+            requestAnimationFrame(() => this.notifyRestoreComplete());
         });
         
         return true;

@@ -313,7 +313,9 @@ window.hoshiReader = {
             }
         }
         
-        this.notifyRestoreComplete();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.notifyRestoreComplete());
+        });
     },
     
     jumpToFragment(fragment) {
@@ -326,7 +328,9 @@ window.hoshiReader = {
         }
         
         target.scrollIntoView();
-        this.notifyRestoreComplete();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.notifyRestoreComplete());
+        });
         return true;
     }
 };
