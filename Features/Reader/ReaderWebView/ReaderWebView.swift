@@ -262,13 +262,11 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
             let pageHeight = Int(parent.viewSize.height)
             let pageWidth = Int(parent.viewSize.width)
             
-            var verticalPadding = Double(parent.userConfig.verticalPadding)
-            if !parent.userConfig.justifyText && parent.userConfig.verticalWriting {
-                verticalPadding = verticalPadding + (parent.userConfig.fontSize % 2 == 0 ? 1 : 2)
-            }
+            let verticalPadding = Double(parent.userConfig.verticalPadding)
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
@@ -276,6 +274,19 @@ struct ReaderWebView: UIViewRepresentable {
             let columnGapValue = parent.userConfig.verticalWriting
             ? verticalPadding
             : horizontalPadding
+            
+            let columnGap = parent.userConfig.verticalWriting
+            ? "calc(\(columnGapValue)\(columnGapUnit) + \(bottomOverlap)px)"
+            : "\(columnGapValue)\(columnGapUnit)"
+            
+            let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
+            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
+            : ""
+            
+            let imgWidth = "\(100 - horizontalPadding)vw"
+            let imgHeight = parent.userConfig.verticalWriting
+            ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)"
+            : "\(100 - verticalPadding)vh"
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -346,13 +357,14 @@ struct ReaderWebView: UIViewRepresentable {
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 column-width: var(--page-width, 100vw) !important;
-                column-gap: \(columnGapValue)\(columnGapUnit);
+                column-gap: \(columnGap);
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
+                \(bottomPaddingCss)
                 \(gridCss)
             }
             img.block-img {
-                max-width: \(100 - horizontalPadding)vw !important;
-                max-height: \(100 - verticalPadding)vh !important;
+                max-width: \(imgWidth) !important;
+                max-height: \(imgHeight) !important;
                 width: auto !important;
                 height: auto !important;
                 display: block !important;
@@ -362,8 +374,8 @@ struct ReaderWebView: UIViewRepresentable {
                 object-fit: contain !important;
             }
             svg {
-                max-width: \(100 - horizontalPadding)vw !important;
-                max-height: \(100 - verticalPadding)vh !important;
+                max-width: \(imgWidth) !important;
+                max-height: \(imgHeight) !important;
                 width: 100% !important;
                 height: 100% !important;
                 display: block !important;
@@ -388,10 +400,10 @@ struct ReaderWebView: UIViewRepresentable {
             
             let spacerJs: String = {
                 if parent.userConfig.verticalWriting {
-                    guard verticalPadding > 0 else { return "" }
+                    guard verticalPadding > 0 || bottomOverlap > 0 else { return "" }
                     return """
                     var spacer = document.createElement('div');
-                    spacer.style.height = '\(verticalPadding / 2)vh';
+                    spacer.style.height = 'calc(\(verticalPadding / 2)vh + \(bottomOverlap)px)';
                     spacer.style.width = '100%';
                     spacer.style.display = 'block';
                     spacer.style.breakInside = 'avoid';

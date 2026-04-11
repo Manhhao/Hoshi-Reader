@@ -262,14 +262,15 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 """
             }
             
-            var verticalPadding = Double(parent.userConfig.verticalPadding)
-            if !parent.userConfig.justifyText && parent.userConfig.verticalWriting {
-                verticalPadding = verticalPadding + (parent.userConfig.fontSize % 2 == 0 ? 1 : 2)
-            }
+            let verticalPadding = Double(parent.userConfig.verticalPadding)
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
+            let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
+            let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
+            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
+            : ""
             
             let imgWidth = parent.userConfig.verticalWriting ? "none" : "\(100 - horizontalPadding)vw"
-            let imgHeight = parent.userConfig.verticalWriting ? "\(100 - verticalPadding)vh" : "none"
+            let imgHeight = parent.userConfig.verticalWriting ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)" : "none"
             
             var gridCss = ""
             if !parent.userConfig.justifyText {
@@ -298,6 +299,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
+                \(bottomPaddingCss)
                 \(gridCss)
             }
             img.block-img {

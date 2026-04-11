@@ -108,6 +108,7 @@ struct ReaderView: View {
             
             GeometryReader { geometry in
                 ZStack {
+                    let viewSize = CGSize(width: geometry.size.width.rounded(), height: (geometry.size.height + (userConfig.verticalWriting ? CGFloat(userConfig.fontSize) : 0)).rounded())
                     if userConfig.continuousMode {
                         ScrollReaderWebView(
                             userConfig: userConfig,
@@ -147,10 +148,11 @@ struct ReaderView: View {
                             characterSpacing: userConfig.characterSpacing,
                             size: geometry.size,
                         ))
+                        .frame(width: viewSize.width, height: viewSize.height)
                     } else {
                         ReaderWebView(
                             userConfig: userConfig,
-                            viewSize: CGSize(width: geometry.size.width.rounded(), height: geometry.size.height.rounded()),
+                            viewSize: viewSize,
                             bridge: viewModel.bridge,
                             onNextChapter: viewModel.nextChapter,
                             onPreviousChapter: viewModel.previousChapter,
@@ -186,6 +188,7 @@ struct ReaderView: View {
                             characterSpacing: userConfig.characterSpacing,
                             size: geometry.size,
                         ))
+                        .frame(width: viewSize.width, height: viewSize.height)
                     }
                     
                     ForEach($viewModel.popups) { $popup in
