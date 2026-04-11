@@ -83,8 +83,23 @@ class BookshelfViewModel {
         }
     }
     
-    func shelfSections(sortedBy: SortOption) -> [ShelfSection] {
+    func shelfSections(sortedBy: SortOption, showReading: Bool = false) -> [ShelfSection] {
         var sections: [ShelfSection] = []
+        
+        if showReading {
+            let reading = books.filter {
+                let p = progress(for: $0)
+                return p > 0 && p < 0.999
+            }
+            if !reading.isEmpty {
+                sections.append(ShelfSection(
+                    shelf: BookShelf(name: "Reading", bookIds: []),
+                    books: sortBooks(reading, by: sortedBy),
+                    isReading: true
+                ))
+            }
+        }
+        
         for shelf in shelves {
             let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
             sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
@@ -597,7 +612,15 @@ class BookshelfViewModel {
     }
 }
 
-struct ShelfSection {
+struct ShelfSection: Identifiable {
     let shelf: BookShelf?
     var books: [BookMetadata]
+    var isReading: Bool = false
+    
+    var id: String {
+        if isReading {
+            return "__reading__"
+        }
+        return shelf.map { "shelf:\($0.name)" } ?? "unshelved"
+    }
 }

@@ -14,6 +14,7 @@ struct BookCell: View {
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
+    var hideMove: Bool = false
     var onSelect: () -> Void
     var onMatch: () -> Void
     var isSelecting: Bool = false
@@ -41,23 +42,25 @@ struct BookCell: View {
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
-            Menu {
-                Button {
-                    viewModel.moveBook(book.id, to: nil)
-                } label: {
-                    Label("None", systemImage: "tray")
-                }
-                .disabled(currentShelf == nil)
-                ForEach(viewModel.shelves, id: \.name) { shelf in
+            if !hideMove {
+                Menu {
                     Button {
-                        viewModel.moveBook(book.id, to: shelf.name)
+                        viewModel.moveBook(book.id, to: nil)
                     } label: {
-                        Label(shelf.name, systemImage: "folder")
+                        Label("None", systemImage: "tray")
                     }
-                    .disabled(shelf.name == currentShelf)
+                    .disabled(currentShelf == nil)
+                    ForEach(viewModel.shelves, id: \.name) { shelf in
+                        Button {
+                            viewModel.moveBook(book.id, to: shelf.name)
+                        } label: {
+                            Label(shelf.name, systemImage: "folder")
+                        }
+                        .disabled(shelf.name == currentShelf)
+                    }
+                } label: {
+                    Label("Move", systemImage: "folder")
                 }
-            } label: {
-                Label("Move", systemImage: "folder")
             }
             
             if userConfig.enableSync {

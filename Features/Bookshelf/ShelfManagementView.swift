@@ -10,12 +10,20 @@ import SwiftUI
 
 struct ShelfManagementView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(UserConfig.self) private var userConfig
     var viewModel: BookshelfViewModel
     @State private var newShelfName = ""
     
     var body: some View {
+        @Bindable var userConfig = userConfig
         NavigationStack {
             List {
+                Section {
+                    Toggle("Reading Shelf", isOn: $userConfig.bookshelfShowReading)
+                } footer: {
+                    Text("Shows books you've started but not finished.")
+                }
+                
                 Section("Shelves") {
                     ForEach(viewModel.shelves, id: \.name) { shelf in
                         Text(shelf.name)

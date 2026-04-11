@@ -43,6 +43,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
     
+    var bookshelfShowReading: Bool {
+        didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
+    }
+    
     var dictionaryTabDefault: Bool {
         didSet { UserDefaults.standard.set(dictionaryTabDefault, forKey: "dictionaryTabDefault") }
     }
@@ -66,7 +70,7 @@ class UserConfig {
     var harmonicFrequency: Bool {
         didSet { UserDefaults.standard.set(harmonicFrequency, forKey: "harmonicFrequency") }
     }
-
+    
     var deduplicatePitchAccents: Bool {
         didSet { UserDefaults.standard.set(deduplicatePitchAccents, forKey: "deduplicatePitchAccents") }
     }
@@ -292,6 +296,7 @@ class UserConfig {
         
         self.bookshelfSortOption = defaults.string(forKey: "bookshelfSortOption")
             .flatMap(SortOption.init) ?? .recent
+        self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
         
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16

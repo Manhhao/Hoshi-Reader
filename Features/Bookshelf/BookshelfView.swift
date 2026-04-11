@@ -44,7 +44,7 @@ struct BookshelfView: View {
             Tab("Books", systemImage: "books.vertical", value: 0) {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
-                        let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption)
+                        let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption, showReading: userConfig.bookshelfShowReading)
                         if viewModel.books.isEmpty {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
@@ -54,7 +54,7 @@ struct BookshelfView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 160)
                         } else {
-                            ForEach(sections, id: \.shelf?.name) { section in
+                            ForEach(sections) { section in
                                 if section.books.count > 0 {
                                     ShelfView(
                                         viewModel: viewModel,
