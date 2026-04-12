@@ -92,7 +92,7 @@ class SasayakiPlayer {
     }
     var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
     
-    var currentCueId: String?
+    var currentCue: SasayakiMatch?
     var pendingCue: SasayakiMatch?
     var chapterTransition = false
     var shouldResume = false
@@ -164,13 +164,15 @@ class SasayakiPlayer {
     
     func nextCue() {
         stopPlaybackTime = nil
-        guard let next = timeline.nextCue(after: currentTime - delay) else { return }
+        let next = timeline.nextCue(after: currentCue?.startTime ?? currentTime - delay)
+        guard let next else { return }
         seek(seconds: next + delay)
     }
     
     func prevCue() {
         stopPlaybackTime = nil
-        seek(seconds: (timeline.prevCue(before: max(0, currentTime - delay)) ?? 0) + delay)
+        let previous = timeline.prevCue(before: currentCue?.startTime ?? max(0, currentTime - delay)) ?? 0
+        seek(seconds: previous + delay)
     }
     
     func handleRestoreCompleted(currentIndex: Int) {
@@ -464,7 +466,7 @@ class SasayakiPlayer {
             return
         }
         
-        if cue.id == currentCueId {
+        if cue.id == currentCue?.id {
             return
         }
         
@@ -472,7 +474,7 @@ class SasayakiPlayer {
         if cue.chapterIndex == currentIndex {
             displayCue(cue, reveal: autoScroll && hasPlayedOnce)
         } else if autoScroll, hasPlayedOnce {
-            currentCueId = cue.id
+            currentCue = cue
             pendingCue = cue
             loadChapter(cue.chapterIndex, 0)
         } else {
@@ -481,13 +483,13 @@ class SasayakiPlayer {
     }
     
     private func displayCue(_ cue: SasayakiMatch, reveal: Bool) {
-        currentCueId = cue.id
+        currentCue = cue
         bridge.send(.highlightSasayakiCue(id: cue.id, reveal: reveal))
     }
     
     private func clearDisplayedCue() {
-        guard currentCueId != nil else { return }
-        currentCueId = nil
+        guard currentCue != nil else { return }
+        currentCue = nil
         bridge.send(.clearSasayakiCue)
     }
     
