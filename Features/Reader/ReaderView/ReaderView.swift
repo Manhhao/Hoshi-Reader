@@ -417,11 +417,10 @@ struct ReaderView: View {
                 }
             }
         }
-        .onChange(of: readerTextColor) { _, hex in
-            viewModel.bridge.send(.updateTextColor(hex))
-        }
+        .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: userConfig.sasayakiTextColor) { _, _ in updateSasayakiColors() }
         .onChange(of: userConfig.sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
+        .onChange(of: userConfig.sasayakiAutoScroll) { _, _ in viewModel.sasayakiPlayer.updateIdleTimerDisabled() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             guard viewModel.isTracking else {
                 return

@@ -69,7 +69,7 @@ class SasayakiPlayer {
     var playback = SasayakiPlaybackData(lastPosition: 0)
     var currentTime: Double = 0
     var duration: Double = 0
-    var isPlaying = false
+    var isPlaying = false { didSet { updateIdleTimerDisabled() } }
     var stopPlaybackTime: Double?
     var lastUpdate = -1
     
@@ -160,6 +160,10 @@ class SasayakiPlayer {
     
     func togglePlayback() {
         isPlaying ? pausePlayback() : startPlayback()
+    }
+    
+    func updateIdleTimerDisabled() {
+        UIApplication.shared.isIdleTimerDisabled = isPlaying && autoScroll
     }
     
     func nextCue() {
