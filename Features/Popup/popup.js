@@ -614,9 +614,12 @@ function createDefinitionImage(data, dictionary, exporting = false) {
             }));
         }
     } else {
-        const image = document.createElement('img');
+        const alt = nodeData?.alt || title || '';
+        const image = document.createElement('span');
         image.classList.add('gloss-image');
-        image.alt = nodeData?.alt || title || '';
+        image.setAttribute('role', 'img');
+        image.setAttribute('aria-label', alt);
+        image.textContent = alt;
         imageContainer.appendChild(image);
     }
     return node;
