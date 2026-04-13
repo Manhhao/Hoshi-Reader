@@ -21,6 +21,7 @@ const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'v
 const audioUrls = {};
 let currentAudio = null;
 let lastSelection = '';
+let currentDictionaryMedia = null;
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -314,6 +315,45 @@ function applyTableStyles(html) {
     .replace(/<table(?=[>\s])/g, `<table style="${tableStyle}"`)
     .replace(/<th(?=[>\s])/g, `<th style="${thStyle}"`)
     .replace(/<td(?=[>\s])/g, `<td style="${cellStyle}"`);
+}
+
+function applyImageStyles(node, imageContainer, aspectRatioSizer, imageBackground, image, filename, appearance, useEmUnits) {
+    // .gloss-image-link
+    node.style.cssText += 'display:inline-block;position:relative;line-height:1;max-width:100%;';
+    // .gloss-image-container
+    imageContainer.style.cssText += `display:inline-block;white-space:nowrap;max-width:100%;max-height:100vh;position:relative;vertical-align:top;line-height:0;overflow:hidden;font-size:${useEmUnits ? '1em' : '1px'};`;
+    // .gloss-image-link[data-has-aspect-ratio=true] .gloss-image-sizer
+    aspectRatioSizer.style.cssText += 'display:inline-block;width:0;vertical-align:top;font-size:0;';
+    // .gloss-image-link[data-has-aspect-ratio=true] .gloss-image
+    image.style.cssText += 'display:inline-block;vertical-align:top;object-fit:contain;border:none;outline:none;position:absolute;left:0;top:0;width:100%;height:100%;';
+    // .gloss-image-background, set image url directly
+    if (appearance === 'monochrome') {
+        imageBackground.style.cssText += `--image:url("${filename}");position:absolute;left:0;top:0;width:100%;height:100%;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center center;-webkit-mask-mode:alpha;-webkit-mask-size:contain;-webkit-mask-image:var(--image);mask-repeat:no-repeat;mask-position:center center;mask-mode:alpha;mask-size:contain;mask-image:var(--image);background-color:currentColor;`;
+        image.style.opacity = '0';
+    }
+}
+
+function getMediaFilename(dictionary, path) {
+    const key = `${dictionary}\n${path}`;
+    if (!currentDictionaryMedia.has(key)) {
+        const extension = path.split('.').pop();
+        currentDictionaryMedia.set(key, {
+            dictionary,
+            path,
+            filename: `hoshi_dict_${currentDictionaryMedia.size}.${extension}`,
+        });
+    }
+    return currentDictionaryMedia.get(key).filename;
+}
+
+function setStructuredContentElementStyle(element, style) {
+    for (const [property, value] of Object.entries(style)) {
+        if ((property === 'marginTop' || property === 'marginLeft' || property === 'marginRight' || property === 'marginBottom') && typeof value === 'number') {
+            element.style[property] = `${value}em`;
+        } else {
+            element.style[property] = value;
+        }
+    }
 }
 
 const COMPACT_GLOSSARIES_ANKI = `.yomitan-glossary ul[data-sc-content="glossary"] > li:not(:first-child)::before, .yomitan-glossary .glossary-list > li:not(:first-child)::before { white-space: pre-wrap; content: " | "; display: inline; color: rgb(119, 119, 119); }
@@ -615,11 +655,18 @@ function createDefinitionImage(data, dictionary, exporting = false) {
         }
     } else {
         const alt = nodeData?.alt || title || '';
-        const image = document.createElement('span');
+        const filename = window.useAnkiConnect ? getMediaFilename(dictionary, path) : null;
+        const image = document.createElement(filename ? 'img' : 'span');
         image.classList.add('gloss-image');
-        image.setAttribute('role', 'img');
-        image.setAttribute('aria-label', alt);
-        image.textContent = alt;
+        if (filename) {
+            image.alt = alt;
+            image.src = filename;
+            image.width = usedWidth;
+            image.height = usedWidth * invAspectRatio;
+            applyImageStyles(node, imageContainer, aspectRatioSizer, imageBackground, image, filename, appearance, sizeUnits === 'em');
+        } else {
+            image.textContent = alt;
+        }
         imageContainer.appendChild(image);
     }
     return node;
@@ -753,10 +800,13 @@ function getFrequencyHarmonicRank(frequencies) {
 async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
+    currentDictionaryMedia = new Map();
     const glossary = constructGlossaryHtml(idx);
     const freqHarmonicRank = getFrequencyHarmonicRank(frequencies);
     const frequenciesHtml = constructFrequencyHtml(frequencies);
     const singleGlossaries = constructSingleGlossaryHtml(idx);
+    const dictionaryMedia = currentDictionaryMedia;
+    currentDictionaryMedia = null;
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
@@ -780,7 +830,8 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         pitchPositions,
         pitchCategories,
         popupSelectionText,
-        audio
+        audio,
+        dictionaryMedia: JSON.stringify([...dictionaryMedia.values()])
     });
 }
 
@@ -891,7 +942,7 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
     }
     
     if (node.style) {
-        Object.assign(element.style, node.style);
+        setStructuredContentElementStyle(element, node.style);
     }
     
     if (node.content) {

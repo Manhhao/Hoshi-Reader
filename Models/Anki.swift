@@ -60,6 +60,12 @@ struct MiningContext {
     var sasayakiAudioData: Data? = nil
 }
 
+struct DictionaryMedia: Decodable {
+    let dictionary: String
+    let path: String
+    let filename: String
+}
+
 enum Handlebars: String, CaseIterable {
     case expression = "{expression}"
     case reading = "{reading}"

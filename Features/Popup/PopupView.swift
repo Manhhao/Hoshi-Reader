@@ -394,6 +394,7 @@ struct PopupView: View {
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
             window.swipeThreshold = \(userConfig.popupSwipeToDismiss ? userConfig.popupSwipeThreshold : 0);
