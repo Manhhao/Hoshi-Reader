@@ -319,8 +319,9 @@ class SasayakiPlayer {
         
         var start = index
         var end = index
-        while start > cues.startIndex, sentence.contains(cues[start - 1].text) { start -= 1 }
-        while end < cues.index(before: cues.endIndex), sentence.contains(cues[end + 1].text) { end += 1 }
+        let filteredSentence = sentence.filtered()
+        while start > cues.startIndex, filteredSentence.contains(cues[start - 1].text.filtered()) { start -= 1 }
+        while end < cues.index(before: cues.endIndex), filteredSentence.contains(cues[end + 1].text.filtered()) { end += 1 }
         return (cues[start].startTime, cues[end].endTime)
     }
     
