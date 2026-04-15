@@ -43,6 +43,12 @@ struct DriveFile: Codable {
     let name: String
 }
 
+struct DriveSyncFileIds {
+    let progress: String?
+    let statistics: String?
+    let audioBook: String?
+}
+
 struct TtuProgress: Codable {
     let dataId: Int
     let exploredCharCount: Int
@@ -135,10 +141,10 @@ class GoogleDriveHandler {
         return list.files
     }
     
-    func findProgressFileId(folderId: String) async throws -> String? {
+    func listSyncFileIds(folderId: String) async throws -> DriveSyncFileIds {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains 'progress_'"
+        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder'"
         
         components.queryItems = [
             URLQueryItem(name: "q", value: query),
@@ -152,53 +158,13 @@ class GoogleDriveHandler {
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         
         let data = try await performRequest(request)
-        
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        return list.files.first?.id
-    }
-    
-    func findStatsFileId(folderId: String) async throws -> String? {
-        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains 'statistics_'"
         
-        components.queryItems = [
-            URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "fields", value: "files(id, name)")
-        ]
-        
-        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        let data = try await performRequest(request)
-        
-        let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        return list.files.first?.id
-    }
-    
-    func findAudioBookFileId(folderId: String) async throws -> String? {
-        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains 'audioBook_'"
-        
-        components.queryItems = [
-            URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "fields", value: "files(id, name)")
-        ]
-        
-        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        let data = try await performRequest(request)
-        
-        let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        return list.files.first?.id
+        return DriveSyncFileIds(
+            progress: list.files.first { $0.name.contains("progress_") }?.id,
+            statistics: list.files.first { $0.name.contains("statistics_") }?.id,
+            audioBook: list.files.first { $0.name.contains("audioBook_") }?.id
+        )
     }
     
     func getProgressFile(fileId: String) async throws -> TtuProgress {

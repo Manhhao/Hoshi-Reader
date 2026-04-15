@@ -262,39 +262,22 @@ class BookshelfViewModel {
                 let directory = try BookStorage.getBooksDirectory()
                 let url = directory.appendingPathComponent(bookFolder)
                 let localBookmark = BookStorage.loadBookmark(root: url)
+                let syncFileIds = try await GoogleDriveHandler.shared.listSyncFileIds(folderId: driveFolderId)
                 
-                let progressFileId = try await GoogleDriveHandler.shared.findProgressFileId(folderId: driveFolderId)
-                let ttuProgress: TtuProgress? = if let progressFileId {
-                    try await GoogleDriveHandler.shared.getProgressFile(fileId: progressFileId)
-                } else {
-                    nil
-                }
+                let progressFileId = syncFileIds.progress
+                let statsFileId = syncStats ? syncFileIds.statistics : nil
+                let audioBookFileId = syncAudioBook ? syncFileIds.audioBook : nil
                 
-                var statsFileId: String?
-                var ttuStats: [Statistics]?
-                var localStats: [Statistics]?
-                if syncStats {
-                    localStats = BookStorage.loadStatistics(root: url)
-                    statsFileId = try await GoogleDriveHandler.shared.findStatsFileId(folderId: driveFolderId)
-                    ttuStats = if let statsFileId {
-                        try await GoogleDriveHandler.shared.getStatsFile(fileId: statsFileId)
-                    } else {
-                        nil
-                    }
-                }
+                async let fetchedProgress: TtuProgress? = fetchTtuProgress(fileId: progressFileId)
+                async let fetchedStats: [Statistics]? = fetchTtuStats(fileId: statsFileId)
+                async let fetchedAudioBook: TtuAudioBook? = fetchTtuAudioBook(fileId: audioBookFileId)
                 
-                var audioBookFileId: String?
-                var ttuAudioBook: TtuAudioBook?
-                var playbackData: SasayakiPlaybackData?
-                if syncAudioBook {
-                    playbackData = BookStorage.loadSasayakiPlayback(root: url)
-                    audioBookFileId = try await GoogleDriveHandler.shared.findAudioBookFileId(folderId: driveFolderId)
-                    ttuAudioBook = if let audioBookFileId {
-                        try await GoogleDriveHandler.shared.getAudioBookFile(fileId: audioBookFileId)
-                    } else {
-                        nil
-                    }
-                }
+                let localStats = syncStats ? BookStorage.loadStatistics(root: url) : nil
+                let playbackData = syncAudioBook ? BookStorage.loadSasayakiPlayback(root: url) : nil
+                
+                let ttuProgress = try await fetchedProgress
+                let ttuStats = try await fetchedStats
+                let ttuAudioBook = try await fetchedAudioBook
                 
                 let syncDirection = direction ?? determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress)
                 switch syncDirection {
@@ -428,6 +411,21 @@ class BookshelfViewModel {
         
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
         loadBookProgress()
+    }
+    
+    private func fetchTtuProgress(fileId: String?) async throws -> TtuProgress? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getProgressFile(fileId: fileId)
+    }
+    
+    private func fetchTtuStats(fileId: String?) async throws -> [Statistics]? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getStatsFile(fileId: fileId)
+    }
+    
+    private func fetchTtuAudioBook(fileId: String?) async throws -> TtuAudioBook? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getAudioBookFile(fileId: fileId)
     }
     
     private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {
