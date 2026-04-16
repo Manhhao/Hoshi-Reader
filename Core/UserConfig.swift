@@ -83,6 +83,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(syncMode.rawValue, forKey: "syncMode") }
     }
     
+    var enableAutoSync: Bool {
+        didSet { UserDefaults.standard.set(enableAutoSync, forKey: "enableAutoSync") }
+    }
+    
     var googleClientId: String {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
     }
@@ -317,6 +321,7 @@ class UserConfig {
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
         self.syncMode = defaults.string(forKey: "syncMode")
             .flatMap(SyncMode.init) ?? .auto
+        self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
         
         self.theme = defaults.string(forKey: "theme")

@@ -70,12 +70,9 @@ class ReaderLoaderViewModel {
 @Observable
 @MainActor
 class ReaderViewModel {
+    let book: BookMetadata
     let document: EPUBDocument
     let rootURL: URL
-    let enableStatistics: Bool
-    let autostartStatistics: Bool
-    
-    // reader
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
@@ -95,16 +92,42 @@ class ReaderViewModel {
     var sessionStatistics: Statistics
     var todaysStatistics: Statistics
     var allTimeStatistics: Statistics
+    let enableStatistics: Bool
+    let autostartStatistics: Bool
     
     // sasayaki
     var sasayakiPlayer: SasayakiPlayer!
     var wasPaused = false
     
-    init(document: EPUBDocument, rootURL: URL, enableStatistics: Bool, autostartStatistics: Bool) {
+    // sync
+    let autoSyncEnabled: Bool
+    let syncStats: Bool
+    let statsSyncMode: StatisticsSyncMode
+    let syncAudioBook: Bool
+    private var pendingAutoExport = false
+    private var debounceTask: Task<Void, Never>?
+    private var exportTask: Task<Void, Never>?
+    
+    init(
+        book: BookMetadata,
+        document: EPUBDocument,
+        rootURL: URL,
+        enableStatistics: Bool,
+        autostartStatistics: Bool,
+        autoSyncEnabled: Bool,
+        syncStats: Bool,
+        statsSyncMode: StatisticsSyncMode,
+        syncAudioBook: Bool
+    ) {
+        self.book = book
         self.document = document
         self.rootURL = rootURL
         self.enableStatistics = enableStatistics
         self.autostartStatistics = autostartStatistics
+        self.autoSyncEnabled = autoSyncEnabled
+        self.syncStats = syncStats
+        self.statsSyncMode = statsSyncMode
+        self.syncAudioBook = syncAudioBook
         
         if let bookmark = BookStorage.loadBookmark(root: rootURL) {
             index = bookmark.chapterIndex
@@ -144,12 +167,6 @@ class ReaderViewModel {
                 self?.index ?? 0
             }
         )
-        
-        if let url = getCurrentChapter() {
-            let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
-            bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues)
-            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues))
-        }
     }
     
     func handleRestoreCompleted() {
@@ -162,11 +179,38 @@ class ReaderViewModel {
     
     func importSasayakiAudio(from url: URL) throws {
         try sasayakiPlayer.importAudio(from: url)
+        scheduleAutoExport()
+    }
+    
+    func syncOnOpen() async {
+        if autoSyncEnabled {
+            let result = try? await SyncManager.shared.syncBook(
+                book: book,
+                direction: nil,
+                syncStats: syncStats,
+                statsSyncMode: statsSyncMode,
+                syncAudioBook: syncAudioBook,
+                importOnly: true
+            )
+            
+            if case .imported = result {
+                reloadAfterImport()
+            }
+        }
+        loadCurrentChapter()
+        resetTrackingBaseline()
+    }
+    
+    func flushAutoSync() async {
+        debounceTask?.cancel()
+        debounceTask = nil
+        await runAutoExport(direction: nil)
     }
     
     func loadStatistics() {
         stats = BookStorage.loadStatistics(root: rootURL) ?? []
         todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         
         for stat in stats {
             allTimeStatistics.readingTime += stat.readingTime
@@ -408,6 +452,7 @@ class ReaderViewModel {
         }
         
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+        scheduleAutoExport()
     }
     
     func resetTrackingBaseline() {
@@ -425,6 +470,7 @@ class ReaderViewModel {
             lastModified: Date()
         )
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+        scheduleAutoExport()
     }
     
     private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
@@ -436,6 +482,69 @@ class ReaderViewModel {
             let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
             bridge.updateState(url: url, progress: progress, sasayakiCues: cues)
             bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment, sasayakiCues: cues))
+        }
+    }
+    
+    private func loadCurrentChapter() {
+        if let url = getCurrentChapter() {
+            let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
+            bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues)
+            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues))
+        }
+    }
+    
+    private func reloadAfterImport() {
+        if let bookmark = BookStorage.loadBookmark(root: rootURL) {
+            index = bookmark.chapterIndex
+            currentProgress = bookmark.progress
+        }
+        if enableStatistics {
+            loadStatistics()
+        }
+        if syncAudioBook {
+            sasayakiPlayer.reloadPlayback()
+        }
+    }
+    
+    private func scheduleAutoExport() {
+        guard autoSyncEnabled else { return }
+        pendingAutoExport = true
+        debounceTask?.cancel()
+        debounceTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(30))
+            } catch {
+                return
+            }
+            await self?.runAutoExport(direction: .exportToTtu)
+        }
+    }
+    
+    private func runAutoExport(direction: SyncDirection?) async {
+        while let existing = exportTask {
+            await existing.value
+            if exportTask == existing {
+                exportTask = nil
+            }
+        }
+        
+        guard pendingAutoExport else { return }
+        pendingAutoExport = false
+        
+        let task = Task { [weak self] in
+            guard let self else { return }
+            _ = try? await SyncManager.shared.syncBook(
+                book: self.book,
+                direction: direction,
+                syncStats: self.syncStats,
+                statsSyncMode: self.statsSyncMode,
+                syncAudioBook: self.syncAudioBook
+            )
+        }
+        exportTask = task
+        await task.value
+        if exportTask == task {
+            exportTask = nil
         }
     }
     

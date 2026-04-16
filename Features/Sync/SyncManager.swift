@@ -25,7 +25,8 @@ class SyncManager {
         direction: SyncDirection?,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
-        syncAudioBook: Bool
+        syncAudioBook: Bool,
+        importOnly: Bool = false
     ) async throws -> SyncResult {
         do {
             return try await syncBookOnce(
@@ -33,7 +34,8 @@ class SyncManager {
                 direction: direction,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
-                syncAudioBook: syncAudioBook
+                syncAudioBook: syncAudioBook,
+                importOnly: importOnly
             )
         } catch let error as GoogleDriveError where error.isStaleCacheError {
             GoogleDriveHandler.clearCache()
@@ -42,7 +44,8 @@ class SyncManager {
                 direction: direction,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
-                syncAudioBook: syncAudioBook
+                syncAudioBook: syncAudioBook,
+                importOnly: importOnly
             )
         }
     }
@@ -52,7 +55,8 @@ class SyncManager {
         direction: SyncDirection?,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
-        syncAudioBook: Bool
+        syncAudioBook: Bool,
+        importOnly: Bool
     ) async throws -> SyncResult {
         guard let title = book.title,
               let bookFolder = book.folder else {
@@ -88,6 +92,9 @@ class SyncManager {
         let syncDirection = direction ?? determineSyncDirection(local: localBookmark, remoteProgressFile: syncFiles.progress)
         if syncDirection == .synced {
             return .synced(title: title)
+        }
+        if importOnly && syncDirection != .importFromTtu {
+            return .skipped
         }
         
         async let fetchedProgress: TtuProgress? = fetchProgress(fileId: progressFileId)
@@ -148,36 +155,28 @@ class SyncManager {
     }
     
     private func determineSyncDirection(local: Bookmark?, remoteProgressFile: DriveFile?) -> SyncDirection {
-        let remoteModified: Date? = {
-            guard let file = remoteProgressFile, file.name.hasPrefix("progress_") else {
-                return nil
-            }
-            let parts = file.name.split(separator: "_")
-            guard parts.count > 4, let timestamp = Int(parts[3]) else {
-                return nil
-            }
-            return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
-        }()
+        let localModified = local?.lastModified
+        let remoteModified = remoteProgressFile.flatMap(parseProgressTimestamp)
         
-        guard let local = local, let lastModified = local.lastModified else {
-            if remoteModified != nil {
-                return .importFromTtu
-            } else {
-                return .synced
-            }
-        }
-        
-        guard let remoteModified else {
-            return .exportToTtu
-        }
-        
-        if lastModified > remoteModified {
-            return .exportToTtu
-        } else if remoteModified > lastModified {
+        switch (localModified, remoteModified) {
+        case (nil, nil):
+            return .synced
+        case (nil, _):
             return .importFromTtu
-        } else {
+        case (_, nil):
+            return .exportToTtu
+        case let (l?, r?):
+            if l > r { return .exportToTtu }
+            if r > l { return .importFromTtu }
             return .synced
         }
+    }
+    
+    private func parseProgressTimestamp(from file: DriveFile) -> Date? {
+        guard file.name.hasPrefix("progress_") else { return nil }
+        let parts = file.name.split(separator: "_")
+        guard parts.count > 4, let timestamp = Int(parts[3]) else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
     }
     
     private func importProgress(ttuProgress: TtuProgress, to url: URL) {

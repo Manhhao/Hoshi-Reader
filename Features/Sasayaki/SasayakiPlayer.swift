@@ -127,7 +127,11 @@ class SasayakiPlayer {
             return
         }
         timeline = CueTimeline(match: matchData)
-        
+        reloadPlayback()
+    }
+    
+    func reloadPlayback() {
+        guard hasMatch else { return }
         isRestoring = true
         playback = BookStorage.loadSasayakiPlayback(root: rootURL) ?? SasayakiPlaybackData(lastPosition: 0)
         currentTime = playback.lastPosition

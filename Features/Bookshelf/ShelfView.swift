@@ -130,7 +130,9 @@ struct ShelfView: View {
                     ReaderLoader(book: book)
                         .environment(userConfig)
                 }) {
-                    selectedBook = nil
+                    if selectedBook?.id == book.id {
+                        selectedBook = nil
+                    }
                 }
             } else if old != nil {
                 readerWindow.dismiss()

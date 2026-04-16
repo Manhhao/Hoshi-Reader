@@ -26,8 +26,8 @@ enum GoogleDriveError: LocalizedError {
     
     var isStaleCacheError: Bool {
         switch self {
-        case .apiError(let message, let statusCode):
-            return statusCode == 404 || message.localizedCaseInsensitiveContains("file not found")
+        case .apiError(_, let statusCode):
+            return statusCode == 404
         default:
             return false
         }

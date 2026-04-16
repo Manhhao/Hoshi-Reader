@@ -39,6 +39,7 @@ struct SyncView: View {
                             Text(mode.rawValue).tag(mode)
                         }
                     }
+                    Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
                 }
                 
                 Section("Client ID") {
