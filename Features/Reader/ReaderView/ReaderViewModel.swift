@@ -509,13 +509,14 @@ class ReaderViewModel {
     private func scheduleAutoExport() {
         guard autoSyncEnabled else { return }
         pendingAutoExport = true
-        debounceTask?.cancel()
+        guard debounceTask == nil else { return }
         debounceTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(30))
             } catch {
                 return
             }
+            self?.debounceTask = nil
             await self?.runAutoExport(direction: .exportToTtu)
         }
     }
