@@ -165,6 +165,10 @@ class ReaderViewModel {
             },
             getCurrentIndex: { [weak self] in
                 self?.index ?? 0
+            },
+            onPlayback: { [weak self] in
+                guard self?.syncAudioBook == true else { return }
+                self?.scheduleAutoExport()
             }
         )
     }
@@ -179,7 +183,6 @@ class ReaderViewModel {
     
     func importSasayakiAudio(from url: URL) throws {
         try sasayakiPlayer.importAudio(from: url)
-        scheduleAutoExport()
     }
     
     func syncOnOpen() async {
@@ -204,7 +207,7 @@ class ReaderViewModel {
     func flushAutoSync() async {
         debounceTask?.cancel()
         debounceTask = nil
-        await runAutoExport(direction: nil)
+        await runAutoExport(direction: .exportToTtu)
     }
     
     func loadStatistics() {
