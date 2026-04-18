@@ -19,13 +19,24 @@ struct SasayakiMatcher {
     
     static func match(rootURL: URL, cues: [SasayakiCue], searchWindow: Int) throws -> SasayakiMatchData {
         let document = try BookStorage.loadEpub(rootURL)
+        let guideTocPaths: Set<String> = Set(
+            (document.guide?.references ?? [])
+                .filter { $0.type.lowercased() == "toc" }
+                .map { $0.href.split(separator: "#", maxSplits: 1).first.map(String.init) ?? $0.href }
+        )
         var source: [Character] = []
         var chapters: [Chapter] = []
         for (spineIndex, item) in document.spine.items.enumerated() {
-            guard let manifestItem = document.manifest.items[item.idref] else {
+            guard item.linear, let manifestItem = document.manifest.items[item.idref] else {
                 continue
             }
-            
+            if manifestItem.property?.contains("nav") == true {
+                continue
+            }
+            if guideTocPaths.contains(manifestItem.path) {
+                continue
+            }
+
             let url = document.contentDirectory.appendingPathComponent(manifestItem.path)
             guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                 continue

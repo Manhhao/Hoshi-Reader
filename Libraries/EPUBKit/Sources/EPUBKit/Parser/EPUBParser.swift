@@ -49,7 +49,9 @@ public final class EPUBParser: EPUBParserProtocol {
     
     /// Parser for NCX table of contents.
     private let tableOfContentsParser: EPUBTableOfContentsParser
-
+    
+    private let guideParser: EPUBGuideParser
+    
     /// Optional delegate to receive parsing progress notifications.
     /// Set this before calling parse() to monitor the parsing process.
     public weak var delegate: EPUBParserDelegate?
@@ -60,6 +62,7 @@ public final class EPUBParser: EPUBParserProtocol {
         manifestParser = EPUBManifestParserImplementation()
         spineParser = EPUBSpineParserImplementation()
         tableOfContentsParser = EPUBTableOfContentsParserImplementation()
+        guideParser = EPUBGuideParserImplementation()
     }
 
     /// Parses an EPUB document at the specified URL.
@@ -80,6 +83,7 @@ public final class EPUBParser: EPUBParserProtocol {
         var manifest: EPUBManifest
         var spine: EPUBSpine
         var tableOfContents: EPUBTableOfContents
+        var guide: EPUBGuide?
         
         // Notify delegate that parsing has begun
         delegate?.parser(self, didBeginParsingDocumentAt: path)
@@ -111,7 +115,9 @@ public final class EPUBParser: EPUBParserProtocol {
             
             spine = getSpine(from: contentService.spine, manifestItems: Array(manifest.items.values))
             delegate?.parser(self, didFinishParsing: spine)
-
+            
+            guide = getGuide(from: contentService.guide)
+            
             metadata = getMetadata(from: contentService.metadata)
             delegate?.parser(self, didFinishParsing: metadata)
 
@@ -141,7 +147,8 @@ public final class EPUBParser: EPUBParserProtocol {
         // Create and return the complete document with all parsed components
         return EPUBDocument(directory: directory, contentDirectory: contentDirectory,
                             metadata: metadata, manifest: manifest,
-                            spine: spine, tableOfContents: tableOfContents)
+                            spine: spine, tableOfContents: tableOfContents,
+                            guide: guide)
     }
 
 }
@@ -207,6 +214,10 @@ extension EPUBParser: EPUBParsable {
         // Delegate to specialized manifest parser which creates a lookup table
         // of all publication resources for efficient spine and TOC resolution
         manifestParser.parse(xmlElement)
+    }
+
+    public func getGuide(from xmlElement: XMLElement?) -> EPUBGuide? {
+        guideParser.parse(xmlElement)
     }
 
     /// Parses the NCX navigation document.

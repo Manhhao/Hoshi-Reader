@@ -71,6 +71,8 @@ public protocol EPUBParsable {
     /// - Returns: A parsed EPUBManifest containing resource information
     func getManifest(from xmlElement: XMLElement) -> EPUBManifest
     
+    func getGuide(from xmlElement: XMLElement?) -> EPUBGuide?
+    
     /// Parses the NCX navigation document for table of contents.
     ///
     /// The NCX (Navigation Control file for XML) provides hierarchical
