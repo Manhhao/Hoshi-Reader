@@ -188,9 +188,9 @@ class GoogleDriveHandler {
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
         
         return DriveSyncFiles(
-            progress: list.files.first { $0.name.contains("progress_") },
-            statistics: list.files.first { $0.name.contains("statistics_") },
-            audioBook: list.files.first { $0.name.contains("audioBook_") }
+            progress: list.files.first { $0.name.hasPrefix("progress_") },
+            statistics: list.files.first { $0.name.hasPrefix("statistics_") },
+            audioBook: list.files.first { $0.name.hasPrefix("audioBook_") }
         )
     }
     

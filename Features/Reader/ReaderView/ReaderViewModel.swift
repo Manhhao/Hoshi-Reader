@@ -522,11 +522,8 @@ class ReaderViewModel {
     }
     
     private func runAutoExport(direction: SyncDirection?) async {
-        while let existing = exportTask {
+        if let existing = exportTask {
             await existing.value
-            if exportTask == existing {
-                exportTask = nil
-            }
         }
         
         guard pendingAutoExport else { return }
@@ -544,9 +541,7 @@ class ReaderViewModel {
         }
         exportTask = task
         await task.value
-        if exportTask == task {
-            exportTask = nil
-        }
+        exportTask = nil
     }
     
     private func resolveSpineDestination(for url: URL) -> (spineIndex: Int, fragment: String?)? {
