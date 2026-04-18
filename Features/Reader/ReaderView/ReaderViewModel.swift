@@ -104,6 +104,7 @@ class ReaderViewModel {
     let syncStats: Bool
     let statsSyncMode: StatisticsSyncMode
     let syncAudioBook: Bool
+    var isSyncing = false
     private var pendingAutoExport = false
     private var debounceTask: Task<Void, Never>?
     private var exportTask: Task<Void, Never>?
@@ -202,6 +203,27 @@ class ReaderViewModel {
         }
         loadCurrentChapter()
         resetTrackingBaseline()
+    }
+    
+    func syncAfterForeground() async {
+        guard autoSyncEnabled, !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+        
+        let result = try? await SyncManager.shared.syncBook(
+            book: book,
+            direction: nil,
+            syncStats: syncStats,
+            statsSyncMode: statsSyncMode,
+            syncAudioBook: syncAudioBook,
+            importOnly: true
+        )
+        
+        if case .imported = result {
+            reloadAfterImport()
+            loadCurrentChapter()
+            resetTrackingBaseline()
+        }
     }
     
     func flushAutoSync() async {

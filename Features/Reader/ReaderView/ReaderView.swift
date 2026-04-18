@@ -56,6 +56,7 @@ struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = UIApplication.topSafeArea
     @State private var focusMode = false
+    @State private var inactiveSince: Date?
     
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
@@ -420,6 +421,18 @@ struct ReaderView: View {
             .monospacedDigit()
             .tracking(-0.4)
         }
+        .overlay {
+            if viewModel.isSyncing {
+                ZStack {
+                    Color.clear
+                        .contentShape(Rectangle())
+                    
+                    ProgressView()
+                        .controlSize(.regular)
+                        .tint(.secondary)
+                }
+            }
+        }
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
             case .appearance:
@@ -469,6 +482,13 @@ struct ReaderView: View {
         .onChange(of: userConfig.sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
         .onChange(of: userConfig.sasayakiAutoScroll) { _, _ in viewModel.sasayakiPlayer.updateIdleTimerDisabled() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            let shouldResync = inactiveSince.map { Date.now.timeIntervalSince($0) >= 600 } ?? false
+            inactiveSince = nil
+            if shouldResync {
+                Task {
+                    await viewModel.syncAfterForeground()
+                }
+            }
             guard viewModel.isTracking else {
                 return
             }
@@ -476,6 +496,7 @@ struct ReaderView: View {
             viewModel.isPaused = false
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            inactiveSince = .now
             flushAutoSyncInBackground()
             guard viewModel.isTracking else {
                 return
