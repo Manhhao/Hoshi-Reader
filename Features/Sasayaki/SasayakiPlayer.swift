@@ -116,7 +116,7 @@ class SasayakiPlayer {
     let getCurrentIndex: () -> Int
     let onPlayback: () -> Void
     
-    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int, Double) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void = {}) {
+    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int, Double) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void) {
         self.rootURL = rootURL
         self.bridge = bridge
         self.loadChapter = loadChapter
