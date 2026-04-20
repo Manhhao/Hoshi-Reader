@@ -649,9 +649,17 @@ function createDefinitionImage(data, dictionary, exporting = false) {
                 renderDefinitionImageToCanvas(canvas, sourceImage, usedWidth, invAspectRatio, appearance);
             }));
         } else {
-            imageContainer.appendChild(createDefinitionImageCanvas(imageUrl, nodeData?.alt || title || '', (canvas, sourceImage) => {
-                renderRasterDefinitionImageToCanvas(canvas, sourceImage, imageContainer, aspectRatioSizer, hasDimensions);
-            }));
+            const img = document.createElement('img');
+            img.classList.add('gloss-image');
+            img.alt = nodeData?.alt || title || '';
+            if (!hasDimensions) {
+                img.addEventListener('load', () => {
+                    imageContainer.style.width = `${Math.min(img.naturalWidth, window.innerWidth - 20)}px`;
+                    aspectRatioSizer.style.paddingTop = `${(img.naturalHeight / img.naturalWidth) * 100}%`;
+                }, {once: true});
+            }
+            img.src = imageUrl;
+            imageContainer.appendChild(img);
         }
     } else {
         const alt = nodeData?.alt || title || '';
@@ -729,30 +737,6 @@ function renderDefinitionImageToCanvas(canvas, image, usedWidth, invAspectRatio,
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.globalCompositeOperation = 'source-over';
     }
-}
-
-function renderRasterDefinitionImageToCanvas(canvas, image, imageContainer, aspectRatioSizer, hasDimensions) {
-    if (!hasDimensions) {
-        imageContainer.style.width = `${Math.min(image.naturalWidth, window.innerWidth - 20)}px`;
-    }
-    
-    const invAspectRatio = image.naturalHeight / image.naturalWidth;
-    const scaleFactor = Math.ceil(window.devicePixelRatio);
-    
-    aspectRatioSizer.style.paddingTop = `${invAspectRatio * 100}%`;
-    
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.width = Math.round(imageContainer.clientWidth * scaleFactor);
-    canvas.height = Math.round(imageContainer.clientWidth * invAspectRatio * scaleFactor);
-    
-    const context = canvas.getContext('2d');
-    if (!context) {
-        return;
-    }
-    
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/data/anki-note-data-creator.js#L177-L221
