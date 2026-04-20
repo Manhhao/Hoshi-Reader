@@ -86,9 +86,12 @@ final class HoshiWKWebView: WKWebView {
         let menu = UIMenu(
             title: "Highlight",
             image: UIImage(systemName: "highlighter"),
+            options: [.displayAsPalette],
+            preferredElementSize: .medium,
             children: children
         )
-        builder.insertSibling(menu, afterMenu: .standardEdit)
+        builder.remove(menu: .learn)
+        builder.insertSibling(menu, beforeMenu: .standardEdit)
     }
     
     private func createHighlight(color: HighlightColor) {

@@ -10,8 +10,8 @@ window.hoshiHighlights = {
     wrappers: new Map(),
     
     createHighlight(color, id) {
-        const sel = window.getSelection();
-        const range = sel.getRangeAt(0);
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
         
         const startPrefix = range.startContainer.textContent.substring(0, range.startOffset);
         const endPrefix = range.endContainer.textContent.substring(0, range.endOffset);
@@ -27,7 +27,7 @@ window.hoshiHighlights = {
         fragment.querySelectorAll('rt, rp').forEach(el => el.remove());
         const text = fragment.textContent;
         
-        sel.removeAllRanges();
+        selection.removeAllRanges();
         
         this.wrapHighlight({ id, color, offset: rawStart, text });
         window.hoshiReader.buildNodeOffsets();

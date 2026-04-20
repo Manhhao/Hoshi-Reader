@@ -10,25 +10,25 @@ import SwiftUI
 
 enum HighlightColor: String, CaseIterable, Codable, Identifiable {
     case yellow
-    case blue
-    case red
-    case purple
     case green
+    case blue
+    case pink
+    case purple
     
     var id: String { rawValue }
     
     var rgba: (r: Int, g: Int, b: Int, a: Double) {
         switch self {
         case .yellow:
-            return (255, 240, 100, 0.35)
-        case .blue:
-            return (137, 207, 240, 0.35)
-        case .red:
-            return (230, 95,  65,  0.35)
-        case .purple:
-            return (190, 150, 210, 0.35)
+            return (239, 209, 56, 0.35)
         case .green:
-            return (195, 220, 120, 0.35)
+            return (152, 220, 129, 0.35)
+        case .blue:
+            return (149, 185, 255, 0.35)
+        case .pink:
+            return (255, 155, 180,  0.35)
+        case .purple:
+            return (197, 175, 251, 0.35)
         }
     }
     
