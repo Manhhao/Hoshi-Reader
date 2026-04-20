@@ -32,11 +32,6 @@ enum HighlightColor: String, CaseIterable, Codable, Identifiable {
         }
     }
     
-    var cssRgba: String {
-        let c = rgba
-        return "rgba(\(c.r), \(c.g), \(c.b), \(c.a))"
-    }
-    
     var swatch: Color {
         let c = rgba
         return Color(red: Double(c.r) / 255, green: Double(c.g) / 255, blue: Double(c.b) / 255)
@@ -44,7 +39,8 @@ enum HighlightColor: String, CaseIterable, Codable, Identifiable {
     
     static var css: String {
         allCases.map {
-            ".hoshi-highlight-\($0.rawValue) { background-color: \($0.cssRgba) !important; }"
+            let c = $0.rgba
+            return ".hoshi-highlight-\($0.rawValue) { background-color: rgba(\(c.r), \(c.g), \(c.b), \(c.a)) !important; }"
         }.joined(separator: "\n")
     }
 }

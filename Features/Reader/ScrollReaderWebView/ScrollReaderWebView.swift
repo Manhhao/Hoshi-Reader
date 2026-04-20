@@ -36,7 +36,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "restoreCompleted")
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         
-        let webView = HoshiReaderWebView(frame: .zero, configuration: config)
+        let webView = HoshiWKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear

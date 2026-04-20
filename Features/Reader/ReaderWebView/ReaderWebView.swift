@@ -71,7 +71,7 @@ class WebViewBridge {
     }
 }
 
-final class HoshiReaderWebView: WKWebView {
+final class HoshiWKWebView: WKWebView {
     var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
     
     // https://stackoverflow.com/a/78488754
@@ -137,7 +137,7 @@ struct ReaderWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "restoreCompleted")
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         
-        let webView = HoshiReaderWebView(frame: .zero, configuration: config)
+        let webView = HoshiWKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
@@ -530,20 +530,20 @@ struct ReaderWebView: UIViewRepresentable {
             (function() {
                 var viewport = document.querySelector('meta[name="viewport"]');
                 if (viewport) { viewport.remove(); }
-            
+                
                 var newViewport = document.createElement('meta');
                 newViewport.name = 'viewport';
                 newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
                 document.head.appendChild(newViewport);
-            
+                
                 document.documentElement.style.setProperty('--page-height', '\(pageHeight)px');
                 document.documentElement.style.setProperty('--page-width', '\(pageWidth)px');
-            
+                
                 var style = document.createElement('style');
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 \(textColorOverrideJs)
-            
+                
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)
@@ -551,11 +551,11 @@ struct ReaderWebView: UIViewRepresentable {
                 window.hoshiReader.pageHeight = \(pageHeight);
                 window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
-            
+                
                 if (\(parent.userConfig.readerHideFurigana)) {
                     document.querySelectorAll('rt').forEach(rt => rt.remove());
                 }
-            
+                
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
                     ruby.childNodes.forEach(node => {
@@ -566,7 +566,7 @@ struct ReaderWebView: UIViewRepresentable {
                         }
                     });
                 });
-            
+                
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
                 var imagePromises = Array.from(images).map(img => {
@@ -588,7 +588,7 @@ struct ReaderWebView: UIViewRepresentable {
                         }
                     });
                 });
-            
+                
                 Promise.all(imagePromises).then(() => {
                     return new Promise(resolve => setTimeout(resolve, 50));
                 }).then(() => {
