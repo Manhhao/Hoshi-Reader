@@ -26,7 +26,7 @@ enum HighlightColor: String, CaseIterable, Codable, Identifiable {
         case .blue:
             return (149, 185, 255, 0.35)
         case .pink:
-            return (255, 155, 180,  0.35)
+            return (255, 155, 180, 0.35)
         case .purple:
             return (197, 175, 251, 0.35)
         }

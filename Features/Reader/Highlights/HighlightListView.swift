@@ -31,7 +31,7 @@ struct HighlightListView: View {
         }
         return grouped.map { spineIndex, list in
             let label = labels[spineIndex] ?? ""
-            let sorted = list.sorted { $0.createdAt < $1.createdAt }
+            let sorted = list.sorted { $0.character < $1.character }
             return HighlightSection(id: spineIndex, label: label, highlights: sorted)
         }.sorted { $0.id < $1.id }
     }
