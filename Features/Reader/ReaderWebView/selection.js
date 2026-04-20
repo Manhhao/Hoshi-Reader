@@ -10,6 +10,9 @@ window.hoshiSelection = {
     selection: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
+    trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
+    brackets: {'「':'」', '『': '』', '（':'）', '(':')', '【':'】', '〈':'〉', '《':'》', '〔':'〕', '｛':'｝', '{':'}', '［':'］', '[':']'},
+
     isVertical() {
         return window.getComputedStyle(document.body).writingMode === "vertical-rl";
     },
@@ -126,7 +129,6 @@ window.hoshiSelection = {
     getSentence(startNode, startOffset) {
         const container = this.findParagraph(startNode) || document.body;
         const walker = this.createWalker(container);
-        const trailingSentenceChars = '」』）】!?！？…';
         
         walker.currentNode = startNode;
         const partsBefore = [];
@@ -167,7 +169,7 @@ window.hoshiSelection = {
                     let end = i + 1;
 
                     while (end < text.length) {
-                        if (!trailingSentenceChars.includes(text[end])) break;
+                        if (!this.trailingSentenceChars.includes(text[end])) break;
                         end += 1;
                     }
                     partsAfter.push(text.slice(start, end));
@@ -186,7 +188,47 @@ window.hoshiSelection = {
             start = 0;
         }
         
-        return (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+        let sentence = (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+
+        const closeBrackets = new Set(Object.values(this.brackets));
+        const openBrackets = new Set(Object.keys(this.brackets));
+        let stack = [];
+        let unmatchedClose = [];
+        
+        for (let i = 0; i < sentence.length; i++) {
+            const ch = sentence[i];
+            if (openBrackets.has(ch)) {
+                stack.push(ch);
+            } else if (closeBrackets.has(ch)) {
+                if (stack.length > 0 && this.brackets[stack[stack.length-1]] === ch) {
+                    stack.pop();
+                } else {
+                    unmatchedClose.push(ch);
+                }
+            }
+        }
+
+        while (stack.length > 0 && sentence.length > 0) {
+            const first = sentence[0];
+            // Stack consists of unmatched open brackets arranged from start to end
+            if (stack[0] === first) {
+                sentence = sentence.slice(1);
+                stack.shift();
+            } else if (this.trailingSentenceChars.includes(first)) {
+                sentence = sentence.slice(1);
+            } else break;
+        }
+
+        while (unmatchedClose.length > 0 && sentence.length > 0) {
+            const last = sentence[sentence.length - 1];
+            if (unmatchedClose[unmatchedClose.length - 1] === last) {
+                sentence = sentence.slice(0, -1);        
+                unmatchedClose.pop();
+            } else if (this.sentenceDelimiters.includes(last)) {
+                sentence = sentence.slice(0, -1);
+            } else break;
+        }
+        return sentence.trim();
     },
     
     selectText(x, y, maxLength) {
