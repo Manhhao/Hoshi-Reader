@@ -113,7 +113,7 @@ struct PopupView: View {
     var bottomInset: CGFloat = 0
     let coverURL: URL?
     let documentTitle: String?
-    var clearHighlight: Bool
+    var clearSelection: Bool
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     var onSwipeDismiss: (() -> Void)?
@@ -137,7 +137,7 @@ struct PopupView: View {
         bottomInset: CGFloat = 0,
         coverURL: URL?,
         documentTitle: String?,
-        clearHighlight: Bool,
+        clearSelection: Bool,
         onTextSelected: ((SelectionData) -> Int?)? = nil,
         onTapOutside: (() -> Void)? = nil,
         onSwipeDismiss: (() -> Void)? = nil,
@@ -155,7 +155,7 @@ struct PopupView: View {
         self.bottomInset = bottomInset
         self.coverURL = coverURL
         self.documentTitle = documentTitle
-        self.clearHighlight = clearHighlight
+        self.clearSelection = clearSelection
         self.onTextSelected = onTextSelected
         self.onTapOutside = onTapOutside
         self.onSwipeDismiss = onSwipeDismiss
@@ -248,7 +248,7 @@ struct PopupView: View {
                         PopupWebView(
                             content: content,
                             position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
-                            clearHighlight: clearHighlight,
+                            clearSelection: clearSelection,
                             dictionaryStyles: dictionaryStyles,
                             lookupEntries: lookupEntries,
                             onMine: { content in
@@ -274,7 +274,7 @@ struct PopupView: View {
                         PopupWebView(
                             content: content,
                             position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
-                            clearHighlight: clearHighlight,
+                            clearSelection: clearSelection,
                             dictionaryStyles: dictionaryStyles,
                             lookupEntries: lookupEntries,
                             onMine: { content in

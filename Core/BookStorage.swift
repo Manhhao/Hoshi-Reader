@@ -17,6 +17,7 @@ enum FileNames: Sendable {
     static let statistics = "statistics.json"
     static let sasayakiMatch = "sasayaki_match.json"
     static let sasayakiPlayback = "sasayaki_playback.json"
+    static let highlights = "highlights.json"
 }
 
 struct BookStorage {
@@ -145,6 +146,10 @@ struct BookStorage {
     
     static func loadSasayakiPlayback(root: URL) -> SasayakiPlaybackData? {
         load(SasayakiPlaybackData.self, from: root.appendingPathComponent(FileNames.sasayakiPlayback))
+    }
+    
+    static func loadHighlights(root: URL) -> [Highlight]? {
+        load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
     }
     
     static func loadShelves() -> [BookShelf]? {

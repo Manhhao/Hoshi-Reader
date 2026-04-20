@@ -12,6 +12,7 @@ window.hoshiReader = {
     activeCueId: null,
     cueWrappers: new Map(),
     nodeStartOffsets: new WeakMap(),
+    nodeStartRawOffsets: new WeakMap(),
     
     isVertical() {
         return window.getComputedStyle(document.body).writingMode === "vertical-rl";
@@ -24,6 +25,10 @@ window.hoshiReader = {
     
     countChars(text) {
         return Array.from(this.normalizeText(text)).length;
+    },
+    
+    countRawChars(text) {
+        return Array.from(text).length;
     },
     
     normalizeText(text) {
@@ -49,16 +54,21 @@ window.hoshiReader = {
     
     buildNodeOffsets() {
         const offsets = new WeakMap();
+        const rawOffsets = new WeakMap();
         const walker = this.createWalker();
         let count = 0;
+        let rawCount = 0;
         let node;
         
         while (node = walker.nextNode()) {
             offsets.set(node, count);
+            rawOffsets.set(node, rawCount);
             count += this.countChars(node.textContent);
+            rawCount += this.countRawChars(node.textContent);
         }
         
         this.nodeStartOffsets = offsets;
+        this.nodeStartRawOffsets = rawOffsets;
     },
     
     calculateProgress() {
@@ -355,18 +365,23 @@ window.hoshiReader = {
     },
     
     resetSasayakiCues() {
-        this.cueWrappers.forEach(wrappers => {
-            wrappers.forEach(wrapper => {
-                const parent = wrapper.parentNode;
-                while (wrapper.firstChild) {
-                    parent.insertBefore(wrapper.firstChild, wrapper);
-                }
-                parent.removeChild(wrapper);
-                parent.normalize();
-            });
-        });
+        this.cueWrappers.forEach(wrappers => this.unwrap(wrappers));
         this.cueWrappers.clear();
         this.activeCueId = null;
+    },
+    
+    unwrap(wrappers) {
+        wrappers.forEach(wrapper => {
+            const parent = wrapper.parentNode;
+            if (!parent) {
+                return;
+            }
+            while (wrapper.firstChild) {
+                parent.insertBefore(wrapper.firstChild, wrapper);
+            }
+            parent.removeChild(wrapper);
+            parent.normalize();
+        });
     },
     
     async restoreProgress(progress) {

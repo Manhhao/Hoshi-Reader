@@ -193,18 +193,18 @@ window.hoshiSelection = {
         const hit = this.getCharacterAtPoint(x, y);
         
         if (!hit) {
-            this.clearHighlight();
+            this.clearSelection();
             return null;
         }
         
         if (this.selection &&
             hit.node === this.selection.startNode &&
             hit.offset === this.selection.startOffset) {
-            this.clearHighlight();
+            this.clearSelection();
             return null;
         }
         
-        this.clearHighlight();
+        this.clearSelection();
         
         const container = this.findParagraph(hit.node) || document.body;
         const walker = this.createWalker(container);
@@ -320,7 +320,7 @@ window.hoshiSelection = {
         return count;
     },
     
-    clearHighlight() {
+    clearSelection() {
         window.getSelection()?.removeAllRanges();
         CSS.highlights?.get('hoshi-selection')?.clear();
         this.selection = null;

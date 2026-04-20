@@ -21,7 +21,7 @@ struct DictionarySearchView: View {
     @State private var searchFocused = false
     @State private var didInitialQuery = false
     @State private var popups: [PopupItem] = []
-    @State private var clearHighlight: Bool = false
+    @State private var clearSelection: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
@@ -44,7 +44,7 @@ struct DictionarySearchView: View {
                 PopupWebView(
                     content: content,
                     position: .zero,
-                    clearHighlight: clearHighlight,
+                    clearSelection: clearSelection,
                     dictionaryStyles: dictionaryStyles,
                     lookupEntries: lookupEntries,
                     onMine: { minedContent in
@@ -73,7 +73,7 @@ struct DictionarySearchView: View {
                         bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
                         coverURL: nil,
                         documentTitle: nil,
-                        clearHighlight: popup.clearHighlight,
+                        clearSelection: popup.clearSelection,
                         onTextSelected: {
                             if let index = popups.firstIndex(where: { $0.id == popupId }) {
                                 closeChildPopups(parent: index)
@@ -91,10 +91,10 @@ struct DictionarySearchView: View {
                                 return
                             }
                             if index == 0 {
-                                clearHighlight.toggle()
+                                clearSelection.toggle()
                                 closePopups()
                             } else if popups.indices.contains(index - 1) {
-                                popups[index - 1].clearHighlight.toggle()
+                                popups[index - 1].clearSelection.toggle()
                                 closeChildPopups(parent: index - 1)
                             }
                         }
@@ -173,7 +173,7 @@ struct DictionarySearchView: View {
             dictionaryStyles: dictionaryStyles,
             isVertical: isVertical,
             isFullWidth: isFullWidth,
-            clearHighlight: false
+            clearSelection: false
         )
         popups.append(popup)
         

@@ -30,6 +30,7 @@ final class ReaderWindow {
         let dismiss: () -> Void = { [weak self] in self?.dismiss(onDismiss: onDismiss) }
         let host = UIHostingController(rootView: AnyView(content().environment(\.dismissReader, dismiss)))
         host.modalPresentationStyle = .overFullScreen
+        host.modalPresentationCapturesStatusBarAppearance = true
         host.view.alpha = 0
         self.hostController = host
         
