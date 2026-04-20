@@ -14,6 +14,7 @@ import CHoshiDicts
 enum ActiveSheet: Identifiable {
     case appearance
     case chapters
+    case highlights
     case statistics
     case sasayaki
     var id: Self { self }
@@ -27,7 +28,7 @@ struct PopupItem: Identifiable {
     var dictionaryStyles: [String: String] = [:]
     var isVertical: Bool
     var isFullWidth: Bool
-    var clearHighlight: Bool
+    var clearSelection: Bool
     var sasayakiCue: SasayakiMatch?
 }
 
@@ -109,6 +110,9 @@ class ReaderViewModel {
     private var debounceTask: Task<Void, Never>?
     private var exportTask: Task<Void, Never>?
     
+    // highlights
+    var highlights: [Highlight] = []
+    
     init(
         book: BookMetadata,
         document: EPUBDocument,
@@ -172,6 +176,55 @@ class ReaderViewModel {
                 self?.scheduleAutoExport()
             }
         )
+        
+        highlights = BookStorage.loadHighlights(root: rootURL) ?? []
+    }
+    
+    var currentChapterCount: Int {
+        guard document.spine.items.indices.contains(index),
+              let manifestItem = document.manifest.items[document.spine.items[index].idref],
+              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
+            return 0
+        }
+        return chapterInfo.currentTotal + chapterInfo.chapterCount
+    }
+    
+    var currentCharacter: Int {
+        guard document.spine.items.indices.contains(index),
+              let manifestItem = document.manifest.items[document.spine.items[index].idref],
+              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
+            return 0
+        }
+        
+        return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * currentProgress)
+    }
+    
+    var coverURL: URL? {
+        if let book = BookStorage.loadMetadata(root: rootURL) {
+            return book.coverURL
+        }
+        return nil
+    }
+    
+    private var currentChapterURL: URL? {
+        guard document.spine.items.indices.contains(index) else {
+            return nil
+        }
+        
+        let item = document.spine.items[index]
+        guard let manifestItem = document.manifest.items[item.idref] else {
+            return nil
+        }
+        return document.contentDirectory.appendingPathComponent(manifestItem.path)
+    }
+    
+    private var chapterRange: (start: Int, end: Int)? {
+        guard document.spine.items.indices.contains(index),
+              let manifestItem = document.manifest.items[document.spine.items[index].idref],
+              let info = bookInfo.chapterInfo[manifestItem.path] else {
+            return nil
+        }
+        return (info.currentTotal, info.currentTotal + info.chapterCount)
     }
     
     func handleRestoreCompleted() {
@@ -230,56 +283,6 @@ class ReaderViewModel {
         debounceTask?.cancel()
         debounceTask = nil
         await runAutoExport(direction: .exportToTtu)
-    }
-    
-    func loadStatistics() {
-        stats = BookStorage.loadStatistics(root: rootURL) ?? []
-        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
-        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
-        
-        for stat in stats {
-            allTimeStatistics.readingTime += stat.readingTime
-            allTimeStatistics.charactersRead += stat.charactersRead
-            allTimeStatistics.lastReadingSpeed = allTimeStatistics.readingTime > 0 ? Int((Double(allTimeStatistics.charactersRead) / allTimeStatistics.readingTime) * 3600.0) : 0
-        }
-    }
-    
-    var currentChapterCount: Int {
-        guard document.spine.items.indices.contains(index),
-              let manifestItem = document.manifest.items[document.spine.items[index].idref],
-              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
-            return 0
-        }
-        return chapterInfo.currentTotal + chapterInfo.chapterCount
-    }
-    
-    var currentCharacter: Int {
-        guard document.spine.items.indices.contains(index),
-              let manifestItem = document.manifest.items[document.spine.items[index].idref],
-              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
-            return 0
-        }
-        
-        return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * currentProgress)
-    }
-    
-    var coverURL: URL? {
-        if let book = BookStorage.loadMetadata(root: rootURL) {
-            return book.coverURL
-        }
-        return nil
-    }
-    
-    func getCurrentChapter() -> URL? {
-        guard document.spine.items.indices.contains(index) else {
-            return nil
-        }
-        
-        let item = document.spine.items[index]
-        guard let manifestItem = document.manifest.items[item.idref] else {
-            return nil
-        }
-        return document.contentDirectory.appendingPathComponent(manifestItem.path)
     }
     
     func updateProgress(_ progress: Double) {
@@ -368,7 +371,7 @@ class ReaderViewModel {
             dictionaryStyles: dictionaryStyles,
             isVertical: isVertical,
             isFullWidth: isFullWidth,
-            clearHighlight: false,
+            clearSelection: false,
             sasayakiCue: cue
         )
         popups.append(popup)
@@ -421,8 +424,8 @@ class ReaderViewModel {
         }
     }
     
-    func clearWebHighlight() {
-        bridge.send(.clearHighlight)
+    func clearSelection() {
+        bridge.send(.clearSelection)
     }
     
     func startTracking() {
@@ -456,33 +459,35 @@ class ReaderViewModel {
         lastCount = currentCharacter
     }
     
-    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
-    func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
-        to.readingTime += timeDiff
-        to.charactersRead = max(to.charactersRead + characterDiff, 0)
-        to.lastReadingSpeed = to.readingTime > 0 ? Int((Double(to.charactersRead) / to.readingTime) * 3600.0) : 0
-        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
-        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        if characterDiff != 0 {
-            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        }
-        to.lastStatisticModified = lastStatisticModified
-    }
-    
-    func saveStats() {
-        if let index = stats.firstIndex(where: { $0.dateKey == Self.formattedDate(date: .now) }) {
-            stats[index] = todaysStatistics
-        } else {
-            stats.append(todaysStatistics)
-        }
-        
-        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
-        scheduleAutoExport()
-    }
-    
     func resetTrackingBaseline() {
         lastCount = currentCharacter
         lastTimestamp = .now
+    }
+    
+    func addHighlight(_ color: HighlightColor, _ creation: HighlightData) {
+        guard let range = chapterRange else { return }
+        let highlight = Highlight(
+            id: creation.id,
+            character: range.start + creation.start,
+            offset: creation.offset,
+            text: creation.text,
+            color: color,
+            createdAt: Date()
+        )
+        highlights.append(highlight)
+        saveHighlights()
+        syncHighlights()
+    }
+    
+    func removeHighlight(_ highlight: Highlight) {
+        highlights.removeAll { $0.id == highlight.id }
+        saveHighlights()
+        syncHighlights()
+        if let range = chapterRange,
+           highlight.character >= range.start,
+           highlight.character < range.end {
+            bridge.send(.removeHighlight(highlight.id.uuidString))
+        }
     }
     
     private func persistBookmark(progress: Double) {
@@ -503,18 +508,20 @@ class ReaderViewModel {
         sasayakiPlayer.prepareTransition()
         self.index = index
         persistBookmark(progress: progress)
-        if let url = getCurrentChapter() {
+        if let url = currentChapterURL {
             let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
-            bridge.updateState(url: url, progress: progress, sasayakiCues: cues)
-            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment, sasayakiCues: cues))
+            let highlights = chapterHighlights()
+            bridge.updateState(url: url, progress: progress, sasayakiCues: cues, highlights: highlights)
+            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment, sasayakiCues: cues, highlights: highlights))
         }
     }
     
     private func loadCurrentChapter() {
-        if let url = getCurrentChapter() {
+        if let url = currentChapterURL {
             let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
-            bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues)
-            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues))
+            let highlights = chapterHighlights()
+            bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues, highlights: highlights)
+            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues, highlights: highlights))
         }
     }
     
@@ -603,11 +610,68 @@ class ReaderViewModel {
         saveStats()
     }
     
-    static private func getDefaultStatistic(title: String) -> Statistics {
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
+    private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
+        to.readingTime += timeDiff
+        to.charactersRead = max(to.charactersRead + characterDiff, 0)
+        to.lastReadingSpeed = to.readingTime > 0 ? Int((Double(to.charactersRead) / to.readingTime) * 3600.0) : 0
+        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
+        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        if characterDiff != 0 {
+            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        }
+        to.lastStatisticModified = lastStatisticModified
+    }
+    
+    private func saveStats() {
+        if let index = stats.firstIndex(where: { $0.dateKey == Self.formattedDate(date: .now) }) {
+            stats[index] = todaysStatistics
+        } else {
+            stats.append(todaysStatistics)
+        }
+        
+        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+        scheduleAutoExport()
+    }
+    
+    private func loadStatistics() {
+        stats = BookStorage.loadStatistics(root: rootURL) ?? []
+        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        
+        for stat in stats {
+            allTimeStatistics.readingTime += stat.readingTime
+            allTimeStatistics.charactersRead += stat.charactersRead
+            allTimeStatistics.lastReadingSpeed = allTimeStatistics.readingTime > 0 ? Int((Double(allTimeStatistics.charactersRead) / allTimeStatistics.readingTime) * 3600.0) : 0
+        }
+    }
+    
+    private func chapterHighlights() -> String? {
+        guard let range = chapterRange else { return nil }
+        let list = highlights.filter { $0.character >= range.start && $0.character < range.end }
+        if list.isEmpty {
+            return nil
+        }
+        guard let data = try? JSONEncoder().encode(list),
+              let json = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return json
+    }
+    
+    private func saveHighlights() {
+        try? BookStorage.save(highlights, inside: rootURL, as: FileNames.highlights)
+    }
+    
+    private func syncHighlights() {
+        bridge.updateHighlights(chapterHighlights())
+    }
+    
+    private static func getDefaultStatistic(title: String) -> Statistics {
         return Statistics(title: title, dateKey: Self.formattedDate(date: .now), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
     }
     
-    static private func formattedDate(date: Date) -> String {
+    private static func formattedDate(date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone.current
         formatter.formatOptions = [.withFullDate]

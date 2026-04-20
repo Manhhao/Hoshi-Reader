@@ -135,7 +135,7 @@ struct BookshelfView: View {
                         Button {
                             showAppearance = true
                         } label: {
-                            Label("Appearance", systemImage: "paintbrush.pointed")
+                            Label("Appearance", systemImage: "paintpalette")
                         }
                         .foregroundStyle(.primary)
                         Button {

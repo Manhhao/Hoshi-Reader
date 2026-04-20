@@ -105,7 +105,7 @@ class ImageHandler: NSObject, WKURLSchemeHandler {
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
-    var clearHighlight: Bool
+    var clearSelection: Bool
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
     var onMine: (([String: String]) async -> Bool)? = nil
@@ -194,9 +194,9 @@ struct PopupWebView: UIViewRepresentable {
             webView.loadHTMLString(html, baseURL: nil)
         }
         
-        if context.coordinator.clearHighlight != clearHighlight {
-            context.coordinator.clearHighlight = clearHighlight
-            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+        if context.coordinator.clearSelection != clearSelection {
+            context.coordinator.clearSelection = clearSelection
+            webView.evaluateJavaScript("window.hoshiSelection.clearSelection()")
         }
     }
     
@@ -218,7 +218,7 @@ struct PopupWebView: UIViewRepresentable {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
-        var clearHighlight: Bool = false
+        var clearSelection: Bool = false
         let id = UUID()
         
         init(parent: PopupWebView) {
@@ -262,7 +262,7 @@ struct PopupWebView: UIViewRepresentable {
             }
             else if message.name == "tapOutside" {
                 parent.onTapOutside?()
-                message.webView?.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+                message.webView?.evaluateJavaScript("window.hoshiSelection.clearSelection()")
             }
             else if message.name == "swipeDismiss" {
                 parent.onSwipeDismiss?()

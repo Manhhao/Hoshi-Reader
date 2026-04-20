@@ -75,6 +75,7 @@
 				Anki.swift,
 				Book.swift,
 				Dictionary.swift,
+				Highlight.swift,
 				Sasayaki.swift,
 				Statistics.swift,
 			);

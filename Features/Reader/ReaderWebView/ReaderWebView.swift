@@ -22,16 +22,24 @@ struct SelectionData {
     var normalizedOffset: Int?
 }
 
+struct HighlightData {
+    let id: UUID
+    let start: Int
+    let offset: Int
+    let text: String
+}
+
 enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil)
+    case loadChapter(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil, highlights: String? = nil)
     case restoreProgress(Double)
     case jumpToFragment(String)
-    case clearHighlight
+    case clearSelection
     case updateTextColor(String?)
     case updateSasayakiColors(textHex: String, backgroundHex: String)
     case applySasayakiCues(String, completion: (() -> Void)? = nil)
     case highlightSasayakiCue(id: String, reveal: Bool)
     case clearSasayakiCue
+    case removeHighlight(String)
 }
 
 @Observable
@@ -40,20 +48,69 @@ class WebViewBridge {
     private(set) var chapterURL: URL?
     private(set) var progress: Double = 0
     private(set) var sasayakiCues: String?
+    private(set) var highlights: String?
     var pendingCommands: [WebViewCommand] = []
     
     func send(_ command: WebViewCommand) {
         pendingCommands.append(command)
     }
     
-    func updateState(url: URL, progress: Double, sasayakiCues: String? = nil) {
+    func updateState(url: URL, progress: Double, sasayakiCues: String? = nil, highlights: String? = nil) {
         self.chapterURL = url
         self.progress = progress
         self.sasayakiCues = sasayakiCues
+        self.highlights = highlights
     }
     
     func updateProgress(_ progress: Double) {
         self.progress = progress
+    }
+    
+    func updateHighlights(_ highlights: String?) {
+        self.highlights = highlights
+    }
+}
+
+final class HoshiWKWebView: WKWebView {
+    var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
+    
+    // https://stackoverflow.com/a/78488754
+    override func buildMenu(with builder: UIMenuBuilder) {
+        super.buildMenu(with: builder)
+        let children = HighlightColor.allCases.map { color in
+            let swatch = UIImage(systemName: "circle.fill")?.withTintColor(UIColor(color.swatch), renderingMode: .alwaysOriginal)
+            return UIAction(title: color.rawValue.capitalized, image: swatch) { [weak self] _ in
+                self?.createHighlight(color: color)
+            }
+        }
+        let menu = UIMenu(
+            title: "Highlight",
+            image: UIImage(systemName: "highlighter"),
+            options: [.displayAsPalette],
+            preferredElementSize: .medium,
+            children: children
+        )
+        builder.remove(menu: .learn)
+        builder.insertSibling(menu, beforeMenu: .standardEdit)
+    }
+    
+    private func createHighlight(color: HighlightColor) {
+        let id = UUID()
+        let script = "window.hoshiHighlights.createHighlight('\(color.rawValue)', '\(id.uuidString)')"
+        evaluateJavaScript(script) { [weak self] result, _ in
+            guard let body = result as? [String: Any],
+                  let start = body["start"] as? Int,
+                  let offset = body["offset"] as? Int,
+                  let text = body["text"] as? String else {
+                return
+            }
+            self?.onHighlightCreated?(color, HighlightData(
+                id: id,
+                start: start,
+                offset: offset,
+                text: text
+            ))
+        }
     }
 }
 
@@ -70,6 +127,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onTapOutside: (() -> Void)
     var onPageTurn: (() -> Void)
     var onRestoreCompleted: (() -> Void)
+    var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     let maxSelectionLength: Int = 16
     
     func makeCoordinator() -> Coordinator {
@@ -82,12 +140,17 @@ struct ReaderWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "restoreCompleted")
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = HoshiWKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
         webView.navigationDelegate = context.coordinator
+        
+        let coordinator = context.coordinator
+        webView.onHighlightCreated = { [weak coordinator] color, creation in
+            coordinator?.parent.onHighlightCreated(color, creation)
+        }
         
         let swipeLeft = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeLeft(_:)))
         swipeLeft.direction = .left
@@ -122,11 +185,12 @@ struct ReaderWebView: UIViewRepresentable {
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment, let sasayakiCues):
+                case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
                     context.coordinator.currentURL = url
                     context.coordinator.pendingProgress = progress
                     context.coordinator.pendingFragment = fragment
                     context.coordinator.pendingSasayakiCues = sasayakiCues
+                    context.coordinator.pendingHighlights = highlights
                     if let appDirectory = try? BookStorage.getAppDirectory() {
                         webView.alpha = 0
                         webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
@@ -138,8 +202,8 @@ struct ReaderWebView: UIViewRepresentable {
                     webView.evaluateJavaScript("window.hoshiReader.restoreProgress(\(progress))") { _, _ in }
                 case .jumpToFragment(let fragment):
                     context.coordinator.jumpToFragment(fragment)
-                case .clearHighlight:
-                    context.coordinator.clearHighlight()
+                case .clearSelection:
+                    context.coordinator.clearSelection()
                 case .updateTextColor(let hex):
                     if let hex {
                         webView.evaluateJavaScript("document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)')") { _, _ in }
@@ -164,6 +228,9 @@ struct ReaderWebView: UIViewRepresentable {
                     }
                 case .clearSasayakiCue:
                     webView.evaluateJavaScript("window.hoshiReader.clearSasayakiCue()") { _, _ in }
+                case .removeHighlight(let id):
+                    let literal = context.coordinator.javaScriptStringLiteral(id)
+                    webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 }
             }
             return
@@ -174,6 +241,7 @@ struct ReaderWebView: UIViewRepresentable {
             context.coordinator.pendingProgress = bridge.progress
             context.coordinator.pendingFragment = nil
             context.coordinator.pendingSasayakiCues = bridge.sasayakiCues
+            context.coordinator.pendingHighlights = bridge.highlights
             guard let appDirectory = try? BookStorage.getAppDirectory() else { return }
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
@@ -192,6 +260,7 @@ struct ReaderWebView: UIViewRepresentable {
         var pendingProgress: Double = 0
         var pendingFragment: String?
         var pendingSasayakiCues: String?
+        var pendingHighlights: String?
         var shouldSyncProgressAfterRestore = false
         
         init(_ parent: ReaderWebView) {
@@ -256,6 +325,14 @@ struct ReaderWebView: UIViewRepresentable {
         
         private var readerJs: String {
             guard let url = Bundle.main.url(forResource: "reader", withExtension: "js"),
+                  let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
+                return ""
+            }
+            return js
+        }
+        
+        private var highlightsJs: String {
+            guard let url = Bundle.main.url(forResource: "highlights", withExtension: "js"),
                   let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
                 return ""
             }
@@ -395,6 +472,7 @@ struct ReaderWebView: UIViewRepresentable {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;
             }
+            \(HighlightColor.css)
             \(pageBreakCss)
             \(textColorCss)
             """
@@ -433,6 +511,14 @@ struct ReaderWebView: UIViewRepresentable {
             }()
             pendingSasayakiCues = nil
             
+            let highlightsSetupScript: String = {
+                if let highlights = pendingHighlights {
+                    return "window.hoshiHighlights.applyHighlights(\(highlights));"
+                }
+                return ""
+            }()
+            pendingHighlights = nil
+            
             let initialRestoreScript: String = {
                 if let fragment = pendingFragment {
                     shouldSyncProgressAfterRestore = true
@@ -460,10 +546,11 @@ struct ReaderWebView: UIViewRepresentable {
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
                 \(textColorOverrideJs)
-            
+                
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)
+                \(highlightsJs)
                 window.hoshiReader.pageHeight = \(pageHeight);
                 window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
@@ -471,7 +558,7 @@ struct ReaderWebView: UIViewRepresentable {
                 if (\(parent.userConfig.readerHideFurigana)) {
                     document.querySelectorAll('rt').forEach(rt => rt.remove());
                 }
-            
+                
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
                     ruby.childNodes.forEach(node => {
@@ -510,6 +597,7 @@ struct ReaderWebView: UIViewRepresentable {
                 }).then(() => {
                     window.hoshiReader.buildNodeOffsets();
                     \(sasayakiSetupScript)
+                    \(highlightsSetupScript)
                     \(initialRestoreScript)
                 });
             })();
@@ -521,7 +609,7 @@ struct ReaderWebView: UIViewRepresentable {
         private func navigate(_ direction: NavigationDirection) {
             guard let webView = webView else { return }
             
-            clearHighlight()
+            clearSelection()
             parent.onPageTurn()
             
             let script = paginationScript(direction: direction)
@@ -643,11 +731,11 @@ struct ReaderWebView: UIViewRepresentable {
             webView.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(count))") { _, _ in }
         }
         
-        func clearHighlight() {
+        func clearSelection() {
             guard let webView = webView else {
                 return
             }
-            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()") { _, _ in }
+            webView.evaluateJavaScript("window.hoshiSelection.clearSelection()") { _, _ in }
         }
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {

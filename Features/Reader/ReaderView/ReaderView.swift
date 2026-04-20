@@ -179,7 +179,8 @@ struct ReaderView: View {
                             onProgressChanged: viewModel.updateProgress,
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
-                            }
+                            },
+                            onHighlightCreated: viewModel.addHighlight
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -219,7 +220,8 @@ struct ReaderView: View {
                             },
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
-                            }
+                            },
+                            onHighlightCreated: viewModel.addHighlight
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -251,7 +253,7 @@ struct ReaderView: View {
                             isFullWidth: popup.isFullWidth,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
-                            clearHighlight: popup.clearHighlight,
+                            clearSelection: popup.clearSelection,
                             onTextSelected: {
                                 if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
                                     viewModel.closeChildPopups(parent: index)
@@ -269,10 +271,10 @@ struct ReaderView: View {
                                     return
                                 }
                                 if index == 0 {
-                                    viewModel.clearWebHighlight()
+                                    viewModel.clearSelection()
                                     viewModel.closePopups()
                                 } else if viewModel.popups.indices.contains(index - 1) {
-                                    viewModel.popups[index - 1].clearHighlight.toggle()
+                                    viewModel.popups[index - 1].clearSelection.toggle()
                                     viewModel.closeChildPopups(parent: index - 1)
                                 }
                             },
@@ -304,15 +306,21 @@ struct ReaderView: View {
                 
                 Menu {
                     Button {
+                        viewModel.activeSheet = .appearance
+                    } label: {
+                        Label("Appearance", systemImage: "paintpalette")
+                    }
+                    
+                    Button {
                         viewModel.activeSheet = .chapters
                     } label: {
                         Label("Chapters", systemImage: "list.bullet")
                     }
                     
                     Button {
-                        viewModel.activeSheet = .appearance
+                        viewModel.activeSheet = .highlights
                     } label: {
-                        Label("Appearance", systemImage: "paintbrush.pointed")
+                        Label("Highlights", systemImage: "highlighter")
                     }
                     
                     if userConfig.enableStatistics {
@@ -443,14 +451,30 @@ struct ReaderView: View {
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
                     viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
                     viewModel.activeSheet = nil
-                    viewModel.clearWebHighlight()
+                    viewModel.clearSelection()
                     viewModel.closePopups()
                 } onJumpToCharacter: { count in
                     viewModel.jumpToCharacter(count)
                     viewModel.activeSheet = nil
-                    viewModel.clearWebHighlight()
+                    viewModel.clearSelection()
                     viewModel.closePopups()
                 }
+            case .highlights:
+                HighlightListView(
+                    document: viewModel.document,
+                    bookInfo: viewModel.bookInfo,
+                    highlights: viewModel.highlights,
+                    onJump: { highlight in
+                        viewModel.jumpToCharacter(highlight.character)
+                        viewModel.activeSheet = nil
+                        viewModel.clearSelection()
+                        viewModel.closePopups()
+                    },
+                    onDelete: { highlight in
+                        viewModel.removeHighlight(highlight)
+                    }
+                )
+                .presentationDetents([.medium, .large])
             case .statistics:
                 StatisticsView(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
