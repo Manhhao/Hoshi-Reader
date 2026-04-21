@@ -22,22 +22,19 @@ struct SasayakiParser {
         String(decoding: data, as: UTF8.self)
             .replacingOccurrences(of: "\r\n", with: "\n")
             .components(separatedBy: "\n\n")
-            .compactMap { block in
+            .enumerated()
+            .compactMap { index, block in
                 let lines = block.components(separatedBy: "\n")
                 guard lines.count >= 3, lines[1].contains("-->") else {
                     return nil
                 }
                 
                 let times = lines[1].components(separatedBy: "-->")
-                let start = parseTimestamp(times[0])
-                let end = parseTimestamp(times[1])
-                
                 let text = lines[2].trimmingCharacters(in: .whitespaces)
-                
                 return SasayakiCue(
-                    id: lines[0].trimmingCharacters(in: .whitespaces),
-                    startTime: start,
-                    endTime: end,
+                    id: String(index),
+                    startTime: parseTimestamp(times[0]),
+                    endTime: parseTimestamp(times[1]),
                     text: text
                 )
             }
