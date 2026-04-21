@@ -21,7 +21,7 @@ struct BookshelfView: View {
     var body: some View {
         ZStack {
             BookshelfTabsView(
-                selectedBook: $selectedBook,
+                onSelectBook: { selectedBook = $0 },
                 pendingImportURL: $pendingImportURL,
                 pendingRemoteImportURL: $pendingRemoteImportURL,
                 pendingLookup: $pendingLookup,
@@ -80,7 +80,7 @@ private struct BookshelfTabsView: View {
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
     @State private var sasayakiBook: BookMetadata?
-    @Binding var selectedBook: BookMetadata?
+    var onSelectBook: (BookMetadata) -> Void
     @Binding var pendingImportURL: URL?
     @Binding var pendingRemoteImportURL: URL?
     @Binding var pendingLookup: String?
@@ -113,10 +113,8 @@ private struct BookshelfTabsView: View {
                                         section: section,
                                         showTitle: sections.count > 1,
                                         isSelecting: isSelecting,
-                                        selectedBook: $selectedBook,
                                         selectedBooks: $selectedBooks,
-                                        pendingLookup: $pendingLookup,
-                                        pendingTab: $pendingTab,
+                                        onSelect: onSelectBook,
                                         onMatch: { sasayakiBook = $0 }
                                     )
                                 }

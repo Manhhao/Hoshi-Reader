@@ -15,10 +15,8 @@ struct ShelfView: View {
     var section: ShelfSection
     var showTitle: Bool = true
     var isSelecting: Bool = false
-    @Binding var selectedBook: BookMetadata?
     @Binding var selectedBooks: Set<BookMetadata>
-    @Binding var pendingLookup: String?
-    @Binding var pendingTab: Int?
+    var onSelect: (BookMetadata) -> Void
     var onMatch: (BookMetadata) -> Void
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
@@ -32,20 +30,16 @@ struct ShelfView: View {
         section: ShelfSection,
         showTitle: Bool = true,
         isSelecting: Bool = false,
-        selectedBook: Binding<BookMetadata?>,
         selectedBooks: Binding<Set<BookMetadata>>,
-        pendingLookup: Binding<String?>,
-        pendingTab: Binding<Int?>,
+        onSelect: @escaping (BookMetadata) -> Void,
         onMatch: @escaping (BookMetadata) -> Void
     ) {
         self.viewModel = viewModel
         self.section = section
         self.showTitle = showTitle
         self.isSelecting = isSelecting
-        self._selectedBook = selectedBook
         self._selectedBooks = selectedBooks
-        self._pendingLookup = pendingLookup
-        self._pendingTab = pendingTab
+        self.onSelect = onSelect
         self.onMatch = onMatch
         self._isCollapsed = State(initialValue: !section.isReading)
     }
@@ -114,7 +108,7 @@ struct ShelfView: View {
                             viewModel: viewModel,
                             currentShelf: section.shelf?.name,
                             hideMove: section.isReading,
-                            onSelect: { selectedBook = book },
+                            onSelect: { onSelect(book) },
                             onMatch: { onMatch(book) },
                             isSelecting: isSelecting,
                             selectedBooks: $selectedBooks
@@ -122,16 +116,6 @@ struct ShelfView: View {
                     }
                 }
                 .padding(.horizontal)
-            }
-        }
-        .onChange(of: pendingLookup) { _, text in
-            if text != nil && selectedBook != nil {
-                selectedBook = nil
-            }
-        }
-        .onChange(of: pendingTab) { _, tab in
-            if tab != nil && selectedBook != nil {
-                selectedBook = nil
             }
         }
     }
