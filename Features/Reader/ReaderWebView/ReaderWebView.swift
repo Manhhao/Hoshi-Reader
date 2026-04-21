@@ -755,6 +755,9 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            if otherGestureRecognizer is UILongPressGestureRecognizer {
+                return false
+            }
             return true
         }
     }

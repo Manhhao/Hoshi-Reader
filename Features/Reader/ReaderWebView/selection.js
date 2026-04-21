@@ -327,8 +327,11 @@ window.hoshiSelection = {
     }
 };
 
+let lastHasSelection = false;
 document.addEventListener('selectionchange', () => {
     const s = getSelection();
     const hasSelection = !!s && !s.isCollapsed;
+    if (hasSelection === lastHasSelection) return;
+    lastHasSelection = hasSelection;
     try { window.webkit?.messageHandlers?.selectionState?.postMessage(hasSelection); } catch {}
 });
