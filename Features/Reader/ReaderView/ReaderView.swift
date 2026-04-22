@@ -49,17 +49,6 @@ struct ReaderLoader: View {
     }
 }
 
-private struct DismissReaderKey: EnvironmentKey {
-    static let defaultValue: (() -> Void)? = nil
-}
-
-extension EnvironmentValues {
-    var dismissReader: (() -> Void)? {
-        get { self[DismissReaderKey.self] }
-        set { self[DismissReaderKey.self] = newValue }
-    }
-}
-
 struct ReaderView: View {
     @Environment(\.dismissReader) private var dismissReader
     @Environment(\.colorScheme) private var systemColorScheme

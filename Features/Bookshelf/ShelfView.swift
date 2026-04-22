@@ -9,6 +9,9 @@
 import SwiftUI
 
 struct ShelfView: View {
+    @Environment(UserConfig.self) var userConfig
+    @State private var selectedBook: BookMetadata?
+    @State private var readerWindow = ReaderWindow()
     @State private var isCollapsed: Bool
     @State private var compactRowCount = 4
     var viewModel: BookshelfViewModel
@@ -16,7 +19,8 @@ struct ShelfView: View {
     var showTitle: Bool = true
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
-    var onSelect: (BookMetadata) -> Void
+    @Binding var pendingLookup: String?
+    @Binding var pendingTab: Int?
     var onMatch: (BookMetadata) -> Void
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
@@ -31,7 +35,8 @@ struct ShelfView: View {
         showTitle: Bool = true,
         isSelecting: Bool = false,
         selectedBooks: Binding<Set<BookMetadata>>,
-        onSelect: @escaping (BookMetadata) -> Void,
+        pendingLookup: Binding<String?>,
+        pendingTab: Binding<Int?>,
         onMatch: @escaping (BookMetadata) -> Void
     ) {
         self.viewModel = viewModel
@@ -39,7 +44,8 @@ struct ShelfView: View {
         self.showTitle = showTitle
         self.isSelecting = isSelecting
         self._selectedBooks = selectedBooks
-        self.onSelect = onSelect
+        self._pendingLookup = pendingLookup
+        self._pendingTab = pendingTab
         self.onMatch = onMatch
         self._isCollapsed = State(initialValue: !section.isReading)
     }
@@ -108,7 +114,7 @@ struct ShelfView: View {
                             viewModel: viewModel,
                             currentShelf: section.shelf?.name,
                             hideMove: section.isReading,
-                            onSelect: { onSelect(book) },
+                            onSelect: { selectedBook = book },
                             onMatch: { onMatch(book) },
                             isSelecting: isSelecting,
                             selectedBooks: $selectedBooks
@@ -116,6 +122,31 @@ struct ShelfView: View {
                     }
                 }
                 .padding(.horizontal)
+            }
+        }
+        .onChange(of: selectedBook) { old, new in
+            if let book = new {
+                readerWindow.present(content: {
+                    ReaderLoader(book: book)
+                        .environment(userConfig)
+                }) {
+                    if selectedBook?.id == book.id {
+                        selectedBook = nil
+                    }
+                }
+            } else if old != nil {
+                viewModel.loadBooks()
+                readerWindow.dismiss()
+            }
+        }
+        .onChange(of: pendingLookup) { _, text in
+            if text != nil && selectedBook != nil {
+                selectedBook = nil
+            }
+        }
+        .onChange(of: pendingTab) { _, tab in
+            if tab != nil && selectedBook != nil {
+                selectedBook = nil
             }
         }
     }
