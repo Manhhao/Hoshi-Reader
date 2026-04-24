@@ -1463,6 +1463,16 @@ window.renderPopup = function() {
                 await new Promise(r => requestAnimationFrame(r));
             }
         }
+        
+        container.querySelectorAll('.glossary-content ruby').forEach(ruby => {
+            ruby.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    const span = document.createElement('span');
+                    span.textContent = node.textContent;
+                    node.replaceWith(span);
+                }
+            });
+        });
     })();
     
     if (window.customCSS) {
