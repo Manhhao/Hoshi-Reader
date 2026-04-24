@@ -106,6 +106,7 @@ struct DictionaryView: View {
                 Button("", systemImage: "curlybraces") {
                     showCSSEditor = true
                 }
+                .disabled(dictionaryManager.isImporting || dictionaryManager.isUpdating)
             }
             
             if #available(iOS 26.0, *) {
@@ -147,7 +148,7 @@ struct DictionaryView: View {
                         }
                     }
                 )
-                .disabled(dictionaryManager.isImporting)
+                .disabled(dictionaryManager.isImporting || dictionaryManager.isUpdating)
             }
         }
         .overlay {
