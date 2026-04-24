@@ -299,6 +299,7 @@ struct DictionarySearchView: View {
         <script>
             window.collapseDictionaries = \(userConfig.collapseDictionaries);
             window.compactGlossaries = \(userConfig.compactGlossaries);
+            window.showExpressionTags = \(userConfig.showExpressionTags);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);
             window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
             window.audioSources = \(audioSources);

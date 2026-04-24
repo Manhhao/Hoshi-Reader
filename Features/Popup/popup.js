@@ -1087,16 +1087,25 @@ function createPitchGroup(pitchData, reading) {
 }
 
 function createTags(entry) {
-    const { deinflectionTrace, frequencies, pitches, reading } = entry;
+    const { deinflectionTrace, frequencies, pitches, reading, expression } = entry;
     const hasDeinflection = deinflectionTrace?.length;
     const hasFrequencies = frequencies?.length;
     const hasPitches = pitches?.length;
     
-    if (!hasDeinflection && !hasFrequencies && !hasPitches) {
+    if (!hasDeinflection && !hasFrequencies && !hasPitches && !window.showExpressionTags) {
         return null;
     }
     
     const container = el('div', { className: 'entry-tags' });
+    
+    if (window.showExpressionTags) {
+        const exprRow = el('div', { className: 'tag-row expr-tag-row' });
+        exprRow.appendChild(el('span', { className: 'expr-tag', textContent: expression }));
+        if (reading && reading !== expression) {
+            exprRow.appendChild(el('span', { className: 'expr-tag', textContent: reading }));
+        }
+        container.appendChild(exprRow);
+    }
     
     if (hasDeinflection) {
         const deinflectionDiv = el('div', { className: 'tag-row' });
@@ -1442,7 +1451,7 @@ window.renderPopup = function() {
     
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
-        if (!target?.closest('.glossary-content')) {
+        if (!target?.closest('.glossary-content') && !target?.closest('.expr-tag')) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }

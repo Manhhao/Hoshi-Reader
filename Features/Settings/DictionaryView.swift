@@ -17,6 +17,15 @@ struct DictionaryView: View {
     @State private var showCSSEditor = false
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
+    @State private var selectedType: DictionaryType = .term
+    
+    private var dictionaries: [DictionaryInfo] {
+        switch selectedType {
+        case .term: return dictionaryManager.termDictionaries
+        case .frequency: return dictionaryManager.frequencyDictionaries
+        case .pitch: return dictionaryManager.pitchDictionaries
+        }
+    }
     
     var body: some View {
         List {
@@ -52,110 +61,56 @@ struct DictionaryView: View {
             
             Section {
                 Toggle("Default to Dictionary Tab", isOn: Bindable(userConfig).dictionaryTabDefault)
+                NavigationLink("Settings") {
+                    DictionarySettingsView()
+                }
             }
             
             Section {
-                HStack {
-                    Text("Max Results")
-                    Spacer()
-                    Text("\(userConfig.maxResults)")
-                        .fontWeight(.semibold)
-                    Stepper("", value: Bindable(userConfig).maxResults, in: 1...50)
-                        .labelsHidden()
+                ForEach(dictionaries) { dict in
+                    Toggle(isOn: Binding(
+                        get: { dict.isEnabled },
+                        set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: selectedType) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(dict.index.title)
+                            Text(dict.index.revision)
+                                .lineLimit(1)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
-                HStack {
-                    Text("Scan Length")
-                    Spacer()
-                    Text("\(userConfig.scanLength)")
-                        .fontWeight(.semibold)
-                    Stepper("", value: Bindable(userConfig).scanLength, in: 1...64)
-                        .labelsHidden()
+                .onMove { from, to in
+                    dictionaryManager.moveDictionary(from: from, to: to, type: selectedType)
                 }
-                Toggle("Auto-collapse Dictionaries", isOn: Bindable(userConfig).collapseDictionaries)
-                Toggle("Compact Glossaries", isOn: Bindable(userConfig).compactGlossaries)
-                Toggle("Harmonic Frequency", isOn: Bindable(userConfig).harmonicFrequency)
-                Toggle("Deduplicate Pitch Accents", isOn: Bindable(userConfig).deduplicatePitchAccents)
+                .onDelete { indexSet in
+                    dictionaryManager.deleteDictionary(indexSet: indexSet, type: selectedType)
+                }
             } header: {
-                Text("Settings")
-            }
-            
-            Section("Term Dictionaries") {
-                ForEach(dictionaryManager.termDictionaries) { dict in
-                    Toggle(isOn: Binding(
-                        get: { dict.isEnabled },
-                        set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .term) }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(dict.index.title)
-                            Text(dict.index.revision)
-                                .lineLimit(1)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                Picker("Type", selection: $selectedType) {
+                    Text("Term").tag(DictionaryType.term)
+                    Text("Frequency").tag(DictionaryType.frequency)
+                    Text("Pitch").tag(DictionaryType.pitch)
                 }
-                .onMove { from, to in
-                    dictionaryManager.moveDictionary(from: from, to: to, type: .term)
-                }
-                .onDelete { indexSet in
-                    dictionaryManager.deleteDictionary(indexSet: indexSet, type: .term)
-                }
-            }
-            
-            Section("Frequency Dictionaries") {
-                ForEach(dictionaryManager.frequencyDictionaries) { dict in
-                    Toggle(isOn: Binding(
-                        get: { dict.isEnabled },
-                        set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .frequency) }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(dict.index.title)
-                            Text(dict.index.revision)
-                                .lineLimit(1)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .onMove { from, to in
-                    dictionaryManager.moveDictionary(from: from, to: to, type: .frequency)
-                }
-                .onDelete { indexSet in
-                    dictionaryManager.deleteDictionary(indexSet: indexSet, type: .frequency)
-                }
-            }
-            
-            Section("Pitch Dictionaries") {
-                ForEach(dictionaryManager.pitchDictionaries) { dict in
-                    Toggle(isOn: Binding(
-                        get: { dict.isEnabled },
-                        set: { dictionaryManager.toggleDictionary(id: dict.id, enabled: $0, type: .pitch) }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(dict.index.title)
-                            Text(dict.index.revision)
-                                .lineLimit(1)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .onMove { from, to in
-                    dictionaryManager.moveDictionary(from: from, to: to, type: .pitch)
-                }
-                .onDelete { indexSet in
-                    dictionaryManager.deleteDictionary(indexSet: indexSet, type: .pitch)
-                }
+                .pickerStyle(.segmented)
+                .listRowInsets(EdgeInsets())
+                .padding(.bottom, 12)
             }
         }
         .sheet(isPresented: $showCSSEditor) {
             DictionaryDetailSettingView()
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("", systemImage: "paintbrush") {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("", systemImage: "curlybraces") {
                     showCSSEditor = true
                 }
+            }
+            if #available(iOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
                         importType = .term
@@ -204,6 +159,43 @@ struct DictionaryView: View {
         } message: {
             Text(dictionaryManager.errorMessage)
         }
+    }
+}
+
+struct DictionarySettingsView: View {
+    @Environment(UserConfig.self) private var userConfig
+    
+    var body: some View {
+        List {
+            Section("Lookup") {
+                HStack {
+                    Text("Max Results")
+                    Spacer()
+                    Text("\(userConfig.maxResults)")
+                        .fontWeight(.semibold)
+                    Stepper("", value: Bindable(userConfig).maxResults, in: 1...50)
+                        .labelsHidden()
+                }
+                HStack {
+                    Text("Scan Length")
+                    Spacer()
+                    Text("\(userConfig.scanLength)")
+                        .fontWeight(.semibold)
+                    Stepper("", value: Bindable(userConfig).scanLength, in: 1...64)
+                        .labelsHidden()
+                }
+            }
+            
+            Section("Behaviour") {
+                Toggle("Auto-collapse Dictionaries", isOn: Bindable(userConfig).collapseDictionaries)
+                Toggle("Compact Glossaries", isOn: Bindable(userConfig).compactGlossaries)
+                Toggle("Show Expression Tags", isOn: Bindable(userConfig).showExpressionTags)
+                Toggle("Harmonic Frequency", isOn: Bindable(userConfig).harmonicFrequency)
+                Toggle("Deduplicate Pitch Accents", isOn: Bindable(userConfig).deduplicatePitchAccents)
+            }
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
