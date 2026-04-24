@@ -21,6 +21,7 @@ class BookshelfViewModel {
     var successMessage: String = ""
     var isSyncing: Bool = false
     var isDownloading: Bool = false
+    var importBooksProgress: String?
     
     private var bookProgress: [UUID: Double] = [:]
     
@@ -169,14 +170,8 @@ class BookshelfViewModel {
     
     func importBook(result: Result<URL, Error>) {
         do {
-            let url = try result.get()
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            try processImport(sourceURL: url)
+            try importBook(from: try result.get())
+            loadBooks()
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -185,8 +180,40 @@ class BookshelfViewModel {
     func importBooks(result: Result<[URL], Error>) {
         do {
             let urls = try result.get()
-            for url in urls {
-                importBook(result: .success(url))
+            if urls.isEmpty {
+                return
+            }
+            
+            if urls.count == 1 {
+                importBook(result: .success(urls[0]))
+                return
+            }
+            
+            importBooksProgress = "Importing 1 / \(urls.count)..."
+            Task {
+                defer { importBooksProgress = nil }
+                await Task.yield()
+                
+                var failed: [String] = []
+                for (index, url) in urls.enumerated() {
+                    autoreleasepool {
+                        do {
+                            try importBook(from: url)
+                        } catch {
+                            failed.append(url.lastPathComponent)
+                        }
+                    }
+                    let next = index + 1
+                    if next < urls.count {
+                        importBooksProgress = "Importing \(next + 1) / \(urls.count)..."
+                        await Task.yield()
+                    }
+                }
+                loadBooks()
+                
+                if !failed.isEmpty {
+                    showError(message: "Failed to import:\n\(failed.joined(separator: "\n"))")
+                }
             }
         } catch {
             showError(message: error.localizedDescription)
@@ -202,6 +229,7 @@ class BookshelfViewModel {
             do {
                 let (tempURL, _) = try await URLSession.shared.download(from: url)
                 try processImport(sourceURL: tempURL)
+                loadBooks()
             } catch {
                 showError(message: "Download failed: \(error.localizedDescription)")
             }
@@ -313,6 +341,16 @@ class BookshelfViewModel {
         return BookStorage.loadSasayakiMatch(root: root)
     }
     
+    private func importBook(from url: URL) throws {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        try processImport(sourceURL: url)
+    }
+    
     private func processImport(sourceURL: URL) throws {
         let tempDir = FileManager.default.temporaryDirectory
         let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
@@ -369,8 +407,6 @@ class BookshelfViewModel {
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
             try BookStorage.delete(at: localURL)
-            
-            books = try BookStorage.loadAllBooks()
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)

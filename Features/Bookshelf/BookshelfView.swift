@@ -233,6 +233,9 @@ struct BookshelfView: View {
             if viewModel.isDownloading {
                 LoadingOverlay("Downloading EPUB...")
             }
+            if let importBooksProgress = viewModel.importBooksProgress {
+                LoadingOverlay(importBooksProgress)
+            }
         }
         .onAppear {
             guard !setInitialTab else {
