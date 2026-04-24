@@ -195,9 +195,9 @@ struct BookshelfView: View {
         .onChange(of: pendingImportURL) { _, url in
             if let url {
                 navigationPath = NavigationPath()
-                if url.pathExtension == "colpkg" {
+                if url.pathExtension == "colpkg" || url.pathExtension == "apkg" {
                     do {
-                        try AnkiManager.shared.importColpkg(from: url)
+                        try AnkiManager.shared.importAnkiBackup(from: url)
                     } catch {
                         viewModel.errorMessage = error.localizedDescription
                         viewModel.shouldShowError = true

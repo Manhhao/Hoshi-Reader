@@ -11,8 +11,6 @@ import UniformTypeIdentifiers
 
 struct AnkiConnectView: View {
     @State private var ankiManager = AnkiManager.shared
-    @State private var dictionaryManager = DictionaryManager.shared
-    @State private var isImporting = false
     
     var body: some View {
         List {

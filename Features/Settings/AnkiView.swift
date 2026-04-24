@@ -55,7 +55,7 @@ struct AnkiView: View {
                     .onChange(of: ankiManager.selectedNoteType) { _, _ in ankiManager.save() }
                     
                     if !ankiManager.useAnkiConnect {
-                        Button("Import .colpkg (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
+                        Button("Import Anki Backup (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
                             isImporting = true
                         }
                     }
@@ -63,7 +63,7 @@ struct AnkiView: View {
                     Text("Config");
                 } footer: {
                     if !ankiManager.useAnkiConnect {
-                        Text("Importing a .colpkg backup from Anki will allow duplicate checks before sending to Anki. It's recommended to do this periodically to reduce drift.")
+                        Text("Importing a .colpkg/.apkg backup from Anki will allow Hoshi Reader to check for duplicates immediately. It's recommended to do this periodically to reduce drift.")
                     }
                 }
                 
@@ -150,11 +150,11 @@ struct AnkiView: View {
         }
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [UTType(filenameExtension: "colpkg")!]
+            allowedContentTypes: ["colpkg", "apkg"].map { UTType(filenameExtension: $0)! }
         ) { result in
             if case .success(let url) = result {
                 do {
-                    try ankiManager.importColpkg(from: url)
+                    try ankiManager.importAnkiBackup(from: url)
                 } catch {
                     ankiManager.errorMessage = error.localizedDescription
                 }

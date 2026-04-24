@@ -526,7 +526,7 @@ class AnkiManager {
         ankiConnectConfig = config.ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     }
     
-    func importColpkg(from url: URL) throws {
+    func importAnkiBackup(from url: URL) throws {
         let accessing = url.startAccessingSecurityScopedResource()
         defer {
             if accessing {

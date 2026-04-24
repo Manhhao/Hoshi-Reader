@@ -61,8 +61,6 @@
 	<array>
 		<string>audio</string>
 	</array>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UTImportedTypeDeclarations</key>
@@ -81,6 +79,7 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>colpkg</string>
+					<string>apkg</string>
 				</array>
 			</dict>
 		</dict>
