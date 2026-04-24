@@ -468,6 +468,8 @@ class AnkiManager {
                 return content["glossary"] ?? ""
             case .glossaryFirst:
                 return content["glossaryFirst"] ?? ""
+            case .selectedGlossary:
+                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? ""
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:

@@ -74,6 +74,7 @@ enum Handlebars: String, CaseIterable {
     case audio = "{audio}"
     case glossary = "{glossary}"
     case glossaryFirst = "{glossary-first}"
+    case selectedGlossary = "{selected-glossary}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
     case frequencies = "{frequencies}"

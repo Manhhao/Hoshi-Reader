@@ -22,6 +22,7 @@ const audioUrls = {};
 let currentAudio = null;
 let lastSelection = '';
 let currentDictionaryMedia = null;
+const selectedDictionaries = {};
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -821,6 +822,7 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         pitchCategories,
         popupSelectionText,
         audio,
+        selectedDictionary: selectedDictionaries[idx]?.name || '',
         dictionaryMedia: JSON.stringify([...dictionaryMedia.values()])
     });
 }
@@ -1286,7 +1288,7 @@ function createEntryHeader(entry, idx) {
     return header;
 }
 
-function createGlossarySection(dictName, contents, isFirst) {
+function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const details = el('details', { className: 'glossary-group' });
     if (!window.collapseDictionaries || isFirst) {
         details.open = true;
@@ -1294,6 +1296,26 @@ function createGlossarySection(dictName, contents, isFirst) {
     
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
+    let timer = null, longPressed = false;
+    const toggleSelection = () => {
+        longPressed = true;
+        const selected = selectedDictionaries[entryIdx];
+        selected?.label.classList.remove('selected');
+        if (selected?.name === dictName) {
+            delete selectedDictionaries[entryIdx];
+        } else {
+            selectedDictionaries[entryIdx] = { name: dictName, label: summary };
+            summary.classList.add('selected');
+        }
+    };
+    summary.addEventListener('pointerdown', () => {
+        longPressed = false;
+        timer = setTimeout(toggleSelection, 400);
+    });
+    const cancel = () => { clearTimeout(timer); };
+    summary.addEventListener('pointerup', cancel);
+    summary.addEventListener('pointercancel', cancel);
+    summary.addEventListener('click', (e) => { if (longPressed) e.preventDefault(); });
     details.appendChild(summary);
     
     const dictWrapper = document.createElement('div');
@@ -1437,7 +1459,7 @@ window.renderPopup = function() {
             
             const dictNames = Object.keys(grouped);
             for (let dictIdx = 0; dictIdx < dictNames.length; dictIdx++) {
-                entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0));
+                entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
                 await new Promise(r => requestAnimationFrame(r));
             }
         }

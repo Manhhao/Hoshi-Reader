@@ -350,6 +350,12 @@ a {
     font-size: 10px;
     opacity: 0.7;
     display: block;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dict-label.selected > .dict-name {
+    font-weight: bold;
 }
 
 .overlay {
