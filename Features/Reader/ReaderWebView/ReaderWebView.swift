@@ -120,6 +120,8 @@ struct ReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
     let viewSize: CGSize
     let bridge: WebViewBridge
+    let sasayakiTextColor: Color
+    let sasayakiBackgroundColor: Color
     var onNextChapter: () -> Bool
     var onPreviousChapter: () -> Bool
     var onSaveBookmark: (Double) -> Void
@@ -434,8 +436,8 @@ struct ReaderWebView: UIViewRepresentable {
             let css = """
             \(fontFaceCss)
             :root {
-                --hoshi-sasayaki-text-color: \(UIColor(parent.userConfig.sasayakiTextColor).hexString);
-                --hoshi-sasayaki-background-color: \(UIColor(parent.userConfig.sasayakiBackgroundColor).hexString);
+                --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
+                --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
             }
             html, body {
                 overflow: hidden !important;

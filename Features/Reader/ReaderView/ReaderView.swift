@@ -75,10 +75,25 @@ struct ReaderView: View {
         userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
     
+    private var readerTheme: ColorScheme {
+        if userConfig.theme == .custom {
+            return userConfig.uiTheme.colorScheme ?? systemColorScheme
+        }
+        return userConfig.theme.colorScheme ?? systemColorScheme
+    }
+    
+    private var sasayakiTextColor: Color {
+        readerTheme == .dark ? userConfig.sasayakiDarkTextColor : userConfig.sasayakiTextColor
+    }
+    
+    private var sasayakiBackgroundColor: Color {
+        readerTheme == .dark ? userConfig.sasayakiDarkBackgroundColor : userConfig.sasayakiBackgroundColor
+    }
+    
     private func updateSasayakiColors() {
         viewModel.bridge.send(.updateSasayakiColors(
-            textHex: UIColor(userConfig.sasayakiTextColor).hexString,
-            backgroundHex: UIColor(userConfig.sasayakiBackgroundColor).hexString
+            textHex: UIColor(sasayakiTextColor).hexString,
+            backgroundHex: UIColor(sasayakiBackgroundColor).hexString
         ))
     }
     
@@ -160,6 +175,8 @@ struct ReaderView: View {
                         ScrollReaderWebView(
                             userConfig: userConfig,
                             bridge: viewModel.bridge,
+                            sasayakiTextColor: sasayakiTextColor,
+                            sasayakiBackgroundColor: sasayakiBackgroundColor,
                             onNextChapter: viewModel.nextChapter,
                             onPreviousChapter: viewModel.previousChapter,
                             onSaveBookmark: viewModel.saveBookmark,
@@ -202,6 +219,8 @@ struct ReaderView: View {
                             userConfig: userConfig,
                             viewSize: viewSize,
                             bridge: viewModel.bridge,
+                            sasayakiTextColor: sasayakiTextColor,
+                            sasayakiBackgroundColor: sasayakiBackgroundColor,
                             onNextChapter: viewModel.nextChapter,
                             onPreviousChapter: viewModel.previousChapter,
                             onSaveBookmark: viewModel.saveBookmark,
@@ -502,8 +521,8 @@ struct ReaderView: View {
             await viewModel.syncOnOpen()
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
-        .onChange(of: userConfig.sasayakiTextColor) { _, _ in updateSasayakiColors() }
-        .onChange(of: userConfig.sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
+        .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }
+        .onChange(of: sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
         .onChange(of: userConfig.sasayakiAutoScroll) { _, _ in viewModel.sasayakiPlayer.updateIdleTimerDisabled() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             let shouldResync = inactiveSince.map { Date.now.timeIntervalSince($0) >= 600 } ?? false

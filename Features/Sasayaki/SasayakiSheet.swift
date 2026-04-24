@@ -85,10 +85,18 @@ struct SasayakiSheet: View {
                     }
                 }
                 
-                Section("Highlight") {
+                Section("Settings") {
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
+                }
+                
+                Section("Light Theme") {
                     ColorPicker("Text Color", selection: Bindable(userConfig).sasayakiTextColor)
                     ColorPicker("Background Color", selection: Bindable(userConfig).sasayakiBackgroundColor)
+                }
+                
+                Section("Dark Theme") {
+                    ColorPicker("Text Color", selection: Bindable(userConfig).sasayakiDarkTextColor)
+                    ColorPicker("Background Color", selection: Bindable(userConfig).sasayakiDarkBackgroundColor)
                 }
             }
             .navigationTitle("Sasayaki")

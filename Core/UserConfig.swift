@@ -303,6 +303,14 @@ class UserConfig {
         didSet { Self.saveColor(sasayakiBackgroundColor, key: "sasayakiBackgroundColor") }
     }
     
+    var sasayakiDarkTextColor: Color {
+        didSet { Self.saveColor(sasayakiDarkTextColor, key: "sasayakiDarkTextColor") }
+    }
+    
+    var sasayakiDarkBackgroundColor: Color {
+        didSet { Self.saveColor(sasayakiDarkBackgroundColor, key: "sasayakiDarkBackgroundColor") }
+    }
+    
     init() {
         let defaults = UserDefaults.standard
         
@@ -387,6 +395,8 @@ class UserConfig {
         self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
         self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         self.sasayakiBackgroundColor = UserConfig.loadColor(key: "sasayakiBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)
+        self.sasayakiDarkTextColor = UserConfig.loadColor(key: "sasayakiDarkTextColor") ?? Color(.sRGB, red: 1, green: 1, blue: 1)
+        self.sasayakiDarkBackgroundColor = UserConfig.loadColor(key: "sasayakiDarkBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)
     }
     
     private static func saveColor(_ color: Color, key: String) {

@@ -30,10 +30,18 @@ struct SasayakiSettingsView: View {
             }
             
             if userConfig.enableSasayaki {
-                Section("Highlight") {
+                Section("Settings") {
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
+                }
+                
+                Section("Light Theme") {
                     ColorPicker("Text Color", selection: $userConfig.sasayakiTextColor)
                     ColorPicker("Background Color", selection: $userConfig.sasayakiBackgroundColor)
+                }
+                
+                Section("Dark Theme") {
+                    ColorPicker("Text Color", selection: $userConfig.sasayakiDarkTextColor)
+                    ColorPicker("Background Color", selection: $userConfig.sasayakiDarkBackgroundColor)
                 }
                 
                 if userConfig.enableSync {
