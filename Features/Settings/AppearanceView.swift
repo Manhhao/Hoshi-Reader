@@ -47,7 +47,7 @@ struct AppearanceView: View {
                 Section("Theme") {
                     Picker("Appearance", selection: $userConfig.theme) {
                         ForEach(Themes.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            Text(LocalizedStringKey(mode.rawValue)).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)

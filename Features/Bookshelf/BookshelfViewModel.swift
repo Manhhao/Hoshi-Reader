@@ -231,7 +231,7 @@ class BookshelfViewModel {
                 try processImport(sourceURL: tempURL)
                 loadBooks()
             } catch {
-                showError(message: "Download failed: \(error.localizedDescription)")
+                showError(message: String(localized: "Download failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -252,7 +252,7 @@ class BookshelfViewModel {
                 )
                 handleSyncResult(result)
             } catch {
-                showError(message: "Sync failed: \(error.localizedDescription)")
+                showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -260,12 +260,12 @@ class BookshelfViewModel {
     private func handleSyncResult(_ result: SyncResult) {
         switch result {
         case .synced(let title):
-            showSuccess(message: "\(title) is already synced")
+            showSuccess(message: String(localized: "\(title) is already synced"))
         case .imported(let title, let characterCount):
             loadBookProgress()
-            showSuccess(message: "Synced \(title) from ッツ\n\(characterCount) characters")
+            showSuccess(message: String(localized: "Synced \(title) from ッツ\n\(characterCount) characters"))
         case .exported(let title, let characterCount):
-            showSuccess(message: "Synced \(title) to ッツ\n\(characterCount) characters")
+            showSuccess(message: String(localized: "Synced \(title) to ッツ\n\(characterCount) characters"))
         case .skipped:
             break
         }

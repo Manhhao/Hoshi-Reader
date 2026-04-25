@@ -30,12 +30,12 @@ struct AnkiConnectView: View {
                         .onSubmit { ankiManager.save() }
                     }
                     Button("Connect") { Task { await ankiManager.pingAnkiConnect() } }
-                } header: {
-                    Text("Connection")
-                } footer: {
-                    if ankiManager.useAnkiConnect {
-                        Text("Status: \(ankiManager.isConnected ? "Connected" : "Not connected")")
-                    }
+                }
+            } header: {
+                Text("Connection")
+            } footer: {
+                if ankiManager.useAnkiConnect {
+                    Text("Status: \(ankiManager.isConnected ? String(localized: "Connected") : String(localized: "Not connected"))")
                 }
             }
             

@@ -49,7 +49,7 @@ struct BookshelfView: View {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
                             } description: {
-                                Text("Import an EPUB using the \(Image(systemName: "plus")) button to start reading.")
+                                Text("Import an EPUB using the + button to start reading.")
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 160)
@@ -228,10 +228,10 @@ struct BookshelfView: View {
         }
         .overlay {
             if viewModel.isSyncing {
-                LoadingOverlay("Syncing...")
+                LoadingOverlay(String(localized: "Syncing..."))
             }
             if viewModel.isDownloading {
-                LoadingOverlay("Downloading EPUB...")
+                LoadingOverlay(String(localized: "Downloading EPUB..."))
             }
             if let importBooksProgress = viewModel.importBooksProgress {
                 LoadingOverlay(importBooksProgress)
@@ -294,7 +294,7 @@ struct BookshelfView: View {
                             .foregroundStyle(.secondary)
                         Picker("Sort", selection: Bindable(userConfig).bookshelfSortOption) {
                             ForEach(SortOption.allCases) { option in
-                                Label(option.rawValue, systemImage: option.icon)
+                                Label(LocalizedStringKey(option.rawValue), systemImage: option.icon)
                                     .tag(option)
                             }
                         }

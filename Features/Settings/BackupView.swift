@@ -72,7 +72,7 @@ struct BackupView: View {
     
     private func backupFolder(folder: String) {
         isLoading = true
-        loadingString = "Archiving..."
+        loadingString = String(localized: "Archiving...")
         let directory = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             let formatter = DateFormatter()
@@ -107,7 +107,7 @@ struct BackupView: View {
     private func restoreFolder(from url: URL, to folder: String) {
         guard url.startAccessingSecurityScopedResource() else { return }
         isLoading = true
-        loadingString = "Restoring..."
+        loadingString = String(localized: "Restoring...")
         let destination = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             defer { url.stopAccessingSecurityScopedResource() }

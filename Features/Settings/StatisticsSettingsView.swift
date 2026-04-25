@@ -23,7 +23,7 @@ struct StatisticsSettingsView: View {
                 Section {
                     Picker("Autostart", selection: $userConfig.statisticsAutostartMode) {
                         ForEach(StatisticsAutostartMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            Text(LocalizedStringKey(mode.rawValue)).tag(mode)
                         }
                     }
                 }
@@ -33,7 +33,7 @@ struct StatisticsSettingsView: View {
                         Toggle("ッツ Sync", isOn: $userConfig.statisticsEnableSync)
                         Picker("Sync Behaviour", selection: $userConfig.statisticsSyncMode) {
                             ForEach(StatisticsSyncMode.allCases, id: \.self) { mode in
-                                Text(mode.rawValue).tag(mode)
+                                Text(LocalizedStringKey(mode.rawValue)).tag(mode)
                             }
                         }
                     } header: {

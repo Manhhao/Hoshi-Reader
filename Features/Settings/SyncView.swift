@@ -36,7 +36,7 @@ struct SyncView: View {
                 Section {
                     Picker("Direction", selection: $userConfig.syncMode) {
                         ForEach(SyncMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            Text(LocalizedStringKey(mode.rawValue)).tag(mode)
                         }
                     }
                     Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
@@ -50,7 +50,7 @@ struct SyncView: View {
                     HStack {
                         Text("Status")
                         Spacer()
-                        Text(isAuthenticated ? "Connected" : "Not connected")
+                        Text(isAuthenticated ? String(localized: "Connected") : String(localized: "Not connected"))
                             .foregroundStyle(.secondary)
                     }
                     if isAuthenticated {
