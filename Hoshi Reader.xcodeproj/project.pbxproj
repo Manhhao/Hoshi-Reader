@@ -40,7 +40,12 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXBuildFile section (Localization) */
+		48A1B2C42F8A000100000002 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 48A1B2C32F8A000100000001 /* Localizable.xcstrings */; };
+/* End PBXBuildFile section (Localization) */
+
 /* Begin PBXFileReference section */
+		48A1B2C32F8A000100000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		48568A462F1E7F5C00F9C126 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		48568A472F1E7F5C00F9C126 /* HoshiIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HoshiIcon.icon; sourceTree = "<group>"; };
 		48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -177,6 +182,7 @@
 				48568A472F1E7F5C00F9C126 /* HoshiIcon.icon */,
 				48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */,
 				48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */,
+				48A1B2C32F8A000100000001 /* Localizable.xcstrings */,
 				48FE8D462F76AB88002C2C49 /* ShareExtension.appex */,
 				48FE8D472F76AB88002C2C49 /* ShareExtension */,
 			);
@@ -257,6 +263,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 48107AAE2F114021009E12D1;
@@ -285,6 +292,7 @@
 				48568A5B2F1E7F5C00F9C126 /* Assets.xcassets in Resources */,
 				48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */,
 				48568A5C2F1E7F5C00F9C126 /* HoshiIcon.icon in Resources */,
+				48A1B2C42F8A000100000002 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -37,7 +37,7 @@ struct AnkiConnectView: View {
                 Text("Connection")
             } footer: {
                 if ankiManager.useAnkiConnect {
-                    Text("Status: \(ankiManager.isConnected ? "Connected" : "Not connected")")
+                    Text("Status: \(ankiManager.isConnected ? String(localized: "Connected") : String(localized: "Not connected"))")
                 }
             }
             

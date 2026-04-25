@@ -188,7 +188,7 @@ class BookshelfViewModel {
                 let (tempURL, _) = try await URLSession.shared.download(from: url)
                 try processImport(sourceURL: tempURL)
             } catch {
-                showError(message: "Download failed: \(error.localizedDescription)")
+                showError(message: String(localized: "Download failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -278,7 +278,7 @@ class BookshelfViewModel {
                             try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
                         }
                     }
-                    showSuccess(message: "Synced \(title) from ッツ\n\(ttuProgress.exploredCharCount) characters")
+                    showSuccess(message: String(localized: "Synced \(title) from ッツ\n\(ttuProgress.exploredCharCount) characters"))
                 case .exportToTtu:
                     guard let localBookmark else { return }
                     try await exportProgress(
@@ -294,12 +294,12 @@ class BookshelfViewModel {
                             try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolderId, fileId: statsFileId, stats: mergedStats)
                         }
                     }
-                    showSuccess(message: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters")
+                    showSuccess(message: String(localized: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters"))
                 case .synced:
-                    showSuccess(message: "\(title) is already synced")
+                    showSuccess(message: String(localized: "\(title) is already synced"))
                 }
             } catch {
-                showError(message: "Sync failed: \(error.localizedDescription)")
+                showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
             }
         }
     }
