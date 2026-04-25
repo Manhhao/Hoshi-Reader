@@ -86,7 +86,9 @@ struct SasayakiSheet: View {
                 }
                 
                 Section("Settings") {
+                    Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
+                    Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
                 }
                 
                 Section("Light Theme") {

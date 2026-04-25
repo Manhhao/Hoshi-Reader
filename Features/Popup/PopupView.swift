@@ -117,8 +117,10 @@ struct PopupView: View {
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     var onSwipeDismiss: (() -> Void)?
+    var onPause: (() -> Void)?
     var sasayakiCue: SasayakiMatch?
     var sasayakiPlayer: SasayakiPlayer?
+    var wasPaused = false
     
     @State private var content: String = ""
     @State private var lookupEntries: [[String: Any]] = []
@@ -141,8 +143,10 @@ struct PopupView: View {
         onTextSelected: ((SelectionData) -> Int?)? = nil,
         onTapOutside: (() -> Void)? = nil,
         onSwipeDismiss: (() -> Void)? = nil,
+        onPause: (() -> Void)? = nil,
         sasayakiCue: SasayakiMatch? = nil,
-        sasayakiPlayer: SasayakiPlayer? = nil
+        sasayakiPlayer: SasayakiPlayer? = nil,
+        wasPaused: Bool = false
     ) {
         _isVisible = isVisible
         self.selectionData = selectionData
@@ -159,8 +163,10 @@ struct PopupView: View {
         self.onTextSelected = onTextSelected
         self.onTapOutside = onTapOutside
         self.onSwipeDismiss = onSwipeDismiss
+        self.onPause = onPause
         self.sasayakiCue = sasayakiCue
         self.sasayakiPlayer = sasayakiPlayer
+        self.wasPaused = wasPaused
         
         let cache = Self.buildContent(lookupResults: lookupResults, userConfig: userConfig)
         _content = State(initialValue: cache.content)
@@ -209,10 +215,14 @@ struct PopupView: View {
                 Button {
                     Task { @MainActor in
                         await WordAudioPlayer.shared.stop()
-                        player.togglePlayback()
+                        if wasPaused {
+                            onPause?()
+                        } else {
+                            player.togglePlayback()
+                        }
                     }
                 } label: {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: player.isPlaying || wasPaused ? "pause.fill" : "play.fill")
                 }
                 
                 Button {

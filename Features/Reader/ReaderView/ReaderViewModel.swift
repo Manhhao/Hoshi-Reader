@@ -354,7 +354,7 @@ class ReaderViewModel {
         return true
     }
     
-    func handleTextSelection(_ selection: SelectionData, maxResults: Int, scanLength: Int, isVertical: Bool, isFullWidth: Bool) -> Int? {
+    func handleTextSelection(_ selection: SelectionData, maxResults: Int, scanLength: Int, isVertical: Bool, isFullWidth: Bool, autoPause: Bool) -> Int? {
         let lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults, scanLength: scanLength)
         var dictionaryStyles: [String: String] = [:]
         for style in LookupEngine.shared.getStyles() {
@@ -378,8 +378,12 @@ class ReaderViewModel {
         
         if let firstResult = lookupResults.first {
             if sasayakiPlayer.isPlaying {
-                sasayakiPlayer.togglePlayback()
-                wasPaused = true
+                if autoPause {
+                    sasayakiPlayer.togglePlayback()
+                    wasPaused = true
+                } else {
+                    wasPaused = false
+                }
             }
             withAnimation(.default.speed(2.2)) {
                 popups = popups.map {

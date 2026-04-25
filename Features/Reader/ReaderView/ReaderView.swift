@@ -184,7 +184,7 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: viewModel.closePopups,
                             onScroll: {
@@ -228,7 +228,7 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: viewModel.closePopups,
                             onPageTurn: {
@@ -277,7 +277,7 @@ struct ReaderView: View {
                                 if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
                                     viewModel.closeChildPopups(parent: index)
                                 }
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false)
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
                                 if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
@@ -297,8 +297,12 @@ struct ReaderView: View {
                                     viewModel.closeChildPopups(parent: index - 1)
                                 }
                             },
+                            onPause: {
+                                viewModel.wasPaused = false
+                            },
                             sasayakiCue: popup.sasayakiCue,
-                            sasayakiPlayer: viewModel.sasayakiPlayer
+                            sasayakiPlayer: viewModel.sasayakiPlayer,
+                            wasPaused: viewModel.wasPaused
                         )
                         .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                     }
@@ -418,9 +422,13 @@ struct ReaderView: View {
         .overlay(alignment: .topTrailing) {
             if userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio {
                 Button {
-                    viewModel.sasayakiPlayer.togglePlayback()
+                    if viewModel.wasPaused {
+                        viewModel.wasPaused = false
+                    } else {
+                        viewModel.sasayakiPlayer.togglePlayback()
+                    }
                 } label: {
-                    Image(systemName: viewModel.sasayakiPlayer.isPlaying ? "pause.fill" : "waveform")
+                    Image(systemName: viewModel.sasayakiPlayer.isPlaying || viewModel.wasPaused ? "pause.fill" : "waveform")
                         .font(.subheadline)
                         .frame(width: 24, height: lineHeight)
                 }

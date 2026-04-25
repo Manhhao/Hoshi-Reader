@@ -31,7 +31,9 @@ struct SasayakiSettingsView: View {
             
             if userConfig.enableSasayaki {
                 Section("Settings") {
+                    Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
+                    Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)
                 }
                 
                 Section("Light Theme") {
