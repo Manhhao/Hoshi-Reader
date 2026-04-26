@@ -12,14 +12,12 @@ const KANJI_RANGE = '\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005';
 const KANJI_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const KANJI_SEGMENT_PATTERN = new RegExp(`[${KANJI_RANGE}]+|[^${KANJI_RANGE}]+`, 'g');
 const KANA_PATTERN = /[\u3040-\u30FF\uFF66-\uFF9F]/;
-const CJK_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
 const audioUrls = {};
-let currentAudio = null;
 let lastSelection = '';
 let currentDictionaryMedia = null;
 const selectedDictionaries = {};
@@ -54,7 +52,7 @@ function isStringPartiallyJapanese(text) {
     if (!text) {
         return false;
     }
-    return KANA_PATTERN.test(text) || CJK_PATTERN.test(text);
+    return KANA_PATTERN.test(text) || KANJI_PATTERN.test(text);
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
@@ -62,7 +60,7 @@ function isStringPartiallyChinese(text) {
     if (!text) {
         return false;
     }
-    return CJK_PATTERN.test(text) || /[\u3100-\u312F\u31A0-\u31BF]/.test(text);
+    return KANJI_PATTERN.test(text) || /[\u3100-\u312F\u31A0-\u31BF]/.test(text);
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/text-utilities.js#L28
@@ -426,7 +424,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
         const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
         const content = applyTableStyles(tempDiv.innerHTML);
-        let listIdentifier = '';
+        let label = '';
         if (dictChanged) {
             label = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
         } else {
@@ -1393,7 +1391,7 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
         });
         dictWrapper.appendChild(ol);
     } else {
-        contents.forEach((item, idx) => {
+        contents.forEach((item) => {
             const wrapper = el('div');
             const tags = createGlossaryTags(parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
             if (tags) {
@@ -1431,7 +1429,7 @@ window.renderPopup = function() {
             const entryDiv = el('div', { className: 'entry' });
             entryDiv.appendChild(createEntryHeader(entry, idx));
             
-            if (window.audioEnableAutoplay && window.audioSources?.length && idx == 0) {
+            if (window.audioEnableAutoplay && window.audioSources?.length && idx === 0) {
                 setTimeout(() => {
                     const audioButton = entryDiv.querySelector('.audio-button');
                     if (audioButton) {
