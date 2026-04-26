@@ -237,6 +237,10 @@ struct ScrollReaderWebView: UIViewRepresentable {
             
             let css = """
             \(fontFaceCss)
+            * {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
             html, body {
                 margin: 0 !important;
                 padding: 0 !important;
@@ -248,6 +252,17 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 padding: \(Double(parent.userConfig.verticalPadding) / 2)vh \(Double(parent.userConfig.horizontalPadding) / 2)vw !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            pre, code {
+                white-space: pre-wrap !important;
+                overflow-wrap: break-word !important;
+            }
+            table {
+                table-layout: fixed !important;
+                width: 100% !important;
+                overflow-wrap: break-word !important;
             }
             img.block-img {
                 max-width: \(imgWidth) !important;

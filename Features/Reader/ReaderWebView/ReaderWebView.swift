@@ -286,6 +286,10 @@ struct ReaderWebView: UIViewRepresentable {
             
             let css = """
             \(fontFaceCss)
+            * {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;
@@ -301,7 +305,19 @@ struct ReaderWebView: UIViewRepresentable {
                 box-sizing: border-box !important;
                 column-width: var(--page-width, 100vw) !important;
                 column-gap: \(columnGapValue)\(columnGapUnit);
+                column-fill: auto !important;
                 padding: \(Double(parent.userConfig.verticalPadding) / 2)vh \(Double(parent.userConfig.horizontalPadding) / 2)vw !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            pre, code {
+                white-space: pre-wrap !important;
+                overflow-wrap: break-word !important;
+            }
+            table {
+                table-layout: fixed !important;
+                width: 100% !important;
+                overflow-wrap: break-word !important;
             }
             img.block-img {
                 max-width: \(100 - parent.userConfig.horizontalPadding)vw !important;
