@@ -32,6 +32,11 @@ struct PopupItem: Identifiable {
     var sasayakiCue: SasayakiMatch?
 }
 
+private struct Position {
+    var index: Int
+    var progress: Double
+}
+
 @Observable
 @MainActor
 class ReaderLoaderViewModel {
@@ -112,6 +117,13 @@ class ReaderViewModel {
     
     // highlights
     var highlights: [Highlight] = []
+    
+    // navigation history
+    private var backHistory: [Position] = []
+    private var forwardHistory: [Position] = []
+    private var currentPosition: Position { Position(index: index, progress: currentProgress) }
+    var backTarget: Int? { backHistory.last.map { calculateCharacterProgress(for: $0) } }
+    var forwardTarget: Int? { forwardHistory.last.map { calculateCharacterProgress(for: $0) } }
     
     init(
         book: BookMetadata,
@@ -296,20 +308,13 @@ class ReaderViewModel {
     
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
-        flushStats()
-        if result.spineIndex == self.index {
-            persistBookmark(progress: result.progress)
-            bridge.send(.restoreProgress(result.progress))
-        } else {
-            loadChapter(index: result.spineIndex, progress: result.progress)
-        }
-        resetTrackingBaseline()
+        recordPosition()
+        navigate(to: Position(index: result.spineIndex, progress: result.progress))
     }
     
     func jumpToChapter(index: Int, fragment: String? = nil) {
-        flushStats()
-        loadChapter(index: index, progress: 0, fragment: fragment)
-        resetTrackingBaseline()
+        recordPosition()
+        navigate(to: Position(index: index, progress: 0), fragment: fragment)
     }
     
     func jumpToLink(_ url: URL) -> Bool {
@@ -317,6 +322,7 @@ class ReaderViewModel {
             return false
         }
         
+        recordPosition()
         flushStats()
         
         if destination.spineIndex == self.index {
@@ -494,6 +500,35 @@ class ReaderViewModel {
         }
     }
     
+    func navigateBackwards() {
+        let target = backHistory.removeLast()
+        forwardHistory.append(currentPosition)
+        navigate(to: target)
+    }
+    
+    func navigateForwards() {
+        let target = forwardHistory.removeLast()
+        backHistory.append(currentPosition)
+        navigate(to: target)
+    }
+    
+    func clearForwardHistory() {
+        if backHistory.isEmpty {
+            forwardHistory.removeAll()
+        }
+    }
+    
+    private func navigate(to position: Position, fragment: String? = nil) {
+        flushStats()
+        if position.index == index && fragment == nil {
+            persistBookmark(progress: position.progress)
+            bridge.send(.restoreProgress(position.progress))
+        } else {
+            loadChapter(index: position.index, progress: position.progress, fragment: fragment)
+        }
+        resetTrackingBaseline()
+    }
+    
     private func persistBookmark(progress: Double) {
         currentProgress = progress
         bridge.updateProgress(progress)
@@ -669,6 +704,18 @@ class ReaderViewModel {
     
     private func syncHighlights() {
         bridge.updateHighlights(chapterHighlights())
+    }
+    
+    private func recordPosition() {
+        backHistory.append(currentPosition)
+        forwardHistory.removeAll()
+    }
+    
+    private func calculateCharacterProgress(for position: Position) -> Int {
+        let spineItem = document.spine.items[position.index]
+        let manifestItem = document.manifest.items[spineItem.idref]!
+        let chapterInfo = bookInfo.chapterInfo[manifestItem.path]!
+        return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * position.progress)
     }
     
     private static func getDefaultStatistic(title: String) -> Statistics {
