@@ -69,14 +69,14 @@ struct ReaderView: View {
         if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
             return Color(red: 0.949, green: 0.886, blue: 0.788)
         }
-        if userConfig.theme == .custom {
-            return userConfig.customBackgroundColor
-        }
-        return Color(.systemBackground)
+        return userConfig.theme == .custom ? userConfig.customBackgroundColor : Color(.systemBackground)
     }
     
     private var readerTextColor: String? {
-        userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
+        if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
+            return "#211403"
+        }
+        return userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
     
     private var readerTheme: ColorScheme {
