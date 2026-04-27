@@ -72,6 +72,7 @@ struct HighlightListView: View {
                 }
             }
             .listStyle(.grouped)
+            .scrollContentBackground(.hidden)
             .overlay {
                 if highlights.isEmpty {
                     ContentUnavailableView("No Highlights", systemImage: "highlighter")
