@@ -47,7 +47,7 @@ struct HoshiReaderApp: App {
                 pendingTab: $pendingTab
             )
             .environment(userConfig)
-            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+            .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme == .sepia && userConfig.sepiaInvertInDark ? nil : userConfig.theme.colorScheme))
             .onChange(of: scenePhase, initial: true) { _, phase in
                 switch phase {
                 case .active:
@@ -114,8 +114,8 @@ class ShortcutHandler {
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
-        configurationForConnecting connectingSceneSession: UISceneSession,
-        options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+                     configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         config.delegateClass = ShortcutSceneDelegate.self
         return config

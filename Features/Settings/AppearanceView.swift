@@ -54,6 +54,9 @@ struct AppearanceView: View {
                     if userConfig.theme == .system {
                         Toggle("Use Sepia as Light Theme", isOn: $userConfig.systemLightSepia)
                     }
+                    if userConfig.theme == .sepia {
+                        Toggle("Invert in System Dark Theme", isOn: $userConfig.sepiaInvertInDark)
+                    }
                     if userConfig.theme == .custom {
                         Picker("Interface", selection: $userConfig.uiTheme) {
                             Text("System").tag(Themes.system)

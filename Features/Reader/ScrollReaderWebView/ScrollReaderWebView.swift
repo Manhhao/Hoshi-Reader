@@ -13,6 +13,7 @@ import UIKit
 struct ScrollReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
     let bridge: WebViewBridge
+    let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
     var onNextChapter: () -> Bool
@@ -272,8 +273,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             """
             
             let textColorOverrideJs: String = {
-                guard parent.userConfig.theme == .custom else { return "" }
-                let hex = UIColor(parent.userConfig.customTextColor).hexString
+                guard let hex = parent.textColor else { return "" }
                 return "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
             }()
             

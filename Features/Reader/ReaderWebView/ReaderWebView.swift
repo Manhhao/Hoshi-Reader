@@ -120,6 +120,7 @@ struct ReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
     let viewSize: CGSize
     let bridge: WebViewBridge
+    let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
     var onNextChapter: () -> Bool
@@ -391,8 +392,7 @@ struct ReaderWebView: UIViewRepresentable {
             """
             
             let textColorOverrideJs: String = {
-                guard parent.userConfig.theme == .custom else { return "" }
-                let hex = UIColor(parent.userConfig.customTextColor).hexString
+                guard let hex = parent.textColor else { return "" }
                 return "document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)');"
             }()
             

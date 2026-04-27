@@ -65,7 +65,14 @@ struct ReaderView: View {
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
     
+    private var sepiaInverted: Bool {
+        userConfig.theme == .sepia && userConfig.sepiaInvertInDark && systemColorScheme == .dark
+    }
+    
     private var readerBackgroundColor: Color {
+        if sepiaInverted {
+            return Color(red: 0.094, green: 0.082, blue: 0.047)
+        }
         if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
             return Color(red: 0.949, green: 0.886, blue: 0.788)
         }
@@ -73,8 +80,11 @@ struct ReaderView: View {
     }
     
     private var readerTextColor: String? {
+        if sepiaInverted {
+            return "#F2E2C9"
+        }
         if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
-            return "#211403"
+            return "#332A1B"
         }
         return userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
     }
@@ -82,6 +92,9 @@ struct ReaderView: View {
     private var readerTheme: ColorScheme {
         if userConfig.theme == .custom {
             return userConfig.uiTheme.colorScheme ?? systemColorScheme
+        }
+        if userConfig.theme == .sepia && userConfig.sepiaInvertInDark {
+            return systemColorScheme
         }
         return userConfig.theme.colorScheme ?? systemColorScheme
     }
@@ -182,6 +195,7 @@ struct ReaderView: View {
                         ScrollReaderWebView(
                             userConfig: userConfig,
                             bridge: viewModel.bridge,
+                            textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
                             sasayakiBackgroundColor: sasayakiBackgroundColor,
                             onNextChapter: viewModel.nextChapter,
@@ -229,6 +243,7 @@ struct ReaderView: View {
                             userConfig: userConfig,
                             viewSize: viewSize,
                             bridge: viewModel.bridge,
+                            textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
                             sasayakiBackgroundColor: sasayakiBackgroundColor,
                             onNextChapter: viewModel.nextChapter,
@@ -540,7 +555,7 @@ struct ReaderView: View {
             case .appearance:
                 AppearanceView(userConfig: userConfig, showDismiss: true)
                     .presentationDetents([.medium])
-                    .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme.colorScheme ?? systemColorScheme))
+                    .preferredColorScheme(readerTheme)
             case .chapters:
                 ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
                     viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
@@ -631,6 +646,6 @@ struct ReaderView: View {
         .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
         .persistentSystemOverlays(focusMode ? .hidden : .automatic)
-        .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : userConfig.theme.colorScheme)
+        .preferredColorScheme(readerTheme)
     }
 }
