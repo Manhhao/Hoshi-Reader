@@ -320,6 +320,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
             }
+            html {
+                -webkit-line-box-contain: block glyphs replaced;
+            }
             html, body {
                 margin: 0 !important;
                 padding: 0 !important;
@@ -329,6 +332,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             body {
                 font-family: '\(parent.userConfig.selectedFont)', serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
+                -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
@@ -358,6 +362,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
             a {
                 color: rgba(66, 108, 245, 1) !important;
+            }
+            ruby > rt, ruby > rp {
+                -webkit-user-select: none;
             }
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;

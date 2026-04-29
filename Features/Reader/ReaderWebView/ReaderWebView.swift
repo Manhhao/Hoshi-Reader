@@ -439,6 +439,9 @@ struct ReaderWebView: UIViewRepresentable {
                 --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
             }
+            html {
+                -webkit-line-box-contain: block glyphs replaced;
+            }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;
@@ -450,6 +453,7 @@ struct ReaderWebView: UIViewRepresentable {
             body {
                 font-family: \(parent.userConfig.selectedFont), serif !important;
                 font-size: \(parent.userConfig.fontSize)px !important;
+                -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 column-width: var(--page-width, 100vw) !important;
@@ -485,6 +489,9 @@ struct ReaderWebView: UIViewRepresentable {
             }
             a {
                 color: rgba(66, 108, 245, 1) !important;
+            }
+            ruby > rt, ruby > rp {
+                -webkit-user-select: none;
             }
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
