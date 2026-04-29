@@ -46,13 +46,16 @@ public struct EPUBDocument {
     /// though EPUB 3 uses XHTML navigation documents.
     public let tableOfContents: EPUBTableOfContents
 
+    public let guide: EPUBGuide?
+    
     init(
         directory: URL,
         contentDirectory: URL,
         metadata: EPUBMetadata,
         manifest: EPUBManifest,
         spine: EPUBSpine,
-        tableOfContents: EPUBTableOfContents
+        tableOfContents: EPUBTableOfContents,
+        guide: EPUBGuide?
     ) {
         self.directory = directory
         self.contentDirectory = contentDirectory
@@ -60,6 +63,7 @@ public struct EPUBDocument {
         self.manifest = manifest
         self.spine = spine
         self.tableOfContents = tableOfContents
+        self.guide = guide
     }
 
     /// Creates an EPUBDocument by parsing the EPUB file at the specified URL.

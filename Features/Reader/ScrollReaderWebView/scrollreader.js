@@ -7,7 +7,12 @@
 //
 
 window.hoshiReader = {
-    ttuRegex: /[^0-9A-Z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
+    ttuRegexNegated: /[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
+    ttuRegex: /[0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]/iu,
+    activeCueId: null,
+    cueWrappers: new Map(),
+    nodeStartOffsets: new WeakMap(),
+    nodeStartRawOffsets: new WeakMap(),
     
     isVertical() {
         return window.getComputedStyle(document.body).writingMode === "vertical-rl";
@@ -19,7 +24,19 @@ window.hoshiReader = {
     },
     
     countChars(text) {
-        return text.replace(this.ttuRegex, '').length;
+        return Array.from(this.normalizeText(text)).length;
+    },
+    
+    countRawChars(text) {
+        return Array.from(text).length;
+    },
+    
+    normalizeText(text) {
+        return text.replace(this.ttuRegexNegated, '');
+    },
+    
+    isMatchableChar(char) {
+        return this.ttuRegex.test(char || '');
     },
     
     createWalker(rootNode) {
@@ -28,6 +45,50 @@ window.hoshiReader = {
         return document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
             acceptNode: (n) => this.isFurigana(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
         });
+    },
+    
+    getRect(target) {
+        const rect = target.getClientRects()[0];
+        return rect || target.getBoundingClientRect();
+    },
+    
+    scrollToTarget(target) {
+        const rect = this.getRect(target);
+        
+        if (this.isVertical()) {
+            if (rect.left >= 0 && rect.right <= window.innerWidth) {
+                return false;
+            }
+            
+            target.scrollIntoView({ block: 'start', inline: 'nearest' });
+            return true;
+        }
+        
+        if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
+            return false;
+        }
+        
+        target.scrollIntoView({ block: 'start', inline: 'nearest' });
+        return true;
+    },
+    
+    buildNodeOffsets() {
+        const offsets = new WeakMap();
+        const rawOffsets = new WeakMap();
+        const walker = this.createWalker();
+        let count = 0;
+        let rawCount = 0;
+        let node;
+        
+        while (node = walker.nextNode()) {
+            offsets.set(node, count);
+            rawOffsets.set(node, rawCount);
+            count += this.countChars(node.textContent);
+            rawCount += this.countRawChars(node.textContent);
+        }
+        
+        this.nodeStartOffsets = offsets;
+        this.nodeStartRawOffsets = rawOffsets;
     },
     
     calculateProgress() {
@@ -52,6 +113,155 @@ window.hoshiReader = {
         }
         
         return totalChars > 0 ? exploredChars / totalChars : 0;
+    },
+    
+    collectSasayakiCueRanges(cues) {
+        const cueRanges = new Map();
+        if (!cues.length) {
+            return [];
+        }
+        
+        let index = 0;
+        let current = cues[0];
+        let start = current.start;
+        let end = start + current.length;
+        let cursor = 0;
+        let segment = null;
+        
+        const flushSegment = (node) => {
+            if (!segment) {
+                return;
+            }
+            
+            const ranges = cueRanges.get(segment.id) || [];
+            ranges.push({ node, start: segment.start, end: segment.end });
+            cueRanges.set(segment.id, ranges);
+            segment = null;
+        };
+        
+        const advanceCue = () => {
+            index += 1;
+            current = cues[index];
+            if (current) {
+                start = current.start;
+                end = start + current.length;
+            }
+        };
+        
+        let node;
+        const walker = this.createWalker();
+        while (current && (node = walker.nextNode())) {
+            const text = node.textContent;
+            let i = 0;
+            while (i < text.length && current) {
+                const char = String.fromCodePoint(text.codePointAt(i));
+                const next = i + char.length;
+                if (this.isMatchableChar(char)) {
+                    if (cursor >= start && cursor < end) {
+                        if (!segment) {
+                            segment = { id: current.id, start: i, end: next };
+                        } else {
+                            segment.end = next;
+                        }
+                    } else {
+                        flushSegment(node);
+                    }
+                    cursor += 1;
+                    if (cursor === end) {
+                        flushSegment(node);
+                        advanceCue();
+                    }
+                } else if (segment) {
+                    segment.end = next;
+                }
+                i = next;
+            }
+            flushSegment(node);
+        }
+        
+        return cues.map(cue => ({
+            id: cue.id,
+            ranges: cueRanges.get(cue.id) || []
+        }));
+    },
+    
+    applySasayakiCues(cues) {
+        this.resetSasayakiCues();
+        
+        const cueRanges = this.collectSasayakiCueRanges(cues);
+        const range = document.createRange();
+        for (let i = cueRanges.length - 1; i >= 0; i--) {
+            const { id, ranges } = cueRanges[i];
+            if (!ranges.length) {
+                continue;
+            }
+            
+            const wrappers = [];
+            for (let j = ranges.length - 1; j >= 0; j--) {
+                const segment = ranges[j];
+                range.setStart(segment.node, segment.start);
+                range.setEnd(segment.node, segment.end);
+                
+                const wrapper = document.createElement('span');
+                wrapper.className = 'hoshi-sasayaki-cue';
+                wrapper.appendChild(range.extractContents());
+                range.insertNode(wrapper);
+                
+                wrappers.push(wrapper);
+            }
+            wrappers.reverse();
+            this.cueWrappers.set(id, wrappers);
+        }
+        
+        this.buildNodeOffsets();
+    },
+    
+    highlightSasayakiCue(cueId, reveal) {
+        this.clearSasayakiCue();
+        
+        const wrappers = this.cueWrappers.get(cueId);
+        if (!wrappers?.length) {
+            return null;
+        }
+        
+        this.activeCueId = cueId;
+        wrappers.forEach(wrapper => wrapper.classList.add('hoshi-sasayaki-active'));
+        
+        if (reveal && this.scrollToTarget(wrappers[0])) {
+            return this.calculateProgress();
+        }
+        
+        return null;
+    },
+    
+    clearSasayakiCue() {
+        if (!this.activeCueId) {
+            return;
+        }
+        
+        const wrappers = this.cueWrappers.get(this.activeCueId) || [];
+        wrappers.forEach(wrapper => wrapper.classList.remove('hoshi-sasayaki-active'));
+        this.activeCueId = null;
+    },
+    
+    resetSasayakiCues() {
+        this.cueWrappers.forEach(wrappers => this.unwrap(wrappers));
+        this.cueWrappers.clear();
+        this.activeCueId = null;
+    },
+    
+    unwrap(wrappers) {
+        wrappers.forEach(wrapper => {
+            const parent = wrapper.parentNode;
+            if (!parent) {
+                return;
+            }
+            while (wrapper.firstChild) {
+                parent.insertBefore(wrapper.firstChild, wrapper);
+            }
+            parent.removeChild(wrapper);
+            parent.normalize();
+        });
     },
     
     registerCopyText() {
@@ -79,7 +289,8 @@ window.hoshiReader = {
         window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
     },
     
-    restoreProgress(progress) {
+    async restoreProgress(progress) {
+        await document.fonts.ready;
         if (progress <= 0) {
             this.notifyRestoreComplete();
             return;
@@ -122,10 +333,13 @@ window.hoshiReader = {
             }
         }
         
-        this.notifyRestoreComplete();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.notifyRestoreComplete());
+        });
     },
     
-    jumpToFragment(fragment) {
+    async jumpToFragment(fragment) {
+        await document.fonts.ready;
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);
         
@@ -135,7 +349,9 @@ window.hoshiReader = {
         }
         
         target.scrollIntoView();
-        this.notifyRestoreComplete();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.notifyRestoreComplete());
+        });
         return true;
     }
 };

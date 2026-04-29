@@ -13,7 +13,7 @@ struct AnkiView: View {
     @State private var ankiManager = AnkiManager.shared
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
-
+    
     private var availableHandlebars: [String] {
         var options = Handlebars.allCases.map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {
@@ -54,6 +54,20 @@ struct AnkiView: View {
                     }
                     .onChange(of: ankiManager.selectedNoteType) { _, _ in ankiManager.save() }
                     
+                    if !ankiManager.useAnkiConnect {
+                        Button("Import Anki Backup (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
+                            isImporting = true
+                        }
+                    }
+                } header: {
+                    Text("Config");
+                } footer: {
+                    if !ankiManager.useAnkiConnect {
+                        Text("Importing a .colpkg/.apkg backup from Anki will allow Hoshi Reader to check for duplicates immediately. It's recommended to do this periodically to reduce drift.")
+                    }
+                }
+                
+                Section {
                     Toggle("Allow Duplicates", isOn: $ankiManager.allowDupes)
                         .onChange(of: ankiManager.allowDupes) { _, _ in ankiManager.save() }
                     
@@ -61,15 +75,14 @@ struct AnkiView: View {
                         .onChange(of: ankiManager.compactGlossaries) { _, _ in ankiManager.save() }
                     
                     if !ankiManager.useAnkiConnect {
-                        Button("Import .colpkg (Stored Words: \(ankiManager.savedWords.count.formatted(.number.grouping(.never))))") {
-                            isImporting = true
-                        }
+                        Toggle("Embed Dictionary Media", isOn: $ankiManager.embedMedia)
+                            .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
                     }
                 } header: {
-                    Text("Settings");
+                    Text("Settings")
                 } footer: {
                     if !ankiManager.useAnkiConnect {
-                        Text("Importing a .colpkg backup from Anki will allow duplicate checks before sending to Anki. It's recommended to do this periodically to reduce drift.")
+                        Text("Embedding media will increase size of glossaries (AnkiMobile).")
                     }
                 }
             }
@@ -137,11 +150,11 @@ struct AnkiView: View {
         }
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [UTType(filenameExtension: "colpkg")!]
+            allowedContentTypes: ["colpkg", "apkg"].map { UTType(filenameExtension: $0)! }
         ) { result in
             if case .success(let url) = result {
                 do {
-                    try ankiManager.importColpkg(from: url)
+                    try ankiManager.importAnkiBackup(from: url)
                 } catch {
                     ankiManager.errorMessage = error.localizedDescription
                 }

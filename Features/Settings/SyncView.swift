@@ -20,16 +20,16 @@ struct SyncView: View {
             Section {
                 Toggle("Enable", isOn: $userConfig.enableSync)
             } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Sync bookmarks and statistics with ッツ Reader or between Hoshi Reader devices via Google Drive.")
-                        if userConfig.enableSync {
-                            Text("A **[Google Cloud project](https://github.com/ttu-ttu/ebook-reader?tab=readme-ov-file#storage-sources)** is necessary for syncing.")
-                            Text("1. After the initial setup, create another **OAuth client ID** in the same project.")
-                            Text("2. Select **iOS** as the **Application type** and set the **Bundle ID** to '**de.manhhao.hoshi**'.")
-                            Text("3. Paste the **Client ID** in the textbox below and press '**Connect Google Drive**'.")
-                            Text("4. You can sync individual books by long-pressing and selecting '**Sync**'.")
-                        }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sync bookmarks and statistics with ッツ Reader or between Hoshi Reader devices via Google Drive.")
+                    if userConfig.enableSync {
+                        Text("A **[Google Cloud project](https://github.com/ttu-ttu/ebook-reader?tab=readme-ov-file#storage-sources)** is necessary for syncing.")
+                        Text("1. After the initial setup, create another **OAuth client ID** in the same project.")
+                        Text("2. Select **iOS** as the **Application type** and set the **Bundle ID** to '**de.manhhao.hoshi**'.")
+                        Text("3. Paste the **Client ID** in the textbox below and press '**Connect Google Drive**'.")
+                        Text("4. You can sync individual books by long-pressing and selecting '**Sync**'.")
                     }
+                }
             }
             
             if userConfig.enableSync {
@@ -39,6 +39,7 @@ struct SyncView: View {
                             Text(mode.rawValue).tag(mode)
                         }
                     }
+                    Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
                 }
                 
                 Section("Client ID") {

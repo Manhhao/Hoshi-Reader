@@ -45,5 +45,16 @@ class TokenStorage {
         delete("accessToken")
         delete("refreshToken")
         delete("clientId")
+        Task { @MainActor in
+            GoogleDriveHandler.clearCache()
+        }
+    }
+    
+    static func clearOldKeys() {
+        if UserDefaults.standard.bool(forKey: "TokenStorage.didClear") {
+            return
+        }
+        clear()
+        UserDefaults.standard.set(true, forKey: "TokenStorage.didClear")
     }
 }

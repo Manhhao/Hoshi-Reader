@@ -107,7 +107,7 @@ struct HeaderView: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            AsyncImage(url: coverURL) { image in
+            CoverImage(url: coverURL, maxPixelSize: 256) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Rectangle().fill(Color.secondary.opacity(0.2))
@@ -129,7 +129,7 @@ struct HeaderView: View {
                     } label: {
                         Image(systemName: "arrow.right.to.line")
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.secondary)
                 }
             }
             Spacer()

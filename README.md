@@ -63,7 +63,7 @@ If you're planning on contributing a feature or significant change, please open 
 | Name | Description | License |
 | :--- | :--- | :--- |
 | [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPLv3 |
-| [Yomitan](https://github.com/yomidevs/yomitan) | Pitch accent implementation, Furigana Segmenter | GPLv3 |
+| [Yomitan](https://github.com/yomidevs/yomitan) | Various code from pop-up dictionary | GPLv3 |
 | [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader) | Statistics | BSD-3 |
 | [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | CC-BY-SA-4.0 |
 | [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | Apache-2.0 |

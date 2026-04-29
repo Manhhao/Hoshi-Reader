@@ -131,6 +131,16 @@ body {
     color: inherit;
 }
 
+.expr-tag {
+    font-size: 11px;
+    padding: 2px 4px;
+    margin-right: 2px;
+    background-color: var(--expr-tag-color, rgba(120, 140, 160, 0.22));
+    border-radius: 4px;
+    color: var(--expr-tag-text-color, inherit);
+    -webkit-user-select: text;
+}
+
 .frequency-group {
     display: inline-flex;
     font-size: 11px;
@@ -340,6 +350,12 @@ a {
     font-size: 10px;
     opacity: 0.7;
     display: block;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dict-label.selected > .dict-name {
+    font-weight: bold;
 }
 
 .overlay {
@@ -417,7 +433,7 @@ a {
 }
 
 @media (prefers-color-scheme: light) {
-
+    
     html,
     body {
         --background-color: #fff;
@@ -427,7 +443,7 @@ a {
 }
 
 @media (prefers-color-scheme: dark) {
-
+    
     html,
     body {
         --background-color: #000;
@@ -439,7 +455,7 @@ a {
         --text-color-light4: #777777;
         --background-color-dark1: #333333;
     }
-
+    
     .overlay {
         background: #222;
     }

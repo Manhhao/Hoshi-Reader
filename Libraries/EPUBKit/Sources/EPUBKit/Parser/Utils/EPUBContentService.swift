@@ -38,6 +38,8 @@ protocol EPUBContentService {
     /// Section 3.4.11.
     var manifest: AEXMLElement { get }
     
+    var guide: AEXMLElement? { get }
+    
     /// Initializes the content service with the extracted EPUB directory.
     ///
     /// - Parameter url: The URL of the extracted EPUB directory.
@@ -111,7 +113,12 @@ class EPUBContentServiceImplementation: EPUBContentService {
     /// </manifest>
     /// ```
     var manifest: AEXMLElement { content.root["manifest"] }
-
+    
+    var guide: AEXMLElement? {
+        let element = content.root["guide"]
+        return element.error == nil ? element : nil
+    }
+    
     /// Initializes the content service by locating and parsing the package document.
     ///
     /// The initialization process:

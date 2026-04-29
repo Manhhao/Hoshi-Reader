@@ -15,51 +15,11 @@ struct BookView: View {
     
     var body: some View {
         VStack(spacing: 6) {
-            AsyncImage(url: book.coverURL) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(0.709, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .shadow(color: .primary.opacity(0.3), radius: 5)
-                        .overlay(alignment: .topTrailing) {
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(.white, .blue)
-                                    .padding(6)
-                            }
-                        }
-                        .overlay(alignment: .bottomTrailing) {
-                            if !isSelected && progress >= 0.999 {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(.white, .gray)
-                                    .padding(6)
-                            }
-                        }
-                } else {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.3))
-                        .aspectRatio(0.709, contentMode: .fit)
-                        .overlay(alignment: .topTrailing) {
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(.white, .blue)
-                                    .padding(6)
-                            }
-                        }
-                }
-            }
-            
-            HStack(spacing: 4) {
-                ProgressView(value: progress)
-                    .tint(.primary.opacity(0.4))
-                Text(String(format: "%.1f%%", progress * 100))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            BookCover(
+                book: book,
+                progress: progress,
+                isSelected: isSelected
+            )
             
             Text(book.title ?? "")
                 .font(.system(size: 16))
@@ -67,5 +27,79 @@ struct BookView: View {
                 .frame(height: 40, alignment: .top)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+struct BookCover: View {
+    let book: BookMetadata
+    var progress: Double? = nil
+    var isSelected: Bool = false
+    
+    private let coverAspectRatio: CGFloat = 0.709
+    private let innerCornerRadius: CGFloat = 6
+    private let outerCornerRadius: CGFloat = 7
+    
+    var body: some View {
+        if #available(iOS 26, *) {
+            cover
+                .padding(3)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: outerCornerRadius, style: .continuous))
+        } else {
+            cover
+                .padding(3)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: outerCornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: outerCornerRadius, style: .continuous)
+                        .stroke(.primary.opacity(0.06), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 3, x: 0, y: 2)
+        }
+    }
+    
+    private var cover: some View {
+        VStack(spacing: progress == nil ? 0 : 3) {
+            CoverImage(url: book.coverURL, maxPixelSize: 768) { image in
+                image
+                    .resizable()
+                    .aspectRatio(coverAspectRatio, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous))
+            } placeholder: {
+                RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous)
+                    .fill(Color.gray.opacity(0.3))
+                    .aspectRatio(coverAspectRatio, contentMode: .fit)
+            }
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    checkmark(color: .blue)
+                        .padding(6)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !isSelected, let progress, progress >= 0.999 {
+                    checkmark(color: .gray)
+                        .padding(6)
+                }
+            }
+            
+            if let progress {
+                HStack(spacing: 8) {
+                    ProgressView(value: progress)
+                        .tint(.secondary.opacity(0.4))
+                    Text(String(format: "%.1f%%", progress * 100))
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+    
+    private func checkmark(color: Color) -> some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 22))
+            .foregroundStyle(.white, color)
     }
 }

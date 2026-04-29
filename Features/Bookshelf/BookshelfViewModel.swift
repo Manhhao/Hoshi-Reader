@@ -21,6 +21,7 @@ class BookshelfViewModel {
     var successMessage: String = ""
     var isSyncing: Bool = false
     var isDownloading: Bool = false
+    var importBooksProgress: String?
     
     private var bookProgress: [UUID: Double] = [:]
     
@@ -29,7 +30,6 @@ class BookshelfViewModel {
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
-            print(try BookStorage.getDocumentsDirectory().path(percentEncoded: false))
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -76,21 +76,37 @@ class BookshelfViewModel {
             moveBook(book.id, to: name)
         }
     }
-
+    
     func deleteBooks(_ books: Set<BookMetadata>) {
         for book in books {
             deleteBook(book)
         }
     }
     
-    func shelfSections(sortedBy: SortOption) -> [ShelfSection] {
+    func shelfSections(sortedBy: SortOption, showReading: Bool = false) -> [ShelfSection] {
         var sections: [ShelfSection] = []
+        
+        if showReading {
+            let reading = books.filter {
+                let p = progress(for: $0)
+                return p > 0 && p < 0.999
+            }
+            if !reading.isEmpty {
+                sections.append(ShelfSection(
+                    shelf: BookShelf(name: "Reading", bookIds: []),
+                    books: sortBooks(reading, by: sortedBy),
+                    isReading: true
+                ))
+            }
+        }
+        
         for shelf in shelves {
             let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
             sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
         }
         
-        let unshelved = books.filter { !sections.flatMap { $0.books }.contains($0) }
+        let shelvedIds = Set(shelves.flatMap { $0.bookIds })
+        let unshelved = books.filter { !shelvedIds.contains($0.id) }
         sections.append(ShelfSection(shelf: nil, books: sortBooks(unshelved, by: sortedBy)))
         
         return sections
@@ -154,14 +170,8 @@ class BookshelfViewModel {
     
     func importBook(result: Result<URL, Error>) {
         do {
-            let url = try result.get()
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            try processImport(sourceURL: url)
+            try importBook(from: try result.get())
+            loadBooks()
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -170,8 +180,40 @@ class BookshelfViewModel {
     func importBooks(result: Result<[URL], Error>) {
         do {
             let urls = try result.get()
-            for url in urls {
-                importBook(result: .success(url))
+            if urls.isEmpty {
+                return
+            }
+            
+            if urls.count == 1 {
+                importBook(result: .success(urls[0]))
+                return
+            }
+            
+            importBooksProgress = "Importing 1 / \(urls.count)..."
+            Task {
+                defer { importBooksProgress = nil }
+                await Task.yield()
+                
+                var failed: [String] = []
+                for (index, url) in urls.enumerated() {
+                    autoreleasepool {
+                        do {
+                            try importBook(from: url)
+                        } catch {
+                            failed.append(url.lastPathComponent)
+                        }
+                    }
+                    let next = index + 1
+                    if next < urls.count {
+                        importBooksProgress = "Importing \(next + 1) / \(urls.count)..."
+                        await Task.yield()
+                    }
+                }
+                loadBooks()
+                
+                if !failed.isEmpty {
+                    showError(message: "Failed to import:\n\(failed.joined(separator: "\n"))")
+                }
             }
         } catch {
             showError(message: error.localizedDescription)
@@ -187,120 +229,45 @@ class BookshelfViewModel {
             do {
                 let (tempURL, _) = try await URLSession.shared.download(from: url)
                 try processImport(sourceURL: tempURL)
+                loadBooks()
             } catch {
                 showError(message: "Download failed: \(error.localizedDescription)")
             }
         }
     }
-
-    private func determineSyncDirection(local: Bookmark?, ttuProgress: TtuProgress?) -> SyncDirection {
-        guard let local = local, let lastModified = local.lastModified else {
-            if ttuProgress != nil {
-                return .importFromTtu
-            } else {
-                return .synced
-            }
-        }
-        
-        guard let ttuProgress else {
-            return .exportToTtu
-        }
-        
-        if lastModified > ttuProgress.lastBookmarkModified {
-            return .exportToTtu
-        } else if ttuProgress.lastBookmarkModified > lastModified {
-            return .importFromTtu
-        } else {
-            return .synced
-        }
-    }
     
-    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode) {
-        guard let title = book.title,
-              let bookFolder = book.folder else { return }
-        
+    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
         isSyncing = true
         Task {
             defer {
                 isSyncing = false
             }
-            
             do {
-                let root = try await GoogleDriveHandler.shared.findRootFolder()
-                
-                // Ensure book folder exists on Google Drive (search by sanitized name, create if needed)
-                let coverPath = book.cover
-                let driveFolderId = try await GoogleDriveHandler.shared.ensureBookFolder(
-                    bookTitle: title,
-                    rootFolder: root,
-                    coverImageDataProvider: coverPath.map { path in
-                        return {
-                            guard let docsDirectory = try? BookStorage.getDocumentsDirectory() else { return nil }
-                            let coverURL = docsDirectory.appendingPathComponent(path)
-                            guard FileManager.default.fileExists(atPath: coverURL.path(percentEncoded: false)) else { return nil }
-                            return try? Data(contentsOf: coverURL)
-                        }
-                    }
+                let result = try await SyncManager.shared.syncBook(
+                    book: book,
+                    direction: direction,
+                    syncStats: syncStats,
+                    statsSyncMode: statsSyncMode,
+                    syncAudioBook: syncAudioBook
                 )
-                
-                let directory = try BookStorage.getBooksDirectory()
-                let url = directory.appendingPathComponent(bookFolder)
-                let localBookmark = BookStorage.loadBookmark(root: url)
-                
-                let progressFileId = try await GoogleDriveHandler.shared.findProgressFileId(folderId: driveFolderId)
-                let ttuProgress: TtuProgress? = if let progressFileId {
-                    try await GoogleDriveHandler.shared.getProgressFile(fileId: progressFileId)
-                } else {
-                    nil
-                }
-                
-                var statsFileId: String?
-                var ttuStats: [Statistics]?
-                var localStats: [Statistics]?
-                if syncStats {
-                    localStats = BookStorage.loadStatistics(root: url)
-                    statsFileId = try await GoogleDriveHandler.shared.findStatsFileId(folderId: driveFolderId)
-                    ttuStats = if let statsFileId {
-                        try await GoogleDriveHandler.shared.getStatsFile(fileId: statsFileId)
-                    } else {
-                        nil
-                    }
-                }
-                
-                let syncDirection = direction ?? determineSyncDirection(local: localBookmark, ttuProgress: ttuProgress)
-                switch syncDirection {
-                case .importFromTtu:
-                    guard let ttuProgress else { return }
-                    importProgress(ttuProgress: ttuProgress, to: url)
-                    if syncStats {
-                        let mergedStats = mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
-                        if !mergedStats.isEmpty {
-                            try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
-                        }
-                    }
-                    showSuccess(message: "Synced \(title) from ッツ\n\(ttuProgress.exploredCharCount) characters")
-                case .exportToTtu:
-                    guard let localBookmark else { return }
-                    try await exportProgress(
-                        localBookmark: localBookmark,
-                        ttuProgress: ttuProgress,
-                        folderId: driveFolderId,
-                        fileId: progressFileId,
-                        url: url
-                    )
-                    if syncStats {
-                        let mergedStats = mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode)
-                        if !mergedStats.isEmpty {
-                            try await GoogleDriveHandler.shared.updateStatsFile(folderId: driveFolderId, fileId: statsFileId, stats: mergedStats)
-                        }
-                    }
-                    showSuccess(message: "Synced \(title) to ッツ\n\(localBookmark.characterCount) characters")
-                case .synced:
-                    showSuccess(message: "\(title) is already synced")
-                }
+                handleSyncResult(result)
             } catch {
                 showError(message: "Sync failed: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    private func handleSyncResult(_ result: SyncResult) {
+        switch result {
+        case .synced(let title):
+            showSuccess(message: "\(title) is already synced")
+        case .imported(let title, let characterCount):
+            loadBookProgress()
+            showSuccess(message: "Synced \(title) from ッツ\n\(characterCount) characters")
+        case .exported(let title, let characterCount):
+            showSuccess(message: "Synced \(title) to ッツ\n\(characterCount) characters")
+        case .skipped:
+            break
         }
     }
     
@@ -322,7 +289,7 @@ class BookshelfViewModel {
     }
     
     func clearInbox() {
-        guard let documentsDirectory = try? BookStorage.getDocumentsDirectory() else {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return
         }
         
@@ -340,79 +307,54 @@ class BookshelfViewModel {
         }
     }
     
-    private func importProgress(ttuProgress: TtuProgress, to url: URL) {
-        guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
-        
-        let resolved = bookInfo.resolveCharacterPosition(ttuProgress.exploredCharCount)
-        
-        let bookmark = Bookmark(
-            chapterIndex: resolved?.spineIndex ?? 0,
-            progress: resolved?.progress ?? 0,
-            characterCount: ttuProgress.exploredCharCount,
-            lastModified: ttuProgress.lastBookmarkModified
-        )
-        
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
-        loadBookProgress()
-    }
-    
-    private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {
-        guard let bookInfo = BookStorage.loadBookInfo(root: url),
-              let lastModified = localBookmark.lastModified else { return }
-        
-        let unixTimestamp = Int(lastModified.timeIntervalSince1970 * 1000)
-        let roundedDate = Date(timeIntervalSince1970: TimeInterval(unixTimestamp) / 1000.0)
-        
-        let progress = TtuProgress(
-            dataId: ttuProgress?.dataId ?? 0,
-            exploredCharCount: localBookmark.characterCount,
-            progress: Double(localBookmark.characterCount) / Double(bookInfo.characterCount),
-            lastBookmarkModified: roundedDate
-        )
-        
-        try await GoogleDriveHandler.shared.updateProgressFile(
-            folderId: folderId,
-            fileId: fileId,
-            progress: progress
-        )
-        
-        let bookmark = Bookmark(
-            chapterIndex: localBookmark.chapterIndex,
-            progress: localBookmark.progress,
-            characterCount: localBookmark.characterCount,
-            lastModified: roundedDate
-        )
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
-    }
-    
-    private func mergeStatistics(localStatistics: [Statistics], externalStatistics: [Statistics], syncMode: StatisticsSyncMode) -> [Statistics] {
-        if syncMode == .replace {
-            return externalStatistics
+    func runSasayakiMatch(book: BookMetadata, srtURL: URL, searchWindow: Int) async throws -> SasayakiMatchData {
+        guard let folder = book.folder else {
+            throw URLError(.fileDoesNotExist)
         }
         
-        var grouped: [String: Statistics] = [:]
-        
-        for stat in localStatistics {
-            grouped[stat.dateKey] = stat
-        }
-        
-        for stat in externalStatistics {
-            if let existing = grouped[stat.dateKey] {
-                if stat.lastStatisticModified > existing.lastStatisticModified {
-                    grouped[stat.dateKey] = stat
-                }
-            } else {
-                grouped[stat.dateKey] = stat
+        let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
+        let accessing = srtURL.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                srtURL.stopAccessingSecurityScopedResource()
             }
         }
         
-        return Array(grouped.values)
+        let srtData = try Data(contentsOf: srtURL)
+        let cues = SasayakiParser.parseCues(from: srtData)
+        let result = try SasayakiMatcher.match(
+            rootURL: rootURL,
+            cues: cues,
+            searchWindow: searchWindow
+        )
+        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        return result
+    }
+    
+    func loadSasayakiMatch(book: BookMetadata) -> SasayakiMatchData? {
+        guard let folder = book.folder,
+              let books = try? BookStorage.getBooksDirectory() else {
+            return nil
+        }
+        
+        let root = books.appendingPathComponent(folder)
+        return BookStorage.loadSasayakiMatch(root: root)
+    }
+    
+    private func importBook(from url: URL) throws {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        try processImport(sourceURL: url)
     }
     
     private func processImport(sourceURL: URL) throws {
         let tempDir = FileManager.default.temporaryDirectory
         let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
-
+        
         try FileManager.default.copyItem(at: sourceURL, to: tempURL)
         
         defer {
@@ -465,8 +407,6 @@ class BookshelfViewModel {
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
             try BookStorage.delete(at: localURL)
-            
-            books = try BookStorage.loadAllBooks()
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)
@@ -520,7 +460,15 @@ class BookshelfViewModel {
     }
 }
 
-struct ShelfSection {
+struct ShelfSection: Identifiable {
     let shelf: BookShelf?
     var books: [BookMetadata]
+    var isReading: Bool = false
+    
+    var id: String {
+        if isReading {
+            return "__reading__"
+        }
+        return shelf.map { "shelf:\($0.name)" } ?? "unshelved"
+    }
 }

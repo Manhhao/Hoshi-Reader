@@ -15,21 +15,46 @@ enum FileNames: Sendable {
     static let bookinfo = "bookinfo.json"
     static let shelves = "shelves.json"
     static let statistics = "statistics.json"
+    static let sasayakiMatch = "sasayaki_match.json"
+    static let sasayakiPlayback = "sasayaki_playback.json"
+    static let highlights = "highlights.json"
 }
 
 struct BookStorage {
-    static func getDocumentsDirectory() throws -> URL {
+    static func getAppDirectory() throws -> URL {
         guard let url = FileManager.default.urls(
-            for: .documentDirectory,
+            for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first else {
-            throw BookStorageError.documentsDirectoryNotFound
+            throw BookStorageError.appDirectoryNotFound
+        }
+        if !FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
         return url
     }
     
+    static func migrateFromDocuments() {
+        guard let appSupport = try? getAppDirectory(),
+              let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        
+        let migrated = UserDefaults.standard.bool(forKey: "migratedToAppSupport")
+        guard !migrated else { return }
+        
+        let items = ["Books", "Fonts", "Dictionaries", "Audio", "anki_words.json", "anki_config.json"]
+        for item in items {
+            let src = documents.appendingPathComponent(item)
+            let dst = appSupport.appendingPathComponent(item)
+            guard FileManager.default.fileExists(atPath: src.path(percentEncoded: false)),
+                  !FileManager.default.fileExists(atPath: dst.path(percentEncoded: false)) else { continue }
+            try? FileManager.default.moveItem(at: src, to: dst)
+        }
+        
+        UserDefaults.standard.set(true, forKey: "migratedToAppSupport")
+    }
+    
     static func getBooksDirectory() throws -> URL {
-        try getDocumentsDirectory().appendingPathComponent("Books")
+        try getAppDirectory().appendingPathComponent("Books")
     }
     
     @discardableResult
@@ -39,8 +64,8 @@ struct BookStorage {
         }
         defer { fileURL.stopAccessingSecurityScopedResource() }
         
-        let documentsDirectory = try getDocumentsDirectory()
-        let destinationURL = documentsDirectory.appendingPathComponent(destinationPath ?? fileURL.lastPathComponent)
+        let appDirectory = try getAppDirectory()
+        let destinationURL = appDirectory.appendingPathComponent(destinationPath ?? fileURL.lastPathComponent)
         
         let destinationFolder = destinationURL.deletingLastPathComponent()
         if !FileManager.default.fileExists(atPath: destinationFolder.path(percentEncoded: false)) {
@@ -53,8 +78,8 @@ struct BookStorage {
     
     @discardableResult
     static func copyFile(from fileURL: URL, to destinationPath: String) throws -> URL {
-        let documentsDirectory = try getDocumentsDirectory()
-        let destinationURL = documentsDirectory.appendingPathComponent(destinationPath)
+        let appDirectory = try getAppDirectory()
+        let destinationURL = appDirectory.appendingPathComponent(destinationPath)
         
         if destinationURL.path(percentEncoded: false) == fileURL.path(percentEncoded: false) {
             return destinationURL
@@ -115,6 +140,18 @@ struct BookStorage {
         load([Statistics].self, from: root.appendingPathComponent(FileNames.statistics))
     }
     
+    static func loadSasayakiMatch(root: URL) -> SasayakiMatchData? {
+        load(SasayakiMatchData.self, from: root.appendingPathComponent(FileNames.sasayakiMatch))
+    }
+    
+    static func loadSasayakiPlayback(root: URL) -> SasayakiPlaybackData? {
+        load(SasayakiPlaybackData.self, from: root.appendingPathComponent(FileNames.sasayakiPlayback))
+    }
+    
+    static func loadHighlights(root: URL) -> [Highlight]? {
+        load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
+    }
+    
     static func loadShelves() -> [BookShelf]? {
         load([BookShelf].self, from: try! getBooksDirectory().appendingPathComponent(FileNames.shelves))
     }
@@ -163,15 +200,15 @@ struct BookStorage {
     
     enum BookStorageError: LocalizedError {
         case accessDenied
-        case documentsDirectoryNotFound
+        case appDirectoryNotFound
         case epubImportFailed(Error)
         
         var errorDescription: String? {
             switch self {
             case .accessDenied:
                 return "Could not access .epub file"
-            case .documentsDirectoryNotFound:
-                return "Documents directory not found"
+            case .appDirectoryNotFound:
+                return "App directory not found"
             case .epubImportFailed(let error):
                 return "Could not import .epub file: \(error.localizedDescription)"
             }

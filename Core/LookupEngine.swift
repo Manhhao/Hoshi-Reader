@@ -42,8 +42,17 @@ class LookupEngine {
         return Array(dictQuery?.get_styles() ?? [])
     }
     
+    func withMediaFile<T>(dictName: String, mediaPath: String, _ body: (Data) -> T) -> T {
+        let view = dictQuery!.get_media_file_view(std.string(dictName), std.string(mediaPath))
+        let size = Int(view.size)
+        guard size > 0, let ptr = UnsafeMutableRawPointer(mutating: view.data) else {
+            return body(Data())
+        }
+        let data = Data(bytesNoCopy: ptr, count: size, deallocator: .none)
+        return body(data)
+    }
+    
     func getMediaFile(dictName: String, mediaPath: String) -> Data {
-        let bytes = dictQuery!.get_media_file(std.string(dictName), std.string(mediaPath))
-        return Data(bytes.map { UInt8(bitPattern: $0) })
+        return withMediaFile(dictName: dictName, mediaPath: mediaPath) { Data($0) }
     }
 }

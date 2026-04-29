@@ -27,6 +27,7 @@ class AnkiManager {
     
     var allowDupes: Bool = false
     var compactGlossaries: Bool = false
+    var embedMedia: Bool = false
     
     var errorMessage: String?
     
@@ -43,6 +44,10 @@ class AnkiManager {
     
     var needsAudio: Bool {
         fieldMappings.values.contains(Handlebars.audio.rawValue)
+    }
+    
+    var needsSasayakiAudio: Bool {
+        fieldMappings.values.contains(Handlebars.sasayakiAudio.rawValue)
     }
     
     var useAnkiConnect: Bool = false
@@ -196,11 +201,28 @@ class AnkiManager {
             URLQueryItem(name: "type", value: noteType)
         ]
         
+        var dictionaryMedia: [String: String] = [:]
+        if embedMedia {
+            if let json = content["dictionaryMedia"] {
+                let dictMedia = (try? JSONDecoder().decode([DictionaryMedia].self, from: Data(json.utf8))) ?? []
+                for media in dictMedia {
+                    let mediaData = LookupEngine.shared.getMediaFile(dictName: media.dictionary, mediaPath: media.path)
+                    let mimeType = mimeType(for: media.path)
+                    dictionaryMedia[media.filename] = "data:\(mimeType);base64,\(mediaData.base64EncodedString())"
+                }
+            }
+        }
+        
         for (field, fieldContent) in fieldMappings {
-            let value = fieldContent.replacing(Self.handlebarRegex) { match in
+            var value = fieldContent.replacing(Self.handlebarRegex) { match in
                 return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
             }
             if !value.isEmpty {
+                if embedMedia {
+                    for (filename, data) in dictionaryMedia {
+                        value = value.replacingOccurrences(of: filename, with: data)
+                    }
+                }
                 queryItems.append(URLQueryItem(name: "fld" + field, value: value))
             }
         }
@@ -238,11 +260,14 @@ class AnkiManager {
         
         var fields: [String: String] = [:]
         var audioFields: [String] = []
+        var sasayakiAudioFields: [String] = []
         var pictureFields: [String] = []
         
         for (field, fieldContent) in fieldMappings {
             if fieldContent == Handlebars.audio.rawValue {
                 audioFields.append(field)
+            } else if fieldContent == Handlebars.sasayakiAudio.rawValue {
+                sasayakiAudioFields.append(field)
             } else if fieldContent == Handlebars.bookCover.rawValue {
                 pictureFields.append(field)
             } else {
@@ -277,25 +302,49 @@ class AnkiManager {
             "options": options
         ]
         
+        var audio: [[String: Any]] = []
         if !audioFields.isEmpty, let audioURL = content["audio"],
            let url = URL(string: audioURL),
            let audioData = try? await URLSession.shared.data(from: url).0 {
-            let timestamp = Self.mediaTimestamp()
-            note["audio"] = [[
+            audio.append([
                 "data": audioData.base64EncodedString(),
-                "filename": "hoshi_audio_\(timestamp).mp3",
+                "filename": "hoshi_audio_\(audioData.sha1).mp3",
                 "fields": audioFields
-            ]]
+            ])
+        }
+        if !sasayakiAudioFields.isEmpty, let audioData = context.sasayakiAudioData {
+            audio.append([
+                "data": audioData.base64EncodedString(),
+                "filename": "hoshi_sasayaki_\(audioData.sha1).m4a",
+                "fields": sasayakiAudioFields
+            ])
+        }
+        if !audio.isEmpty {
+            note["audio"] = audio
         }
         
         if !pictureFields.isEmpty, let coverURL = context.coverURL,
            let coverData = try? Data(contentsOf: coverURL) {
-            let hash = coverData.hashValue
             note["picture"] = [[
                 "data": coverData.base64EncodedString(),
-                "filename": "hoshi_cover_\(hash).\(coverURL.pathExtension)",
+                "filename": "hoshi_cover_\(coverData.sha1).\(coverURL.pathExtension)",
                 "fields": pictureFields
             ]]
+        }
+        
+        if let json = content["dictionaryMedia"],
+           let dictionaryMedia = try? JSONDecoder().decode([DictionaryMedia].self, from: Data(json.utf8)) {
+            for media in dictionaryMedia {
+                let mediaData = LookupEngine.shared.getMediaFile(dictName: media.dictionary, mediaPath: media.path)
+                let ext = media.path.split(separator: ".").last!
+                let filename = "hoshi_dict_\(mediaData.sha1).\(ext)"
+                fields = fields.mapValues { $0.replacingOccurrences(of: media.filename, with: filename) }
+                _ = try? await ankiConnectRequest(action: "storeMediaFile", params: [
+                    "filename": filename,
+                    "data": mediaData.base64EncodedString()
+                ])
+            }
+            note["fields"] = fields
         }
         
         let tagList = tags.split(separator: " ").map(String.init)
@@ -306,7 +355,7 @@ class AnkiManager {
         do {
             _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
             addWord(content["expression"] ?? "")
-            LocalFileServer.shared.clearCover()
+            LocalFileServer.shared.clearMedia()
             
             if ankiConnectConfig?.forceSync == true {
                 await syncAnkiConnect()
@@ -388,6 +437,7 @@ class AnkiManager {
             selectedNoteType: selectedNoteType,
             allowDupes: allowDupes,
             compactGlossaries: compactGlossaries,
+            embedMedia: embedMedia,
             fieldMappings: fieldMappings,
             tags: tags,
             availableDecks: availableDecks,
@@ -396,7 +446,7 @@ class AnkiManager {
             ankiConnectConfig: ankiConnectConfig
         )
         
-        guard let directory = try? BookStorage.getDocumentsDirectory() else {
+        guard let directory = try? BookStorage.getAppDirectory() else {
             return
         }
         try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
@@ -418,6 +468,8 @@ class AnkiManager {
                 return content["glossary"] ?? ""
             case .glossaryFirst:
                 return content["glossaryFirst"] ?? ""
+            case .selectedGlossary:
+                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? ""
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:
@@ -442,13 +494,17 @@ class AnkiManager {
                 return coverPath ?? ""
             case .audio:
                 return content["audio"] ?? ""
+            case .sasayakiAudio:
+                guard let data = context.sasayakiAudioData else { return "" }
+                LocalFileServer.shared.setSasayakiAudio(data)
+                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.m4a"
             }
         }
         return ""
     }
     
     private func load() {
-        guard let directory = try? BookStorage.getDocumentsDirectory() else {
+        guard let directory = try? BookStorage.getAppDirectory() else {
             return
         }
         let url = directory.appendingPathComponent(Self.ankiConfig)
@@ -463,6 +519,7 @@ class AnkiManager {
         selectedNoteType = config.selectedNoteType
         allowDupes = config.allowDupes
         compactGlossaries = config.compactGlossaries ?? false
+        embedMedia = config.embedMedia ?? false
         fieldMappings = config.fieldMappings
         tags = config.tags ?? ""
         availableDecks = config.availableDecks
@@ -471,7 +528,7 @@ class AnkiManager {
         ankiConnectConfig = config.ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     }
     
-    func importColpkg(from url: URL) throws {
+    func importAnkiBackup(from url: URL) throws {
         let accessing = url.startAccessingSecurityScopedResource()
         defer {
             if accessing {
@@ -500,7 +557,7 @@ class AnkiManager {
     }
     
     private func loadWords() {
-        guard let url = try? BookStorage.getDocumentsDirectory().appendingPathComponent(AnkiManager.ankiWords),
+        guard let url = try? BookStorage.getAppDirectory().appendingPathComponent(AnkiManager.ankiWords),
               let data = try? Data(contentsOf: url),
               let words = try? JSONDecoder().decode(Set<String>.self, from: data) else {
             return
@@ -514,7 +571,7 @@ class AnkiManager {
     }
     
     private static func saveWords(_ words: Set<String>) throws {
-        let file = try BookStorage.getDocumentsDirectory().appendingPathComponent(ankiWords)
+        let file = try BookStorage.getAppDirectory().appendingPathComponent(ankiWords)
         try JSONEncoder().encode(words).write(to: file)
     }
     
@@ -593,10 +650,17 @@ class AnkiManager {
         return json["result"]
     }
     
-    private static func mediaTimestamp() -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
-        return f.string(from: Date())
+    private func mimeType(for path: String) -> String {
+        switch URL(fileURLWithPath: path).pathExtension.lowercased() {
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "gif": return "image/gif"
+        case "webp": return "image/webp"
+        case "avif": return "image/avif"
+        case "heic": return "image/heic"
+        case "svg": return "image/svg+xml"
+        default: return "application/octet-stream"
+        }
     }
     
     enum AnkiConnectError: LocalizedError {

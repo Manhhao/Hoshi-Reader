@@ -27,6 +27,15 @@ struct AdvancedView: View {
                 .foregroundStyle(.primary)
                 
                 NavigationLink {
+                    SasayakiSettingsView()
+                } label: {
+                    Label("Sasayaki (Audiobooks)", systemImage: "waveform")
+                }
+                .foregroundStyle(.primary)
+            }
+            
+            Section {
+                NavigationLink {
                     SyncView()
                 } label: {
                     Label("ッツ Sync", systemImage: "cloud")

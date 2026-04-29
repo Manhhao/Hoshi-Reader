@@ -10,6 +10,7 @@ import Foundation
 import AuthenticationServices
 
 enum GoogleDriveAuthError: LocalizedError {
+    case invalidClientId
     case invalidAuthURL
     case noCallbackURL
     case missingAuthorizationCode
@@ -19,6 +20,8 @@ enum GoogleDriveAuthError: LocalizedError {
     
     var errorDescription: String? {
         switch self {
+        case .invalidClientId:
+            return "Invalid Client ID format"
         case .invalidAuthURL:
             return "Failed to construct authentication URL"
         case .noCallbackURL:
@@ -43,6 +46,8 @@ class GoogleDriveAuth: NSObject {
     
     var isAuthenticated: Bool {
         TokenStorage.get("accessToken") != nil
+            && TokenStorage.get("refreshToken") != nil
+            && TokenStorage.get("clientId") != nil
     }
     
     func getAccessToken() throws -> String {
@@ -53,6 +58,10 @@ class GoogleDriveAuth: NSObject {
     }
     
     func authenticate(clientId: String) async throws {
+        let clientId = clientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard Self.isValidGoogleClientId(clientId) else {
+            throw GoogleDriveAuthError.invalidClientId
+        }
         let scheme = clientId.components(separatedBy: ".").reversed().joined(separator: ".")
         let redirectUri = "\(scheme):/oauth2callback"
         
@@ -143,10 +152,9 @@ class GoogleDriveAuth: NSObject {
             "grant_type": "authorization_code"
         ]
         
-        request.httpBody = params
-            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }
-            .joined(separator: "&")
-            .data(using: .utf8)
+        var bodyComponents = URLComponents()
+        bodyComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        request.httpBody = bodyComponents.percentEncodedQuery?.data(using: .utf8)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -161,6 +169,10 @@ class GoogleDriveAuth: NSObject {
         if let refresh = tokenResponse.refreshToken {
             TokenStorage.save(refresh, for: "refreshToken")
         }
+    }
+    
+    private static func isValidGoogleClientId(_ clientId: String) -> Bool {
+        clientId.range(of: #"^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$"#, options: .regularExpression) != nil
     }
 }
 

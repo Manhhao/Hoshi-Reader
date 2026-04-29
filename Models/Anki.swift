@@ -30,7 +30,8 @@ struct AnkiConfig: Codable {
     let selectedDeck: String?
     let selectedNoteType: String?
     let allowDupes: Bool
-    var compactGlossaries: Bool?
+    let compactGlossaries: Bool?
+    let embedMedia: Bool?
     let fieldMappings: [String: String]
     var tags: String?
     let availableDecks: [String]
@@ -57,6 +58,13 @@ struct MiningContext {
     let sentence: String
     let documentTitle: String?
     let coverURL: URL?
+    var sasayakiAudioData: Data? = nil
+}
+
+struct DictionaryMedia: Decodable {
+    let dictionary: String
+    let path: String
+    let filename: String
 }
 
 enum Handlebars: String, CaseIterable {
@@ -66,6 +74,7 @@ enum Handlebars: String, CaseIterable {
     case audio = "{audio}"
     case glossary = "{glossary}"
     case glossaryFirst = "{glossary-first}"
+    case selectedGlossary = "{selected-glossary}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
     case frequencies = "{frequencies}"
@@ -74,6 +83,7 @@ enum Handlebars: String, CaseIterable {
     case pitchCategories = "{pitch-accent-categories}"
     case documentTitle = "{document-title}"
     case bookCover = "{book-cover}"
-
+    case sasayakiAudio = "{sasayaki-audio}"
+    
     static let singleGlossaryPrefix = "{single-glossary-"
 }

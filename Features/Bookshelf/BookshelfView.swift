@@ -12,7 +12,7 @@ import UniformTypeIdentifiers
 
 struct BookshelfView: View {
     @Environment(\.colorScheme) private var systemColorScheme
-    @Environment(UserConfig.self) var userConfig
+    @Environment(UserConfig.self) private var userConfig
     @State private var viewModel = BookshelfViewModel()
     @State private var showDictionaries = false
     @State private var showAnkiSettings = false
@@ -21,22 +21,30 @@ struct BookshelfView: View {
     @State private var showAbout = false
     @State private var showShelfManagement = false
     @State private var selectedTab = 0
+    @State private var focusDictionarySearch = false
     @State private var setInitialTab = false
     @State private var navigationPath = NavigationPath()
     @State private var dictionaryRoute = DictionaryRoute()
     @State private var isSelecting = false
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
+    @State private var sasayakiBook: BookMetadata?
     @Binding var pendingImportURL: URL?
     @Binding var pendingRemoteImportURL: URL?
     @Binding var pendingLookup: String?
+    @Binding var pendingTab: Int?
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: Binding(get: { selectedTab }, set: { newTab in
+            if newTab == 1 && selectedTab == 1 {
+                focusDictionarySearch.toggle()
+            }
+            selectedTab = newTab
+        })) {
             Tab("Books", systemImage: "books.vertical", value: 0) {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
-                        let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption)
+                        let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption, showReading: userConfig.bookshelfShowReading)
                         if viewModel.books.isEmpty {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
@@ -46,7 +54,7 @@ struct BookshelfView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 160)
                         } else {
-                            ForEach(sections, id: \.shelf?.name) { section in
+                            ForEach(sections) { section in
                                 if section.books.count > 0 {
                                     ShelfView(
                                         viewModel: viewModel,
@@ -54,7 +62,9 @@ struct BookshelfView: View {
                                         showTitle: sections.count > 1,
                                         isSelecting: isSelecting,
                                         selectedBooks: $selectedBooks,
-                                        pendingLookup: $pendingLookup
+                                        pendingLookup: $pendingLookup,
+                                        pendingTab: $pendingTab,
+                                        onMatch: { sasayakiBook = $0 }
                                     )
                                 }
                             }
@@ -77,6 +87,9 @@ struct BookshelfView: View {
                     .sheet(isPresented: $showShelfManagement) {
                         ShelfManagementView(viewModel: viewModel)
                     }
+                    .sheet(item: $sasayakiBook) { book in
+                        SasayakiMatchView(book: book, viewModel: viewModel)
+                    }
                     .alert(
                         "Delete \(selectedBooks.count) book(s)?",
                         isPresented: $showBulkDeleteConfirmation
@@ -97,7 +110,8 @@ struct BookshelfView: View {
                 NavigationStack {
                     DictionarySearchView(
                         initialQuery: dictionaryRoute.query,
-                        initialAutofocus: dictionaryRoute.autofocus
+                        initialAutofocus: dictionaryRoute.autofocus,
+                        shouldFocus: focusDictionarySearch
                     )
                     .id(dictionaryRoute.id)
                 }
@@ -121,7 +135,7 @@ struct BookshelfView: View {
                         Button {
                             showAppearance = true
                         } label: {
-                            Label("Appearance", systemImage: "paintbrush.pointed")
+                            Label("Appearance", systemImage: "paintpalette")
                         }
                         .foregroundStyle(.primary)
                         Button {
@@ -162,6 +176,12 @@ struct BookshelfView: View {
                 }
             }
         }
+        .onChange(of: pendingTab) { _, tab in
+            if let tab {
+                selectedTab = tab
+                pendingTab = nil
+            }
+        }
         .onChange(of: pendingLookup) { _, text in
             if let text {
                 selectedTab = 1
@@ -175,9 +195,9 @@ struct BookshelfView: View {
         .onChange(of: pendingImportURL) { _, url in
             if let url {
                 navigationPath = NavigationPath()
-                if url.pathExtension == "colpkg" {
+                if url.pathExtension == "colpkg" || url.pathExtension == "apkg" {
                     do {
-                        try AnkiManager.shared.importColpkg(from: url)
+                        try AnkiManager.shared.importAnkiBackup(from: url)
                     } catch {
                         viewModel.errorMessage = error.localizedDescription
                         viewModel.shouldShowError = true
@@ -212,6 +232,9 @@ struct BookshelfView: View {
             }
             if viewModel.isDownloading {
                 LoadingOverlay("Downloading EPUB...")
+            }
+            if let importBooksProgress = viewModel.importBooksProgress {
+                LoadingOverlay(importBooksProgress)
             }
         }
         .onAppear {
@@ -297,6 +320,10 @@ struct BookshelfView: View {
                 } label: {
                     Image(systemName: "folder.badge.gearshape")
                 }
+            }
+            
+            if #available(iOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
             
             ToolbarItem(placement: .topBarTrailing) {

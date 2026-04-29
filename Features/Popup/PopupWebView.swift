@@ -26,7 +26,7 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
         
         Task {
             do {
-                let request = URLRequest(url: targetUrl, timeoutInterval: 1.2)
+                let request = URLRequest(url: targetUrl, timeoutInterval: 4)
                 let (data, _) = try await URLSession.shared.data(for: request)
                 
                 await MainActor.run {
@@ -69,21 +69,22 @@ class ImageHandler: NSObject, WKURLSchemeHandler {
             return
         }
         
-        let data = LookupEngine.shared.getMediaFile(dictName: dictionary, mediaPath: mediaPath)
-        guard !data.isEmpty else {
-            task.didFailWithError(URLError(.fileDoesNotExist))
-            return
+        LookupEngine.shared.withMediaFile(dictName: dictionary, mediaPath: mediaPath) { data in
+            guard !data.isEmpty else {
+                task.didFailWithError(URLError(.fileDoesNotExist))
+                return
+            }
+            
+            let response = URLResponse(
+                url: requestUrl,
+                mimeType: mimeType(for: mediaPath),
+                expectedContentLength: data.count,
+                textEncodingName: nil
+            )
+            task.didReceive(response)
+            task.didReceive(data)
+            task.didFinish()
         }
-        
-        let response = URLResponse(
-            url: requestUrl,
-            mimeType: mimeType(for: mediaPath),
-            expectedContentLength: data.count,
-            textEncodingName: nil
-        )
-        task.didReceive(response)
-        task.didReceive(data)
-        task.didFinish()
     }
     
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
@@ -105,7 +106,7 @@ class ImageHandler: NSObject, WKURLSchemeHandler {
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
-    var clearHighlight: Bool
+    var clearSelection: Bool
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
     var onMine: (([String: String]) async -> Bool)? = nil
@@ -134,7 +135,7 @@ struct PopupWebView: UIViewRepresentable {
         }
         return css
     }()
-
+    
     private static let swipeDismissJs = """
     (function() {
         if (!window.swipeThreshold) {
@@ -194,9 +195,9 @@ struct PopupWebView: UIViewRepresentable {
             webView.loadHTMLString(html, baseURL: nil)
         }
         
-        if context.coordinator.clearHighlight != clearHighlight {
-            context.coordinator.clearHighlight = clearHighlight
-            webView.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+        if context.coordinator.clearSelection != clearSelection {
+            context.coordinator.clearSelection = clearSelection
+            webView.evaluateJavaScript("window.hoshiSelection.clearSelection()")
         }
     }
     
@@ -218,7 +219,7 @@ struct PopupWebView: UIViewRepresentable {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
-        var clearHighlight: Bool = false
+        var clearSelection: Bool = false
         let id = UUID()
         
         init(parent: PopupWebView) {
@@ -257,12 +258,12 @@ struct PopupWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "openLink", let urlString = message.body as? String,
-                    let url = URL(string: urlString) {
+               let url = URL(string: urlString) {
                 UIApplication.shared.open(url)
             }
             else if message.name == "tapOutside" {
                 parent.onTapOutside?()
-                message.webView?.evaluateJavaScript("window.hoshiSelection.clearHighlight()")
+                message.webView?.evaluateJavaScript("window.hoshiSelection.clearSelection()")
             }
             else if message.name == "swipeDismiss" {
                 parent.onSwipeDismiss?()
@@ -292,8 +293,8 @@ struct PopupWebView: UIViewRepresentable {
                 }
             }
             else if message.name == "playWordAudio",
-               let content = message.body as? [String: Any],
-               let urlString = content["url"] as? String {
+                    let content = message.body as? [String: Any],
+                    let urlString = content["url"] as? String {
                 let requestedMode = (content["mode"] as? String).flatMap(AudioPlaybackMode.init) ?? .interrupt
                 Task(priority: .userInitiated) {
                     await WordAudioPlayer.shared.play(urlString: urlString, requestedMode: requestedMode, id: self.id)

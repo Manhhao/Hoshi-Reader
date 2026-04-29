@@ -11,8 +11,6 @@ import UniformTypeIdentifiers
 
 struct AnkiConnectView: View {
     @State private var ankiManager = AnkiManager.shared
-    @State private var dictionaryManager = DictionaryManager.shared
-    @State private var isImporting = false
     
     var body: some View {
         List {
@@ -22,8 +20,8 @@ struct AnkiConnectView: View {
             } footer: {
                 Text("This will replace AnkiMobile callbacks with AnkiConnect requests.")
             }
-            Section {
-                if ankiManager.useAnkiConnect {
+            if ankiManager.useAnkiConnect {
+                Section {
                     VStack(alignment: .leading, spacing: 3) {
                         TextField("Address", text: Binding(
                             get: { ankiManager.ankiConnectConfig?.url ?? "" },
@@ -32,12 +30,12 @@ struct AnkiConnectView: View {
                         .onSubmit { ankiManager.save() }
                     }
                     Button("Connect") { Task { await ankiManager.pingAnkiConnect() } }
-                }
-            } header: {
-                Text("Connection")
-            } footer: {
-                if ankiManager.useAnkiConnect {
-                    Text("Status: \(ankiManager.isConnected ? "Connected" : "Not connected")")
+                } header: {
+                    Text("Connection")
+                } footer: {
+                    if ankiManager.useAnkiConnect {
+                        Text("Status: \(ankiManager.isConnected ? "Connected" : "Not connected")")
+                    }
                 }
             }
             

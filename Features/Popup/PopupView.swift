@@ -113,13 +113,18 @@ struct PopupView: View {
     var bottomInset: CGFloat = 0
     let coverURL: URL?
     let documentTitle: String?
-    var clearHighlight: Bool
+    var clearSelection: Bool
     var onTextSelected: ((SelectionData) -> Int?)?
     var onTapOutside: (() -> Void)?
     var onSwipeDismiss: (() -> Void)?
+    var onPause: (() -> Void)?
+    var sasayakiCue: SasayakiMatch?
+    var sasayakiPlayer: SasayakiPlayer?
+    var wasPaused = false
     
     @State private var content: String = ""
     @State private var lookupEntries: [[String: Any]] = []
+    @State private var sasayakiBarHeight: CGFloat = 0
     
     init(
         userConfig: UserConfig,
@@ -134,10 +139,14 @@ struct PopupView: View {
         bottomInset: CGFloat = 0,
         coverURL: URL?,
         documentTitle: String?,
-        clearHighlight: Bool,
+        clearSelection: Bool,
         onTextSelected: ((SelectionData) -> Int?)? = nil,
         onTapOutside: (() -> Void)? = nil,
-        onSwipeDismiss: (() -> Void)? = nil
+        onSwipeDismiss: (() -> Void)? = nil,
+        onPause: (() -> Void)? = nil,
+        sasayakiCue: SasayakiMatch? = nil,
+        sasayakiPlayer: SasayakiPlayer? = nil,
+        wasPaused: Bool = false
     ) {
         _isVisible = isVisible
         self.selectionData = selectionData
@@ -150,10 +159,14 @@ struct PopupView: View {
         self.bottomInset = bottomInset
         self.coverURL = coverURL
         self.documentTitle = documentTitle
-        self.clearHighlight = clearHighlight
+        self.clearSelection = clearSelection
         self.onTextSelected = onTextSelected
         self.onTapOutside = onTapOutside
         self.onSwipeDismiss = onSwipeDismiss
+        self.onPause = onPause
+        self.sasayakiCue = sasayakiCue
+        self.sasayakiPlayer = sasayakiPlayer
+        self.wasPaused = wasPaused
         
         let cache = Self.buildContent(lookupResults: lookupResults, userConfig: userConfig)
         _content = State(initialValue: cache.content)
@@ -186,23 +199,76 @@ struct PopupView: View {
         return result
     }
     
+    @ViewBuilder
+    private func sasayakiControls(for cue: SasayakiMatch, player: SasayakiPlayer) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 20) {
+                Button {
+                    Task { @MainActor in
+                        await WordAudioPlayer.shared.stop()
+                        player.playCue(from: cue, stop: true)
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                
+                Button {
+                    Task { @MainActor in
+                        await WordAudioPlayer.shared.stop()
+                        if wasPaused {
+                            onPause?()
+                        } else {
+                            player.togglePlayback()
+                        }
+                    }
+                } label: {
+                    Image(systemName: player.isPlaying || wasPaused ? "pause.fill" : "play.fill")
+                }
+                
+                Button {
+                    Task { @MainActor in
+                        await WordAudioPlayer.shared.stop()
+                        player.playCue(from: cue, stop: false)
+                        onSwipeDismiss?()
+                    }
+                } label: {
+                    Image(systemName: "forward.frame")
+                }
+            }
+            .font(.body)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            Divider()
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+            sasayakiBarHeight = $0
+        }
+    }
+    
     var body: some View {
         if #available(iOS 26, *) {
             GlassEffectContainer {
                 if isVisible, let selectionData, let layout, !content.isEmpty {
-                    PopupWebView(
-                        content: content,
-                        position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
-                        clearHighlight: clearHighlight,
-                        dictionaryStyles: dictionaryStyles,
-                        lookupEntries: lookupEntries,
-                        onMine: { content in
-                            await AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
-                        },
-                        onTextSelected: onTextSelected,
-                        onTapOutside: onTapOutside,
-                        onSwipeDismiss: onSwipeDismiss
-                    )
+                    VStack(spacing: 0) {
+                        if let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
+                            sasayakiControls(for: cue, player: player)
+                        }
+                        PopupWebView(
+                            content: content,
+                            position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
+                            clearSelection: clearSelection,
+                            dictionaryStyles: dictionaryStyles,
+                            lookupEntries: lookupEntries,
+                            onMine: { content in
+                                await mineEntry(content: content, sentence: selectionData.sentence)
+                            },
+                            onTextSelected: onTextSelected,
+                            onTapOutside: onTapOutside,
+                            onSwipeDismiss: onSwipeDismiss
+                        )
+                    }
                     .frame(width: max(1, layout.width), height: max(1, layout.height))
                     .glassEffect(.regular, in: .rect(cornerRadius: 8))
                     .position(layout.position)
@@ -211,19 +277,24 @@ struct PopupView: View {
         } else {
             Group {
                 if isVisible, let selectionData, let layout, !content.isEmpty {
-                    PopupWebView(
-                        content: content,
-                        position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2),
-                        clearHighlight: clearHighlight,
-                        dictionaryStyles: dictionaryStyles,
-                        lookupEntries: lookupEntries,
-                        onMine: { content in
-                            await AnkiManager.shared.addNote(content: content, context: MiningContext(sentence: selectionData.sentence, documentTitle: documentTitle, coverURL: coverURL))
-                        },
-                        onTextSelected: onTextSelected,
-                        onTapOutside: onTapOutside,
-                        onSwipeDismiss: onSwipeDismiss
-                    )
+                    VStack(spacing: 0) {
+                        if let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
+                            sasayakiControls(for: cue, player: player)
+                        }
+                        PopupWebView(
+                            content: content,
+                            position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
+                            clearSelection: clearSelection,
+                            dictionaryStyles: dictionaryStyles,
+                            lookupEntries: lookupEntries,
+                            onMine: { content in
+                                await mineEntry(content: content, sentence: selectionData.sentence)
+                            },
+                            onTextSelected: onTextSelected,
+                            onTapOutside: onTapOutside,
+                            onSwipeDismiss: onSwipeDismiss
+                        )
+                    }
                     .frame(width: max(1, layout.width), height: max(1, layout.height))
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
@@ -231,6 +302,23 @@ struct PopupView: View {
                 }
             }
         }
+    }
+    
+    private func mineEntry(content: [String: String], sentence: String) async -> Bool {
+        var sasayakiAudioData: Data?
+        if AnkiManager.shared.needsSasayakiAudio, let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
+            sasayakiAudioData = await player.cueSentenceAudio(cue, sentence: sentence)
+        }
+        
+        return await AnkiManager.shared.addNote(
+            content: content,
+            context: MiningContext(
+                sentence: sentence,
+                documentTitle: documentTitle,
+                coverURL: coverURL,
+                sasayakiAudioData: sasayakiAudioData
+            )
+        )
     }
     
     private static func buildContent(lookupResults: [LookupResult], userConfig: UserConfig) -> (content: String, lookupEntries: [[String: Any]]) {
@@ -309,11 +397,16 @@ struct PopupView: View {
         <script>
             window.collapseDictionaries = \(userConfig.collapseDictionaries);
             window.compactGlossaries = \(userConfig.compactGlossaries);
+            window.showExpressionTags = \(userConfig.showExpressionTags);
+            window.harmonicFrequency = \(userConfig.harmonicFrequency);
+            window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
             window.audioSources = \(audioSources);
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
+            window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
             window.swipeThreshold = \(userConfig.popupSwipeToDismiss ? userConfig.popupSwipeThreshold : 0);

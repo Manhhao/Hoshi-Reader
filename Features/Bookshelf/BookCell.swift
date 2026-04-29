@@ -14,7 +14,9 @@ struct BookCell: View {
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
+    var hideMove: Bool = false
     var onSelect: () -> Void
+    var onMatch: () -> Void
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
     
@@ -40,35 +42,37 @@ struct BookCell: View {
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
-            Menu {
-                Button {
-                    viewModel.moveBook(book.id, to: nil)
-                } label: {
-                    Label("None", systemImage: "tray")
-                }
-                .disabled(currentShelf == nil)
-                ForEach(viewModel.shelves, id: \.name) { shelf in
+            if !hideMove {
+                Menu {
                     Button {
-                        viewModel.moveBook(book.id, to: shelf.name)
+                        viewModel.moveBook(book.id, to: nil)
                     } label: {
-                        Label(shelf.name, systemImage: "folder")
+                        Label("None", systemImage: "tray")
                     }
-                    .disabled(shelf.name == currentShelf)
+                    .disabled(currentShelf == nil)
+                    ForEach(viewModel.shelves, id: \.name) { shelf in
+                        Button {
+                            viewModel.moveBook(book.id, to: shelf.name)
+                        } label: {
+                            Label(shelf.name, systemImage: "folder")
+                        }
+                        .disabled(shelf.name == currentShelf)
+                    }
+                } label: {
+                    Label("Move", systemImage: "folder")
                 }
-            } label: {
-                Label("Move", systemImage: "folder")
             }
             
             if userConfig.enableSync {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
-                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                         } label: {
                             Label("Import", systemImage: "arrow.down")
                         }
                         Button {
-                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                         } label: {
                             Label("Export", systemImage: "arrow.up")
                         }
@@ -77,10 +81,18 @@ struct BookCell: View {
                     }
                 } else {
                     Button {
-                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode)
+                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
+                }
+            }
+            
+            if userConfig.enableSasayaki {
+                Button {
+                    onMatch()
+                } label: {
+                    Label("Match", systemImage: "waveform.badge.magnifyingglass")
                 }
             }
             

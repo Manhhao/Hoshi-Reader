@@ -57,20 +57,20 @@ class DictionaryManager {
     }
     
     func rebuildLookupQuery() {
-       let enabledTermPaths = termDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       let enabledFreqPaths = frequencyDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       let enabledPitchPaths = pitchDictionaries
-           .filter { $0.isEnabled }
-           .map { $0.path }
-       
-       LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
-   }
+        let enabledTermPaths = termDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        let enabledFreqPaths = frequencyDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        let enabledPitchPaths = pitchDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+    }
     
     func collectDictionaries(storedDicts: [DictionaryInfo], configDicts: [DictionaryConfig.DictionaryEntry]) -> [DictionaryInfo] {
         var result: [DictionaryInfo] = []
@@ -363,8 +363,10 @@ class DictionaryManager {
                         let new = String(importResult.title)
                         if old != new {
                             if let currentIndex = self.getDictionaryIndex(title: old, type: type) {
+                                let wasEnabled = self.isDictionaryEnabled(at: currentIndex, type: type)
                                 self.deleteDictionary(indexSet: IndexSet(integer: currentIndex), type: type)
                                 let importedIndex = self.getDictionaryIndex(title: new, type: type)!
+                                self.setDictionaryEnabled(index: importedIndex, enabled: wasEnabled, type: type)
                                 self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
                                 AnkiManager.shared.updateHandlebar(old: old, new: new)
                             }
@@ -462,6 +464,28 @@ class DictionaryManager {
         rebuildLookupQuery()
     }
     
+    private func isDictionaryEnabled(at index: Int, type: DictionaryType) -> Bool {
+        switch type {
+        case .term:
+            termDictionaries[index].isEnabled
+        case .frequency:
+            frequencyDictionaries[index].isEnabled
+        case .pitch:
+            pitchDictionaries[index].isEnabled
+        }
+    }
+    
+    private func setDictionaryEnabled(index: Int, enabled: Bool, type: DictionaryType) {
+        switch type {
+        case .term:
+            termDictionaries[index].isEnabled = enabled
+        case .frequency:
+            frequencyDictionaries[index].isEnabled = enabled
+        case .pitch:
+            pitchDictionaries[index].isEnabled = enabled
+        }
+    }
+    
     private func getDictionaryIndex(title: String, type: DictionaryType) -> Int? {
         switch type {
         case .term:
@@ -474,7 +498,7 @@ class DictionaryManager {
     }
     
     private static func getDictionariesDirectory() throws -> URL {
-        try BookStorage.getDocumentsDirectory().appendingPathComponent("Dictionaries")
+        try BookStorage.getAppDirectory().appendingPathComponent("Dictionaries")
     }
     
     private func showError(_ message: String) {

@@ -10,6 +10,9 @@ window.hoshiSelection = {
     selection: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
+    trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
+    brackets: {'「':'」', '『': '』', '（':'）', '(':')', '【':'】', '〈':'〉', '《':'》', '〔':'〕', '｛':'｝', '{':'}', '［':'］', '[':']'},
+
     isVertical() {
         return window.getComputedStyle(document.body).writingMode === "vertical-rl";
     },
@@ -126,7 +129,6 @@ window.hoshiSelection = {
     getSentence(startNode, startOffset) {
         const container = this.findParagraph(startNode) || document.body;
         const walker = this.createWalker(container);
-        const trailingSentenceChars = '」』）】!?！？…';
         
         walker.currentNode = startNode;
         const partsBefore = [];
@@ -165,9 +167,9 @@ window.hoshiSelection = {
             for (let i = start; i < text.length; i++) {
                 if (this.sentenceDelimiters.includes(text[i])) {
                     let end = i + 1;
-
+                    
                     while (end < text.length) {
-                        if (!trailingSentenceChars.includes(text[end])) break;
+                        if (!this.trailingSentenceChars.includes(text[end])) break;
                         end += 1;
                     }
                     partsAfter.push(text.slice(start, end));
@@ -186,26 +188,64 @@ window.hoshiSelection = {
             start = 0;
         }
         
-        return (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+        let sentence = (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+
+        const closeBrackets = new Set(Object.values(this.brackets));
+        const openBrackets = new Set(Object.keys(this.brackets));
+        let stack = [];
+        let unmatchedClose = [];
+        
+        for (let i = 0; i < sentence.length; i++) {
+            const ch = sentence[i];
+            if (openBrackets.has(ch)) {
+                stack.push(ch);
+            } else if (closeBrackets.has(ch)) {
+                if (stack.length > 0 && this.brackets[stack[stack.length-1]] === ch) {
+                    stack.pop();
+                } else {
+                    unmatchedClose.push(ch);
+                }
+            }
+        }
+
+        let startSlice = 0;
+        while (stack.length > 0 && startSlice < sentence.length - 1) {
+            // Stack consists of unmatched open brackets arranged from start to end
+            if (stack[0] === sentence[startSlice]) {
+                stack.shift();
+            } else break;
+            startSlice++;
+        }
+
+        let endSlice = sentence.length - 1;
+        let endIdx = sentence.length - 1;
+        while (unmatchedClose.length > 0 && endIdx > startSlice) {
+            if (unmatchedClose[unmatchedClose.length - 1] === sentence[endIdx]) {     
+                unmatchedClose.pop();
+                endSlice = endIdx - 1;
+            // sentenceDelimiters used as trailingSentenceDelimiters as it does not have any overlap with brackets
+            } else if (!this.sentenceDelimiters.includes(sentence[endIdx])) break;
+            endIdx--;
+        }
+        return sentence.slice(startSlice, endSlice + 1).trim();
     },
     
     selectText(x, y, maxLength) {
         const hit = this.getCharacterAtPoint(x, y);
         
         if (!hit) {
-            this.clearHighlight();
+            this.clearSelection();
             return null;
         }
         
-        // Dismiss popup if tapping on the first character of the current selection
         if (this.selection &&
             hit.node === this.selection.startNode &&
             hit.offset === this.selection.startOffset) {
-            this.clearHighlight();
+            this.clearSelection();
             return null;
         }
         
-        this.clearHighlight();
+        this.clearSelection();
         
         const container = this.findParagraph(hit.node) || document.body;
         const walker = this.createWalker(container);
@@ -253,10 +293,12 @@ window.hoshiSelection = {
         };
         
         const sentence = this.getSentence(hit.node, hit.offset);
+        const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
         webkit.messageHandlers.textSelected.postMessage({
             text,
             sentence,
-            rect: this.getSelectionRect(x, y)
+            rect: this.getSelectionRect(x, y),
+            normalizedOffset
         });
         
         return text;
@@ -290,23 +332,47 @@ window.hoshiSelection = {
                 break;
             }
             
-            const length = r.end - r.start;
-            const end = remaining >= length ? r.end : r.start + remaining;
+            let end = r.start;
+            while (end < r.end && remaining > 0) {
+                const char = String.fromCodePoint(r.node.textContent.codePointAt(end));
+                end += char.length;
+                remaining--;
+            }
             
             const range = document.createRange();
             range.setStart(r.node, r.start);
             range.setEnd(r.node, end);
             highlights.push(range);
-            
-            remaining -= length;
         }
         
         CSS.highlights?.set('hoshi-selection', new Highlight(...highlights));
     },
     
-    clearHighlight() {
+    getNormalizedOffset(targetNode, offset) {
+        let count = window.hoshiReader.nodeStartOffsets.get(targetNode) ?? 0;
+        const text = targetNode.textContent;
+        for (let i = 0; i < offset;) {
+            const char = String.fromCodePoint(text.codePointAt(i));
+            if (window.hoshiReader.isMatchableChar(char)) {
+                count++;
+            }
+            i += char.length;
+        }
+        return count;
+    },
+    
+    clearSelection() {
         window.getSelection()?.removeAllRanges();
-        CSS.highlights?.clear();
+        CSS.highlights?.get('hoshi-selection')?.clear();
         this.selection = null;
     }
 };
+
+let lastHasSelection = false;
+document.addEventListener('selectionchange', () => {
+    const s = getSelection();
+    const hasSelection = !!s && !s.isCollapsed;
+    if (hasSelection === lastHasSelection) return;
+    lastHasSelection = hasSelection;
+    try { window.webkit?.messageHandlers?.selectionState?.postMessage(hasSelection); } catch {}
+});

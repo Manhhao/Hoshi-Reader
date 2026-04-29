@@ -6,16 +6,17 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+import CryptoKit
 import Foundation
 import SwiftUI
 
 extension String {
-    func characterCount() -> Int {
+    func filtered() -> String {
         var text = self
         if let bodyRange = text.range(of: "(?s)<body.*?</body>", options: .regularExpression) {
             text = String(text[bodyRange])
         }
-        text = text.replacingOccurrences(of: "(?s)<rt>.*?</rt>", with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: "(?s)<rt[^>]*>.*?</rt>", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?s)<(script|style)[^>]*>.*?</\\1>", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "&nbsp;", with: " ")
@@ -27,17 +28,23 @@ extension String {
             with: "",
             options: .regularExpression
         )
-        return text.count
+        return text
     }
 }
 
 extension BookMetadata {
     var coverURL: URL? {
         guard let coverPath = self.cover,
-              let documentsDir = try? BookStorage.getDocumentsDirectory() else {
+              let appDir = try? BookStorage.getAppDirectory() else {
             return nil
         }
-        return documentsDir.appendingPathComponent(coverPath)
+        return appDir.appendingPathComponent(coverPath)
+    }
+}
+
+extension Data {
+    var sha1: String {
+        Insecure.SHA1.hash(data: self).map { String(format: "%02x", $0) }.joined()
     }
 }
 

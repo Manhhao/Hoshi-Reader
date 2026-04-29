@@ -12,15 +12,15 @@ const KANJI_RANGE = '\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005';
 const KANJI_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const KANJI_SEGMENT_PATTERN = new RegExp(`[${KANJI_RANGE}]+|[^${KANJI_RANGE}]+`, 'g');
 const KANA_PATTERN = /[\u3040-\u30FF\uFF66-\uFF9F]/;
-const CJK_PATTERN = new RegExp(`[${KANJI_RANGE}]`);
 const DEFAULT_HARMONIC_RANK = '9999999';
 const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ');
 const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
 const audioUrls = {};
-let currentAudio = null;
 let lastSelection = '';
+let currentDictionaryMedia = null;
+const selectedDictionaries = {};
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -52,7 +52,7 @@ function isStringPartiallyJapanese(text) {
     if (!text) {
         return false;
     }
-    return KANA_PATTERN.test(text) || CJK_PATTERN.test(text);
+    return KANA_PATTERN.test(text) || KANJI_PATTERN.test(text);
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
@@ -60,7 +60,7 @@ function isStringPartiallyChinese(text) {
     if (!text) {
         return false;
     }
-    return CJK_PATTERN.test(text) || /[\u3100-\u312F\u31A0-\u31BF]/.test(text);
+    return KANJI_PATTERN.test(text) || /[\u3100-\u312F\u31A0-\u31BF]/.test(text);
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/text-utilities.js#L28
@@ -124,7 +124,7 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
     if (groupCount <= 0) {
         return reading.length === 0 ? [] : null;
     }
-
+    
     const group = groups[groupsStart];
     const {isKana, text} = group;
     const textLength = text.length;
@@ -132,11 +132,11 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
         const {textNormalized} = group;
         if (textNormalized !== null && readingNormalized.startsWith(textNormalized)) {
             const segments = segmentizeFurigana(
-                reading.substring(textLength),
-                readingNormalized.substring(textLength),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(textLength),
+                                                readingNormalized.substring(textLength),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (reading.startsWith(text)) {
                     segments.unshift(createFuriganaSegment(text, ''));
@@ -151,11 +151,11 @@ function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
         let result = null;
         for (let i = reading.length; i >= textLength; --i) {
             const segments = segmentizeFurigana(
-                reading.substring(i),
-                readingNormalized.substring(i),
-                groups,
-                groupsStart + 1,
-            );
+                                                reading.substring(i),
+                                                readingNormalized.substring(i),
+                                                groups,
+                                                groupsStart + 1,
+                                                );
             if (segments !== null) {
                 if (result !== null) {
                     // More than one way to segmentize the tail; mark as ambiguous
@@ -178,7 +178,7 @@ function segmentFurigana(expression, reading) {
     if (!reading || reading === expression) {
         return [[expression, '']];
     }
-
+    
     const groups = [];
     const segmentMatches = expression.match(KANJI_SEGMENT_PATTERN) || [];
     for (const text of segmentMatches) {
@@ -186,14 +186,14 @@ function segmentFurigana(expression, reading) {
         const textNormalized = isKana ? toHiragana(text) : null;
         groups.push({isKana, text, textNormalized});
     }
-
+    
     const readingNormalized = toHiragana(reading);
     const segments = segmentizeFurigana(reading, readingNormalized, groups, 0);
-
+    
     if (segments !== null) {
         return segments.map(seg => [seg.text, seg.reading]);
     }
-
+    
     return [[expression, reading]];
 }
 
@@ -305,7 +305,6 @@ function constructDictCss(css, dictName) {
     return parts.join('');
 }
 
-// table styles taken from a jitendex glossary
 function applyTableStyles(html) {
     const tableStyle = 'table-layout:auto;border-collapse:collapse;';
     const cellStyle = 'border-style:solid;padding:0.25em;vertical-align:top;border-width:1px;border-color:currentColor;';
@@ -315,6 +314,45 @@ function applyTableStyles(html) {
     .replace(/<table(?=[>\s])/g, `<table style="${tableStyle}"`)
     .replace(/<th(?=[>\s])/g, `<th style="${thStyle}"`)
     .replace(/<td(?=[>\s])/g, `<td style="${cellStyle}"`);
+}
+
+function applyImageStyles(node, imageContainer, aspectRatioSizer, imageBackground, image, filename, appearance, useEmUnits) {
+    // .gloss-image-link
+    node.style.cssText += 'display:inline-block;position:relative;line-height:1;max-width:100%;';
+    // .gloss-image-container
+    imageContainer.style.cssText += `display:inline-block;white-space:nowrap;max-width:100%;max-height:100vh;position:relative;vertical-align:top;line-height:0;overflow:hidden;font-size:${useEmUnits ? '1em' : '1px'};`;
+    // .gloss-image-link[data-has-aspect-ratio=true] .gloss-image-sizer
+    aspectRatioSizer.style.cssText += 'display:inline-block;width:0;vertical-align:top;font-size:0;';
+    // .gloss-image-link[data-has-aspect-ratio=true] .gloss-image
+    image.style.cssText += 'display:inline-block;vertical-align:top;object-fit:contain;border:none;outline:none;position:absolute;left:0;top:0;width:100%;height:100%;';
+    // .gloss-image-background, set image url directly
+    if (appearance === 'monochrome') {
+        imageBackground.style.cssText += `--image:url("${filename}");position:absolute;left:0;top:0;width:100%;height:100%;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center center;-webkit-mask-mode:alpha;-webkit-mask-size:contain;-webkit-mask-image:var(--image);mask-repeat:no-repeat;mask-position:center center;mask-mode:alpha;mask-size:contain;mask-image:var(--image);background-color:currentColor;`;
+        image.style.opacity = '0';
+    }
+}
+
+function getMediaFilename(dictionary, path) {
+    const key = `${dictionary}\n${path}`;
+    if (!currentDictionaryMedia.has(key)) {
+        const extension = path.split('.').pop();
+        currentDictionaryMedia.set(key, {
+            dictionary,
+            path,
+            filename: `hoshi_dict_${currentDictionaryMedia.size}.${extension}`,
+        });
+    }
+    return currentDictionaryMedia.get(key).filename;
+}
+
+function setStructuredContentElementStyle(element, style) {
+    for (const [property, value] of Object.entries(style)) {
+        if ((property === 'marginTop' || property === 'marginLeft' || property === 'marginRight' || property === 'marginBottom') && typeof value === 'number') {
+            element.style[property] = `${value}em`;
+        } else {
+            element.style[property] = value;
+        }
+    }
 }
 
 const COMPACT_GLOSSARIES_ANKI = `.yomitan-glossary ul[data-sc-content="glossary"] > li:not(:first-child)::before, .yomitan-glossary .glossary-list > li:not(:first-child)::before { white-space: pre-wrap; content: " | "; display: inline; color: rgb(119, 119, 119); }
@@ -386,7 +424,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         const filteredTags = parsedTags.filter(tag => !isPartOfSpeech(tag) || !(prevTags !== null && prevTags === currentTags));
         const tags = filteredTags.length > 0 ? filteredTags.join(', ') : '';
         const content = applyTableStyles(tempDiv.innerHTML);
-        let listIdentifier = '';
+        let label = '';
         if (dictChanged) {
             label = tags ? `(${tags}, ${dictName})` : `(${dictName})`;
         } else {
@@ -610,14 +648,38 @@ function createDefinitionImage(data, dictionary, exporting = false) {
                 renderDefinitionImageToCanvas(canvas, sourceImage, usedWidth, invAspectRatio, appearance);
             }));
         } else {
-            imageContainer.appendChild(createDefinitionImageCanvas(imageUrl, nodeData?.alt || title || '', (canvas, sourceImage) => {
-                renderRasterDefinitionImageToCanvas(canvas, sourceImage, imageContainer, aspectRatioSizer, hasDimensions);
-            }));
+            const img = document.createElement('img');
+            img.classList.add('gloss-image');
+            img.alt = nodeData?.alt || title || '';
+            if (!hasDimensions) {
+                img.addEventListener('load', () => {
+                    imageContainer.style.width = `${Math.min(img.naturalWidth, window.innerWidth - 20)}px`;
+                    aspectRatioSizer.style.paddingTop = `${(img.naturalHeight / img.naturalWidth) * 100}%`;
+                }, {once: true});
+            }
+            img.src = imageUrl;
+            imageContainer.appendChild(img);
         }
     } else {
-        const image = document.createElement('img');
+        const alt = nodeData?.alt || title || '';
+        const filename = (window.useAnkiConnect || window.embedMedia) ? getMediaFilename(dictionary, path) : null;
+        const image = document.createElement(filename ? 'img' : 'span');
         image.classList.add('gloss-image');
-        image.alt = nodeData?.alt || title || '';
+        if (filename) {
+            image.alt = alt;
+            image.src = filename;
+            if (sizeUnits === 'em') {
+                const emSize = 14;
+                const scaleFactor = 2 * window.devicePixelRatio;
+                image.width = usedWidth * emSize * scaleFactor;
+            } else {
+                image.width = usedWidth;
+            }
+            image.height = image.width * invAspectRatio;
+            applyImageStyles(node, imageContainer, aspectRatioSizer, imageBackground, image, filename, appearance, sizeUnits === 'em');
+        } else {
+            image.textContent = alt;
+        }
         imageContainer.appendChild(image);
     }
     return node;
@@ -676,30 +738,6 @@ function renderDefinitionImageToCanvas(canvas, image, usedWidth, invAspectRatio,
     }
 }
 
-function renderRasterDefinitionImageToCanvas(canvas, image, imageContainer, aspectRatioSizer, hasDimensions) {
-    if (!hasDimensions) {
-        imageContainer.style.width = `${Math.min(image.naturalWidth, window.innerWidth - 20)}px`;
-    }
-    
-    const invAspectRatio = image.naturalHeight / image.naturalWidth;
-    const scaleFactor = Math.ceil(window.devicePixelRatio);
-    
-    aspectRatioSizer.style.paddingTop = `${invAspectRatio * 100}%`;
-    
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.width = Math.round(imageContainer.clientWidth * scaleFactor);
-    canvas.height = Math.round(imageContainer.clientWidth * invAspectRatio * scaleFactor);
-    
-    const context = canvas.getContext('2d');
-    if (!context) {
-        return;
-    }
-    
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-}
-
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/data/anki-note-data-creator.js#L177-L221
 function getFrequencyHarmonicRank(frequencies) {
     if (!frequencies || frequencies.length === 0) {
@@ -751,10 +789,13 @@ function getFrequencyHarmonicRank(frequencies) {
 async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
+    currentDictionaryMedia = new Map();
     const glossary = constructGlossaryHtml(idx);
     const freqHarmonicRank = getFrequencyHarmonicRank(frequencies);
     const frequenciesHtml = constructFrequencyHtml(frequencies);
     const singleGlossaries = constructSingleGlossaryHtml(idx);
+    const dictionaryMedia = currentDictionaryMedia;
+    currentDictionaryMedia = null;
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
@@ -778,7 +819,9 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         pitchPositions,
         pitchCategories,
         popupSelectionText,
-        audio
+        audio,
+        selectedDictionary: selectedDictionaries[idx]?.name || '',
+        dictionaryMedia: JSON.stringify([...dictionaryMedia.values()])
     });
 }
 
@@ -817,8 +860,8 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
         }
         
         const items = node.map(item =>
-            item?.type === 'structured-content' ? item.content : item
-        );
+                               item?.type === 'structured-content' ? item.content : item
+                               );
         const isLinkArray = items.every(item => item?.tag === 'a');
         if (isLinkArray && node.length > 1) {
             const ul = document.createElement('ul');
@@ -889,7 +932,7 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
     }
     
     if (node.style) {
-        Object.assign(element.style, node.style);
+        setStructuredContentElementStyle(element, node.style);
     }
     
     if (node.content) {
@@ -946,6 +989,14 @@ function createFrequencyGroup(freqGroup) {
     return el('span', { className: 'frequency-group', 'data-details': freqGroup.dictionary }, [
         el('span', { className: 'frequency-dict-label', textContent: freqGroup.dictionary }),
         el('span', { className: 'frequency-values', textContent: values })
+    ]);
+}
+
+function createHarmonicFrequencyTag(frequencies) {
+    const rank = getFrequencyHarmonicRank(frequencies);
+    return el('span', { className: 'frequency-group harmonic-frequency' }, [
+        el('span', { className: 'frequency-dict-label', textContent: 'Average' }),
+        el('span', { className: 'frequency-values', textContent: rank })
     ]);
 }
 
@@ -1036,35 +1087,74 @@ function createPitchGroup(pitchData, reading) {
 }
 
 function createTags(entry) {
-    const { deinflectionTrace, frequencies, pitches, reading } = entry;
+    const { deinflectionTrace, frequencies, pitches, reading, expression } = entry;
     const hasDeinflection = deinflectionTrace?.length;
     const hasFrequencies = frequencies?.length;
     const hasPitches = pitches?.length;
-
-    if (!hasDeinflection && !hasFrequencies && !hasPitches) {
+    
+    if (!hasDeinflection && !hasFrequencies && !hasPitches && !window.showExpressionTags) {
         return null;
     }
-
+    
     const container = el('div', { className: 'entry-tags' });
-
+    
+    if (window.showExpressionTags) {
+        const exprRow = el('div', { className: 'tag-row expr-tag-row' });
+        exprRow.appendChild(el('span', { className: 'expr-tag', textContent: expression }));
+        if (reading && reading !== expression) {
+            exprRow.appendChild(el('span', { className: 'expr-tag', textContent: reading }));
+        }
+        container.appendChild(exprRow);
+    }
+    
     if (hasDeinflection) {
         const deinflectionDiv = el('div', { className: 'tag-row' });
         deinflectionTrace.forEach(tag => deinflectionDiv.appendChild(createDeinflectionTag(tag)));
         container.appendChild(deinflectionDiv);
     }
-
+    
     if (hasFrequencies) {
-        const freqContainer = el('div', { className: 'tag-row' });
-        frequencies.forEach(freq => freqContainer.appendChild(createFrequencyGroup(freq)));
-        container.appendChild(freqContainer);
+        if (window.harmonicFrequency) {
+            const normalRow = el('div', { className: 'tag-row', style: 'display:none' });
+            frequencies.forEach(freq => normalRow.appendChild(createFrequencyGroup(freq)));
+            
+            const harmonicRow = el('div', { className: 'tag-row' });
+            harmonicRow.appendChild(createHarmonicFrequencyTag(frequencies));
+            
+            const toggle = () => {
+                const swap = harmonicRow.style.display !== 'none';
+                harmonicRow.style.display = swap ? 'none' : '';
+                normalRow.style.display = swap ? '' : 'none';
+            };
+            
+            normalRow.addEventListener('click', toggle);
+            harmonicRow.addEventListener('click', toggle);
+            container.appendChild(harmonicRow);
+            container.appendChild(normalRow);
+        } else {
+            const freqContainer = el('div', { className: 'tag-row' });
+            frequencies.forEach(freq => freqContainer.appendChild(createFrequencyGroup(freq)));
+            container.appendChild(freqContainer);
+        }
     }
-
+    
     if (hasPitches) {
         const pitchContainer = el('div', { className: 'pitch-list' });
-        pitches.forEach(pitch => pitchContainer.appendChild(createPitchGroup(pitch, reading)));
+        if (window.deduplicatePitchAccents) {
+            const seen = new Set();
+            pitches.forEach(pitch => {
+                const unique = pitch.pitchPositions.filter(pos => !seen.has(pos));
+                if (unique.length > 0) {
+                    unique.forEach(pos => seen.add(pos));
+                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique }, reading));
+                }
+            });
+        } else {
+            pitches.forEach(pitch => pitchContainer.appendChild(createPitchGroup(pitch, reading)));
+        }
         container.appendChild(pitchContainer);
     }
-
+    
     return container;
 }
 
@@ -1196,7 +1286,7 @@ function createEntryHeader(entry, idx) {
     return header;
 }
 
-function createGlossarySection(dictName, contents, isFirst) {
+function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const details = el('details', { className: 'glossary-group' });
     if (!window.collapseDictionaries || isFirst) {
         details.open = true;
@@ -1204,6 +1294,26 @@ function createGlossarySection(dictName, contents, isFirst) {
     
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
+    let timer = null, longPressed = false;
+    const toggleSelection = () => {
+        longPressed = true;
+        const selected = selectedDictionaries[entryIdx];
+        selected?.label.classList.remove('selected');
+        if (selected?.name === dictName) {
+            delete selectedDictionaries[entryIdx];
+        } else {
+            selectedDictionaries[entryIdx] = { name: dictName, label: summary };
+            summary.classList.add('selected');
+        }
+    };
+    summary.addEventListener('pointerdown', () => {
+        longPressed = false;
+        timer = setTimeout(toggleSelection, 400);
+    });
+    const cancel = () => { clearTimeout(timer); };
+    summary.addEventListener('pointerup', cancel);
+    summary.addEventListener('pointercancel', cancel);
+    summary.addEventListener('click', (e) => { if (longPressed) e.preventDefault(); });
     details.appendChild(summary);
     
     const dictWrapper = document.createElement('div');
@@ -1281,7 +1391,7 @@ function createGlossarySection(dictName, contents, isFirst) {
         });
         dictWrapper.appendChild(ol);
     } else {
-        contents.forEach((item, idx) => {
+        contents.forEach((item) => {
             const wrapper = el('div');
             const tags = createGlossaryTags(parseTags(item.definitionTags).filter(tag => !NUMERIC_TAG.test(tag)));
             if (tags) {
@@ -1319,7 +1429,7 @@ window.renderPopup = function() {
             const entryDiv = el('div', { className: 'entry' });
             entryDiv.appendChild(createEntryHeader(entry, idx));
             
-            if (window.audioEnableAutoplay && window.audioSources?.length && idx == 0) {
+            if (window.audioEnableAutoplay && window.audioSources?.length && idx === 0) {
                 setTimeout(() => {
                     const audioButton = entryDiv.querySelector('.audio-button');
                     if (audioButton) {
@@ -1347,10 +1457,20 @@ window.renderPopup = function() {
             
             const dictNames = Object.keys(grouped);
             for (let dictIdx = 0; dictIdx < dictNames.length; dictIdx++) {
-                entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0));
+                entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
                 await new Promise(r => requestAnimationFrame(r));
             }
         }
+        
+        container.querySelectorAll('.glossary-content ruby').forEach(ruby => {
+            ruby.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    const span = document.createElement('span');
+                    span.textContent = node.textContent;
+                    node.replaceWith(span);
+                }
+            });
+        });
     })();
     
     if (window.customCSS) {
@@ -1361,7 +1481,7 @@ window.renderPopup = function() {
     
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
-        if (!target?.closest('.glossary-content')) {
+        if (!target?.closest('.glossary-content') && !target?.closest('.expr-tag')) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }

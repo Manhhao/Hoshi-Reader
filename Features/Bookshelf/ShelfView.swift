@@ -12,7 +12,7 @@ struct ShelfView: View {
     @Environment(UserConfig.self) var userConfig
     @State private var selectedBook: BookMetadata?
     @State private var readerWindow = ReaderWindow()
-    @State private var isCollapsed = true
+    @State private var isCollapsed: Bool
     @State private var compactRowCount = 4
     var viewModel: BookshelfViewModel
     var section: ShelfSection
@@ -20,12 +20,35 @@ struct ShelfView: View {
     var isSelecting: Bool = false
     @Binding var selectedBooks: Set<BookMetadata>
     @Binding var pendingLookup: String?
+    @Binding var pendingTab: Int?
+    var onMatch: (BookMetadata) -> Void
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 20)
     ]
     private let compactColumns = [
         GridItem(.adaptive(minimum: 80), spacing: 12)
     ]
+    
+    init(
+        viewModel: BookshelfViewModel,
+        section: ShelfSection,
+        showTitle: Bool = true,
+        isSelecting: Bool = false,
+        selectedBooks: Binding<Set<BookMetadata>>,
+        pendingLookup: Binding<String?>,
+        pendingTab: Binding<Int?>,
+        onMatch: @escaping (BookMetadata) -> Void
+    ) {
+        self.viewModel = viewModel
+        self.section = section
+        self.showTitle = showTitle
+        self.isSelecting = isSelecting
+        self._selectedBooks = selectedBooks
+        self._pendingLookup = pendingLookup
+        self._pendingTab = pendingTab
+        self.onMatch = onMatch
+        self._isCollapsed = State(initialValue: !section.isReading)
+    }
     
     var body: some View {
         VStack {
@@ -72,19 +95,7 @@ struct ShelfView: View {
                                 isCollapsed = false
                             }
                         } label: {
-                            AsyncImage(url: book.coverURL) { phase in
-                                if let image = phase.image {
-                                    image
-                                        .resizable()
-                                        .aspectRatio(0.709, contentMode: .fit)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                        .shadow(color: .primary.opacity(0.3), radius: 5)
-                                } else {
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.gray.opacity(0.3))
-                                        .aspectRatio(0.709, contentMode: .fit)
-                                }
-                            }
+                            BookCover(book: book)
                         }
                         .buttonStyle(.plain)
                     }
@@ -102,7 +113,9 @@ struct ShelfView: View {
                             book: book,
                             viewModel: viewModel,
                             currentShelf: section.shelf?.name,
+                            hideMove: section.isReading,
                             onSelect: { selectedBook = book },
+                            onMatch: { onMatch(book) },
                             isSelecting: isSelecting,
                             selectedBooks: $selectedBooks
                         )
@@ -117,15 +130,22 @@ struct ShelfView: View {
                     ReaderLoader(book: book)
                         .environment(userConfig)
                 }) {
-                    selectedBook = nil
+                    if selectedBook?.id == book.id {
+                        selectedBook = nil
+                    }
                 }
             } else if old != nil {
-                readerWindow.dismiss()
                 viewModel.loadBooks()
+                readerWindow.dismiss()
             }
         }
         .onChange(of: pendingLookup) { _, text in
             if text != nil && selectedBook != nil {
+                selectedBook = nil
+            }
+        }
+        .onChange(of: pendingTab) { _, tab in
+            if tab != nil && selectedBook != nil {
                 selectedBook = nil
             }
         }
