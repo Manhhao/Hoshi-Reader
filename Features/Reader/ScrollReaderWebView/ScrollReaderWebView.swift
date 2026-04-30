@@ -437,6 +437,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     });
                 });
                 
+                // prevent cover images wrapped in svg containers from getting stretched
+                document.querySelectorAll('svg[preserveAspectRatio="none"]').forEach(svg => svg.removeAttribute('preserveAspectRatio'));
+                
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
                 var imagePromises = Array.from(images).map(img => {
