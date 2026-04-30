@@ -9,14 +9,11 @@
 import Foundation
 
 enum GoogleDriveError: LocalizedError {
-    case folderNotFound
     case invalidResponse
     case apiError(String, statusCode: Int?)
     
     var errorDescription: String? {
         switch self {
-        case .folderNotFound:
-            return "No ttu-reader-data folder on Google Drive"
         case .invalidResponse:
             return "Invalid response from Google Drive"
         case .apiError(let message, _):
@@ -122,7 +119,7 @@ class GoogleDriveHandler {
         
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-        let query = "trashed=false and mimeType='application/vnd.google-apps.folder' and name = 'ttu-reader-data'"
+        let query = "trashed=false and 'root' in parents and mimeType='application/vnd.google-apps.folder' and name = 'ttu-reader-data'"
         
         components.queryItems = [
             URLQueryItem(name: "q", value: query),
@@ -138,11 +135,39 @@ class GoogleDriveHandler {
         let data = try await performRequest(request)
         
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        guard let folderId = list.files.first?.id else {
-            throw GoogleDriveError.folderNotFound
+        let folderId: String
+        if let existingFolderId = list.files.first?.id {
+            folderId = existingFolderId
+        } else {
+            folderId = try await createRootFolder()
         }
         rootFolderId = folderId
         UserDefaults.standard.set(folderId, forKey: Self.rootFolderIdKey)
+        return folderId
+    }
+    
+    private func createRootFolder() async throws -> String {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+        components.queryItems = [URLQueryItem(name: "fields", value: "id")]
+        
+        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "name": "ttu-reader-data",
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": ["root"]
+        ])
+        
+        let data = try await performRequest(request)
+        guard let response = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let folderId = response["id"] as? String else {
+            throw GoogleDriveError.invalidResponse
+        }
         return folderId
     }
     
