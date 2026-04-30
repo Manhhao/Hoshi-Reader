@@ -79,6 +79,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(deduplicatePitchAccents, forKey: "deduplicatePitchAccents") }
     }
     
+    var compactPitchAccents: Bool {
+        didSet { UserDefaults.standard.set(compactPitchAccents, forKey: "compactPitchAccents") }
+    }
+    
     var enableSync: Bool {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
     }
@@ -338,6 +342,7 @@ class UserConfig {
         self.showExpressionTags = defaults.object(forKey: "showExpressionTags") as? Bool ?? false
         self.harmonicFrequency = defaults.object(forKey: "harmonicFrequency") as? Bool ?? false
         self.deduplicatePitchAccents = defaults.object(forKey: "deduplicatePitchAccents") as? Bool ?? false
+        self.compactPitchAccents = defaults.object(forKey: "compactPitchAccents") as? Bool ?? true
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
         self.syncMode = defaults.string(forKey: "syncMode")

@@ -195,6 +195,7 @@ struct DictionarySettingsView: View {
                 Toggle("Show Expression Tags", isOn: Bindable(userConfig).showExpressionTags)
                 Toggle("Harmonic Frequency", isOn: Bindable(userConfig).harmonicFrequency)
                 Toggle("Deduplicate Pitch Accents", isOn: Bindable(userConfig).deduplicatePitchAccents)
+                Toggle("Compact Pitch Accents", isOn: Bindable(userConfig).compactPitchAccents)
             }
         }
         .navigationTitle("Settings")

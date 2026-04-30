@@ -1318,31 +1318,6 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     
     const dictWrapper = document.createElement('div');
     dictWrapper.setAttribute('data-dictionary', dictName);
-    const compactCss = window.compactGlossaries ? `
-        ul[data-sc-content="glossary"],
-        ol[data-sc-content="glossary"],
-        .glossary-list {
-            list-style: none;
-            padding-left: 0;
-            margin: 0;
-        }
-        ul[data-sc-content="glossary"] > li,
-        ol[data-sc-content="glossary"] > li,
-        .glossary-list > li {
-            display: inline;
-        }
-        ul[data-sc-content="glossary"] > li::after,
-        ol[data-sc-content="glossary"] > li::after,
-        .glossary-list > li::after {
-            content: " | ";
-            opacity: 0.6;
-        }
-        ul[data-sc-content="glossary"] > li:last-child::after,
-        ol[data-sc-content="glossary"] > li:last-child::after,
-        .glossary-list > li:last-child::after {
-            content: "";
-        }
-    ` : '';
     
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
@@ -1351,7 +1326,6 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
                 @media (prefers-color-scheme: light) { color: #000; }
                 @media (prefers-color-scheme: dark) { color: #fff; }
                 ${dictStyle}
-                ${compactCss}
             }
         `.trim()
     }));
@@ -1472,6 +1446,42 @@ window.renderPopup = function() {
             });
         });
     })();
+    
+    if (window.compactGlossaries) {
+        const glossaryStyle = document.createElement('style');
+        glossaryStyle.textContent = `
+            ul[data-sc-content="glossary"],
+            ol[data-sc-content="glossary"],
+            .glossary-list {
+                list-style: none;
+                padding-left: 0;
+                margin: 0;
+            }
+            ul[data-sc-content="glossary"] > li,
+            ol[data-sc-content="glossary"] > li,
+            .glossary-list > li {
+                display: inline;
+            }
+            ul[data-sc-content="glossary"] > li:not(:last-child)::after,
+            ol[data-sc-content="glossary"] > li:not(:last-child)::after,
+            .glossary-list > li:not(:last-child)::after {
+                content: " | ";
+                opacity: 0.6;
+            }
+        `;
+        document.body.appendChild(glossaryStyle);
+    }
+    
+    if (window.compactPitchAccents) {
+        const pitchStyle = document.createElement('style');
+        pitchStyle.textContent = `
+            .pitch-entries, .pitch-entries > li { display: inline; }
+            .pitch-entries > li { white-space: nowrap; }
+            .pitch-entries > li:not(:last-child)::after { content: " | "; opacity: 0.6; white-space: normal; }
+            .pitch-dict-label { margin-right: 4px; }
+        `;
+        document.body.appendChild(pitchStyle);
+    }
     
     if (window.customCSS) {
         const customStyle = document.createElement('style');
