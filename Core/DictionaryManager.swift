@@ -33,6 +33,7 @@ class DictionaryManager {
     var currentImport = ""
     
     private static let configFileName = "config.json"
+    private static let collapsedConfig = "collapsed.json"
     
     private init() {
         loadDictionaries()
