@@ -109,10 +109,13 @@ struct PopupWebView: UIViewRepresentable {
     var clearSelection: Bool
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
+    var backTrigger: Bool = false
+    var forwardTrigger: Bool = false
     var onMine: (([String: String]) async -> Bool)? = nil
     var onTextSelected: ((SelectionData) -> Int?)? = nil
     var onTapOutside: (() -> Void)? = nil
     var onSwipeDismiss: (() -> Void)? = nil
+    var onRedirect: ((String) -> [[String: Any]])? = nil
     
     private static let selectionJs: String = {
         guard let url = Bundle.main.url(forResource: "selection", withExtension: "js"),
@@ -172,6 +175,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntry")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -199,6 +203,16 @@ struct PopupWebView: UIViewRepresentable {
             context.coordinator.clearSelection = clearSelection
             webView.evaluateJavaScript("window.hoshiSelection.clearSelection()")
         }
+        
+        if context.coordinator.lastBackTrigger != backTrigger {
+            context.coordinator.lastBackTrigger = backTrigger
+            webView.evaluateJavaScript("window.navigateBack()")
+        }
+        
+        if context.coordinator.lastForwardTrigger != forwardTrigger {
+            context.coordinator.lastForwardTrigger = forwardTrigger
+            webView.evaluateJavaScript("window.navigateForward()")
+        }
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -213,6 +227,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntry", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
@@ -220,6 +235,9 @@ struct PopupWebView: UIViewRepresentable {
         var currentContent: String = ""
         var wasLoaded: Bool = false
         var clearSelection: Bool = false
+        var lastBackTrigger: Bool = false
+        var lastForwardTrigger: Bool = false
+        var entries: [[String: Any]] = []
         let id = UUID()
         
         init(parent: PopupWebView) {
@@ -227,6 +245,7 @@ struct PopupWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            entries = parent.lookupEntries
             webView.callAsyncJavaScript(
                 """
                 window.dictionaryStyles = dictionaryStyles;
@@ -235,7 +254,7 @@ struct PopupWebView: UIViewRepresentable {
                 """,
                 arguments: [
                     "dictionaryStyles": parent.dictionaryStyles,
-                    "entryCount": parent.lookupEntries.count,
+                    "entryCount": entries.count,
                 ],
                 in: nil,
                 in: .page,
@@ -251,7 +270,11 @@ struct PopupWebView: UIViewRepresentable {
                 return (await AnkiManager.shared.checkDuplicate(word: word), nil)
             }
             if message.name == "getEntry", let index = message.body as? Int {
-                return (parent.lookupEntries[index], nil)
+                return (entries[index], nil)
+            }
+            if message.name == "lookupRedirect", let query = message.body as? String {
+                entries = parent.onRedirect?(query) ?? []
+                return (entries.count, nil)
             }
             return (nil, nil)
         }
