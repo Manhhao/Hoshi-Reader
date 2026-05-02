@@ -118,28 +118,6 @@ struct PopupWebView: UIViewRepresentable {
     var onSwipeDismiss: (() -> Void)? = nil
     var onRedirect: ((String) -> [[String: Any]])? = nil
     
-    private static let selectionJs: String = {
-        guard let url = Bundle.main.url(forResource: "selection", withExtension: "js"),
-              let js = try? String(contentsOf: url, encoding: .utf8) else { return "" }
-        return js
-    }()
-    
-    private static let popupJs: String = {
-        guard let url = Bundle.main.url(forResource: "popup", withExtension: "js"),
-              let js = try? String(contentsOf: url, encoding: .utf8) else {
-            return ""
-        }
-        return js
-    }()
-    
-    private static let popupCss: String = {
-        guard let url = Bundle.main.url(forResource: "popup", withExtension: "css"),
-              let css = try? String(contentsOf: url, encoding: .utf8) else {
-            return ""
-        }
-        return css
-    }()
-    
     private static let swipeDismissJs = """
     (function() {
         if (!window.swipeThreshold) {
@@ -197,7 +175,7 @@ struct PopupWebView: UIViewRepresentable {
             context.coordinator.currentContent = content
             context.coordinator.wasLoaded = true
             let html = constructHtml(content: content)
-            webView.loadHTMLString(html, baseURL: nil)
+            webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
         }
         
         if context.coordinator.clearSelection != clearSelection {
@@ -333,10 +311,10 @@ struct PopupWebView: UIViewRepresentable {
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>\(Self.popupCss)</style>
+            <link rel="stylesheet" href="popup.css">
             <script>window.scanNonJapaneseText = \(scanNonJapaneseText);</script>
-            <script>\(Self.selectionJs)</script>
-            <script>\(Self.popupJs)</script>
+            <script src="selection.js"></script>
+            <script src="popup.js"></script>
         </head>
         <body>
             \(content)
