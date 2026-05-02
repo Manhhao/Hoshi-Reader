@@ -109,6 +109,7 @@ struct PopupWebView: UIViewRepresentable {
     var clearSelection: Bool
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
+    var scanNonJapaneseText: Bool = true
     var backTrigger: Bool = false
     var forwardTrigger: Bool = false
     var onMine: (([String: String]) async -> Bool)? = nil
@@ -333,6 +334,7 @@ struct PopupWebView: UIViewRepresentable {
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <style>\(Self.popupCss)</style>
+            <script>window.scanNonJapaneseText = \(scanNonJapaneseText);</script>
             <script>\(Self.selectionJs)</script>
             <script>\(Self.popupJs)</script>
         </head>

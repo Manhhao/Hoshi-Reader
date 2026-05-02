@@ -308,6 +308,7 @@ struct PopupView: View {
                 clearSelection: clearSelection,
                 dictionaryStyles: dictionaryStyles,
                 lookupEntries: lookupEntries,
+                scanNonJapaneseText: userConfig.scanNonJapaneseText,
                 backTrigger: backTrigger,
                 forwardTrigger: forwardTrigger,
                 onMine: { content in

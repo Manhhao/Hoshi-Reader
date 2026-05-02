@@ -51,6 +51,7 @@ struct DictionarySearchView: View {
                     clearSelection: clearSelection,
                     dictionaryStyles: dictionaryStyles,
                     lookupEntries: lookupEntries,
+                    scanNonJapaneseText: userConfig.scanNonJapaneseText,
                     backTrigger: backTrigger,
                     forwardTrigger: forwardTrigger,
                     onMine: { minedContent in
@@ -79,7 +80,7 @@ struct DictionarySearchView: View {
                             let dx = value.translation.width
                             let dy = value.translation.height
                             
-                            guard abs(dx) > abs(dy) && abs(dy) < 10 else { return }
+                            guard abs(dx) > abs(dy) && abs(dy) < 20 else { return }
                             
                             if dx > 0 {
                                 guard backCount > 0 else { return }

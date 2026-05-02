@@ -48,11 +48,14 @@ function toKebabCase(str) {
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/ja/japanese.js#L332
-function isStringPartiallyJapanese(text) {
-    if (!text) {
-        return false;
+function isStringPartiallyJapanese(str) {
+    if (str.length === 0) { return false; }
+    for (const c of str) {
+        if (window.hoshiSelection?.isCodePointJapanese(c.codePointAt(0))) {
+            return true;
+        }
     }
-    return KANA_PATTERN.test(text) || KANJI_PATTERN.test(text);
+    return false;
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
