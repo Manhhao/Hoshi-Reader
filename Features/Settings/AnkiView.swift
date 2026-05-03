@@ -13,6 +13,7 @@ struct AnkiView: View {
     @State private var ankiManager = AnkiManager.shared
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
+    @State private var confirmFetch = false
     
     private var availableHandlebars: [String] {
         var options = Handlebars.allCases.map(\.rawValue)
@@ -25,16 +26,23 @@ struct AnkiView: View {
     var body: some View {
         List {
             Section {
-                Button("Fetch decks and models from Anki") {
-                    if !ankiManager.useAnkiConnect {
-                        ankiManager.requestInfo()
-                    } else {
-                        Task { await ankiManager.fetchAnkiConnect() }
+                if ankiManager.useAnkiConnect && !ankiManager.isConnected {
+                    Button("Connect") {
+                        Task { await ankiManager.pingAnkiConnect() }
+                    }
+                } else {
+                    Button("Fetch decks and models from Anki") {
+                        confirmFetch = true
                     }
                 }
             } footer: {
-                if !ankiManager.isConnected {
-                    Text("AnkiMobile or a hosted AnkiConnect instance is required to mine words.")
+                VStack(alignment: .leading, spacing: 4) {
+                    if !ankiManager.isConnected {
+                        Text("AnkiMobile or an AnkiConnect instance is required to mine words.")
+                    }
+                    if ankiManager.useAnkiConnect {
+                        Text("AnkiConnect Status: \(ankiManager.isAnkiConnectReachable ? "Connected" : "Not Connected")")
+                    }
                 }
             }
             
@@ -161,6 +169,19 @@ struct AnkiView: View {
             }
         }
         .navigationTitle("Anki")
+        .onDisappear { ankiManager.save() }
+        .alert("Fetch from Anki?", isPresented: $confirmFetch) {
+            Button("OK") {
+                if ankiManager.useAnkiConnect {
+                    Task { await ankiManager.fetchAnkiConnect() }
+                } else {
+                    ankiManager.requestInfo()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will clear your current mappings.")
+        }
         .alert("Error", isPresented: .init(
             get: { ankiManager.errorMessage != nil },
             set: { if !$0 { ankiManager.errorMessage = nil } }

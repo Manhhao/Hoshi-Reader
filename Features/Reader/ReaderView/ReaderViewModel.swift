@@ -452,6 +452,16 @@ class ReaderViewModel {
     
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
     func updateStats() {
+        let currentDateKey = Self.formattedDate(date: .now)
+        if todaysStatistics.dateKey != currentDateKey {
+            if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
+                stats[index] = todaysStatistics
+            } else {
+                stats.append(todaysStatistics)
+            }
+            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: document.title ?? "")
+        }
+        
         let now: Date = .now
         let timeDiff = Date.now.timeIntervalSince(lastTimestamp)
         let charDiff = currentCharacter - lastCount
@@ -663,18 +673,19 @@ class ReaderViewModel {
     }
     
     private func saveStats() {
-        if let index = stats.firstIndex(where: { $0.dateKey == Self.formattedDate(date: .now) }) {
+        if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
             stats[index] = todaysStatistics
         } else {
             stats.append(todaysStatistics)
         }
         
+        stats = Self.deduplicateStatistics(stats)
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
         scheduleAutoExport()
     }
     
     private func loadStatistics() {
-        stats = BookStorage.loadStatistics(root: rootURL) ?? []
+        stats = Self.deduplicateStatistics(BookStorage.loadStatistics(root: rootURL) ?? [])
         todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
         allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
         
@@ -720,6 +731,20 @@ class ReaderViewModel {
     
     private static func getDefaultStatistic(title: String) -> Statistics {
         return Statistics(title: title, dateKey: Self.formattedDate(date: .now), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
+    }
+    
+    private static func deduplicateStatistics(_ statistics: [Statistics]) -> [Statistics] {
+        var grouped: [String: Statistics] = [:]
+        for statistic in statistics {
+            if let existing = grouped[statistic.dateKey] {
+                if statistic.lastStatisticModified > existing.lastStatisticModified {
+                    grouped[statistic.dateKey] = statistic
+                }
+            } else {
+                grouped[statistic.dateKey] = statistic
+            }
+        }
+        return Array(grouped.values)
     }
     
     private static func formattedDate(date: Date) -> String {
