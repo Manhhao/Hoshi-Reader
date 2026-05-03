@@ -153,7 +153,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "playWordAudio")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntry")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
@@ -205,7 +205,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntry", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntries", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
     }
     
@@ -248,8 +248,10 @@ struct PopupWebView: UIViewRepresentable {
             if message.name == "duplicateCheck", let word = message.body as? String {
                 return (await AnkiManager.shared.checkDuplicate(word: word), nil)
             }
-            if message.name == "getEntry", let index = message.body as? Int {
-                return (entries[index], nil)
+            if message.name == "getEntries", let body = message.body as? [String: Any] {
+                let start = body["start"] as? Int ?? 0
+                let count = body["count"] as? Int ?? 0
+                return (Array(entries[start..<start + count]), nil)
             }
             if message.name == "lookupRedirect", let query = message.body as? String {
                 entries = parent.onRedirect?(query) ?? []
