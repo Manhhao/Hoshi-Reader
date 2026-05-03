@@ -1405,6 +1405,9 @@ function redirect(count) {
     window.renderPopup();
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = 0;
+        requestAnimationFrame(() => {
+            document.scrollingElement.scrollTop = 0;
+        });
     });
 }
 
