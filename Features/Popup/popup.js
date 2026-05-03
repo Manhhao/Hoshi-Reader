@@ -1570,6 +1570,9 @@ window.renderPopup = function() {
     container.clickAttached = true;
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+        if (target?.closest('summary')) {
+            return;
+        }
         if (!target?.closest('.glossary-content') && !target?.closest('.expr-tag')) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
