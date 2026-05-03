@@ -167,8 +167,6 @@ struct DictionaryView: View {
 
 struct DictionarySettingsView: View {
     @Environment(UserConfig.self) private var userConfig
-    @State private var collapseMode: CollapseMode = .expandAll
-    @State private var uncollapseFirst: Bool = true
     
     var body: some View {
         List {
@@ -192,17 +190,17 @@ struct DictionarySettingsView: View {
             }
             
             Section("Collapse Dictionaries") {
-                Picker("Mode", selection: $collapseMode) {
-                    ForEach(CollapseMode.allCases) { m in
+                Picker("Mode", selection: Bindable(userConfig).collapseMode) {
+                    ForEach(CollapseMode.allCases, id: \.self) { m in
                         Text(m.rawValue).tag(m)
                     }
                 }
-                if collapseMode != .expandAll {
-                    Toggle("Uncollapse First Dictionary", isOn: $uncollapseFirst)
+                if userConfig.collapseMode != .expandAll {
+                    Toggle("Expand First Dictionary", isOn: Bindable(userConfig).expandFirstDictionary)
                 }
-                if collapseMode == .custom {
+                if userConfig.collapseMode == .custom {
                     NavigationLink("Configure") {
-                        CollapseSettingsView()
+                        CollapsedDictionariesView()
                     }
                 }
             }
@@ -220,34 +218,22 @@ struct DictionarySettingsView: View {
     }
 }
 
-enum CollapseMode: String, CaseIterable, Identifiable {
-    case expandAll = "Expand All"
-    case collapseAll = "Collapse All"
-    case custom = "Custom"
-    var id: String { rawValue }
-}
-
-struct CollapseSettingsView: View {
+struct CollapsedDictionariesView: View {
     @State private var dictionaryManager = DictionaryManager.shared
-    @State private var collapsedDictIds: Set<UUID> = []
     
     var body: some View {
         List {
             ForEach(dictionaryManager.termDictionaries) { dict in
                 HStack {
-                    Image(systemName: collapsedDictIds.contains(dict.id) ? "chevron.right" : "chevron.down")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: dictionaryManager.collapsedDictionaries.contains(dict.index.title) ? "chevron.right" : "chevron.down")
+                        .foregroundStyle(dictionaryManager.collapsedDictionaries.contains(dict.index.title) ? .secondary : .primary)
                         .frame(width: 16)
                     Text(dict.index.title)
                     Spacer()
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if collapsedDictIds.contains(dict.id) {
-                        collapsedDictIds.remove(dict.id)
-                    } else {
-                        collapsedDictIds.insert(dict.id)
-                    }
+                    dictionaryManager.toggleCollapsedDictionary(title: dict.index.title)
                 }
             }
         }

@@ -20,6 +20,12 @@ enum AudioPlaybackMode: String, CaseIterable, Codable {
     case mix = "mix"
 }
 
+enum CollapseMode: String, CaseIterable, Codable {
+    case expandAll = "Expand All"
+    case collapseAll = "Collapse All"
+    case custom = "Custom"
+}
+
 enum Themes: String, CaseIterable, Codable {
     case system = "System"
     case light = "Light"
@@ -59,8 +65,12 @@ class UserConfig {
         didSet { UserDefaults.standard.set(scanLength, forKey: "scanLength") }
     }
     
-    var collapseDictionaries: Bool {
-        didSet { UserDefaults.standard.set(collapseDictionaries, forKey: "collapseDictionaries") }
+    var collapseMode: CollapseMode {
+        didSet { UserDefaults.standard.set(collapseMode.rawValue, forKey: "collapseMode") }
+    }
+    
+    var expandFirstDictionary: Bool {
+        didSet { UserDefaults.standard.set(expandFirstDictionary, forKey: "expandFirstDictionary") }
     }
     
     var compactGlossaries: Bool {
@@ -337,7 +347,9 @@ class UserConfig {
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
-        self.collapseDictionaries = defaults.object(forKey: "collapseDictionaries") as? Bool ?? false
+        self.collapseMode = defaults.string(forKey: "collapseMode")
+            .flatMap(CollapseMode.init) ?? .expandAll
+        self.expandFirstDictionary = defaults.object(forKey: "expandFirstDictionary") as? Bool ?? false
         self.compactGlossaries = defaults.object(forKey: "compactGlossaries") as? Bool ?? true
         self.showExpressionTags = defaults.object(forKey: "showExpressionTags") as? Bool ?? false
         self.harmonicFrequency = defaults.object(forKey: "harmonicFrequency") as? Bool ?? false
