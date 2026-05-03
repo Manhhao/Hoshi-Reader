@@ -262,6 +262,9 @@ struct DictionarySearchView: View {
         }
         lookupEntries = Self.buildLookupEntries(lookupResults: results)
         
+        let collapsedDictionaries = userConfig.collapseMode == .custom
+        ? ((try? JSONEncoder().encode(DictionaryManager.shared.collapsedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
@@ -270,7 +273,9 @@ struct DictionarySearchView: View {
         content = """
         <style>.overlay { padding-bottom: 90px; }</style>
         <script>
-            window.collapseDictionaries = \(userConfig.collapseDictionaries);
+            window.collapseMode = "\(userConfig.collapseMode.rawValue)";
+            window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
+            window.collapsedDictionaries = \(collapsedDictionaries);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.showExpressionTags = \(userConfig.showExpressionTags);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);

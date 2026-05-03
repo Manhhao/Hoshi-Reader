@@ -1297,9 +1297,9 @@ function createEntryHeader(entry, idx) {
 
 function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const details = el('details', { className: 'glossary-group' });
-    if (!window.collapseDictionaries || isFirst) {
-        details.open = true;
-    }
+    const collapsed = window.collapseMode === 'Collapse All'
+    || (window.collapseMode === 'Custom' && window.collapsedDictionaries.includes(dictName));
+    details.open = !collapsed || (window.expandFirstDictionary && isFirst);
     
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));

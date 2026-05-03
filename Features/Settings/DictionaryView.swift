@@ -190,8 +190,23 @@ struct DictionarySettingsView: View {
                 }
             }
             
+            Section("Collapse Dictionaries") {
+                Picker("Mode", selection: Bindable(userConfig).collapseMode) {
+                    ForEach(CollapseMode.allCases, id: \.self) { m in
+                        Text(m.rawValue).tag(m)
+                    }
+                }
+                if userConfig.collapseMode != .expandAll {
+                    Toggle("Expand First Dictionary", isOn: Bindable(userConfig).expandFirstDictionary)
+                }
+                if userConfig.collapseMode == .custom {
+                    NavigationLink("Configure") {
+                        CollapsedDictionariesView()
+                    }
+                }
+            }
+            
             Section("Behaviour") {
-                Toggle("Auto-collapse Dictionaries", isOn: Bindable(userConfig).collapseDictionaries)
                 Toggle("Compact Glossaries", isOn: Bindable(userConfig).compactGlossaries)
                 Toggle("Show Expression Tags", isOn: Bindable(userConfig).showExpressionTags)
                 Toggle("Harmonic Frequency", isOn: Bindable(userConfig).harmonicFrequency)
@@ -200,6 +215,30 @@ struct DictionarySettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct CollapsedDictionariesView: View {
+    @State private var dictionaryManager = DictionaryManager.shared
+    
+    var body: some View {
+        List {
+            ForEach(dictionaryManager.termDictionaries) { dict in
+                HStack {
+                    Image(systemName: dictionaryManager.collapsedDictionaries.contains(dict.index.title) ? "chevron.right" : "chevron.down")
+                        .foregroundStyle(dictionaryManager.collapsedDictionaries.contains(dict.index.title) ? .secondary : .primary)
+                        .frame(width: 16)
+                    Text(dict.index.title)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    dictionaryManager.toggleCollapsedDictionary(title: dict.index.title)
+                }
+            }
+        }
+        .navigationTitle("Collapse Dictionaries")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

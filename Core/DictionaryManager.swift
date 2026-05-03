@@ -26,6 +26,7 @@ class DictionaryManager {
     private(set) var frequencyDictionaries: [DictionaryInfo] = []
     private(set) var pitchDictionaries: [DictionaryInfo] = []
     private(set) var updatableDictionaries: [(DictionaryInfo, DictionaryType)] = []
+    private(set) var collapsedDictionaries: Set<String> = []
     private(set) var isImporting = false
     private(set) var isUpdating = false
     var shouldShowError = false
@@ -33,9 +34,11 @@ class DictionaryManager {
     var currentImport = ""
     
     private static let configFileName = "config.json"
+    private static let collapsedConfig = "collapsed.json"
     
     private init() {
         loadDictionaries()
+        loadCollapsedDictionaries()
         rebuildLookupQuery()
     }
     
@@ -141,6 +144,21 @@ class DictionaryManager {
         return nil
     }
     
+    private func loadCollapsedDictionaries() {
+        do {
+            let configURL = try Self.getDictionariesDirectory()
+                .appendingPathComponent(Self.collapsedConfig)
+            
+            if FileManager.default.fileExists(atPath: configURL.path(percentEncoded: false)) {
+                let data = try Data(contentsOf: configURL)
+                let decoder = JSONDecoder()
+                collapsedDictionaries = try decoder.decode(Set<String>.self, from: data)
+            }
+        } catch {
+            collapsedDictionaries = []
+        }
+    }
+    
     private func saveDictionaryConfig() {
         let config = DictionaryConfig(
             termDictionaries: termDictionaries.map {
@@ -183,7 +201,29 @@ class DictionaryManager {
             
             try data.write(to: configURL, options: .atomic)
         } catch {
-            showError("failed to save dictionary config: \(error.localizedDescription)")
+            showError("Failed to save dictionary config: \(error.localizedDescription)")
+        }
+    }
+    
+    func saveCollapsedDictionaries() {
+        guard let configURL = try? Self.getDictionariesDirectory()
+            .appendingPathComponent(Self.collapsedConfig) else {
+            return
+        }
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(collapsedDictionaries)
+            
+            let directory = configURL.deletingLastPathComponent()
+            if !FileManager.default.fileExists(atPath: directory.path(percentEncoded: false)) {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            }
+            
+            try data.write(to: configURL, options: .atomic)
+        } catch {
+            showError("Failed to save collapsed dictionaries: \(error.localizedDescription)")
         }
     }
     
@@ -245,7 +285,7 @@ class DictionaryManager {
             } catch {
                 await MainActor.run {
                     self.isImporting = false
-                    self.showError("failed to download dictionaries: \(error.localizedDescription)")
+                    self.showError("Failed to download dictionaries: \(error.localizedDescription)")
                 }
             }
         }
@@ -257,7 +297,7 @@ class DictionaryManager {
             destinationPath = try Self.getDictionariesDirectory()
                 .appendingPathComponent(type.rawValue).path(percentEncoded: false)
         } catch {
-            showError("failed to import dictionary: \(error.localizedDescription)")
+            showError("Failed to import dictionary: \(error.localizedDescription)")
             return
         }
         
@@ -369,6 +409,11 @@ class DictionaryManager {
                                 self.setDictionaryEnabled(index: importedIndex, enabled: wasEnabled, type: type)
                                 self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
                                 AnkiManager.shared.updateHandlebar(old: old, new: new)
+                                if self.collapsedDictionaries.contains(old) {
+                                    self.collapsedDictionaries.remove(old)
+                                    self.collapsedDictionaries.insert(new)
+                                    self.saveCollapsedDictionaries()
+                                }
                             }
                         } else {
                             self.rebuildLookupQuery()
@@ -382,7 +427,7 @@ class DictionaryManager {
             } catch {
                 await MainActor.run {
                     self.isUpdating = false
-                    self.showError("failed to update dictionaries: \(error.localizedDescription)")
+                    self.showError("Failed to update dictionaries: \(error.localizedDescription)")
                 }
             }
         }
@@ -462,6 +507,15 @@ class DictionaryManager {
         updateOrder(type: type)
         saveDictionaryConfig()
         rebuildLookupQuery()
+    }
+    
+    func toggleCollapsedDictionary(title: String) {
+        if collapsedDictionaries.contains(title) {
+            collapsedDictionaries.remove(title)
+        } else {
+            collapsedDictionaries.insert(title)
+        }
+        saveCollapsedDictionaries()
     }
     
     private func isDictionaryEnabled(at index: Int, type: DictionaryType) -> Bool {
