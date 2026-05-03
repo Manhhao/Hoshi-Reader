@@ -57,6 +57,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(dictionaryTabDefault, forKey: "dictionaryTabDefault") }
     }
     
+    var scanNonJapaneseText: Bool {
+        didSet { UserDefaults.standard.set(scanNonJapaneseText, forKey: "scanNonJapaneseText") }
+    }
+    
     var maxResults: Int {
         didSet { UserDefaults.standard.set(maxResults, forKey: "maxResults") }
     }
@@ -229,6 +233,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(popupHeight, forKey: "popupHeight") }
     }
     
+    var popupActionBar: Bool {
+        didSet { UserDefaults.standard.set(popupActionBar, forKey: "popupActionBar") }
+    }
+    
     var popupFullWidth: Bool {
         didSet { UserDefaults.standard.set(popupFullWidth, forKey: "popupFullWidth") }
     }
@@ -345,6 +353,7 @@ class UserConfig {
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
         
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
+        self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
         self.collapseMode = defaults.string(forKey: "collapseMode")
@@ -398,6 +407,7 @@ class UserConfig {
         
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupActionBar = defaults.object(forKey: "popupActionBar") as? Bool ?? false
         self.popupFullWidth = defaults.object(forKey: "popupFullWidth") as? Bool ?? false
         self.popupSwipeToDismiss = defaults.object(forKey: "popupSwipeToDismiss") as? Bool ?? false
         self.popupSwipeThreshold = defaults.object(forKey: "popupSwipeThreshold") as? Int ?? 40

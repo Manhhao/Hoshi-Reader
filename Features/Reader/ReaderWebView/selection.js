@@ -6,19 +6,83 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+// https://github.com/yomidevs/yomitan/blob/ddbe4a2c0bf778583b38962d4b0b85442dfa8f6a/ext/js/language/CJK-util.js#L19
+const CJK_UNIFIED_IDEOGRAPHS_RANGE = [0x4e00, 0x9fff];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A_RANGE = [0x3400, 0x4dbf];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B_RANGE = [0x20000, 0x2a6df];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C_RANGE = [0x2a700, 0x2b73f];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D_RANGE = [0x2b740, 0x2b81f];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E_RANGE = [0x2b820, 0x2ceaf];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F_RANGE = [0x2ceb0, 0x2ebef];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_G_RANGE = [0x30000, 0x3134f];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_H_RANGE = [0x31350, 0x323af];
+const CJK_UNIFIED_IDEOGRAPHS_EXTENSION_I_RANGE = [0x2ebf0, 0x2ee5f];
+const CJK_COMPATIBILITY_IDEOGRAPHS_RANGE = [0xf900, 0xfaff];
+const CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT_RANGE = [0x2f800, 0x2fa1f];
+const CJK_IDEOGRAPH_RANGES = [
+    CJK_UNIFIED_IDEOGRAPHS_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_G_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_H_RANGE,
+    CJK_UNIFIED_IDEOGRAPHS_EXTENSION_I_RANGE,
+    CJK_COMPATIBILITY_IDEOGRAPHS_RANGE,
+    CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT_RANGE,
+];
+
+// https://github.com/yomidevs/yomitan/blob/ddbe4a2c0bf778583b38962d4b0b85442dfa8f6a/ext/js/language/CJK-util.js#L60
+const FULLWIDTH_CHARACTER_RANGES = [
+    [0xff10, 0xff19], // Fullwidth numbers
+    [0xff21, 0xff3a], // Fullwidth upper case Latin letters
+    [0xff41, 0xff5a], // Fullwidth lower case Latin letters
+    
+    [0xff01, 0xff0f], // Fullwidth punctuation 1
+    [0xff1a, 0xff1f], // Fullwidth punctuation 2
+    [0xff3b, 0xff3f], // Fullwidth punctuation 3
+    [0xff5b, 0xff60], // Fullwidth punctuation 4
+    [0xffe0, 0xffee], // Currency markers
+];
+
+// https://github.com/yomidevs/yomitan/blob/ddbe4a2c0bf778583b38962d4b0b85442dfa8f6a/ext/js/language/ja/japanese.js#L44
+const JAPANESE_RANGES = [
+    [0x3040, 0x309f], // Hiragana
+    [0x30a0, 0x30ff], // Katakana
+    
+    ...CJK_IDEOGRAPH_RANGES, // CJK_IDEOGRAPH_RANGES
+    
+    [0xff66, 0xff9f], // Halfwidth katakana
+    
+    [0x30fb, 0x30fc], // Katakana punctuation
+    [0xff61, 0xff65], // Kana punctuation
+    
+    [0x3000, 0x303f], // CJK_PUNCTUATION_RANGE
+    ...FULLWIDTH_CHARACTER_RANGES, // FULLWIDTH_CHARACTER_RANGES
+];
+
 window.hoshiSelection = {
     selection: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
     trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
     brackets: {'「':'」', '『': '』', '（':'）', '(':')', '【':'】', '〈':'〉', '《':'》', '〔':'〕', '｛':'｝', '{':'}', '［':'］', '[':']'},
-
+    
     isVertical() {
         return window.getComputedStyle(document.body).writingMode === "vertical-rl";
     },
     
+    // https://github.com/yomidevs/yomitan/blob/ddbe4a2c0bf778583b38962d4b0b85442dfa8f6a/ext/js/language/ja/japanese.js#L307
+    isCodePointJapanese(codePoint) {
+        return JAPANESE_RANGES.some(([start, end]) => codePoint >= start && codePoint <= end);
+    },
+    
     isScanBoundary(char) {
-        return /^[\s\u3000]$/.test(char) || this.scanDelimiters.includes(char);
+        return /^[\s\u3000]$/.test(char) ||
+        this.scanDelimiters.includes(char) ||
+        (window.scanNonJapaneseText === false && !this.isCodePointJapanese(char.codePointAt(0)));
     },
     
     isFurigana(node) {
@@ -189,7 +253,7 @@ window.hoshiSelection = {
         }
         
         let sentence = (partsBefore.reverse().join('') + partsAfter.join('')).trim();
-
+        
         const closeBrackets = new Set(Object.values(this.brackets));
         const openBrackets = new Set(Object.keys(this.brackets));
         let stack = [];
@@ -207,7 +271,7 @@ window.hoshiSelection = {
                 }
             }
         }
-
+        
         let startSlice = 0;
         while (stack.length > 0 && startSlice < sentence.length - 1) {
             // Stack consists of unmatched open brackets arranged from start to end
@@ -216,14 +280,14 @@ window.hoshiSelection = {
             } else break;
             startSlice++;
         }
-
+        
         let endSlice = sentence.length - 1;
         let endIdx = sentence.length - 1;
         while (unmatchedClose.length > 0 && endIdx > startSlice) {
-            if (unmatchedClose[unmatchedClose.length - 1] === sentence[endIdx]) {     
+            if (unmatchedClose[unmatchedClose.length - 1] === sentence[endIdx]) {
                 unmatchedClose.pop();
                 endSlice = endIdx - 1;
-            // sentenceDelimiters used as trailingSentenceDelimiters as it does not have any overlap with brackets
+                // sentenceDelimiters used as trailingSentenceDelimiters as it does not have any overlap with brackets
             } else if (!this.sentenceDelimiters.includes(sentence[endIdx])) break;
             endIdx--;
         }
@@ -231,6 +295,10 @@ window.hoshiSelection = {
     },
     
     selectText(x, y, maxLength) {
+        if (document.elementFromPoint(x, y)?.closest('a')) {
+            return
+        }
+        
         const hit = this.getCharacterAtPoint(x, y);
         
         if (!hit) {

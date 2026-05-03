@@ -17,10 +17,10 @@ const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュ
 const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
-const audioUrls = {};
+let audioUrls = {};
 let lastSelection = '';
 let currentDictionaryMedia = null;
-const selectedDictionaries = {};
+let selectedDictionaries = {};
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -48,11 +48,14 @@ function toKebabCase(str) {
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/ja/japanese.js#L332
-function isStringPartiallyJapanese(text) {
-    if (!text) {
-        return false;
+function isStringPartiallyJapanese(str) {
+    if (str.length === 0) { return false; }
+    for (const c of str) {
+        if (window.hoshiSelection?.isCodePointJapanese(c.codePointAt(0))) {
+            return true;
+        }
     }
-    return KANA_PATTERN.test(text) || KANJI_PATTERN.test(text);
+    return false;
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
@@ -904,12 +907,18 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
     if (node.href) {
         element.setAttribute('href', node.href);
         const isExternal = /^https?:\/\//i.test(node.href);
-        element.onclick = (e) => {
+        element.onclick = async (e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (isExternal) {
                 openExternalLink(node.href);
             } else {
-                // TODO: handle redirect to other entry
+                const i = node.href.indexOf('?');
+                const query = i < 0 ? null : new URLSearchParams(node.href.slice(i + 1)).get('query');
+                const count = query ? await webkit.messageHandlers.lookupRedirect.postMessage(query) : 0;
+                if (count > 0) {
+                    redirect(count);
+                }
             }
         };
     }
@@ -1382,6 +1391,58 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     return details;
 }
 
+const backStack = [];
+const forwardStack = [];
+
+function redirect(count) {
+    backStack.push(snapshot());
+    forwardStack.length = 0;
+    window.lookupEntries = undefined;
+    window.entryCount = count;
+    audioUrls = {};
+    selectedDictionaries = {};
+    document.getElementById('entries-container').innerHTML = '';
+    window.renderPopup();
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = 0;
+        requestAnimationFrame(() => {
+            document.scrollingElement.scrollTop = 0;
+        });
+    });
+}
+
+function snapshot() {
+    const container = document.getElementById('entries-container');
+    return {
+        nodes: [...container.childNodes],
+        scrollTop: document.scrollingElement.scrollTop,
+        lookupEntries: window.lookupEntries,
+        entryCount: window.entryCount,
+    };
+}
+
+function restore(s) {
+    const container = document.getElementById('entries-container');
+    container.replaceChildren(...s.nodes);
+    window.lookupEntries = s.lookupEntries;
+    window.entryCount = s.entryCount;
+    audioUrls = {};
+    selectedDictionaries = {};
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = s.scrollTop;
+    });
+}
+
+function navigate(org, to) {
+    if (!org.length) {
+        return;
+    }
+    to.push(snapshot());
+    restore(org.pop());
+}
+window.navigateBack = () => navigate(backStack, forwardStack);
+window.navigateForward = () => navigate(forwardStack, backStack);
+
 window.renderPopup = function() {
     const container = document.getElementById('entries-container');
     if (!window.entryCount) {
@@ -1390,11 +1451,20 @@ window.renderPopup = function() {
     
     (async () => {
         for (let idx = 0; idx < window.entryCount; idx++) {
-            const entry = await webkit.messageHandlers.getEntry.postMessage(idx);
-            if (!entry) continue;
-            
             window.lookupEntries ??= [];
-            window.lookupEntries[idx] = entry;
+            if (!window.lookupEntries[idx]) {
+                const entries = await webkit.messageHandlers.getEntries.postMessage({
+                    start: idx,
+                    count: Math.min(4, window.entryCount - idx)
+                });
+                entries.forEach((entry, offset) => {
+                    window.lookupEntries[idx + offset] = entry;
+                });
+            }
+            const entry = window.lookupEntries[idx];
+            if (!entry) {
+                continue;
+            }
             
             if (idx > 0) {
                 container.appendChild(document.createElement('hr'));
@@ -1418,7 +1488,6 @@ window.renderPopup = function() {
             }
             
             container.appendChild(entryDiv);
-            await new Promise(r => requestAnimationFrame(r));
             
             const grouped = {};
             entry.glossaries.forEach(g => {
@@ -1432,6 +1501,9 @@ window.renderPopup = function() {
             const dictNames = Object.keys(grouped);
             for (let dictIdx = 0; dictIdx < dictNames.length; dictIdx++) {
                 entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
+            }
+            
+            if (idx === 0 || (idx + 1) % 4 === 0) {
                 await new Promise(r => requestAnimationFrame(r));
             }
         }
@@ -1447,8 +1519,9 @@ window.renderPopup = function() {
         });
     })();
     
-    if (window.compactGlossaries) {
+    if (window.compactGlossaries && !document.getElementById('popup-compact-glossaries')) {
         const glossaryStyle = document.createElement('style');
+        glossaryStyle.id = 'popup-compact-glossaries';
         glossaryStyle.textContent = `
             ul[data-sc-content="glossary"],
             ol[data-sc-content="glossary"],
@@ -1472,8 +1545,9 @@ window.renderPopup = function() {
         document.body.appendChild(glossaryStyle);
     }
     
-    if (window.compactPitchAccents) {
+    if (window.compactPitchAccents && !document.getElementById('popup-compact-pitch-accents')) {
         const pitchStyle = document.createElement('style');
+        pitchStyle.id = 'popup-compact-pitch-accents';
         pitchStyle.textContent = `
             .pitch-entries, .pitch-entries > li { display: inline; }
             .pitch-entries > li { white-space: nowrap; }
@@ -1483,12 +1557,17 @@ window.renderPopup = function() {
         document.body.appendChild(pitchStyle);
     }
     
-    if (window.customCSS) {
+    if (window.customCSS && !document.getElementById('popup-custom-css')) {
         const customStyle = document.createElement('style');
+        customStyle.id = 'popup-custom-css';
         customStyle.textContent = window.customCSS;
         document.body.appendChild(customStyle);
     }
     
+    if (container.clickAttached) {
+        return;
+    }
+    container.clickAttached = true;
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
         if (!target?.closest('.glossary-content') && !target?.closest('.expr-tag')) {

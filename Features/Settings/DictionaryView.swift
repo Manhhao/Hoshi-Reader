@@ -171,6 +171,7 @@ struct DictionarySettingsView: View {
     var body: some View {
         List {
             Section("Lookup") {
+                Toggle("Scan Non-Japanese Text", isOn: Bindable(userConfig).scanNonJapaneseText)
                 HStack {
                     Text("Max Results")
                     Spacer()

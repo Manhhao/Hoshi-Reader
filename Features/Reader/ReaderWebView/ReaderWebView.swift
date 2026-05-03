@@ -572,6 +572,7 @@ struct ReaderWebView: UIViewRepresentable {
                 document.head.appendChild(style);
                 \(textColorOverrideJs)
                 
+                window.scanNonJapaneseText = \(parent.userConfig.scanNonJapaneseText);
                 \(spacerJs)
                 \(selectionJs)
                 \(readerJs)

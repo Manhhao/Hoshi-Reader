@@ -109,32 +109,14 @@ struct PopupWebView: UIViewRepresentable {
     var clearSelection: Bool
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
+    var scanNonJapaneseText: Bool = true
+    var backTrigger: Bool = false
+    var forwardTrigger: Bool = false
     var onMine: (([String: String]) async -> Bool)? = nil
     var onTextSelected: ((SelectionData) -> Int?)? = nil
     var onTapOutside: (() -> Void)? = nil
     var onSwipeDismiss: (() -> Void)? = nil
-    
-    private static let selectionJs: String = {
-        guard let url = Bundle.main.url(forResource: "selection", withExtension: "js"),
-              let js = try? String(contentsOf: url, encoding: .utf8) else { return "" }
-        return js
-    }()
-    
-    private static let popupJs: String = {
-        guard let url = Bundle.main.url(forResource: "popup", withExtension: "js"),
-              let js = try? String(contentsOf: url, encoding: .utf8) else {
-            return ""
-        }
-        return js
-    }()
-    
-    private static let popupCss: String = {
-        guard let url = Bundle.main.url(forResource: "popup", withExtension: "css"),
-              let css = try? String(contentsOf: url, encoding: .utf8) else {
-            return ""
-        }
-        return css
-    }()
+    var onRedirect: ((String) -> [[String: Any]])? = nil
     
     private static let swipeDismissJs = """
     (function() {
@@ -171,7 +153,8 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "playWordAudio")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntry")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -192,12 +175,22 @@ struct PopupWebView: UIViewRepresentable {
             context.coordinator.currentContent = content
             context.coordinator.wasLoaded = true
             let html = constructHtml(content: content)
-            webView.loadHTMLString(html, baseURL: nil)
+            webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
         }
         
         if context.coordinator.clearSelection != clearSelection {
             context.coordinator.clearSelection = clearSelection
             webView.evaluateJavaScript("window.hoshiSelection.clearSelection()")
+        }
+        
+        if context.coordinator.lastBackTrigger != backTrigger {
+            context.coordinator.lastBackTrigger = backTrigger
+            webView.evaluateJavaScript("window.navigateBack()")
+        }
+        
+        if context.coordinator.lastForwardTrigger != forwardTrigger {
+            context.coordinator.lastForwardTrigger = forwardTrigger
+            webView.evaluateJavaScript("window.navigateForward()")
         }
     }
     
@@ -212,7 +205,8 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntry", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntries", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
@@ -220,6 +214,9 @@ struct PopupWebView: UIViewRepresentable {
         var currentContent: String = ""
         var wasLoaded: Bool = false
         var clearSelection: Bool = false
+        var lastBackTrigger: Bool = false
+        var lastForwardTrigger: Bool = false
+        var entries: [[String: Any]] = []
         let id = UUID()
         
         init(parent: PopupWebView) {
@@ -227,6 +224,7 @@ struct PopupWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            entries = parent.lookupEntries
             webView.callAsyncJavaScript(
                 """
                 window.dictionaryStyles = dictionaryStyles;
@@ -235,7 +233,7 @@ struct PopupWebView: UIViewRepresentable {
                 """,
                 arguments: [
                     "dictionaryStyles": parent.dictionaryStyles,
-                    "entryCount": parent.lookupEntries.count,
+                    "entryCount": entries.count,
                 ],
                 in: nil,
                 in: .page,
@@ -250,8 +248,14 @@ struct PopupWebView: UIViewRepresentable {
             if message.name == "duplicateCheck", let word = message.body as? String {
                 return (await AnkiManager.shared.checkDuplicate(word: word), nil)
             }
-            if message.name == "getEntry", let index = message.body as? Int {
-                return (parent.lookupEntries[index], nil)
+            if message.name == "getEntries", let body = message.body as? [String: Any] {
+                let start = body["start"] as? Int ?? 0
+                let count = body["count"] as? Int ?? 0
+                return (Array(entries[start..<start + count]), nil)
+            }
+            if message.name == "lookupRedirect", let query = message.body as? String {
+                entries = parent.onRedirect?(query) ?? []
+                return (entries.count, nil)
             }
             return (nil, nil)
         }
@@ -309,9 +313,10 @@ struct PopupWebView: UIViewRepresentable {
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>\(Self.popupCss)</style>
-            <script>\(Self.selectionJs)</script>
-            <script>\(Self.popupJs)</script>
+            <link rel="stylesheet" href="popup.css">
+            <script>window.scanNonJapaneseText = \(scanNonJapaneseText);</script>
+            <script src="selection.js"></script>
+            <script src="popup.js"></script>
         </head>
         <body>
             \(content)

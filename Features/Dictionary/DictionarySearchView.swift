@@ -22,6 +22,10 @@ struct DictionarySearchView: View {
     @State private var didInitialQuery = false
     @State private var popups: [PopupItem] = []
     @State private var clearSelection: Bool = false
+    @State private var backCount: Int = 0
+    @State private var forwardCount: Int = 0
+    @State private var backTrigger: Bool = false
+    @State private var forwardTrigger: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
@@ -47,6 +51,9 @@ struct DictionarySearchView: View {
                     clearSelection: clearSelection,
                     dictionaryStyles: dictionaryStyles,
                     lookupEntries: lookupEntries,
+                    scanNonJapaneseText: userConfig.scanNonJapaneseText,
+                    backTrigger: backTrigger,
+                    forwardTrigger: forwardTrigger,
                     onMine: { minedContent in
                         await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
                     },
@@ -54,9 +61,40 @@ struct DictionarySearchView: View {
                         closePopups()
                         return handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false)
                     },
-                    onTapOutside: closePopups
+                    onTapOutside: closePopups,
+                    onRedirect: { query in
+                        closePopups()
+                        let results = LookupEngine.shared.lookup(query, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength)
+                        let entries = Self.buildLookupEntries(lookupResults: results)
+                        if !entries.isEmpty {
+                            backCount += 1
+                            forwardCount = 0
+                        }
+                        return entries
+                    }
                 )
                 .id(lastQuery)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 30)
+                        .onEnded { value in
+                            let dx = value.translation.width
+                            let dy = value.translation.height
+                            
+                            guard abs(dx) > abs(dy) && abs(dy) < 20 else { return }
+                            
+                            if dx > 0 {
+                                guard backCount > 0 else { return }
+                                backTrigger.toggle()
+                                backCount -= 1
+                                forwardCount += 1
+                            } else {
+                                guard forwardCount > 0 else { return }
+                                forwardTrigger.toggle()
+                                forwardCount -= 1
+                                backCount += 1
+                            }
+                        }
+                )
                 
                 ForEach($popups) { $popup in
                     let popupId = popup.id
@@ -136,6 +174,8 @@ struct DictionarySearchView: View {
     
     private func runLookup() {
         closePopups()
+        backCount = 0
+        forwardCount = 0
         
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         hasSearched = true
@@ -220,9 +260,45 @@ struct DictionarySearchView: View {
         for style in styles {
             dictionaryStyles[String(style.dict_name)] = String(style.styles)
         }
+        lookupEntries = Self.buildLookupEntries(lookupResults: results)
         
+        let collapsedDictionaries = userConfig.collapseMode == .custom
+        ? ((try? JSONEncoder().encode(DictionaryManager.shared.collapsedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
+        let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
+        
+        content = """
+        <style>.overlay { padding-bottom: 90px; }</style>
+        <script>
+            window.collapseMode = "\(userConfig.collapseMode.rawValue)";
+            window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
+            window.collapsedDictionaries = \(collapsedDictionaries);
+            window.compactGlossaries = \(userConfig.compactGlossaries);
+            window.showExpressionTags = \(userConfig.showExpressionTags);
+            window.harmonicFrequency = \(userConfig.harmonicFrequency);
+            window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
+            window.compactPitchAccents = \(userConfig.compactPitchAccents);
+            window.audioSources = \(audioSources);
+            window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
+            window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
+            window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
+            window.embedMedia = \(AnkiManager.shared.embedMedia);
+            window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
+            window.customCSS = \(customCSS);
+        </script>
+        <div style="height: 50px;"></div>
+        <div id="entries-container" style="min-height: 100vh;"></div>
+        """
+    }
+    
+    private static func buildLookupEntries(lookupResults: [LookupResult]) -> [[String: Any]] {
         var entries: [[String: Any]] = []
-        for result in results {
+        for result in lookupResults {
             let expression = String(result.term.expression)
             let reading = String(result.term.reading)
             let matched = String(result.matched)
@@ -286,41 +362,7 @@ struct DictionarySearchView: View {
                 "rules": rules,
             ])
         }
-        
-        lookupEntries = entries
-        
-        let collapsedDictionaries = userConfig.collapseMode == .custom
-        ? ((try? JSONEncoder().encode(DictionaryManager.shared.collapsedDictionaries))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
-        let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
-        let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
-        
-        content = """
-        <style>.overlay { padding-bottom: 90px; }</style>
-        <script>
-            window.collapseMode = "\(userConfig.collapseMode.rawValue)";
-            window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
-            window.collapsedDictionaries = \(collapsedDictionaries);
-            window.compactGlossaries = \(userConfig.compactGlossaries);
-            window.showExpressionTags = \(userConfig.showExpressionTags);
-            window.harmonicFrequency = \(userConfig.harmonicFrequency);
-            window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
-            window.compactPitchAccents = \(userConfig.compactPitchAccents);
-            window.audioSources = \(audioSources);
-            window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
-            window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
-            window.needsAudio = \(AnkiManager.shared.needsAudio);
-            window.allowDupes = \(AnkiManager.shared.allowDupes);
-            window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
-            window.embedMedia = \(AnkiManager.shared.embedMedia);
-            window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
-            window.customCSS = \(customCSS);
-        </script>
-        <div style="height: 50px;"></div>
-        <div id="entries-container" style="min-height: 100vh;"></div>
-        """
+        return entries
     }
 }
 
