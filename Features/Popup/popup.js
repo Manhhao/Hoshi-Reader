@@ -659,6 +659,13 @@ function createDefinitionImage(data, dictionary, exporting = false) {
                     imageContainer.style.width = `${Math.min(img.naturalWidth, window.innerWidth - 20)}px`;
                     aspectRatioSizer.style.paddingTop = `${(img.naturalHeight / img.naturalWidth) * 100}%`;
                 }, {once: true});
+            } else if (!hasPreferredWidth && !hasPreferredHeight && sizeUnits === 'em') {
+                img.addEventListener('load', () => {
+                    const aspectRatio = img.naturalHeight / img.naturalWidth;
+                    const widthEm = typeof data.width === 'number' ? data.width : data.height / aspectRatio;
+                    imageContainer.style.width = `${widthEm}em`;
+                    aspectRatioSizer.style.paddingTop = `${aspectRatio * 100}%`;
+                }, {once: true});
             }
             img.src = imageUrl;
             imageContainer.appendChild(img);
