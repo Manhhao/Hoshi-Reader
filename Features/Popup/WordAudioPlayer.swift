@@ -56,7 +56,7 @@ actor WordAudioPlayer {
         playToEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
-            queue: nil
+            queue: .main
         ) { [weak self] _ in
             guard let self else { return }
             Task {
@@ -67,7 +67,7 @@ actor WordAudioPlayer {
         failedToEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemFailedToPlayToEndTime,
             object: item,
-            queue: nil
+            queue: .main
         ) { [weak self] _ in
             guard let self else { return }
             Task {

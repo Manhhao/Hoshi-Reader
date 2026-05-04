@@ -70,20 +70,23 @@ class ImageHandler: NSObject, WKURLSchemeHandler {
         }
         
         LookupEngine.shared.withMediaFile(dictName: dictionary, mediaPath: mediaPath) { data in
-            guard !data.isEmpty else {
-                task.didFailWithError(URLError(.fileDoesNotExist))
-                return
+            let mime = mimeType(for: mediaPath)
+            Task { @MainActor in
+                guard !data.isEmpty else {
+                    task.didFailWithError(URLError(.fileDoesNotExist))
+                    return
+                }
+                
+                let response = URLResponse(
+                    url: requestUrl,
+                    mimeType: mime,
+                    expectedContentLength: data.count,
+                    textEncodingName: nil
+                )
+                task.didReceive(response)
+                task.didReceive(data)
+                task.didFinish()
             }
-            
-            let response = URLResponse(
-                url: requestUrl,
-                mimeType: mimeType(for: mediaPath),
-                expectedContentLength: data.count,
-                textEncodingName: nil
-            )
-            task.didReceive(response)
-            task.didReceive(data)
-            task.didFinish()
         }
     }
     
