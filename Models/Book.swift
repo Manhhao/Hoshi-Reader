@@ -71,6 +71,15 @@ struct BookInfo: Codable {
     }
 }
 
+struct BookFiles: Codable {
+    let files: [File]
+    
+    struct File: Codable {
+        let path: String
+        let timestamp: Int64
+    }
+}
+
 struct BookShelf: Codable {
     let name: String
     var bookIds: [UUID]

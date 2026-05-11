@@ -13,6 +13,7 @@ enum FileNames: Sendable {
     static let metadata = "metadata.json"
     static let bookmark = "bookmark.json"
     static let bookinfo = "bookinfo.json"
+    static let bookfiles = "bookfiles.json"
     static let shelves = "shelves.json"
     static let statistics = "statistics.json"
     static let sasayakiMatch = "sasayaki_match.json"
@@ -51,6 +52,30 @@ struct BookStorage {
         }
         
         UserDefaults.standard.set(true, forKey: "migratedToAppSupport")
+    }
+    
+    static func migrateBookFiles() {
+        guard let booksDirectory = try? getBooksDirectory(),
+              let contents = try? FileManager.default.contentsOfDirectory(
+                at: booksDirectory,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+              ) else {
+            return
+        }
+        
+        for url in contents {
+            guard FileManager.default.fileExists(atPath: url.appendingPathComponent(FileNames.metadata).path(percentEncoded: false)) else {
+                continue
+            }
+            
+            let bookFilesURL = url.appendingPathComponent(FileNames.bookfiles)
+            guard !FileManager.default.fileExists(atPath: bookFilesURL.path(percentEncoded: false)) else {
+                continue
+            }
+            
+            try? saveBookFiles(root: url)
+        }
     }
     
     static func getBooksDirectory() throws -> URL {
@@ -114,6 +139,11 @@ struct BookStorage {
         let data = try encoder.encode(object)
         
         try data.write(to: targetURL, options: .atomic)
+    }
+    
+    static func saveBookFiles(root: URL) throws {
+        let bookFiles = try makeBookFiles(root: root)
+        try save(bookFiles, inside: root, as: FileNames.bookfiles)
     }
     
     static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
@@ -196,6 +226,37 @@ struct BookStorage {
         } catch {
             throw BookStorageError.epubImportFailed(error)
         }
+    }
+    
+    private static func makeBookFiles(root: URL) throws -> BookFiles {
+        let rootPath = root.standardizedFileURL.path(percentEncoded: false)
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return BookFiles(files: [])
+        }
+        
+        var files: [BookFiles.File] = []
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey])
+            guard values.isRegularFile == true else {
+                continue
+            }
+            
+            let relativePath = String(url.standardizedFileURL.path(percentEncoded: false).dropFirst(rootPath.count + 1))
+            guard relativePath != FileNames.bookfiles else {
+                continue
+            }
+            
+            files.append(BookFiles.File(
+                path: relativePath,
+                timestamp: Int64((values.contentModificationDate ?? Date()).timeIntervalSince1970 * 1000)
+            ))
+        }
+        
+        return BookFiles(files: files.sorted { $0.path < $1.path })
     }
     
     enum BookStorageError: LocalizedError {

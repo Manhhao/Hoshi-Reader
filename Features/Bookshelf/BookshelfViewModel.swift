@@ -406,6 +406,7 @@ class BookshelfViewModel {
             
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
+            try BookStorage.saveBookFiles(root: bookFolder)
             try BookStorage.delete(at: localURL)
         } catch {
             try? BookStorage.delete(at: localURL)

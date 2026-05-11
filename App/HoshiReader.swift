@@ -24,6 +24,7 @@ struct HoshiReaderApp: App {
     init() {
         TokenStorage.clearOldKeys()
         BookStorage.migrateFromDocuments()
+        BookStorage.migrateBookFiles()
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
         configureTabBarAppearance()
