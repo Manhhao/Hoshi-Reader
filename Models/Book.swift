@@ -72,7 +72,7 @@ struct BookInfo: Codable {
 }
 
 struct BookFiles: Codable {
-    let files: [File]
+    var files: [File]
     
     struct File: Codable {
         let path: String

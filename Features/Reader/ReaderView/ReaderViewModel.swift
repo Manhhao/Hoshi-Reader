@@ -68,6 +68,7 @@ class ReaderLoaderViewModel {
         var bookCopy = self.book
         bookCopy.lastAccess = Date()
         try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)
+        try? BookStorage.updateBookFiles(root: root, fileName: FileNames.metadata)
         
         self.document = doc
     }
@@ -549,6 +550,7 @@ class ReaderViewModel {
             lastModified: Date()
         )
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+        try? BookStorage.updateBookFiles(root: rootURL, fileName: FileNames.bookmark)
         scheduleAutoExport()
     }
     
@@ -681,6 +683,7 @@ class ReaderViewModel {
         
         stats = Self.deduplicateStatistics(stats)
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+        try? BookStorage.updateBookFiles(root: rootURL, fileName: FileNames.statistics)
         scheduleAutoExport()
     }
     
@@ -711,6 +714,7 @@ class ReaderViewModel {
     
     private func saveHighlights() {
         try? BookStorage.save(highlights, inside: rootURL, as: FileNames.highlights)
+        try? BookStorage.updateBookFiles(root: rootURL, fileName: FileNames.highlights)
     }
     
     private func syncHighlights() {

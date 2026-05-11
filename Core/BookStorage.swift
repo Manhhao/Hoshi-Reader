@@ -146,6 +146,21 @@ struct BookStorage {
         try save(bookFiles, inside: root, as: FileNames.bookfiles)
     }
     
+    static func updateBookFiles(root: URL, fileName: String) throws {
+        let bookFilesURL = root.appendingPathComponent(FileNames.bookfiles)
+        var bookFiles = load(BookFiles.self, from: bookFilesURL) ?? BookFiles(files: [])
+        let fileURL = root.appendingPathComponent(fileName)
+        
+        let values = try fileURL.resourceValues(forKeys: [.contentModificationDateKey])
+        let timestamp = Int64(values.contentModificationDate!.timeIntervalSince1970 * 1000)
+        
+        bookFiles.files.removeAll { $0.path == fileName }
+        bookFiles.files.append(BookFiles.File(path: fileName, timestamp: timestamp))
+        bookFiles.files.sort { $0.path < $1.path }
+        
+        try save(bookFiles, inside: root, as: FileNames.bookfiles)
+    }
+    
     static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let data = try? Data(contentsOf: url) else {
@@ -252,7 +267,7 @@ struct BookStorage {
             
             files.append(BookFiles.File(
                 path: relativePath,
-                timestamp: Int64((values.contentModificationDate ?? Date()).timeIntervalSince1970 * 1000)
+                timestamp: Int64(values.contentModificationDate!.timeIntervalSince1970 * 1000)
             ))
         }
         

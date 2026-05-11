@@ -467,6 +467,7 @@ class SasayakiPlayer {
         playback.delay = delay
         playback.rate = rate
         try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback)
+        try? BookStorage.updateBookFiles(root: rootURL, fileName: FileNames.sasayakiPlayback)
     }
     
     private func updateCue(for time: Double) {

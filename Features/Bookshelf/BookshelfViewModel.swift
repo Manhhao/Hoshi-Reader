@@ -285,6 +285,7 @@ class BookshelfViewModel {
         )
         
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.updateBookFiles(root: url, fileName: FileNames.bookmark)
         loadBookProgress()
     }
     
@@ -328,6 +329,7 @@ class BookshelfViewModel {
             searchWindow: searchWindow
         )
         try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        try BookStorage.updateBookFiles(root: rootURL, fileName: FileNames.sasayakiMatch)
         return result
     }
     

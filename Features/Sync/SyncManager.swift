@@ -116,6 +116,7 @@ class SyncManager {
                 let mergedStats = mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
                 if !mergedStats.isEmpty {
                     try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
+                    try? BookStorage.updateBookFiles(root: url, fileName: FileNames.statistics)
                 }
             }
             if syncAudioBook, let ttuAudioBook {
@@ -192,6 +193,7 @@ class SyncManager {
         )
         
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.updateBookFiles(root: url, fileName: FileNames.bookmark)
     }
     
     private func fetchProgress(fileId: String?) async throws -> TtuProgress? {
@@ -236,6 +238,7 @@ class SyncManager {
             lastModified: roundedDate
         )
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.updateBookFiles(root: url, fileName: FileNames.bookmark)
     }
     
     private func exportStats(stats: [Statistics]?, folderId: String, fileId: String?) async throws {
@@ -271,6 +274,7 @@ class SyncManager {
         var playback = BookStorage.loadSasayakiPlayback(root: url) ?? SasayakiPlaybackData(lastPosition: 0)
         playback.lastPosition = ttuAudioBook.playbackPosition
         try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback)
+        try? BookStorage.updateBookFiles(root: url, fileName: FileNames.sasayakiPlayback)
     }
     
     private func exportAudioBook(title: String, playbackData: SasayakiPlaybackData?, folderId: String, fileId: String?) async throws {
