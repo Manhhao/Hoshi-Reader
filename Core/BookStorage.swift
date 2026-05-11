@@ -82,6 +82,22 @@ struct BookStorage {
         try getAppDirectory().appendingPathComponent("Books")
     }
     
+    static func getICloudBooksDirectory() throws -> URL {
+        guard let container = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
+            throw BookStorageError.iCloudUnavailable
+        }
+        
+        let books = container
+            .appendingPathComponent("Documents")
+            .appendingPathComponent("Books")
+        
+        if !FileManager.default.fileExists(atPath: books.path(percentEncoded: false)) {
+            try FileManager.default.createDirectory(at: books, withIntermediateDirectories: true)
+        }
+        
+        return books
+    }
+    
     @discardableResult
     static func copySecurityScopedFile(from fileURL: URL, to destinationPath: String? = nil) throws -> URL {
         guard fileURL.startAccessingSecurityScopedResource() else {
@@ -159,6 +175,27 @@ struct BookStorage {
         bookFiles.files.sort { $0.path < $1.path }
         
         try save(bookFiles, inside: root, as: FileNames.bookfiles)
+    }
+    
+    static func uploadBookToICloud(folder: String) throws {
+        let localBook = try getBooksDirectory().appendingPathComponent(folder)
+        let iCloudBook = try getICloudBooksDirectory().appendingPathComponent(folder)
+        
+        try delete(at: iCloudBook)
+        try FileManager.default.copyItem(at: localBook, to: iCloudBook)
+    }
+    
+    static func uploadBookFileToICloud(folder: String, fileName: String) throws {
+        let localBook = try getBooksDirectory().appendingPathComponent(folder)
+        let iCloudBook = try getICloudBooksDirectory().appendingPathComponent(folder)
+        let localFile = localBook.appendingPathComponent(fileName)
+        let iCloudFile = iCloudBook.appendingPathComponent(fileName)
+        
+        if !FileManager.default.fileExists(atPath: iCloudBook.path(percentEncoded: false)) {
+            try FileManager.default.createDirectory(at: iCloudBook, withIntermediateDirectories: true)
+        }
+        
+        try replaceFile(at: iCloudFile, with: localFile)
     }
     
     static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
@@ -278,6 +315,7 @@ struct BookStorage {
         case accessDenied
         case appDirectoryNotFound
         case epubImportFailed(Error)
+        case iCloudUnavailable
         
         var errorDescription: String? {
             switch self {
@@ -287,6 +325,8 @@ struct BookStorage {
                 return "App directory not found"
             case .epubImportFailed(let error):
                 return "Could not import .epub file: \(error.localizedDescription)"
+            case .iCloudUnavailable:
+                return "iCloud is unavailable"
             }
         }
     }
