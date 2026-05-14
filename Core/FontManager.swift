@@ -14,9 +14,27 @@ class FontManager {
     static let defaultFonts = ["Hiragino Mincho ProN", "Hiragino Kaku Gothic ProN"]
     static let downloadableFonts = ["Klee", "Tsukushi A Round Gothic", "YuKyokasho", "YuMincho", "YuGothic"]
     private static let yuKyokashoYoko = "YuKyokasho Yoko"
+    private var importedFontNames: [String] { ((try? storedFonts()) ?? []).map { $0.deletingPathExtension().lastPathComponent } }
     
-    private static func fontsDirectory() throws -> URL {
-        try BookStorage.getAppDirectory().appendingPathComponent("Fonts")
+    var allFonts: [String] {
+        Self.defaultFonts + Self.downloadableFonts + importedFontNames
+    }
+    
+    var fontfaceCSS: String {
+        var fontFaceCss = ""
+        for fontName in Self.downloadableFonts + importedFontNames {
+            guard let fontURL = try? fontUrl(name: fontName, verticalWriting: false) else {
+                continue
+            }
+            
+            fontFaceCss += """
+            @font-face {
+                font-family: '\(cssFontName(name: fontName))';
+                src: url('local-resources:///\(Self.resourceName(fontName: fontName, url: fontURL))');
+            }
+            """
+        }
+        return fontFaceCss
     }
     
     func importFont(from: URL) {
@@ -71,6 +89,10 @@ class FontManager {
         return Self.defaultFonts.contains(name) || Self.downloadableFonts.contains(name)
     }
     
+    func cssFontName(name: String) -> String {
+        Self.postScriptName(for: name) ?? name
+    }
+    
     static func downloadFont(_ familyName: String) async -> Bool {
         if familyName == "YuKyokasho" {
             let verticalDownloaded = await downloadSingleFont(familyName)
@@ -78,6 +100,15 @@ class FontManager {
             return await downloadSingleFont(yuKyokashoYoko)
         }
         return await downloadSingleFont(familyName)
+    }
+    
+    private static func fontsDirectory() throws -> URL {
+        try BookStorage.getAppDirectory().appendingPathComponent("Fonts")
+    }
+    
+    private static func resourceName(fontName: String, url: URL) -> String {
+        let resourceName = downloadableFonts.contains(fontName) ? fontName : url.lastPathComponent
+        return resourceName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? resourceName
     }
     
     private static func downloadSingleFont(_ familyName: String) async -> Bool {

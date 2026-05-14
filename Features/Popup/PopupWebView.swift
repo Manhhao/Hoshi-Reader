@@ -106,6 +106,45 @@ class ImageHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url else { return }
+        
+        let fileName = url.deletingPathExtension().lastPathComponent
+        do {
+            guard let fontFile = try FontManager.shared.fontUrl(name: fileName, verticalWriting: false) else {
+                urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+                return
+            }
+            
+            let data = try Data(contentsOf: fontFile, options: .mappedIfSafe)
+            let response = URLResponse(
+                url: url,
+                mimeType: mimeType(for: fontFile),
+                expectedContentLength: data.count,
+                textEncodingName: nil
+            )
+            
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(data)
+            urlSchemeTask.didFinish()
+        } catch {
+            urlSchemeTask.didFailWithError(error)
+        }
+    }
+    
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
+    
+    private func mimeType(for url: URL) -> String {
+        switch url.pathExtension.lowercased() {
+        case "otf": return "font/otf"
+        case "woff": return "font/woff"
+        case "woff2": return "font/woff2"
+        default: return "font/ttf"
+        }
+    }
+}
+
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
@@ -160,6 +199,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
+        config.setURLSchemeHandler(DocumentResourceHandler(), forURLScheme: "local-resources")
         config.mediaTypesRequiringUserActionForPlayback = []
         
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -317,6 +357,7 @@ struct PopupWebView: UIViewRepresentable {
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <link rel="stylesheet" href="popup.css">
+            <style>\(FontManager.shared.fontfaceCSS)</style>
             <script>window.scanNonJapaneseText = \(scanNonJapaneseText);</script>
             <script src="selection.js"></script>
             <script src="popup.js"></script>
