@@ -11,6 +11,8 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     @State private var showDeleteConfirmation = false
     @State private var markReadConfirmation = false
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -102,14 +104,28 @@ struct BookCell: View {
                 Label("Mark Read", systemImage: "checkmark")
             }
             
+            Button {
+                renameText = book.displayTitle
+                showRenameAlert = true
+            } label: {
+                Label("Rename", systemImage: "character.cursor.ibeam.ja")
+            }
+            
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         })
+        .alert("Rename", isPresented: $showRenameAlert) {
+            TextField("Title", text: $renameText)
+            Button("Save") {
+                viewModel.renameBook(book, title: renameText.trimmingCharacters(in: .whitespaces))
+            }
+            Button("Cancel", role: .cancel) { }
+        }
         .confirmationDialog(
-            "Delete \"\(book.title ?? "")\"?",
+            "Delete \"\(book.displayTitle)\"?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -118,7 +134,7 @@ struct BookCell: View {
             }
         }
         .confirmationDialog(
-            "Mark \"\(book.title ?? "")\" as read?",
+            "Mark \"\(book.displayTitle)\" as read?",
             isPresented: $markReadConfirmation,
             titleVisibility: .visible
         ) {

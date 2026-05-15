@@ -481,7 +481,7 @@ struct ReaderView: View {
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarTotalWidth = $0 }
                     
-                    if userConfig.readerShowTitle, let title = viewModel.document.title {
+                    if userConfig.readerShowTitle {
                         let gap: CGFloat = 2
                         let leftEdge = topBarLeftWidth + gap
                         let rightEdge = topBarTotalWidth - topBarRightWidth - gap
@@ -489,7 +489,7 @@ struct ReaderView: View {
                         let displayWidth = min(titleNaturalWidth, availableSpace)
                         let titleLeading = max(leftEdge, min(rightEdge - displayWidth, (topBarTotalWidth - displayWidth) / 2))
                         
-                        Text(title)
+                        Text(viewModel.book.displayTitle)
                             .font(.subheadline)
                             .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor.opacity(0.5)) : AnyShapeStyle(.tertiary))
                             .lineLimit(1)
@@ -499,8 +499,8 @@ struct ReaderView: View {
                     }
                 }
                 .overlay {
-                    if userConfig.readerShowTitle, let title = viewModel.document.title {
-                        Text(title)
+                    if userConfig.readerShowTitle {
+                        Text(viewModel.book.displayTitle)
                             .font(.subheadline)
                             .lineLimit(1)
                             .fixedSize()
@@ -559,7 +559,7 @@ struct ReaderView: View {
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
             case .chapters:
-                ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
+                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
                     viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
                     viewModel.activeSheet = nil
                     viewModel.clearSelection()

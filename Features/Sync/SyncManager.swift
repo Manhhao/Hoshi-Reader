@@ -58,16 +58,11 @@ class SyncManager {
         syncAudioBook: Bool,
         importOnly: Bool
     ) async throws -> SyncResult {
-        guard let title = book.title,
-              let bookFolder = book.folder else {
-            return .skipped
-        }
-        
         let root = try await GoogleDriveHandler.shared.findRootFolder()
         
         let coverPath = book.cover
         let driveFolderId = try await GoogleDriveHandler.shared.ensureBookFolder(
-            bookTitle: title,
+            bookTitle: book.title,
             rootFolder: root,
             coverImageDataProvider: coverPath.map { path in
                 return {
@@ -80,7 +75,7 @@ class SyncManager {
         )
         
         let directory = try BookStorage.getBooksDirectory()
-        let url = directory.appendingPathComponent(bookFolder)
+        let url = directory.appendingPathComponent(book.folder)
         let localBookmark = BookStorage.loadBookmark(root: url)
         
         let syncFiles = try await GoogleDriveHandler.shared.listSyncFiles(folderId: driveFolderId)
@@ -91,7 +86,7 @@ class SyncManager {
         
         let syncDirection = direction ?? determineSyncDirection(local: localBookmark, remoteProgressFile: syncFiles.progress)
         if syncDirection == .synced {
-            return .synced(title: title)
+            return .synced(title: book.displayTitle)
         }
         if importOnly && syncDirection != .importFromTtu {
             return .skipped
@@ -121,7 +116,7 @@ class SyncManager {
             if syncAudioBook, let ttuAudioBook {
                 importAudioBook(ttuAudioBook: ttuAudioBook, to: url)
             }
-            return .imported(title: title, characterCount: ttuProgress.exploredCharCount)
+            return .imported(title: book.displayTitle, characterCount: ttuProgress.exploredCharCount)
         case .exportToTtu:
             guard let localBookmark else { return .skipped }
             let statsToExport: [Statistics]? = syncStats ? mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode) : nil
@@ -139,7 +134,7 @@ class SyncManager {
                 fileId: statsFileId
             )
             async let exportedAudioBook: Void = exportAudioBook(
-                title: title,
+                title: book.title,
                 playbackData: playbackData,
                 folderId: driveFolderId,
                 fileId: audioBookFileId
@@ -148,9 +143,9 @@ class SyncManager {
             try await exportedProgress
             try await exportedStats
             try await exportedAudioBook
-            return .exported(title: title, characterCount: localBookmark.characterCount)
+            return .exported(title: book.displayTitle, characterCount: localBookmark.characterCount)
         case .synced:
-            return .synced(title: title)
+            return .synced(title: book.displayTitle)
         }
     }
     

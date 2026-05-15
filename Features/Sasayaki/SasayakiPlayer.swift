@@ -576,7 +576,7 @@ class SasayakiPlayer {
         
         var info: [String: Any] = [:]
         
-        if let title = bookMetadata?.title, !title.isEmpty {
+        if let title = bookMetadata?.displayTitle {
             info[MPMediaItemPropertyTitle] = title
         }
         if let artwork = artwork {

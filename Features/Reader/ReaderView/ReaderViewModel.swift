@@ -44,11 +44,10 @@ class ReaderLoaderViewModel {
     let book: BookMetadata
     
     var rootURL: URL? {
-        guard let booksFolder = try? BookStorage.getBooksDirectory(),
-              let folder = book.folder else {
+        guard let booksFolder = try? BookStorage.getBooksDirectory() else {
             return nil
         }
-        return booksFolder.appendingPathComponent(folder)
+        return booksFolder.appendingPathComponent(book.folder)
     }
     
     init(book: BookMetadata) {

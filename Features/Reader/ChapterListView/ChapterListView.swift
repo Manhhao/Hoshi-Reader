@@ -10,6 +10,7 @@ import SwiftUI
 import EPUBKit
 
 struct ChapterListView: View {
+    let displayTitle: String
     let document: EPUBDocument
     let bookInfo: BookInfo
     let currentIndex: Int
@@ -30,7 +31,7 @@ struct ChapterListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 HeaderView(
-                    title: document.title,
+                    title: displayTitle,
                     currentCharacterCount: currentCharacter,
                     totalCharacterCount: bookInfo.characterCount,
                     coverURL: coverURL,
@@ -99,7 +100,7 @@ struct ChapterListView: View {
 }
 
 struct HeaderView: View {
-    let title: String?
+    let title: String
     let currentCharacterCount: Int
     let totalCharacterCount: Int
     let coverURL: URL?
@@ -115,7 +116,7 @@ struct HeaderView: View {
             .frame(width: 50, height: 75)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(title ?? "")
+                Text(title)
                     .font(.headline)
                     .lineLimit(2)
                 

@@ -117,7 +117,7 @@ class BookshelfViewModel {
         case .recent:
             return books.sorted { $0.lastAccess > $1.lastAccess }
         case .title:
-            return books.sorted { ($0.title ?? "").localizedStandardCompare($1.title ?? "") == .orderedAscending }
+            return books.sorted { $0.displayTitle.localizedStandardCompare($1.displayTitle) == .orderedAscending }
         }
     }
     
@@ -131,10 +131,7 @@ class BookshelfViewModel {
         }
         
         for book in books {
-            guard let folder = book.folder else {
-                continue
-            }
-            let root = directory.appendingPathComponent(folder)
+            let root = directory.appendingPathComponent(book.folder)
             
             let bookInfo = BookStorage.loadBookInfo(root: root)
             let bookmark = BookStorage.loadBookmark(root: root)
@@ -154,10 +151,8 @@ class BookshelfViewModel {
     
     func deleteBook(_ book: BookMetadata) {
         do {
-            if let folder = book.folder {
-                let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
-                try BookStorage.delete(at: bookURL)
-            }
+            let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+            try BookStorage.delete(at: bookURL)
             books.removeAll { $0.id == book.id }
             for i in shelves.indices {
                 shelves[i].bookIds.removeAll { $0 == book.id }
@@ -166,6 +161,16 @@ class BookshelfViewModel {
         } catch {
             showError(message: error.localizedDescription)
         }
+    }
+    
+    func renameBook(_ book: BookMetadata, title: String) {
+        guard let index = books.firstIndex(where: { $0.id == book.id }) else {
+            return
+        }
+        
+        let bookURL = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+        books[index].renamedTitle = title.isEmpty ? nil : title
+        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata)
     }
     
     func importBook(result: Result<URL, Error>) {
@@ -272,9 +277,8 @@ class BookshelfViewModel {
     }
     
     func markRead(book: BookMetadata) {
-        guard let bookFolder = book.folder else { return }
         let directory = try! BookStorage.getBooksDirectory()
-        let url = directory.appendingPathComponent(bookFolder)
+        let url = directory.appendingPathComponent(book.folder)
         guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
         
         let bookmark = Bookmark(
@@ -308,11 +312,7 @@ class BookshelfViewModel {
     }
     
     func runSasayakiMatch(book: BookMetadata, srtURL: URL, searchWindow: Int) async throws -> SasayakiMatchData {
-        guard let folder = book.folder else {
-            throw URLError(.fileDoesNotExist)
-        }
-        
-        let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
+        let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
         let accessing = srtURL.startAccessingSecurityScopedResource()
         defer {
             if accessing {
@@ -332,12 +332,11 @@ class BookshelfViewModel {
     }
     
     func loadSasayakiMatch(book: BookMetadata) -> SasayakiMatchData? {
-        guard let folder = book.folder,
-              let books = try? BookStorage.getBooksDirectory() else {
+        guard let books = try? BookStorage.getBooksDirectory() else {
             return nil
         }
         
-        let root = books.appendingPathComponent(folder)
+        let root = books.appendingPathComponent(book.folder)
         return BookStorage.loadSasayakiMatch(root: root)
     }
     
@@ -363,9 +362,12 @@ class BookshelfViewModel {
         }
         
         let tempDocument = try BookStorage.loadEpub(tempURL)
-        guard let title = tempDocument.title, !title.isEmpty else {
-            return
-        }
+        let title: String = {
+            if let t = tempDocument.title, !t.isEmpty {
+                return t
+            }
+            return sourceURL.deletingPathExtension().lastPathComponent
+        }()
         
         let safeTitle = sanitizeFileName(title)
         
@@ -382,10 +384,10 @@ class BookshelfViewModel {
         
         let document = try BookStorage.loadEpub(localURL)
         
-        try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document)
+        try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
     }
     
-    private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument) throws {
+    private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {
         do {
             var coverURL: String?
             if let coverPath = findCoverInManifest(document: document) {
@@ -396,7 +398,7 @@ class BookshelfViewModel {
             }
             
             let metadata = BookMetadata(
-                title: document.title,
+                title: title,
                 cover: coverURL,
                 folder: bookFolder.lastPathComponent,
                 lastAccess: Date()
