@@ -82,31 +82,11 @@ body {
     gap: 6px;
 }
 
-.audio-button,
-.mine-button {
-    padding: 0 4px;
-    border: none;
-    background: transparent;
-    color: inherit;
-    font-size: 18px;
-    opacity: 0.5;
-    -webkit-user-select: none;
-}
-
-.mine-button {
-    margin-left: 6px;
-}
-
-.mine-button.duplicate {
-    transform: translateY(0.5px);
-}
-
-.mine-button:disabled {
-    opacity: 0.15;
-}
-
-.audio-button {
-    transform: translateY(1px);
+.button-slot {
+    display: inline-flex;
+    width: 26px;
+    height: 28px;
+    flex: 0 0 26px;
 }
 
 .entry-tags {

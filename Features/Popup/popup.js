@@ -22,6 +22,36 @@ let lastSelection = '';
 let currentDictionaryMedia = null;
 let selectedDictionaries = {};
 
+function syncButtons() {
+    window.webkit?.messageHandlers?.buttonFrames?.postMessage([...document.querySelectorAll('.button-slot')].map(slot => {
+        const rect = slot.getBoundingClientRect();
+        return {
+            kind: slot.dataset.kind,
+            entryIndex: Number(slot.dataset.entryIndex),
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY,
+            width: rect.width,
+            height: rect.height,
+            state: slot.dataset.state || 'default',
+            enabled: slot.dataset.enabled !== 'false'
+        };
+    }));
+}
+
+window.addEventListener('resize', () => requestAnimationFrame(syncButtons));
+
+function getButtonSlot(kind, entryIndex) {
+    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
+}
+
+function updateButtonSlot(slot, changes) {
+    if (!slot) return;
+    if (!slot.isConnected) return;
+    if ('state' in changes) slot.dataset.state = changes.state;
+    if ('enabled' in changes) slot.dataset.enabled = String(changes.enabled);
+    requestAnimationFrame(syncButtons);
+}
+
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
     for (const [key, value] of Object.entries(props)) {
@@ -404,7 +434,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         glossaries[lastDict] = html;
         currentGlossary = '';
     };
-    
+
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
         const dictChanged = lastDict !== dictName;
@@ -1210,35 +1240,55 @@ function playWordAudio(audioUrl) {
     }
 }
 
-function showAudioError(button) {
-    button.textContent = '✕';
-    setTimeout(() => {
-        button.textContent = '♪';
-    }, 1500);
+async function playEntryAudio(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) return;
+    const audioSlot = getButtonSlot('audio', entryIndex);
+
+    if (!audioUrls[entryIndex]) {
+        audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
+    }
+    if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex])) {
+        updateButtonSlot(audioSlot, { state: 'error' });
+        setTimeout(() => updateButtonSlot(audioSlot, { state: 'default' }), 1500);
+    }
 }
 
-function createAudioButton(expression, reading, entryIndex) {
-    const button = el('button', {
-        className: 'audio-button',
-        textContent: '♪',
-        onclick: async () => {
-            if (!audioUrls[entryIndex]) {
-                audioUrls[entryIndex] = await fetchAudioUrl(expression, reading);
-            }
-            if (!audioUrls[entryIndex]) {
-                showAudioError(button);
-                return;
-            }
-            if (!playWordAudio(audioUrls[entryIndex])) {
-                showAudioError(button);
-            }
-        }
-    });
-    return button;
+async function mineEntryAtIndex(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) return;
+    const mineSlot = getButtonSlot('mine', entryIndex);
+
+    lastSelection = window.getSelection()?.toString() || lastSelection;
+    updateButtonSlot(mineSlot, { enabled: false });
+
+    const isAnkiConnect = await mineEntry(
+        entry.expression,
+        entry.reading,
+        entry.frequencies,
+        entry.pitches,
+        entry.rules,
+        entry.matched,
+        entryIndex,
+        lastSelection
+    );
+    const checkDuplicate = async () => {
+        const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(entry.expression);
+        updateButtonSlot(mineSlot, {
+            state: wasAdded ? 'duplicate' : 'default',
+            enabled: !(wasAdded && !window.allowDupes)
+        });
+    };
+    
+    if (isAnkiConnect) {
+        await checkDuplicate();
+    } else {
+        setTimeout(checkDuplicate, 1000);
+    }
 }
 
 function createEntryHeader(entry, idx) {
-    const { expression, reading, matched, frequencies, pitches, rules } = entry;
+    const { expression, reading } = entry;
     const header = el('div', { className: 'entry-header' });
     
     const expressionSpan = el('span', { className: 'expression' });
@@ -1259,45 +1309,23 @@ function createEntryHeader(entry, idx) {
     const buttonsContainer = el('div', { className: 'header-buttons' });
     
     if (window.audioSources?.length) {
-        buttonsContainer.appendChild(createAudioButton(expression, reading, idx));
+        const audioSlot = el('span', { className: 'button-slot' });
+        Object.assign(audioSlot.dataset, { kind: 'audio', entryIndex: idx, enabled: 'true' });
+        buttonsContainer.appendChild(audioSlot);
     }
     
-    const mineButton = el('button', {
-        className: 'mine-button',
-        textContent: '+',
-        disabled: true,
-        ontouchstart: () => {
-            lastSelection = window.getSelection()?.toString() || '';
-        },
-        onclick: async () => {
-            mineButton.disabled = true;
-            const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, idx, lastSelection);
-            const checkDuplicate = async () => {
-                const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(expression);
-                mineButton.textContent = wasAdded ? '✓' : '+';
-                if (wasAdded) {
-                    mineButton.classList.add('duplicate');
-                }
-                mineButton.disabled = wasAdded && !window.allowDupes;
-            };
-            
-            if (isAnkiConnect) {
-                await checkDuplicate();
-            } else {
-                setTimeout(checkDuplicate, 1000);
-            }
-        }
-    });
-    buttonsContainer.appendChild(mineButton);
+    const mineSlot = el('span', { className: 'button-slot' });
+    Object.assign(mineSlot.dataset, { kind: 'mine', entryIndex: idx, enabled: 'false' });
+    buttonsContainer.appendChild(mineSlot);
     webkit.messageHandlers.duplicateCheck.postMessage(expression).then(isDuplicate => {
-        if (isDuplicate) {
-            mineButton.textContent = '✓';
-            mineButton.classList.add('duplicate');
-        }
-        mineButton.disabled = isDuplicate && !window.allowDupes;
+        updateButtonSlot(mineSlot, {
+            state: isDuplicate ? 'duplicate' : 'default',
+            enabled: !(isDuplicate && !window.allowDupes)
+        });
     });
     
     header.appendChild(buttonsContainer);
+    requestAnimationFrame(syncButtons);
     
     return header;
 }
@@ -1409,6 +1437,7 @@ function redirect(count) {
     audioUrls = {};
     selectedDictionaries = {};
     document.getElementById('entries-container').innerHTML = '';
+    syncButtons();
     window.renderPopup();
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = 0;
@@ -1435,6 +1464,7 @@ function restore(s) {
     window.entryCount = s.entryCount;
     audioUrls = {};
     selectedDictionaries = {};
+    requestAnimationFrame(syncButtons);
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = s.scrollTop;
     });
@@ -1482,10 +1512,7 @@ window.renderPopup = function() {
             
             if (window.audioEnableAutoplay && window.audioSources?.length && idx === 0) {
                 setTimeout(() => {
-                    const audioButton = entryDiv.querySelector('.audio-button');
-                    if (audioButton) {
-                        audioButton.click();
-                    }
+                    playEntryAudio(idx);
                 }, 70);
             }
             

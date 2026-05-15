@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 import WebKit
 
 class AudioHandler: NSObject, WKURLSchemeHandler {
@@ -194,6 +195,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "tapOutside")
         config.userContentController.add(context.coordinator, name: "swipeDismiss")
         config.userContentController.add(context.coordinator, name: "playWordAudio")
+        config.userContentController.add(context.coordinator, name: "buttonFrames")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
@@ -210,6 +212,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.scrollView.bounces = false
         webView.scrollView.showsHorizontalScrollIndicator = false
         webView.navigationDelegate = context.coordinator
+        context.coordinator.webView = webView
         return webView
     }
     
@@ -225,7 +228,7 @@ struct PopupWebView: UIViewRepresentable {
         
         if context.coordinator.scale != scale {
             context.coordinator.scale = scale
-            webView.evaluateJavaScript("document.documentElement.style.zoom = '\(scale)'")
+            webView.evaluateJavaScript("document.documentElement.style.zoom = '\(scale)'; if (typeof syncButtons === 'function') requestAnimationFrame(syncButtons)")
         }
         
         if context.coordinator.clearSelection != clearSelection {
@@ -253,6 +256,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "tapOutside")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "swipeDismiss")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "buttonFrames")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntries", contentWorld: .page)
@@ -268,10 +272,63 @@ struct PopupWebView: UIViewRepresentable {
         var lastForwardTrigger: Bool = false
         var scale: CGFloat = 1.0
         var entries: [[String: Any]] = []
+        weak var webView: WKWebView?
+        private var buttons: [String: UIButton] = [:]
         let id = UUID()
         
         init(parent: PopupWebView) {
             self.parent = parent
+        }
+        
+        private func updateButtons(_ frames: [[String: Any]], in webView: WKWebView) {
+            var activeKeys = Set<String>()
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13 * scale, weight: .medium)
+            
+            for frame in frames {
+                guard let kind = frame["kind"] as? String,
+                      let entryIndex = frame["entryIndex"] as? Int,
+                      let x = frame["x"] as? Double,
+                      let y = frame["y"] as? Double,
+                      let width = frame["width"] as? Double,
+                      let height = frame["height"] as? Double,
+                      width > 0, height > 0 else {
+                    continue
+                }
+                
+                let key = "\(kind)-\(entryIndex)"
+                activeKeys.insert(key)
+                
+                let button: UIButton
+                if let existing = buttons[key] {
+                    button = existing
+                } else {
+                    button = UIButton(type: .system)
+                    button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
+                    button.tintColor = .secondaryLabel
+                    buttons[key] = button
+                    webView.scrollView.addSubview(button)
+                }
+                
+                button.tag = entryIndex * 2 + (kind == "audio" ? 0 : 1)
+                button.frame = CGRect(x: x, y: y, width: width, height: height)
+                let state = frame["state"] as? String ?? "default"
+                let symbol = kind == "audio"
+                    ? (state == "error" ? "speaker.slash" : "speaker.wave.2")
+                    : (state == "duplicate" ? "plus.square.on.square" : "plus.square")
+                button.setImage(UIImage(systemName: symbol, withConfiguration: symbolConfig), for: .normal)
+                button.isEnabled = frame["enabled"] as? Bool ?? true
+                button.alpha = button.isEnabled ? 0.85 : 0.55
+            }
+            
+            for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
+                buttons[key]?.removeFromSuperview()
+                buttons.removeValue(forKey: key)
+            }
+        }
+        
+        @objc private func buttonTapped(_ sender: UIButton) {
+            let action = sender.tag % 2 == 0 ? "playEntryAudio" : "mineEntryAtIndex"
+            webView?.evaluateJavaScript("\(action)(\(sender.tag / 2))")
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -322,6 +379,11 @@ struct PopupWebView: UIViewRepresentable {
             }
             else if message.name == "swipeDismiss" {
                 parent.onSwipeDismiss?()
+            }
+            else if message.name == "buttonFrames",
+                    let frames = message.body as? [[String: Any]],
+                    let webView = message.webView {
+                updateButtons(frames, in: webView)
             }
             else if message.name == "textSelected" {
                 guard let body = message.body as? [String: Any],
