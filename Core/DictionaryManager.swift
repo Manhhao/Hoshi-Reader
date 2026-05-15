@@ -229,7 +229,8 @@ class DictionaryManager {
     
     func importRecommendedDictionaries() {
         let recommendedDictionaries: [(name: String, url: String, type: DictionaryType)] = [
-            ("JMdict", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.json", .term),
+            ("JMdict", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english_without_proper_names.json", .term),
+            ("JMnedict", "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMnedict.json", .term),
             ("Jiten", "https://api.jiten.moe/api/frequency-list/index", .frequency),
         ]
         
