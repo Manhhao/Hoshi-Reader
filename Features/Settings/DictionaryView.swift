@@ -13,7 +13,6 @@ struct DictionaryView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var dictionaryManager = DictionaryManager.shared
     @State private var isImporting = false
-    @State private var importType: DictionaryType = .term
     @State private var showCSSEditor = false
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
@@ -114,27 +113,8 @@ struct DictionaryView: View {
             }
             
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        importType = .term
-                        isImporting = true
-                    } label: {
-                        Label("Term", systemImage: "character.text.justify.ja")
-                    }
-                    
-                    Button {
-                        importType = .frequency
-                        isImporting = true
-                    } label: {
-                        Label("Frequency", systemImage: "numbers.rectangle")
-                    }
-                    
-                    Button {
-                        importType = .pitch
-                        isImporting = true
-                    } label: {
-                        Label("Pitch", systemImage: "textformat.characters.dottedunderline.ja")
-                    }
+                Button {
+                    isImporting = true
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -144,7 +124,7 @@ struct DictionaryView: View {
                     allowsMultipleSelection: true,
                     onCompletion: { result in
                         if case .success(let urls) = result {
-                            dictionaryManager.importDictionary(from: urls, type: importType)
+                            dictionaryManager.importDictionary(from: urls)
                         }
                     }
                 )

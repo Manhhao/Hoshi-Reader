@@ -292,16 +292,7 @@ class DictionaryManager {
         }
     }
     
-    func importDictionary(from urls: [URL], type: DictionaryType) {
-        let destinationPath: String
-        do {
-            destinationPath = try Self.getDictionariesDirectory()
-                .appendingPathComponent(type.rawValue).path(percentEncoded: false)
-        } catch {
-            showError("Failed to import dictionary: \(error.localizedDescription)")
-            return
-        }
-        
+    func importDictionary(from urls: [URL]) {
         isImporting = true
         
         Task.detached {
@@ -323,10 +314,23 @@ class DictionaryManager {
                 
                 let importResult = dictionary_importer.import(
                     std.string(url.path(percentEncoded: false)),
-                    std.string(destinationPath)
+                    std.string(FileManager.default.temporaryDirectory.path(percentEncoded: false))
                 )
                 
                 if importResult.success {
+                    let title = String(importResult.title)
+                    let temp = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(String(title))
+                    defer { try? FileManager.default.removeItem(at: temp) }
+                    if importResult.term_count > 0 {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.term.rawValue)/\(title)")
+                    }
+                    if importResult.freq_count > 0 {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.frequency.rawValue)/\(title)")
+                    }
+                    if importResult.pitch_count > 0 {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.pitch.rawValue)/\(title)")
+                    }
                     imported.append(current)
                 } else {
                     failed.append(current)
