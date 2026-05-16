@@ -161,6 +161,9 @@ struct PopupWebView: UIViewRepresentable {
     var onTapOutside: (() -> Void)? = nil
     var onSwipeDismiss: (() -> Void)? = nil
     var onRedirect: ((String) -> [[String: Any]])? = nil
+    var scrollViewBounces: Bool = false
+    var onScrollViewOffsetChanged: ((CGFloat) -> Void)? = nil
+    var onScrollViewDidEndDragging: (() -> Void)? = nil
     
     private static let swipeDismissJs = """
     (function() {
@@ -209,7 +212,8 @@ struct PopupWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = true
-        webView.scrollView.bounces = false
+        webView.scrollView.bounces = scrollViewBounces
+        webView.scrollView.keyboardDismissMode = .onDrag
         webView.scrollView.showsHorizontalScrollIndicator = false
         webView.scrollView.delegate = context.coordinator
         webView.navigationDelegate = context.coordinator
@@ -336,8 +340,13 @@ struct PopupWebView: UIViewRepresentable {
         }
         
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            parent.onScrollViewOffsetChanged?(scrollView.contentOffset.y)
             guard scrollView.contentOffset.x != 0 else { return }
             scrollView.contentOffset.x = 0
+        }
+        
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            parent.onScrollViewDidEndDragging?()
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

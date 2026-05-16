@@ -10,6 +10,8 @@ import SwiftUI
 import CHoshiDicts
 
 struct DictionarySearchView: View {
+    static let resetTextFieldScrollThreshold: CGFloat = 80
+    
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query: String = ""
@@ -26,6 +28,9 @@ struct DictionarySearchView: View {
     @State private var forwardCount: Int = 0
     @State private var backTrigger: Bool = false
     @State private var forwardTrigger: Bool = false
+    @State private var scrollViewInitialContentOffset: CGFloat! = nil
+    @State private var scrollViewContentOffset: CGFloat! = nil
+    @State private var scrollViewDidEndDragging: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
@@ -72,7 +77,15 @@ struct DictionarySearchView: View {
                             forwardCount = 0
                         }
                         return entries
-                    }
+                    },
+                    scrollViewBounces: true,
+                    onScrollViewOffsetChanged: { newOffset in
+                        if scrollViewInitialContentOffset == nil {
+                            scrollViewInitialContentOffset = newOffset
+                        }
+                        scrollViewContentOffset = newOffset
+                    },
+                    onScrollViewDidEndDragging: { scrollViewDidEndDragging = true }
                 )
                 .id(lastQuery)
                 .simultaneousGesture(
@@ -149,13 +162,35 @@ struct DictionarySearchView: View {
                 .ignoresSafeArea(edges: .top)
         }
         .safeAreaInset(edge: .top) {
-            DictionarySearchBar(text: $query, isFocused: $searchFocused) {
-                runLookup()
+            VStack {
+                DictionarySearchBar(text: $query, isFocused: $searchFocused) {
+                    runLookup()
+                }
+                
+                if let scrollViewInitialContentOffset {
+                    Text("Scroll to dismiss")
+                        .frame(height: Self.resetTextFieldScrollThreshold)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(0, min(scrollViewInitialContentOffset - scrollViewContentOffset, Self.resetTextFieldScrollThreshold)), alignment: .bottom)
+                        .clipped()
+                        .border(.blue)
+                }
             }
         }
         .onChange(of: shouldFocus) {
             searchFocused = true
         }
+        .onChange(of: scrollViewDidEndDragging, { _, didEndDragging in
+            defer {
+                scrollViewDidEndDragging = false
+            }
+            guard didEndDragging,
+                  scrollViewInitialContentOffset - scrollViewContentOffset > Self.resetTextFieldScrollThreshold else {
+                return
+            }
+            query = ""
+            searchFocused = true
+        })
         .onAppear {
             if !didInitialQuery && !initialQuery.isEmpty {
                 query = initialQuery
