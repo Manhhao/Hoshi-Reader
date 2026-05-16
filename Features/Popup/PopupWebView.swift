@@ -228,7 +228,7 @@ struct PopupWebView: UIViewRepresentable {
         
         if context.coordinator.scale != scale {
             context.coordinator.scale = scale
-            webView.evaluateJavaScript("document.documentElement.style.zoom = '\(scale)'; if (typeof syncButtons === 'function') requestAnimationFrame(syncButtons)")
+            webView.evaluateJavaScript("document.documentElement.style.zoom = '\(scale)'; if (typeof syncButtonFrames === 'function') requestAnimationFrame(syncButtonFrames)")
         }
         
         if context.coordinator.clearSelection != clearSelection {
@@ -287,10 +287,10 @@ struct PopupWebView: UIViewRepresentable {
             for frame in frames {
                 guard let kind = frame["kind"] as? String,
                       let entryIndex = frame["entryIndex"] as? Int,
-                      let x = frame["x"] as? Double,
-                      let y = frame["y"] as? Double,
-                      let width = frame["width"] as? Double,
-                      let height = frame["height"] as? Double,
+                      let x = frame["x"] as? CGFloat,
+                      let y = frame["y"] as? CGFloat,
+                      let width = frame["width"] as? CGFloat,
+                      let height = frame["height"] as? CGFloat,
                       width > 0, height > 0 else {
                     continue
                 }
@@ -312,18 +312,21 @@ struct PopupWebView: UIViewRepresentable {
                 button.tag = entryIndex * 2 + (kind == "audio" ? 0 : 1)
                 button.frame = CGRect(x: x, y: y, width: width, height: height)
                 let state = frame["state"] as? String ?? "default"
-                let symbol = kind == "audio"
-                ? (state == "error" ? "speaker.slash" : "speaker.wave.2")
-                : (state == "duplicate" ? "plus.square.on.square" : "plus.square")
-                button.setImage(UIImage(systemName: symbol, withConfiguration: symbolConfig), for: .normal)
+                button.setImage(UIImage(systemName: symbolName(kind: kind, state: state), withConfiguration: symbolConfig), for: .normal)
                 button.isEnabled = frame["enabled"] as? Bool ?? true
                 button.alpha = button.isEnabled ? 0.85 : 0.55
             }
             
             for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
-                buttons[key]!.removeFromSuperview()
-                buttons.removeValue(forKey: key)
+                buttons.removeValue(forKey: key)?.removeFromSuperview()
             }
+        }
+        
+        private func symbolName(kind: String, state: String) -> String {
+            if kind == "audio" {
+                return state == "error" ? "speaker.slash" : "speaker.wave.2"
+            }
+            return state == "duplicate" ? "plus.square.on.square" : "plus.square"
         }
         
         @objc private func buttonTapped(_ sender: UIButton) {
@@ -382,7 +385,8 @@ struct PopupWebView: UIViewRepresentable {
             }
             else if message.name == "buttonFrames",
                     let frames = message.body as? [[String: Any]] {
-                updateButtons(frames, in: message.webView!)
+                guard let webView = message.webView else { return }
+                updateButtons(frames, in: webView)
             }
             else if message.name == "textSelected" {
                 guard let body = message.body as? [String: Any],
