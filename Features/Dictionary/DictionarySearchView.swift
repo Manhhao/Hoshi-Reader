@@ -10,7 +10,7 @@ import SwiftUI
 import CHoshiDicts
 
 struct DictionarySearchView: View {
-    static let resetTextFieldScrollThreshold: CGFloat = 80
+    private static let resetTextFieldScrollThreshold: CGFloat = 80
     
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -168,12 +168,11 @@ struct DictionarySearchView: View {
                 }
                 
                 if let scrollViewInitialContentOffset {
-                    Text("Scroll to dismiss")
-                        .frame(height: Self.resetTextFieldScrollThreshold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: max(0, min(scrollViewInitialContentOffset - scrollViewContentOffset, Self.resetTextFieldScrollThreshold)), alignment: .bottom)
-                        .clipped()
-                        .border(.blue)
+                    SearchResetInset(
+                        scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
+                        threshold: Self.resetTextFieldScrollThreshold,
+                        isQueryEmpty: query.isEmpty
+                    )
                 }
             }
         }
@@ -470,5 +469,51 @@ struct DictionarySearchBar: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
         }
+    }
+}
+
+fileprivate struct SearchResetInset: View {
+    private let scrollDistance: CGFloat
+    private let threshold: CGFloat
+    private let isQueryEmpty: Bool
+    
+    private var pullTitle: String {
+        isQueryEmpty ? "Pull down to show keyboard" : "Pull down to clear"
+    }
+
+    private var releaseTitle: String {
+        isQueryEmpty ? "Release to show keyboard" : "Release to clear"
+    }
+    
+    private var height: CGFloat {
+        max(0, min(scrollDistance, threshold))
+    }
+    
+    private var hasReachedThreshold: Bool {
+        scrollDistance > threshold
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "arrow.down")
+                .font(.system(size: 30, weight: .regular))
+                .rotationEffect(.degrees(hasReachedThreshold ? 180 : 0))
+            
+            Text(hasReachedThreshold ? releaseTitle : pullTitle)
+                .font(.system(size: 15))
+                .contentTransition(.identity)
+        }
+        .frame(height: threshold)
+        .frame(maxWidth: .infinity)
+        .frame(height: height, alignment: .bottom)
+        .clipped()
+        .allowsHitTesting(false)
+        .animation(.easeInOut(duration: 0.15), value: hasReachedThreshold)
+    }
+    
+    init(scrollDistance: CGFloat, threshold: CGFloat, isQueryEmpty: Bool) {
+        self.scrollDistance = scrollDistance
+        self.threshold = threshold
+        self.isQueryEmpty = isQueryEmpty
     }
 }
