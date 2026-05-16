@@ -1228,6 +1228,7 @@ function syncButtonFrames() {
 }
 
 window.addEventListener('resize', () => requestAnimationFrame(syncButtonFrames));
+document.addEventListener('toggle', () => requestAnimationFrame(syncButtonFrames), true);
 
 function createButtonSlot(kind, entryIndex, enabled = true) {
     return el('span', {
@@ -1333,7 +1334,6 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const collapsed = window.collapseMode === 'Collapse All'
     || (window.collapseMode === 'Custom' && window.collapsedDictionaries.includes(dictName));
     details.open = !collapsed || (window.expandFirstDictionary && isFirst);
-    details.addEventListener('toggle', () => requestAnimationFrame(syncButtonFrames));
     
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
