@@ -83,10 +83,8 @@ body {
 }
 
 .button-slot {
-    display: inline-flex;
-    width: 26px;
+    width: 28px;
     height: 28px;
-    flex: 0 0 26px;
 }
 
 .entry-tags {

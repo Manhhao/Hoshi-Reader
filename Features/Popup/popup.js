@@ -22,36 +22,6 @@ let lastSelection = '';
 let currentDictionaryMedia = null;
 let selectedDictionaries = {};
 
-function syncButtons() {
-    window.webkit?.messageHandlers?.buttonFrames?.postMessage([...document.querySelectorAll('.button-slot')].map(slot => {
-        const rect = slot.getBoundingClientRect();
-        return {
-            kind: slot.dataset.kind,
-            entryIndex: Number(slot.dataset.entryIndex),
-            x: rect.left + window.scrollX,
-            y: rect.top + window.scrollY,
-            width: rect.width,
-            height: rect.height,
-            state: slot.dataset.state || 'default',
-            enabled: slot.dataset.enabled !== 'false'
-        };
-    }));
-}
-
-window.addEventListener('resize', () => requestAnimationFrame(syncButtons));
-
-function getButtonSlot(kind, entryIndex) {
-    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
-}
-
-function updateButtonSlot(slot, changes) {
-    if (!slot) return;
-    if (!slot.isConnected) return;
-    if ('state' in changes) slot.dataset.state = changes.state;
-    if ('enabled' in changes) slot.dataset.enabled = String(changes.enabled);
-    requestAnimationFrame(syncButtons);
-}
-
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
     for (const [key, value] of Object.entries(props)) {
@@ -434,7 +404,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         glossaries[lastDict] = html;
         currentGlossary = '';
     };
-
+    
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
         const dictChanged = lastDict !== dictName;
@@ -1240,11 +1210,42 @@ function playWordAudio(audioUrl) {
     }
 }
 
+function syncButtons() {
+    const slots = document.querySelectorAll('.button-slot');
+    const frames = [...slots].map(slot => {
+        const rect = slot.getBoundingClientRect();
+        return {
+            kind: slot.dataset.kind,
+            entryIndex: Number(slot.dataset.entryIndex),
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY,
+            width: rect.width,
+            height: rect.height,
+            state: slot.dataset.state || 'default',
+            enabled: slot.dataset.enabled !== 'false'
+        };
+    });
+    webkit.messageHandlers.buttonFrames.postMessage(frames);
+}
+
+window.addEventListener('resize', () => requestAnimationFrame(syncButtons));
+
+function getButtonSlot(kind, entryIndex) {
+    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
+}
+
+function updateButtonSlot(slot, changes) {
+    if (!slot || !slot.isConnected) { return; }
+    if ('state' in changes) { slot.dataset.state = changes.state; }
+    if ('enabled' in changes) { slot.dataset.enabled = String(changes.enabled); }
+    requestAnimationFrame(syncButtons);
+}
+
 async function playEntryAudio(entryIndex) {
     const entry = window.lookupEntries?.[entryIndex];
-    if (!entry) return;
+    if (!entry) { return; }
     const audioSlot = getButtonSlot('audio', entryIndex);
-
+    
     if (!audioUrls[entryIndex]) {
         audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
     }
@@ -1256,22 +1257,22 @@ async function playEntryAudio(entryIndex) {
 
 async function mineEntryAtIndex(entryIndex) {
     const entry = window.lookupEntries?.[entryIndex];
-    if (!entry) return;
+    if (!entry) { return; }
     const mineSlot = getButtonSlot('mine', entryIndex);
-
+    
     lastSelection = window.getSelection()?.toString() || lastSelection;
     updateButtonSlot(mineSlot, { enabled: false });
-
+    
     const isAnkiConnect = await mineEntry(
-        entry.expression,
-        entry.reading,
-        entry.frequencies,
-        entry.pitches,
-        entry.rules,
-        entry.matched,
-        entryIndex,
-        lastSelection
-    );
+                                          entry.expression,
+                                          entry.reading,
+                                          entry.frequencies,
+                                          entry.pitches,
+                                          entry.rules,
+                                          entry.matched,
+                                          entryIndex,
+                                          lastSelection
+                                          );
     const checkDuplicate = async () => {
         const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(entry.expression);
         updateButtonSlot(mineSlot, {
@@ -1309,13 +1310,20 @@ function createEntryHeader(entry, idx) {
     const buttonsContainer = el('div', { className: 'header-buttons' });
     
     if (window.audioSources?.length) {
-        const audioSlot = el('span', { className: 'button-slot' });
-        Object.assign(audioSlot.dataset, { kind: 'audio', entryIndex: idx, enabled: 'true' });
-        buttonsContainer.appendChild(audioSlot);
+        buttonsContainer.appendChild(el('span', {
+            className: 'button-slot',
+            'data-kind': 'audio',
+            'data-entry-index': idx,
+            'data-enabled': 'true'
+        }));
     }
     
-    const mineSlot = el('span', { className: 'button-slot' });
-    Object.assign(mineSlot.dataset, { kind: 'mine', entryIndex: idx, enabled: 'false' });
+    const mineSlot = el('span', {
+        className: 'button-slot',
+        'data-kind': 'mine',
+        'data-entry-index': idx,
+        'data-enabled': 'false'
+    });
     buttonsContainer.appendChild(mineSlot);
     webkit.messageHandlers.duplicateCheck.postMessage(expression).then(isDuplicate => {
         updateButtonSlot(mineSlot, {

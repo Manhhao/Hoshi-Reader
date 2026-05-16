@@ -313,15 +313,15 @@ struct PopupWebView: UIViewRepresentable {
                 button.frame = CGRect(x: x, y: y, width: width, height: height)
                 let state = frame["state"] as? String ?? "default"
                 let symbol = kind == "audio"
-                    ? (state == "error" ? "speaker.slash" : "speaker.wave.2")
-                    : (state == "duplicate" ? "plus.square.on.square" : "plus.square")
+                ? (state == "error" ? "speaker.slash" : "speaker.wave.2")
+                : (state == "duplicate" ? "plus.square.on.square" : "plus.square")
                 button.setImage(UIImage(systemName: symbol, withConfiguration: symbolConfig), for: .normal)
                 button.isEnabled = frame["enabled"] as? Bool ?? true
                 button.alpha = button.isEnabled ? 0.85 : 0.55
             }
             
             for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
-                buttons[key]?.removeFromSuperview()
+                buttons[key]!.removeFromSuperview()
                 buttons.removeValue(forKey: key)
             }
         }
@@ -381,9 +381,8 @@ struct PopupWebView: UIViewRepresentable {
                 parent.onSwipeDismiss?()
             }
             else if message.name == "buttonFrames",
-                    let frames = message.body as? [[String: Any]],
-                    let webView = message.webView {
-                updateButtons(frames, in: webView)
+                    let frames = message.body as? [[String: Any]] {
+                updateButtons(frames, in: message.webView!)
             }
             else if message.name == "textSelected" {
                 guard let body = message.body as? [String: Any],
