@@ -211,6 +211,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
         webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.delegate = context.coordinator
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
         return webView
@@ -263,7 +264,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
     }
     
-    class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
+    class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate, UIScrollViewDelegate {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
@@ -332,6 +333,11 @@ struct PopupWebView: UIViewRepresentable {
         @objc private func buttonTapped(_ sender: UIButton) {
             let action = sender.tag % 2 == 0 ? "playEntryAudio" : "mineEntryAtIndex"
             webView?.evaluateJavaScript("\(action)(\(sender.tag / 2))")
+        }
+        
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            guard scrollView.contentOffset.x != 0 else { return }
+            scrollView.contentOffset.x = 0
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
