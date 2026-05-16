@@ -163,6 +163,7 @@ struct PopupWebView: UIViewRepresentable {
     var onRedirect: ((String) -> [[String: Any]])? = nil
     var scrollViewBounces: Bool = false
     var onScrollViewOffsetChanged: ((CGFloat) -> Void)? = nil
+    var onScrollViewWillBeginDragging: (() -> Void)? = nil
     var onScrollViewDidEndDragging: (() -> Void)? = nil
     var onScrollViewDidEndDecelerating: (() -> Void)? = nil
     
@@ -344,6 +345,10 @@ struct PopupWebView: UIViewRepresentable {
             parent.onScrollViewOffsetChanged?(scrollView.contentOffset.y)
             guard scrollView.contentOffset.x != 0 else { return }
             scrollView.contentOffset.x = 0
+        }
+        
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            parent.onScrollViewWillBeginDragging?()
         }
         
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
