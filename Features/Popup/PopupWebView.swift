@@ -164,6 +164,7 @@ struct PopupWebView: UIViewRepresentable {
     var scrollViewBounces: Bool = false
     var onScrollViewOffsetChanged: ((CGFloat) -> Void)? = nil
     var onScrollViewDidEndDragging: (() -> Void)? = nil
+    var onScrollViewDidEndDecelerating: (() -> Void)? = nil
     
     private static let swipeDismissJs = """
     (function() {
@@ -347,6 +348,10 @@ struct PopupWebView: UIViewRepresentable {
         
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
             parent.onScrollViewDidEndDragging?()
+        }
+        
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            parent.onScrollViewDidEndDecelerating?()
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

@@ -28,9 +28,9 @@ struct DictionarySearchView: View {
     @State private var forwardCount: Int = 0
     @State private var backTrigger: Bool = false
     @State private var forwardTrigger: Bool = false
+    @State private var isRefreshing: Bool = false
     @State private var scrollViewInitialContentOffset: CGFloat! = nil
     @State private var scrollViewContentOffset: CGFloat! = nil
-    @State private var scrollViewDidEndDragging: Bool = false
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
@@ -85,7 +85,14 @@ struct DictionarySearchView: View {
                         }
                         scrollViewContentOffset = newOffset
                     },
-                    onScrollViewDidEndDragging: { scrollViewDidEndDragging = true }
+                    onScrollViewDidEndDragging: {
+                        if scrollViewInitialContentOffset - scrollViewContentOffset > Self.resetTextFieldScrollThreshold {
+                            isRefreshing = true
+                        }
+                    },
+                    onScrollViewDidEndDecelerating: {
+                        isRefreshing = false
+                    }
                 )
                 .id(lastQuery)
                 .simultaneousGesture(
@@ -171,7 +178,8 @@ struct DictionarySearchView: View {
                     SearchResetInset(
                         scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
                         threshold: Self.resetTextFieldScrollThreshold,
-                        isQueryEmpty: query.isEmpty
+                        isLastQueryEmpty: lastQuery.isEmpty,
+                        isRefreshing: isRefreshing
                     )
                 }
             }
@@ -179,16 +187,11 @@ struct DictionarySearchView: View {
         .onChange(of: shouldFocus) {
             searchFocused = true
         }
-        .onChange(of: scrollViewDidEndDragging, { _, didEndDragging in
-            defer {
-                scrollViewDidEndDragging = false
+        .onChange(of: isRefreshing, { _, isRefreshing in
+            if isRefreshing {
+                query = ""
+                searchFocused = true
             }
-            guard didEndDragging,
-                  scrollViewInitialContentOffset - scrollViewContentOffset > Self.resetTextFieldScrollThreshold else {
-                return
-            }
-            query = ""
-            searchFocused = true
         })
         .onAppear {
             if !didInitialQuery && !initialQuery.isEmpty {
@@ -475,14 +478,15 @@ struct DictionarySearchBar: View {
 fileprivate struct SearchResetInset: View {
     private let scrollDistance: CGFloat
     private let threshold: CGFloat
-    private let isQueryEmpty: Bool
+    private let isLastQueryEmpty: Bool
+    private let isRefreshing: Bool
     
     private var pullTitle: String {
-        isQueryEmpty ? "Pull down to show keyboard" : "Pull down to clear"
+        isLastQueryEmpty ? "Pull down to show keyboard" : "Pull down to clear"
     }
 
     private var releaseTitle: String {
-        isQueryEmpty ? "Release to show keyboard" : "Release to clear"
+        isLastQueryEmpty ? "Release to show keyboard" : "Release to clear"
     }
     
     private var height: CGFloat {
@@ -497,9 +501,9 @@ fileprivate struct SearchResetInset: View {
         HStack {
             Image(systemName: "arrow.down")
                 .font(.system(size: 30, weight: .regular))
-                .rotationEffect(.degrees(hasReachedThreshold ? 180 : 0))
+                .rotationEffect(.degrees(hasReachedThreshold || isRefreshing ? 180 : 0))
             
-            Text(hasReachedThreshold ? releaseTitle : pullTitle)
+            Text(hasReachedThreshold || isRefreshing ? releaseTitle : pullTitle)
                 .font(.system(size: 15))
                 .contentTransition(.identity)
         }
@@ -511,9 +515,10 @@ fileprivate struct SearchResetInset: View {
         .animation(.easeInOut(duration: 0.15), value: hasReachedThreshold)
     }
     
-    init(scrollDistance: CGFloat, threshold: CGFloat, isQueryEmpty: Bool) {
+    init(scrollDistance: CGFloat, threshold: CGFloat, isLastQueryEmpty: Bool, isRefreshing: Bool) {
         self.scrollDistance = scrollDistance
         self.threshold = threshold
-        self.isQueryEmpty = isQueryEmpty
+        self.isLastQueryEmpty = isLastQueryEmpty
+        self.isRefreshing = isRefreshing
     }
 }
