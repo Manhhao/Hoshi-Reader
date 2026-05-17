@@ -390,22 +390,34 @@ class DictionaryManager {
                         self.currentImport = "Importing \(remoteIndex.title)"
                     }
                     
-                    let destinationPath = try await Self.getDictionariesDirectory()
-                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
+                    let tempDir = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(UUID().uuidString)
+                    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                    tempFiles.append(tempDir)
                     
                     let importResult = dictionary_importer.import(
                         std.string(temp.path(percentEncoded: false)),
-                        std.string(destinationPath)
+                        std.string(tempDir.path(percentEncoded: false))
                     )
                     
                     if !importResult.success {
                         continue
                     }
                     
+                    let new = String(importResult.title)
+                    let old = dictionary.index.title
+                    let tempPath = tempDir.appendingPathComponent(new)
+                    let destPath = try await Self.getDictionariesDirectory()
+                        .appendingPathComponent(type.rawValue)
+                        .appendingPathComponent(new)
+                    
+                    if new == old {
+                        try? FileManager.default.removeItem(at: destPath)
+                    }
+                    try FileManager.default.moveItem(at: tempPath, to: destPath)
+                    
                     await MainActor.run {
                         self.loadDictionaries()
-                        let old = dictionary.index.title
-                        let new = String(importResult.title)
                         if old != new {
                             if let currentIndex = self.getDictionaryIndex(title: old, type: type) {
                                 let wasEnabled = self.isDictionaryEnabled(at: currentIndex, type: type)
