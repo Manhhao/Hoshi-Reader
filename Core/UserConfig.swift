@@ -9,6 +9,23 @@
 import Foundation
 import SwiftUI
 
+enum DictionaryUpdateInterval: String, CaseIterable, Codable {
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case monthly = "Monthly"
+    
+    var timeInterval: TimeInterval {
+        switch self {
+        case .daily:
+            24 * 60 * 60
+        case .weekly:
+            7 * 24 * 60 * 60
+        case .monthly:
+            30 * 24 * 60 * 60
+        }
+    }
+}
+
 enum SyncMode: String, CaseIterable, Codable {
     case auto = "Auto"
     case manual = "Manual"
@@ -51,6 +68,18 @@ class UserConfig {
     
     var bookshelfShowReading: Bool {
         didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
+    }
+    
+    var autoUpdateDictionaries: Bool {
+        didSet { UserDefaults.standard.set(autoUpdateDictionaries, forKey: "autoUpdateDictionaries") }
+    }
+    
+    var dictionaryUpdateInterval: DictionaryUpdateInterval {
+        didSet { UserDefaults.standard.set(dictionaryUpdateInterval.rawValue, forKey: "dictionaryUpdateInterval") }
+    }
+    
+    var lastDictionaryUpdate: Date {
+        didSet { UserDefaults.standard.set(lastDictionaryUpdate, forKey: "lastDictionaryUpdate") }
     }
     
     var dictionaryTabDefault: Bool {
@@ -364,6 +393,10 @@ class UserConfig {
             .flatMap(SortOption.init) ?? .recent
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
         
+        self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
+        self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")
+            .flatMap(DictionaryUpdateInterval.init) ?? .weekly
+        self.lastDictionaryUpdate = defaults.object(forKey: "lastDictionaryUpdate") as? Date ?? .distantPast
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16

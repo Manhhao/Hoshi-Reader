@@ -355,7 +355,8 @@ class DictionaryManager {
         }
     }
     
-    func updateDictionaries() {
+    func updateDictionaries(showErrors: Bool = true) {
+        UserDefaults.standard.set(Date.now, forKey: "lastDictionaryUpdate")
         let dictionaries = updatableDictionaries
         isUpdating = true
         Task.detached {
@@ -444,10 +445,28 @@ class DictionaryManager {
             } catch {
                 await MainActor.run {
                     self.isUpdating = false
-                    self.showError("Failed to update dictionaries: \(error.localizedDescription)")
+                    if showErrors {
+                        self.showError("Failed to update dictionaries: \(error.localizedDescription)")
+                    }
                 }
             }
         }
+    }
+    
+    func autoUpdateDictionaries() {
+        guard !isImporting, !isUpdating, !updatableDictionaries.isEmpty else {
+            return
+        }
+        
+        let interval = UserDefaults.standard.string(forKey: "dictionaryUpdateInterval")
+            .flatMap(DictionaryUpdateInterval.init)?
+            .timeInterval ?? DictionaryUpdateInterval.weekly.timeInterval
+        let lastUpdate = UserDefaults.standard.object(forKey: "lastDictionaryUpdate") as? Date ?? .distantPast
+        guard Date().timeIntervalSince(lastUpdate) >= interval else {
+            return
+        }
+        
+        updateDictionaries(showErrors: false)
     }
     
     func toggleDictionary(id: UUID, enabled: Bool, type: DictionaryType) {
