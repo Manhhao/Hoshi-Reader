@@ -423,7 +423,12 @@ struct DictionarySearchView: View {
     }
 }
 
-struct DictionarySearchBar: View {
+struct DictionarySearchBar: Equatable, View {
+    
+    static func == (lhs: DictionarySearchBar, rhs: DictionarySearchBar) -> Bool {
+        lhs.text == rhs.text && lhs.isFocused == rhs.isFocused
+    }
+    
     @Binding var text: String
     @Binding var isFocused: Bool
     let onSubmit: () -> Void
