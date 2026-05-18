@@ -31,7 +31,7 @@ struct PopupLayout {
     }
     
     private var showOnRight: Bool {
-        spaceRight >= spaceLeft
+        spaceRight >= spaceLeft || spaceRight >= maxWidth
     }
     
     private var spaceAbove: CGFloat {
