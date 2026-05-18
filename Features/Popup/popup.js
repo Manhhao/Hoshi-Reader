@@ -1141,6 +1141,7 @@ function createTags(entry) {
                 const swap = harmonicRow.style.display !== 'none';
                 harmonicRow.style.display = swap ? 'none' : '';
                 normalRow.style.display = swap ? '' : 'none';
+                requestAnimationFrame(reportButtonRects);
             };
             
             normalRow.addEventListener('click', toggle);
@@ -1241,8 +1242,8 @@ function reportButtonRects() {
     webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-window.addEventListener('resize', () => requestAnimationFrame(syncButtonFrames));
-document.addEventListener('toggle', () => requestAnimationFrame(syncButtonFrames), true);
+window.addEventListener('resize', () => requestAnimationFrame(reportButtonRects));
+document.addEventListener('toggle', () => requestAnimationFrame(reportButtonRects), true);
 
 function createButtonSlot(kind, entryIndex, enabled = true) {
     return el('span', {
