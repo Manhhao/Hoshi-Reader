@@ -365,13 +365,14 @@ class DictionaryManager {
                     try? FileManager.default.removeItem(at: file)
                 }
             }
-            do {
-                for (dictionary, type) in dictionaries {
-                    let index = dictionary.index
-                    await MainActor.run {
-                        self.currentImport = "Checking \(index.title)"
-                    }
-                    
+            var failures: [String] = []
+            for (dictionary, type) in dictionaries {
+                let index = dictionary.index
+                await MainActor.run {
+                    self.currentImport = "Checking \(index.title)"
+                }
+                
+                do {
                     let (data, _) = try await session.data(from: URL(string: index.indexUrl)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
@@ -401,6 +402,7 @@ class DictionaryManager {
                     )
                     
                     if !importResult.success {
+                        failures.append("\(index.title): Import failed")
                         continue
                     }
                     
@@ -436,18 +438,18 @@ class DictionaryManager {
                             self.rebuildLookupQuery()
                         }
                     }
+                } catch {
+                    failures.append("\(index.title): \(error.localizedDescription)")
                 }
-                
-                await MainActor.run {
-                    self.isUpdating = false
+            }
+            
+            await MainActor.run {
+                self.isUpdating = false
+                if failures.count < dictionaries.count {
                     UserDefaults.standard.set(Date.now, forKey: "lastDictionaryUpdate")
                 }
-            } catch {
-                await MainActor.run {
-                    self.isUpdating = false
-                    if showErrors {
-                        self.showError("Failed to update dictionaries: \(error.localizedDescription)")
-                    }
+                if !failures.isEmpty && showErrors {
+                    self.showError(failures.joined(separator: "\n"))
                 }
             }
         }
