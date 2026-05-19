@@ -53,6 +53,9 @@ struct HoshiReaderApp: App {
                 case .active:
                     LocalFileServer.shared.endBackgroundTask()
                     LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                    if userConfig.autoUpdateDictionaries {
+                        DictionaryManager.shared.autoUpdateDictionaries()
+                    }
                 case .background:
                     LocalFileServer.shared.startBackgroundTask()
                 default:
