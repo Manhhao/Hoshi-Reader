@@ -355,8 +355,7 @@ class DictionaryManager {
         }
     }
     
-    func updateDictionaries(showErrors: Bool = true) {
-        UserDefaults.standard.set(Date.now, forKey: "lastDictionaryUpdate")
+    func updateDictionaries(showErrors: Bool = true, session: URLSession = .shared) {
         let dictionaries = updatableDictionaries
         isUpdating = true
         Task.detached {
@@ -373,7 +372,7 @@ class DictionaryManager {
                         self.currentImport = "Checking \(index.title)"
                     }
                     
-                    let (data, _) = try await URLSession.shared.data(from: URL(string: index.indexUrl)!)
+                    let (data, _) = try await session.data(from: URL(string: index.indexUrl)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
                     if index.revision == remoteIndex.revision {
@@ -384,7 +383,7 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
@@ -441,6 +440,7 @@ class DictionaryManager {
                 
                 await MainActor.run {
                     self.isUpdating = false
+                    UserDefaults.standard.set(Date.now, forKey: "lastDictionaryUpdate")
                 }
             } catch {
                 await MainActor.run {
@@ -466,7 +466,10 @@ class DictionaryManager {
             return
         }
         
-        updateDictionaries(showErrors: false)
+        let config = URLSessionConfiguration.default
+        config.allowsExpensiveNetworkAccess = false
+        config.allowsConstrainedNetworkAccess = false
+        updateDictionaries(showErrors: false, session: URLSession(configuration: config))
     }
     
     func toggleDictionary(id: UUID, enabled: Bool, type: DictionaryType) {

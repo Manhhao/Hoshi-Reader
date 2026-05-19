@@ -78,10 +78,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(dictionaryUpdateInterval.rawValue, forKey: "dictionaryUpdateInterval") }
     }
     
-    var lastDictionaryUpdate: Date {
-        didSet { UserDefaults.standard.set(lastDictionaryUpdate, forKey: "lastDictionaryUpdate") }
-    }
-    
     var dictionaryTabDefault: Bool {
         didSet { UserDefaults.standard.set(dictionaryTabDefault, forKey: "dictionaryTabDefault") }
     }
@@ -396,7 +392,6 @@ class UserConfig {
         self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
         self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")
             .flatMap(DictionaryUpdateInterval.init) ?? .weekly
-        self.lastDictionaryUpdate = defaults.object(forKey: "lastDictionaryUpdate") as? Date ?? .distantPast
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
