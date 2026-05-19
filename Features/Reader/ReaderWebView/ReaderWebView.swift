@@ -483,6 +483,11 @@ struct ReaderWebView: UIViewRepresentable {
                 break-inside: avoid !important;
                 -webkit-column-break-inside: avoid !important;
             }
+            img.block-img.blurred,
+            svg.blurred {
+                filter: blur(24px) !important;
+                clip-path: inset(0);
+            }
             ::highlight(hoshi-selection) {
                 background-color: rgba(160, 160, 160, 0.4) !important;
                 color: inherit;
@@ -596,8 +601,24 @@ struct ReaderWebView: UIViewRepresentable {
                     });
                 });
                 
+                function blurImage(element) {
+                    element.classList.add('blurred');
+                    element.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        element.classList.remove('blurred');
+                    }, { once: true });
+                }
+                
                 // prevent cover images wrapped in svg containers from getting stretched
                 document.querySelectorAll('svg[preserveAspectRatio="none"]').forEach(svg => svg.removeAttribute('preserveAspectRatio'));
+                if (\(parent.userConfig.blurImages)) {
+                    document.querySelectorAll('svg').forEach(svg => {
+                        if (svg.querySelector('image')) {
+                            blurImage(svg);
+                        }
+                    });
+                }
                 
                 // apply style to big images only, some epubs have inline pictures as "text"
                 var images = document.querySelectorAll('img');
@@ -607,12 +628,18 @@ struct ReaderWebView: UIViewRepresentable {
                         if (img.complete && img.naturalWidth > 0) {
                             if (!isGaiji && (img.naturalWidth > 256 || img.naturalHeight > 256)) {
                                 img.classList.add('block-img');
+                                if (\(parent.userConfig.blurImages)) {
+                                    blurImage(img);
+                                }
                             }
                             resolve();
                         } else {
                             img.onload = () => {
                                 if (!isGaiji && (img.naturalWidth > 256 || img.naturalHeight > 256)) {
                                     img.classList.add('block-img');
+                                    if (\(parent.userConfig.blurImages)) {
+                                        blurImage(img);
+                                    }
                                 }
                                 resolve();
                             };

@@ -203,6 +203,8 @@ struct AppearanceView: View {
                     
                     Toggle("Justify Text", isOn: $userConfig.justifyText)
                     
+                    Toggle("Blur Images", isOn: $userConfig.blurImages)
+                    
                     Toggle("Advanced", isOn: $userConfig.layoutAdvanced)
                     if userConfig.layoutAdvanced {
                         VStack {
