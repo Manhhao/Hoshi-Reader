@@ -399,6 +399,7 @@ class BookshelfViewModel {
             
             let metadata = BookMetadata(
                 title: title,
+                epub: nil,
                 cover: coverURL,
                 folder: bookFolder.lastPathComponent,
                 lastAccess: Date()
