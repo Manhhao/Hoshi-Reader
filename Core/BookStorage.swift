@@ -58,8 +58,8 @@ struct BookStorage {
         guard let booksDir = try? getBooksDirectory(),
               FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else { return }
         
-        let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
-        guard !migrated else { return }
+        //let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
+        //guard !migrated else { return }
         
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: booksDir,
@@ -133,8 +133,7 @@ struct BookStorage {
                 continue
             }
             
-            if url.pathExtension == "json" || url.pathExtension == "epub"
-                || url.lastPathComponent == coverName {
+            if url.pathExtension == "json" || url.pathExtension == "epub" {
                 continue
             }
             
@@ -145,7 +144,10 @@ struct BookStorage {
                 password: nil,
                 aes: false
             )
-            try? FileManager.default.removeItem(at: url)
+            
+            if relPath != coverName {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
         
         archive.close()
