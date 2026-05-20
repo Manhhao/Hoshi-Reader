@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ZipArchive
+import ZIPFoundation
 
 /// Protocol defining the interface for EPUB archive extraction operations.
 ///
@@ -53,7 +53,7 @@ class EPUBArchiveServiceImplementation: EPUBArchiveService {
     /// - Parameter url: The file URL of the EPUB archive to extract.
     /// - Returns: The URL of the temporary directory containing the extracted contents.
     /// - Throws: `EPUBParserError.unzipFailed` wrapping the underlying extraction error.
-    /// Note Manhhao: This was updated to use ZipArchive instead. The previous Library had problems with handling permissions.
+    /// Note Manhhao: This was updated to use ZipFoundation instead. The previous Library had problems with handling permissions.
     func unarchive(archive url: URL) throws -> URL {
         let destination: URL
         let sourceDirectory = url.deletingLastPathComponent().path
@@ -70,12 +70,11 @@ class EPUBArchiveServiceImplementation: EPUBArchiveService {
             return destination
         }
         
-        let success = SSZipArchive.unzipFile(atPath: url.path, toDestination: destination.path)
-        
-        if success {
+        do {
+            try FileManager.default.unzipItem(at: url, to: destination)
             return destination
-        } else {
-            throw EPUBParserError.unzipFailed(reason: NSError(domain: "SSZipArchive", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to unzip file at \(url.path)"]))
+        } catch {
+            throw EPUBParserError.unzipFailed(reason: error)
         }
     }
 
