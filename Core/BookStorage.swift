@@ -132,7 +132,7 @@ struct BookStorage {
                 continue
             }
             
-            if url.pathExtension == "json" || url.pathExtension == "tmp" {
+            if relPath == "mimetype" || url.pathExtension == "json" || url.pathExtension == "tmp" {
                 continue
             }
             
