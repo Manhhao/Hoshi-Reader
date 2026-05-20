@@ -369,7 +369,7 @@ class BookshelfViewModel {
             return sourceURL.deletingPathExtension().lastPathComponent
         }()
         
-        let safeTitle = sanitizeFileName(title)
+        let safeTitle = BookStorage.sanitizeFileName(title)
         
         let booksDir = try BookStorage.getBooksDirectory()
         let bookFolder = booksDir.appendingPathComponent(safeTitle)
@@ -414,13 +414,6 @@ class BookshelfViewModel {
             try? BookStorage.delete(at: bookFolder)
             throw error
         }
-    }
-    
-    private func sanitizeFileName(_ string: String) -> String {
-        return string
-            .components(separatedBy: CharacterSet(charactersIn: "\\/:*?\"<>|").union(.newlines).union(.controlCharacters))
-            .joined(separator: "_")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func findCoverInManifest(document: EPUBDocument) -> String? {

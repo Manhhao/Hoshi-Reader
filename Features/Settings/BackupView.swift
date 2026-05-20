@@ -13,6 +13,7 @@ import ZIPFoundation
 struct BackupView: View {
     @State private var isExporting = false
     @State private var isImporting = false
+    @State private var isConverting = false
     @State private var exportURL: URL?
     @State private var target = ""
     @State private var isLoading = false
@@ -43,6 +44,14 @@ struct BackupView: View {
             } footer: {
                 Text("Restoring will overwrite the current collection.")
             }
+            
+            Section {
+                Button("Test") {
+                    isConverting = true
+                }
+            } header: {
+                Text("ッツ Backups")
+            }
         }
         .fileMover(isPresented: $isExporting, file: exportURL) { result in
             switch result {
@@ -60,6 +69,14 @@ struct BackupView: View {
         ) { result in
             if case .success(let url) = result {
                 restoreFolder(from: url, to: target)
+            }
+        }
+        .fileImporter(
+            isPresented: $isConverting,
+            allowedContentTypes: [.zip]
+        ) { result in
+            if case .success(let url) = result {
+                convertBookData(from: url)
             }
         }
         .overlay {
@@ -118,6 +135,18 @@ struct BackupView: View {
                 DictionaryManager.shared.loadDictionaries()
                 DictionaryManager.shared.rebuildLookupQuery()
             }
+        }
+    }
+    
+    private func convertBookData(from url: URL) {
+        guard url.startAccessingSecurityScopedResource() else { return }
+        isLoading = true
+        loadingString = "Converting..."
+        Task {
+            defer { url.stopAccessingSecurityScopedResource() }
+            let booksDirectory = try BookStorage.getBooksDirectory()
+            try TtuConverter.convertFromTtu(bookData: url, to: booksDirectory)
+            isLoading = false
         }
     }
 }
