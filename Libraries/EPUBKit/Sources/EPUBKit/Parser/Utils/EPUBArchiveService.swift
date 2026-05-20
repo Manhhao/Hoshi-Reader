@@ -55,19 +55,12 @@ class EPUBArchiveServiceImplementation: EPUBArchiveService {
     /// - Throws: `EPUBParserError.unzipFailed` wrapping the underlying extraction error.
     /// Note Manhhao: This was updated to use ZipFoundation instead. The previous Library had problems with handling permissions.
     func unarchive(archive url: URL) throws -> URL {
-        let destination: URL
-        let sourceDirectory = url.deletingLastPathComponent().path
-        
-        if FileManager.default.isWritableFile(atPath: sourceDirectory) {
-            destination = url.deletingPathExtension()
-        } else {
-            let tempDirectory = FileManager.default.temporaryDirectory
-            let fileName = url.deletingPathExtension().lastPathComponent
-            destination = tempDirectory.appendingPathComponent(fileName)
-        }
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileName = url.deletingPathExtension().lastPathComponent
+        let destination = tempDirectory.appendingPathComponent(fileName)
         
         if FileManager.default.fileExists(atPath: destination.path) {
-            return destination
+            try? FileManager.default.removeItem(at: destination)
         }
         
         do {

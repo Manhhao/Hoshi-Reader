@@ -56,11 +56,12 @@ class ReaderLoaderViewModel {
     }
     
     func loadBook() {
-        guard let root = rootURL else {
+        guard let root = rootURL,
+              let epub = book.epub else {
             return
         }
         
-        guard let doc = try? BookStorage.loadEpub(root) else {
+        guard let doc = try? BookStorage.loadEpub(root.appendingPathComponent(epub)) else {
             return
         }
         

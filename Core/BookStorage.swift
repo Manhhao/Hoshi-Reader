@@ -279,9 +279,16 @@ struct BookStorage {
     }
     
     static func loadEpub(_ path: URL) throws -> EPUBDocument {
+        let tempDirectory = try getAppDirectory().appendingPathComponent("Temp")
+        try? FileManager.default.removeItem(at: tempDirectory)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        
+        let destination = tempDirectory.appendingPathComponent(path.deletingPathExtension().lastPathComponent)
+        try FileManager.default.unzipItem(at: path, to: destination)
+        
         let parser = EPUBParser()
         do {
-            return try parser.parse(documentAt: path)
+            return try parser.parse(documentAt: destination)
         } catch {
             throw BookStorageError.epubImportFailed(error)
         }
