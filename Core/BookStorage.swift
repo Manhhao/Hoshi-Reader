@@ -58,14 +58,18 @@ struct BookStorage {
         guard let booksDir = try? getBooksDirectory(),
               FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else { return }
         
-        //let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
-        //guard !migrated else { return }
+        let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
+        guard !migrated else {
+            return
+        }
         
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: booksDir,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
-        ) else { return }
+        ) else {
+            return
+        }
         
         for folder in contents {
             guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
@@ -100,11 +104,12 @@ struct BookStorage {
     }
     
     private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
-        let archive = try Archive(url: destination, accessMode: .create, pathEncoding: .utf8)
+        let tempURL = destination.appendingPathExtension("tmp")
+        try? FileManager.default.removeItem(at: tempURL)
+        let archive = try Archive(url: tempURL, accessMode: .create, pathEncoding: .utf8)
         
         let mimetype = folder.appendingPathComponent("mimetype")
         try archive.addEntry(with: "mimetype", fileURL: mimetype, compressionMethod: .none)
-        try? FileManager.default.removeItem(at: mimetype)
         
         guard let enumerator = FileManager.default.enumerator(
             at: folder,
@@ -114,6 +119,7 @@ struct BookStorage {
             return
         }
         
+        var filesToRemove: [URL] = []
         var dirsToRemove: [URL] = []
         for case let url as URL in enumerator {
             let relPath = url.standardizedFileURL.pathComponents
@@ -126,17 +132,23 @@ struct BookStorage {
                 continue
             }
             
-            if url.pathExtension == "json" || url.pathExtension == "epub" {
+            if url.pathExtension == "json" || url.pathExtension == "tmp" {
                 continue
             }
             
             try archive.addEntry(with: relPath, fileURL: url, compressionMethod: .deflate)
             
             if relPath != coverName {
-                try? FileManager.default.removeItem(at: url)
+                filesToRemove.append(url)
             }
         }
         
+        try FileManager.default.moveItem(at: tempURL, to: destination)
+        
+        filesToRemove.append(mimetype)
+        for file in filesToRemove {
+            try? FileManager.default.removeItem(at: file)
+        }
         for dir in dirsToRemove.sorted(by: { $0.path.count > $1.path.count }) {
             try? FileManager.default.removeItem(at: dir)
         }
