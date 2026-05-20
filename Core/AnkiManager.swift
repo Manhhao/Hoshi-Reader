@@ -10,7 +10,7 @@ import Foundation
 import SQLite3
 import libzstd
 import UIKit
-import ZipArchive
+import ZIPFoundation
 
 @Observable
 @MainActor
@@ -541,10 +541,7 @@ class AnkiManager {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         
-        SSZipArchive.unzipFile(
-            atPath: url.path(percentEncoded: false),
-            toDestination: tempDir.path(percentEncoded: false)
-        )
+        try FileManager.default.unzipItem(at: url, to: tempDir)
         
         let collection = try Data(contentsOf: tempDir.appendingPathComponent("collection.anki21b"))
         let sqliteData = try Self.decompressZstd(collection)

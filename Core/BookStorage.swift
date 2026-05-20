@@ -8,7 +8,7 @@
 
 import EPUBKit
 import Foundation
-import ZipArchive
+import ZIPFoundation
 
 enum FileNames: Sendable {
     static let metadata = "metadata.json"
@@ -78,7 +78,9 @@ struct BookStorage {
             
             let metadata = loadMetadata(root: folder)
             let coverName = metadata?.cover.map { URL(fileURLWithPath: $0).lastPathComponent }
-            repackEpub(folder: folder, destination: destination, coverName: coverName)
+            guard (try? repackEpub(folder: folder, destination: destination, coverName: coverName)) != nil else {
+                continue
+            }
             
             if let metadata {
                 var updated = BookMetadata(
@@ -97,18 +99,11 @@ struct BookStorage {
         UserDefaults.standard.set(true, forKey: "migratedBooks")
     }
     
-    private static func repackEpub(folder: URL, destination: URL, coverName: String?) {
-        let archive = SSZipArchive(path: destination.path(percentEncoded: false))
-        guard archive.open() else { return }
+    private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
+        let archive = try Archive(url: destination, accessMode: .create, pathEncoding: .utf8)
         
         let mimetype = folder.appendingPathComponent("mimetype")
-        archive.writeFile(
-            atPath: mimetype.path(percentEncoded: false),
-            withFileName: "mimetype",
-            compressionLevel: 0,
-            password: nil,
-            aes: false
-        )
+        try archive.addEntry(with: "mimetype", fileURL: mimetype, compressionMethod: .none)
         try? FileManager.default.removeItem(at: mimetype)
         
         guard let enumerator = FileManager.default.enumerator(
@@ -116,13 +111,11 @@ struct BookStorage {
             includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else {
-            archive.close()
             return
         }
         
         var dirsToRemove: [URL] = []
         for case let url as URL in enumerator {
-            let fullPath = url.path(percentEncoded: false)
             let relPath = url.standardizedFileURL.pathComponents
                 .dropFirst(folder.standardizedFileURL.pathComponents.count)
                 .joined(separator: "/")
@@ -137,20 +130,12 @@ struct BookStorage {
                 continue
             }
             
-            archive.writeFile(
-                atPath: fullPath,
-                withFileName: relPath,
-                compressionLevel: -1,
-                password: nil,
-                aes: false
-            )
+            try archive.addEntry(with: relPath, fileURL: url, compressionMethod: .deflate)
             
             if relPath != coverName {
                 try? FileManager.default.removeItem(at: url)
             }
         }
-        
-        archive.close()
         
         for dir in dirsToRemove.sorted(by: { $0.path.count > $1.path.count }) {
             try? FileManager.default.removeItem(at: dir)
