@@ -45,10 +45,10 @@ struct AboutView: View {
                     text: mitLicense(copyright: "Copyright (c) 2014-2024 Marko Tadić (https://markotadic.com)")
                 )
                 LicenseRow(
-                    name: "ZipArchive (EPUBKit)",
+                    name: "ZIPFoundation (EPUBKit)",
                     license: "MIT",
-                    url: "https://github.com/ZipArchive/ZipArchive",
-                    text: mitLicense(copyright: "Copyright (c) 2013-2021, ZipArchive, https://github.com/ZipArchive")
+                    url: "https://github.com/weichsel/ZIPFoundation",
+                    text: mitLicense(copyright: "Copyright (c) 2017-2026 Thomas Zoechling (https://www.peakstep.com)")
                 )
                 LicenseRow(
                     name: "libdeflate (hoshidicts)",

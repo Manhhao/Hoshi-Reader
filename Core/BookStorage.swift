@@ -8,6 +8,7 @@
 
 import EPUBKit
 import Foundation
+import ZIPFoundation
 
 enum FileNames: Sendable {
     static let metadata = "metadata.json"
@@ -51,6 +52,106 @@ struct BookStorage {
         }
         
         UserDefaults.standard.set(true, forKey: "migratedToAppSupport")
+    }
+    
+    static func migrateBooks() {
+        guard let booksDir = try? getBooksDirectory(),
+              FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else { return }
+        
+        let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
+        guard !migrated else {
+            return
+        }
+        
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: booksDir,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+        
+        for folder in contents {
+            guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
+            
+            let destination = folder.appendingPathComponent(folder.lastPathComponent).appendingPathExtension("epub")
+            guard !FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) else { continue }
+            
+            let mimetype = folder.appendingPathComponent("mimetype")
+            guard FileManager.default.fileExists(atPath: mimetype.path(percentEncoded: false)) else { continue }
+            
+            let metadata = loadMetadata(root: folder)
+            let coverName = metadata?.cover.map { URL(fileURLWithPath: $0).lastPathComponent }
+            guard (try? repackEpub(folder: folder, destination: destination, coverName: coverName)) != nil else {
+                continue
+            }
+            
+            if let metadata {
+                var updated = BookMetadata(
+                    id: metadata.id,
+                    title: metadata.title,
+                    epub: folder.lastPathComponent + ".epub",
+                    cover: metadata.cover,
+                    folder: metadata.folder,
+                    lastAccess: metadata.lastAccess
+                )
+                updated.renamedTitle = metadata.renamedTitle
+                try? save(updated, inside: folder, as: FileNames.metadata)
+            }
+        }
+        
+        UserDefaults.standard.set(true, forKey: "migratedBooks")
+    }
+    
+    private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
+        let tempURL = destination.appendingPathExtension("tmp")
+        try? FileManager.default.removeItem(at: tempURL)
+        let archive = try Archive(url: tempURL, accessMode: .create, pathEncoding: .utf8)
+        
+        let mimetype = folder.appendingPathComponent("mimetype")
+        try archive.addEntry(with: "mimetype", fileURL: mimetype, compressionMethod: .none)
+        
+        guard let enumerator = FileManager.default.enumerator(
+            at: folder,
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+        
+        var filesToRemove: [URL] = []
+        var dirsToRemove: [URL] = []
+        for case let url as URL in enumerator {
+            let relPath = url.standardizedFileURL.pathComponents
+                .dropFirst(folder.standardizedFileURL.pathComponents.count)
+                .joined(separator: "/")
+            
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            if isDir {
+                dirsToRemove.append(url)
+                continue
+            }
+            
+            if relPath == "mimetype" || url.pathExtension == "json" || url.pathExtension == "tmp" {
+                continue
+            }
+            
+            try archive.addEntry(with: relPath, fileURL: url, compressionMethod: .deflate)
+            
+            if relPath != coverName {
+                filesToRemove.append(url)
+            }
+        }
+        
+        try FileManager.default.moveItem(at: tempURL, to: destination)
+        
+        filesToRemove.append(mimetype)
+        for file in filesToRemove {
+            try? FileManager.default.removeItem(at: file)
+        }
+        for dir in dirsToRemove.sorted(by: { $0.path.count > $1.path.count }) {
+            try? FileManager.default.removeItem(at: dir)
+        }
     }
     
     static func getBooksDirectory() throws -> URL {
@@ -190,9 +291,16 @@ struct BookStorage {
     }
     
     static func loadEpub(_ path: URL) throws -> EPUBDocument {
+        let tempDirectory = try getAppDirectory().appendingPathComponent("Temp")
+        try? FileManager.default.removeItem(at: tempDirectory)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        
+        let destination = tempDirectory.appendingPathComponent(path.deletingPathExtension().lastPathComponent)
+        try FileManager.default.unzipItem(at: path, to: destination)
+        
         let parser = EPUBParser()
         do {
-            return try parser.parse(documentAt: path)
+            return try parser.parse(documentAt: destination)
         } catch {
             throw BookStorageError.epubImportFailed(error)
         }

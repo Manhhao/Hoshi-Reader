@@ -21,15 +21,15 @@ let package = Package(
             from: "4.7.0"
         ),
         .package(
-            url: "https://github.com/ZipArchive/ZipArchive",
-            from: "2.6.0"
+            url: "https://github.com/weichsel/ZIPFoundation.git",
+            from: "0.9.20"
         )
     ],
     
     targets: [
         .target(
             name: "EPUBKit",
-            dependencies: ["AEXML", "ZipArchive"]
+            dependencies: ["AEXML", "ZIPFoundation"]
         ),
         .testTarget(
             name: "EPUBKitTests",
