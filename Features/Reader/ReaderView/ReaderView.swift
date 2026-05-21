@@ -22,6 +22,7 @@ struct WebViewState: Hashable {
     var layoutAdvanced: Bool
     var lineHeight: Double
     var characterSpacing: Double
+    var paragraphSpacing: Double
     var size: CGSize
 }
 
@@ -238,6 +239,7 @@ struct ReaderView: View {
                             layoutAdvanced: userConfig.layoutAdvanced,
                             lineHeight: userConfig.lineHeight,
                             characterSpacing: userConfig.characterSpacing,
+                            paragraphSpacing: userConfig.paragraphSpacing,
                             size: geometry.size,
                         ))
                         .frame(width: viewSize.width, height: viewSize.height)
@@ -285,6 +287,7 @@ struct ReaderView: View {
                             layoutAdvanced: userConfig.layoutAdvanced,
                             lineHeight: userConfig.lineHeight,
                             characterSpacing: userConfig.characterSpacing,
+                            paragraphSpacing: userConfig.paragraphSpacing,
                             size: geometry.size,
                         ))
                         .frame(width: viewSize.width, height: viewSize.height)

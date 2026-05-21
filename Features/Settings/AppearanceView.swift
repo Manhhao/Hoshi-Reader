@@ -225,6 +225,15 @@ struct AppearanceView: View {
                             }
                             Slider(value: $userConfig.characterSpacing, in: -10...10, step: 1)
                         }
+                        VStack {
+                            HStack {
+                                Text("Paragraph Spacing")
+                                Spacer()
+                                Text("\(userConfig.paragraphSpacing, specifier: "%.1f")em")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: $userConfig.paragraphSpacing, in: 0...3, step: 0.1)
+                        }
                     }
                 }
                 

@@ -298,11 +298,27 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
             
             var textSpacingCss = ""
+            var paragraphSpacingCss = ""
             if parent.userConfig.layoutAdvanced {
                 textSpacingCss = """
                 line-height: \(parent.userConfig.lineHeight) !important;
                 letter-spacing: \((parent.userConfig.characterSpacing / 100.0))em !important;
                 """
+                if parent.userConfig.verticalWriting {
+                    paragraphSpacingCss = """
+                    p {
+                        margin-right: \(parent.userConfig.paragraphSpacing)em !important;
+                        margin-left: \(parent.userConfig.paragraphSpacing)em !important;
+                    }
+                    """
+                } else {
+                    paragraphSpacingCss = """
+                    p {
+                        margin-top: \(parent.userConfig.paragraphSpacing)em !important;
+                        margin-bottom: \(parent.userConfig.paragraphSpacing)em !important;
+                    }
+                    """
+                }
             }
             
             let verticalPadding = Double(parent.userConfig.verticalPadding)
@@ -392,6 +408,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 background-color: var(--hoshi-sasayaki-background-color) !important;
             }
             \(HighlightColor.css)
+            \(paragraphSpacingCss)
             \(textColorCss)
             """
             
