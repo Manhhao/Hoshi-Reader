@@ -62,6 +62,7 @@ struct ReaderView: View {
     @State private var topBarRightWidth: CGFloat = 0
     @State private var topBarTotalWidth: CGFloat = 0
     @State private var titleNaturalWidth: CGFloat = 0
+    @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
     private let lineHeight: CGFloat = 16
     
@@ -221,7 +222,8 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
-                            onHighlightCreated: viewModel.addHighlight
+                            onHighlightCreated: viewModel.addHighlight,
+                            onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -267,7 +269,8 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
-                            onHighlightCreated: viewModel.addHighlight
+                            onHighlightCreated: viewModel.addHighlight,
+                            onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -563,6 +566,14 @@ struct ReaderView: View {
                         .controlSize(.regular)
                         .tint(.secondary)
                 }
+            }
+        }
+        .overlay {
+            if let url = imageURL {
+                FullscreenImageView(url: url, backgroundColor: readerBackgroundColor) {
+                    imageURL = nil
+                }
+                .ignoresSafeArea()
             }
         }
         .sheet(item: $viewModel.activeSheet) { item in
