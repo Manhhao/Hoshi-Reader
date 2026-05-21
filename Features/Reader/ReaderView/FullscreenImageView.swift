@@ -33,10 +33,8 @@ struct FullscreenImageView: View {
                         }
                     }
                 }
-                .toolbarBackground(.hidden, for: .navigationBar)
         }
         .persistentSystemOverlays(.hidden)
-        .statusBarHidden()
     }
 }
 
