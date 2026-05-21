@@ -257,7 +257,7 @@ class BookshelfViewModel {
                 )
                 handleSyncResult(result)
             } catch {
-                showError(message: "Sync failed: \(error.localizedDescription)")
+                showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
             }
         }
     }

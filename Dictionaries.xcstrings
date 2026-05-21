@@ -238,7 +238,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当前牌组"
+            "value" : "导出牌组"
           }
         }
       }
@@ -645,7 +645,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "标签"
+            "value" : "Tags"
           }
         }
       }

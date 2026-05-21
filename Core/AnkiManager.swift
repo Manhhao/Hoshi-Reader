@@ -669,7 +669,7 @@ class AnkiManager {
         
         var errorDescription: String? {
             switch self {
-            case .invalidUrl: "Invalid URL specified"
+            case .invalidUrl: String(localized: "Invalid URL specified")
             case .ankiconnectError(let error): error
             }
         }
@@ -680,7 +680,7 @@ class AnkiManager {
         
         var errorDescription: String? {
             switch self {
-            case .zstd: "Failed to decompress database"
+            case .zstd: String(localized: "Failed to decompress database")
             }
         }
     }

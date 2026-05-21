@@ -26,7 +26,7 @@ struct AudioView: View {
                         set: { userConfig.audioSources[index].isEnabled = $0 }
                     )) {
                         VStack(alignment: .leading) {
-                            Text(source.name)
+                            sourceName(of: source)
                                 .lineLimit(1)
                             if !source.isDefault && source.url != UserConfig.localAudioSource.url {
                                 Text(source.url)
@@ -138,5 +138,9 @@ struct AudioView: View {
             return
         }
         importedSize = ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    private func sourceName(of source: AudioSource) -> Text {
+        source.name == "Default" ? Text("Default") : Text(source.name)
     }
 }
