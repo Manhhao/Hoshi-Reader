@@ -154,6 +154,7 @@ struct PopupWebView: UIViewRepresentable {
     var dictionaryStyles: [String: String] = [:]
     var lookupEntries: [[String: Any]] = []
     var scanNonJapaneseText: Bool = true
+    var scanLength: Int = 16
     var backTrigger: Bool = false
     var forwardTrigger: Bool = false
     var onMine: (([String: String]) async -> Bool)? = nil
@@ -459,7 +460,10 @@ struct PopupWebView: UIViewRepresentable {
                 \(FontManager.shared.fontfaceCSS)
                 html { zoom: \(scale); }
             </style>
-            <script>window.scanNonJapaneseText = \(scanNonJapaneseText);</script>
+            <script>
+                window.scanNonJapaneseText = \(scanNonJapaneseText);
+                window.scanLength = \(scanLength);
+            </script>
             <script src="selection.js"></script>
             <script src="popup.js"></script>
         </head>

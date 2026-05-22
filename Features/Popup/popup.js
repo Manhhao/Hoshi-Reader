@@ -1628,7 +1628,10 @@ window.renderPopup = function() {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }
-        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, 16);
+        const scale = getButtonRectScale();
+        const rectX = (e.clientX + window.scrollX) / scale - window.scrollX;
+        const rectY = (e.clientY + window.scrollY) / scale - window.scrollY;
+        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, window.scanLength, rectX, rectY);
         if (!selected) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
