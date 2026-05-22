@@ -289,8 +289,17 @@ window.hoshiReader = {
         window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
     },
     
+    // for some reason viewport and innerwidth were desynced, causing progress to be restored against the unpadded webview
+    // waiting for 3 frames "fixes" it for now
+    async waitForViewportReady() {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => requestAnimationFrame(resolve));
+    },
+    
     async restoreProgress(progress) {
         await document.fonts.ready;
+        await this.waitForViewportReady();
         if (progress <= 0) {
             this.notifyRestoreComplete();
             return;
@@ -340,6 +349,7 @@ window.hoshiReader = {
     
     async jumpToFragment(fragment) {
         await document.fonts.ready;
+        await this.waitForViewportReady();
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);
         
