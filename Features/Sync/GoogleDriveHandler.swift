@@ -322,7 +322,7 @@ class GoogleDriveHandler {
     
     func updateStatsFile(folderId: String, fileId: String?, stats: [Statistics]) async throws {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        let fileName = getStatisticsFileName(stats: stats)
+        let fileName = Self.getStatisticsFileName(stats: stats)
         
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
@@ -406,7 +406,7 @@ class GoogleDriveHandler {
     
     // https://github.com/ttu-ttu/ebook-reader/blob/d7d1dc1fd1151e067db218b8ff7eecf1c14d2276/apps/web/src/lib/data/storage/handler/gdrive-handler.ts#L102
     func ensureBookFolder(bookTitle: String, rootFolder: String, coverImageDataProvider: (() -> Data?)? = nil) async throws -> String {
-        let sanitizedTitle = sanitizeTtuFilename(bookTitle)
+        let sanitizedTitle = Self.sanitizeTtuFilename(bookTitle)
         
         if let cachedId = titleToFolderId[sanitizedTitle] {
             return cachedId
@@ -473,7 +473,7 @@ class GoogleDriveHandler {
     }
     
     // https://github.com/ttu-ttu/ebook-reader/blob/d7d1dc1fd1151e067db218b8ff7eecf1c14d2276/apps/web/src/lib/data/storage/handler/base-handler.ts#L244
-    private func getStatisticsFileName(stats: [Statistics]) -> String {
+    static func getStatisticsFileName(stats: [Statistics]) -> String {
         var readingTime: Double = 0;
         var charactersRead: Int = 0;
         var minReadingSpeed: Int = 0;
@@ -507,7 +507,7 @@ class GoogleDriveHandler {
     }
     
     // https://github.com/ttu-ttu/ebook-reader/blob/d7d1dc1fd1151e067db218b8ff7eecf1c14d2276/apps/web/src/lib/data/storage/handler/base-handler.ts#L642
-    private func sanitizeTtuFilename(_ title: String) -> String {
+    static func sanitizeTtuFilename(_ title: String) -> String {
         var result = title
         if result.hasSuffix(" ") {
             result = String(result.dropLast())
