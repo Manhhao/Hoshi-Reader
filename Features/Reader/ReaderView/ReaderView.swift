@@ -177,7 +177,7 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: max(topSafeArea, 25) + webViewPadding)
+                .frame(height: max(topSafeArea, 40) + webViewPadding)
                 .contentShape(Rectangle())
                 .overlay(alignment: .bottom) {
                     HStack {
@@ -250,7 +250,7 @@ struct ReaderView: View {
                         }
                     }
                     .padding(.horizontal, 15)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 16)
                     .opacity(focusMode ? 1 : 0)
                     .allowsHitTesting(focusMode)
                 }
