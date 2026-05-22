@@ -45,6 +45,16 @@
         }
       }
     },
+    "%.1fem" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.1fem"
+          }
+        }
+      }
+    },
     "%.2f" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -441,6 +451,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "备份"
+          }
+        }
+      }
+    },
+    "Blur Images" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图片模糊"
           }
         }
       }
@@ -1565,6 +1585,16 @@
         }
       }
     },
+    "Paragraph Spacing" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "段落间距"
+          }
+        }
+      }
+    },
     "Playback" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1904,8 +1934,7 @@
         }
       }
     },
-    "Show Skip Controls" : {
-      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+    "Show Skip (±15s) Controls" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1959,8 +1988,7 @@
         }
       }
     },
-    "Skip Controls will replace Next/Previous Cue controls" : {
-      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+    "Skip Controls will replace Next/Previous Cue controls as media controls." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
