@@ -145,6 +145,7 @@ extension View {
             self
                 .background(.ultraThinMaterial, in: Capsule())
                 .overlay(Capsule().strokeBorder(.quaternary, lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
         }
     }
 }

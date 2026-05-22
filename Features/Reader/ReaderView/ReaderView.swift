@@ -250,7 +250,7 @@ struct ReaderView: View {
                         }
                     }
                     .padding(.horizontal, 15)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 6)
                     .opacity(focusMode ? 1 : 0)
                     .allowsHitTesting(focusMode)
                 }
@@ -548,7 +548,6 @@ struct ReaderView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .conditionalGlassEffect()
-                    .allowsHitTesting(false)
                 }
                 
                 Spacer()
