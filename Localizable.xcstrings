@@ -658,6 +658,16 @@
         }
       }
     },
+    "Custom" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义"
+          }
+        }
+      }
+    },
     "Dark" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -873,6 +883,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "构建认证 URL 失败"
+          }
+        }
+      }
+    },
+    "Failed to decode Anki response:\n\n%@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法解析 Anki 的响应内容:\n\n%@"
           }
         }
       }
@@ -1218,7 +1238,7 @@
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "听有声书并跟随高亮文本阅读。"
           }
         }
@@ -1415,6 +1435,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未接收到回调链接"
+          }
+        }
+      }
+    },
+    "No data received from Anki. Please try again." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未收到 Anki 数据，请重试。"
           }
         }
       }
@@ -1750,6 +1780,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择器"
+          }
+        }
+      }
+    },
+    "Sepia" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "棕褐色"
           }
         }
       }

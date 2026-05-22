@@ -109,14 +109,14 @@ class AnkiManager {
                 fetch(retryCount: retryCount + 1)
                 return
             }
-            errorMessage = "No data received from Anki. Please try again."
+            errorMessage = String(localized: "No data received from Anki. Please try again.")
             return
         }
         UIPasteboard.general.setData(Data(), forPasteboardType: Self.pasteboardType)
         
         guard let response = try? JSONDecoder().decode(AnkiResponse.self, from: data) else {
             let rawString = String(data: data, encoding: .utf8) ?? "Unable to read data"
-            errorMessage = "Failed to decode Anki response:\n\n\(rawString)"
+            errorMessage = String(localized: "Failed to decode Anki response:\n\n\(rawString)")
             return
         }
         availableDecks = response.decks.map(\.name)
