@@ -245,7 +245,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "总时间"
+            "value" : "总计"
           }
         }
       }
@@ -331,7 +331,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "认证失败，未获取到有效的授权信息"
+            "value" : "回调中缺失认证码"
           }
         }
       }
@@ -396,7 +396,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动同步"
+            "value" : "自动开始统计"
           }
         }
       }
@@ -418,7 +418,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "后台播放模式"
+            "value" : "后台音频"
           }
         }
       }
@@ -561,7 +561,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播放控制"
+            "value" : "控制中心"
           }
         }
       }
@@ -807,7 +807,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "降低透明度"
+            "value" : "禁用透明度"
           }
         }
       }
@@ -991,7 +991,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "高亮"
+            "value" : "标注"
           }
         }
       }
@@ -1068,7 +1068,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "深浅色模式"
+            "value" : "用户界面"
           }
         }
       }
@@ -1131,7 +1131,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "深色模式下自动反转颜色"
+            "value" : "深色模式下反转颜色"
           }
         }
       }
@@ -1153,7 +1153,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "排版优化"
+            "value" : "两端对齐"
           }
         }
       }
@@ -1683,7 +1683,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "恢复会覆盖当前安装的词典。"
+            "value" : "恢复会覆盖当前集合"
           }
         }
       }
@@ -1760,7 +1760,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "本次阅读"
+            "value" : "本次"
           }
         }
       }
@@ -1903,7 +1903,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示已经开始阅读但尚未读完的书。"
+            "value" : "展示已经开始阅读但尚未读完的书。"
           }
         }
       }
@@ -1952,7 +1952,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "按标题排序"
+            "value" : "按最近阅读"
           }
         }
       }
@@ -1968,7 +1968,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "按最近阅读"
+            "value" : "按标题排序"
           }
         }
       }
@@ -2023,7 +2023,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "可从阅读器的快捷菜单访问统计。"
+            "value" : "可从阅读器的上下文菜单访问统计数据。"
           }
         }
       }
