@@ -633,22 +633,22 @@ struct ReaderWebView: UIViewRepresentable {
                     });
                 });
                 
-                function setupImage(element, src, wrap) {
+                function setupImage(element, src, wrap, blurElement = element) {
                     var target = element;
                     if (\(parent.userConfig.blurImages)) {
-                        element.classList.add('blurred');
+                        blurElement.classList.add('blurred');
                         if (wrap) {
                             target = document.createElement('div');
                             target.className = 'blur-wrapper';
-                            element.before(target);
-                            target.append(element);
+                            blurElement.before(target);
+                            target.append(blurElement);
                         }
                     }
                     target.onclick = event => {
                         event.preventDefault();
                         event.stopPropagation();
-                        if (element.classList.contains('blurred')) {
-                            element.classList.remove('blurred');
+                        if (blurElement.classList.contains('blurred')) {
+                            blurElement.classList.remove('blurred');
                             return;
                         }
                         webkit.messageHandlers.imageTapped.postMessage(new URL(src, document.baseURI).href);
@@ -662,7 +662,7 @@ struct ReaderWebView: UIViewRepresentable {
                     if (!svgImage) { 
                         return; 
                     }
-                    setupImage(svg, svgImage.href.baseVal, false);
+                    setupImage(svgImage, svgImage.href.baseVal, false, svg);
                 });
                 
                 // apply style to big images only, some epubs have inline pictures as "text"
