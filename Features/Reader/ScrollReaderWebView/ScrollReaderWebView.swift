@@ -548,6 +548,10 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 return
             }
             
+            if (webView as? HoshiWKWebView)?.hasSelection == true {
+                return
+            }
+            
             let point = gesture.location(in: webView)
             let maxLength = parent.maxSelectionLength
             

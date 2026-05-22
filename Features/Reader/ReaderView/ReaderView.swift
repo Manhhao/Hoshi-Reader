@@ -59,13 +59,8 @@ struct ReaderView: View {
     @State private var topSafeArea: CGFloat = UIApplication.topSafeArea
     @State private var focusMode = false
     @State private var inactiveSince: Date?
-    @State private var topBarLeftWidth: CGFloat = 0
-    @State private var topBarRightWidth: CGFloat = 0
-    @State private var topBarTotalWidth: CGFloat = 0
-    @State private var titleNaturalWidth: CGFloat = 0
     @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
-    private let lineHeight: CGFloat = 16
     
     private var sepiaInverted: Bool {
         userConfig.theme == .sepia && userConfig.sepiaInvertInDark && systemColorScheme == .dark
@@ -182,13 +177,83 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: max(topSafeArea, 25) + webViewPadding
-                       + (userConfig.readerShowProgressTop && !progressString.isEmpty ? lineHeight : 0)
-                       + ((userConfig.readerShowTitle
-                           || (userConfig.enableStatistics && userConfig.readerShowStatisticsToggle)
-                           || (userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio)
-                           || viewModel.backTarget != nil || viewModel.forwardTarget != nil) ? lineHeight : 0))
+                .frame(height: max(topSafeArea, 25) + webViewPadding)
                 .contentShape(Rectangle())
+                .overlay(alignment: .bottom) {
+                    HStack {
+                        HStack(spacing: 2) {
+                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
+                                Button {
+                                    if viewModel.isTracking {
+                                        viewModel.stopTracking()
+                                    } else {
+                                        viewModel.startTracking()
+                                    }
+                                } label: {
+                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
+                                        .font(.system(size: 16))
+                                        .frame(width: 26, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                            
+                            if let character = viewModel.backTarget {
+                                Button {
+                                    viewModel.navigateBackwards()
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "arrow.uturn.backward.circle")
+                                        Text(character.formatted(.number.grouping(.never)))
+                                    }
+                                    .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 2) {
+                            if let character = viewModel.forwardTarget {
+                                Button {
+                                    viewModel.navigateForwards()
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Text(character.formatted(.number.grouping(.never)))
+                                        Image(systemName: "arrow.uturn.right.circle")
+                                    }
+                                    .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                            
+                            if userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio {
+                                Button {
+                                    if viewModel.wasPaused {
+                                        viewModel.wasPaused = false
+                                    } else {
+                                        viewModel.sasayakiPlayer.togglePlayback()
+                                    }
+                                } label: {
+                                    Image(systemName: viewModel.sasayakiPlayer.isPlaying || viewModel.wasPaused ? "pause.fill" : "waveform")
+                                        .font(.system(size: 16))
+                                        .frame(width: 26, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.bottom, 8)
+                    .opacity(focusMode ? 1 : 0)
+                    .allowsHitTesting(focusMode)
+                }
             
             GeometryReader { geometry in
                 ZStack {
@@ -207,11 +272,29 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
-                            onTapOutside: viewModel.closePopups,
+                            onTapOutside: {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            },
                             onScroll: {
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
@@ -258,12 +341,30 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
-                            onTapOutside: viewModel.closePopups,
+                            onTapOutside: {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            },
                             onPageTurn: {
                                 viewModel.clearForwardHistory()
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
@@ -349,6 +450,39 @@ struct ReaderView: View {
                 }
             }
             
+            if UIApplication.bottomSafeArea == 0 {
+                Color.clear
+                    .frame(height: max(topSafeArea, 25))
+            }
+        }
+        .background(readerBackgroundColor.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            let showTitle = userConfig.readerShowTitle
+            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty
+            if showTitle || showTopProgress {
+                VStack(spacing: 2) {
+                    if showTitle {
+                        Text(viewModel.book.displayTitle)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                    }
+                    if showTopProgress {
+                        Text(progressString)
+                            .font(.caption)
+                            .monospacedDigit()
+                            .tracking(-0.4)
+                    }
+                }
+                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .conditionalGlassEffect()
+                .padding(.horizontal, 40)
+                .padding(.top, max(topSafeArea, 25))
+                .opacity(focusMode ? 0 : 1)
+            }
+        }
+        .overlay(alignment: .bottom) {
             HStack {
                 Button {
                     if viewModel.isTracking {
@@ -362,8 +496,34 @@ struct ReaderView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .conditionalGlassEffect()
-                .opacity(focusMode ? 0 : 1)
+                
+                Spacer()
+                
+                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty
+                let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
+                if showBottomProgress || showStats {
+                    VStack(spacing: 2) {
+                        if showStats {
+                            Text(statisticsString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                        if showBottomProgress {
+                            Text(progressString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                    }
+                    .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                }
                 
                 Spacer()
                 
@@ -409,155 +569,13 @@ struct ReaderView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .conditionalGlassEffect()
-                .opacity(focusMode ? 0 : 1)
             }
             .padding(.horizontal, 20)
-            .frame(height: (UIApplication.bottomSafeArea > 25 ? UIApplication.bottomSafeArea : 44) + 10, alignment: .top)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.default.speed(2)) {
-                    focusMode.toggle()
-                }
-            }
-        }
-        .background(readerBackgroundColor.ignoresSafeArea())
-        .overlay(alignment: .top) {
-            VStack(spacing: 1) {
-                ZStack(alignment: .leading) {
-                    HStack {
-                        HStack(spacing: 2) {
-                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
-                                Button {
-                                    if viewModel.isTracking {
-                                        viewModel.stopTracking()
-                                    } else {
-                                        viewModel.startTracking()
-                                    }
-                                } label: {
-                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
-                                        .font(.system(size: 16))
-                                        .frame(width: 26, height: 20)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                            }
-                            
-                            if let character = viewModel.backTarget {
-                                Button {
-                                    viewModel.navigateBackwards()
-                                } label: {
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "arrow.uturn.backward.circle")
-                                        Text(character.formatted(.number.grouping(.never)))
-                                    }
-                                    .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                                .opacity(focusMode ? 0 : 1)
-                            }
-                        }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarLeftWidth = $0 }
-                        
-                        Spacer(minLength: 0)
-                        
-                        HStack(spacing: 2) {
-                            if let character = viewModel.forwardTarget {
-                                Button {
-                                    viewModel.navigateForwards()
-                                } label: {
-                                    HStack(spacing: 2) {
-                                        Text(character.formatted(.number.grouping(.never)))
-                                        Image(systemName: "arrow.uturn.right.circle")
-                                    }
-                                    .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                                .opacity(focusMode ? 0 : 1)
-                            }
-                            
-                            if userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio {
-                                Button {
-                                    if viewModel.wasPaused {
-                                        viewModel.wasPaused = false
-                                    } else {
-                                        viewModel.sasayakiPlayer.togglePlayback()
-                                    }
-                                } label: {
-                                    Image(systemName: viewModel.sasayakiPlayer.isPlaying || viewModel.wasPaused ? "pause.fill" : "waveform")
-                                        .font(.system(size: 16))
-                                        .frame(width: 26, height: 20)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                            }
-                        }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarRightWidth = $0 }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarTotalWidth = $0 }
-                    
-                    if userConfig.readerShowTitle {
-                        let gap: CGFloat = 2
-                        let leftEdge = topBarLeftWidth + gap
-                        let rightEdge = topBarTotalWidth - topBarRightWidth - gap
-                        let availableSpace = max(0, rightEdge - leftEdge)
-                        let displayWidth = min(titleNaturalWidth, availableSpace)
-                        let titleLeading = max(leftEdge, min(rightEdge - displayWidth, (topBarTotalWidth - displayWidth) / 2))
-                        
-                        Text(viewModel.book.displayTitle)
-                            .font(.subheadline)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor.opacity(0.5)) : AnyShapeStyle(.tertiary))
-                            .lineLimit(1)
-                            .frame(width: min(titleNaturalWidth, availableSpace), alignment: .center)
-                            .offset(x: titleLeading)
-                            .opacity(focusMode ? 0 : 1)
-                    }
-                }
-                .overlay {
-                    if userConfig.readerShowTitle {
-                        Text(viewModel.book.displayTitle)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .fixedSize()
-                            .hidden()
-                            .allowsHitTesting(false)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { titleNaturalWidth = $0 }
-                    }
-                }
-                .padding(.horizontal, 15)
-                
-                if userConfig.readerShowProgressTop && !progressString.isEmpty {
-                    Text(progressString)
-                        .font(.caption)
-                        .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                        .monospacedDigit()
-                        .tracking(-0.4)
-                        .opacity(focusMode ? 0 : 1)
-                }
-            }
-            .padding(.top, max(topSafeArea, 25))
-        }
-        .overlay(alignment: .bottom) {
-            VStack {
-                if !focusMode {
-                    if userConfig.enableStatistics && !statisticsString.isEmpty {
-                        Text(statisticsString)
-                            .font(.caption)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    }
-                    if !userConfig.readerShowProgressTop && !progressString.isEmpty {
-                        Text(progressString)
-                            .font(.caption)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    }
-                }
-            }
-            .monospacedDigit()
-            .tracking(-0.4)
+            .padding(.bottom, UIApplication.bottomSafeArea > 0 ? 0 : 8)
+            .opacity(focusMode ? 0 : 1)
+            .allowsHitTesting(!focusMode)
         }
         .overlay {
             if viewModel.isSyncing {

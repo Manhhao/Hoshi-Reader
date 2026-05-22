@@ -295,8 +295,12 @@ window.hoshiSelection = {
     },
     
     selectText(x, y, maxLength) {
-        if (document.elementFromPoint(x, y)?.closest('a')) {
-            return
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('a')) {
+            return 'link'
+        }
+        if (el?.closest('img, svg, .blur-wrapper')) {
+            return 'image'
         }
         
         const hit = this.getCharacterAtPoint(x, y);

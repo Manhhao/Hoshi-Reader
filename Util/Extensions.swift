@@ -143,6 +143,8 @@ extension View {
             self.glassEffect(.regular.interactive())
         } else {
             self
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.quaternary, lineWidth: 0.5))
         }
     }
 }
