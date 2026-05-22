@@ -60,6 +60,7 @@ struct DictionarySearchView: View {
                     dictionaryStyles: dictionaryStyles,
                     lookupEntries: lookupEntries,
                     scanNonJapaneseText: userConfig.scanNonJapaneseText,
+                    scanLength: userConfig.scanLength,
                     backTrigger: backTrigger,
                     forwardTrigger: forwardTrigger,
                     onMine: { minedContent in

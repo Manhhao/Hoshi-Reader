@@ -37,11 +37,11 @@ struct SasayakiSettingsView: View {
                 }
                 
                 Section {
-                    Toggle("Show Skip Controls", isOn: $userConfig.sasayakiSkipControls)
+                    Toggle("Show Skip (±15s) Controls", isOn: $userConfig.sasayakiSkipControls)
                 } header: {
                     Text("Command Center")
                 } footer: {
-                    Text("Skip Controls will replace Next/Previous Cue controls")
+                    Text("Skip Controls will replace Next/Previous Cue controls as media controls.")
                 }
                 
                 Section("Light Theme") {

@@ -24,6 +24,7 @@ struct HoshiReaderApp: App {
     init() {
         TokenStorage.clearOldKeys()
         BookStorage.migrateFromDocuments()
+        BookStorage.migrateBooks()
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
         configureTabBarAppearance()
@@ -53,6 +54,9 @@ struct HoshiReaderApp: App {
                 case .active:
                     LocalFileServer.shared.endBackgroundTask()
                     LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                    if userConfig.autoUpdateDictionaries {
+                        DictionaryManager.shared.autoUpdateDictionaries()
+                    }
                 case .background:
                     LocalFileServer.shared.startBackgroundTask()
                 default:

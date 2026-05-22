@@ -355,7 +355,7 @@ class DictionaryManager {
         }
     }
     
-    func updateDictionaries() {
+    func updateDictionaries(showErrors: Bool = true, session: URLSession = .shared) {
         let dictionaries = updatableDictionaries
         isUpdating = true
         Task.detached {
@@ -365,14 +365,15 @@ class DictionaryManager {
                     try? FileManager.default.removeItem(at: file)
                 }
             }
-            do {
-                for (dictionary, type) in dictionaries {
-                    let index = dictionary.index
-                    await MainActor.run {
-                        self.currentImport = "Checking \(index.title)"
-                    }
-                    
-                    let (data, _) = try await URLSession.shared.data(from: URL(string: index.indexUrl)!)
+            var failures: [String] = []
+            for (dictionary, type) in dictionaries {
+                let index = dictionary.index
+                await MainActor.run {
+                    self.currentImport = "Checking \(index.title)"
+                }
+                
+                do {
+                    let (data, _) = try await session.data(from: URL(string: index.indexUrl)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
                     if index.revision == remoteIndex.revision {
@@ -383,29 +384,42 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
                         self.currentImport = "Importing \(remoteIndex.title)"
                     }
                     
-                    let destinationPath = try await Self.getDictionariesDirectory()
-                        .appendingPathComponent(type.rawValue).path(percentEncoded: false)
+                    let tempDir = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(UUID().uuidString)
+                    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                    tempFiles.append(tempDir)
                     
                     let importResult = dictionary_importer.import(
                         std.string(temp.path(percentEncoded: false)),
-                        std.string(destinationPath)
+                        std.string(tempDir.path(percentEncoded: false))
                     )
                     
                     if !importResult.success {
+                        failures.append("\(index.title): Import failed")
                         continue
                     }
                     
+                    let new = String(importResult.title)
+                    let old = dictionary.index.title
+                    let tempPath = tempDir.appendingPathComponent(new)
+                    let destPath = try await Self.getDictionariesDirectory()
+                        .appendingPathComponent(type.rawValue)
+                        .appendingPathComponent(new)
+                    
+                    if new == old {
+                        try? FileManager.default.removeItem(at: destPath)
+                    }
+                    try FileManager.default.moveItem(at: tempPath, to: destPath)
+                    
                     await MainActor.run {
                         self.loadDictionaries()
-                        let old = dictionary.index.title
-                        let new = String(importResult.title)
                         if old != new {
                             if let currentIndex = self.getDictionaryIndex(title: old, type: type) {
                                 let wasEnabled = self.isDictionaryEnabled(at: currentIndex, type: type)
@@ -424,18 +438,40 @@ class DictionaryManager {
                             self.rebuildLookupQuery()
                         }
                     }
+                } catch {
+                    failures.append("\(index.title): \(error.localizedDescription)")
                 }
-                
-                await MainActor.run {
-                    self.isUpdating = false
+            }
+            
+            await MainActor.run {
+                self.isUpdating = false
+                if failures.count < dictionaries.count {
+                    UserDefaults.standard.set(Date.now, forKey: "lastDictionaryUpdate")
                 }
-            } catch {
-                await MainActor.run {
-                    self.isUpdating = false
-                    self.showError("Failed to update dictionaries: \(error.localizedDescription)")
+                if !failures.isEmpty && showErrors {
+                    self.showError(failures.joined(separator: "\n"))
                 }
             }
         }
+    }
+    
+    func autoUpdateDictionaries() {
+        guard !isImporting, !isUpdating, !updatableDictionaries.isEmpty else {
+            return
+        }
+        
+        let interval = UserDefaults.standard.string(forKey: "dictionaryUpdateInterval")
+            .flatMap(DictionaryUpdateInterval.init)?
+            .timeInterval ?? DictionaryUpdateInterval.weekly.timeInterval
+        let lastUpdate = UserDefaults.standard.object(forKey: "lastDictionaryUpdate") as? Date ?? .distantPast
+        guard Date().timeIntervalSince(lastUpdate) >= interval else {
+            return
+        }
+        
+        let config = URLSessionConfiguration.default
+        config.allowsExpensiveNetworkAccess = false
+        config.allowsConstrainedNetworkAccess = false
+        updateDictionaries(showErrors: false, session: URLSession(configuration: config))
     }
     
     func toggleDictionary(id: UUID, enabled: Bool, type: DictionaryType) {

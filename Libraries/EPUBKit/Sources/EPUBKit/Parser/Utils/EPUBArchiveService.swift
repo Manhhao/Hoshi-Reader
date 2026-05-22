@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ZipArchive
+import ZIPFoundation
 
 /// Protocol defining the interface for EPUB archive extraction operations.
 ///
@@ -53,29 +53,21 @@ class EPUBArchiveServiceImplementation: EPUBArchiveService {
     /// - Parameter url: The file URL of the EPUB archive to extract.
     /// - Returns: The URL of the temporary directory containing the extracted contents.
     /// - Throws: `EPUBParserError.unzipFailed` wrapping the underlying extraction error.
-    /// Note Manhhao: This was updated to use ZipArchive instead. The previous Library had problems with handling permissions.
+    /// Note Manhhao: This was updated to use ZipFoundation instead. The previous Library had problems with handling permissions.
     func unarchive(archive url: URL) throws -> URL {
-        let destination: URL
-        let sourceDirectory = url.deletingLastPathComponent().path
-        
-        if FileManager.default.isWritableFile(atPath: sourceDirectory) {
-            destination = url.deletingPathExtension()
-        } else {
-            let tempDirectory = FileManager.default.temporaryDirectory
-            let fileName = url.deletingPathExtension().lastPathComponent
-            destination = tempDirectory.appendingPathComponent(fileName)
-        }
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileName = url.deletingPathExtension().lastPathComponent
+        let destination = tempDirectory.appendingPathComponent(fileName)
         
         if FileManager.default.fileExists(atPath: destination.path) {
-            return destination
+            try? FileManager.default.removeItem(at: destination)
         }
         
-        let success = SSZipArchive.unzipFile(atPath: url.path, toDestination: destination.path)
-        
-        if success {
+        do {
+            try FileManager.default.unzipItem(at: url, to: destination)
             return destination
-        } else {
-            throw EPUBParserError.unzipFailed(reason: NSError(domain: "SSZipArchive", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to unzip file at \(url.path)"]))
+        } catch {
+            throw EPUBParserError.unzipFailed(reason: error)
         }
     }
 

@@ -203,6 +203,8 @@ struct AppearanceView: View {
                     
                     Toggle("Justify Text", isOn: $userConfig.justifyText)
                     
+                    Toggle("Blur Images", isOn: $userConfig.blurImages)
+                    
                     Toggle("Advanced", isOn: $userConfig.layoutAdvanced)
                     if userConfig.layoutAdvanced {
                         VStack {
@@ -222,6 +224,15 @@ struct AppearanceView: View {
                                     .fontWeight(.semibold)
                             }
                             Slider(value: $userConfig.characterSpacing, in: -10...10, step: 1)
+                        }
+                        VStack {
+                            HStack {
+                                Text("Paragraph Spacing")
+                                Spacer()
+                                Text("\(userConfig.paragraphSpacing, specifier: "%.1f")em")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: $userConfig.paragraphSpacing, in: 0...3, step: 0.1)
                         }
                     }
                 }

@@ -17,12 +17,30 @@ struct DictionaryView: View {
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
     @State private var selectedType: DictionaryType = .term
-    
+
     private var dictionaries: [DictionaryInfo] {
         switch selectedType {
         case .term: return dictionaryManager.termDictionaries
         case .frequency: return dictionaryManager.frequencyDictionaries
         case .pitch: return dictionaryManager.pitchDictionaries
+        }
+    }
+
+    private var lastUpdate: String {
+        guard let date = UserDefaults.standard.object(forKey: "lastDictionaryUpdate") as? Date else {
+            return String(localized: "Never", table: "Dictionaries")
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private func dictionaryUpdateIntervalText(_ interval: DictionaryUpdateInterval) -> Text {
+        switch interval {
+        case .daily:
+            Text("Daily", tableName: "Dictionaries")
+        case .weekly:
+            Text("Weekly", tableName: "Dictionaries")
+        case .monthly:
+            Text("Monthly", tableName: "Dictionaries")
         }
     }
     
@@ -48,11 +66,33 @@ struct DictionaryView: View {
                 } message: {
                     Text("This will download the latest version of the following dictionaries (33 MB):\nJMdict (Term)\nJMnedict (Term)\nJiten (Frequency)", tableName: "Dictionaries")
                 }
-                if (dictionaryManager.updatableDictionaries.count > 0) {
+            } footer: {
+                Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
+            }
+
+            if (dictionaryManager.updatableDictionaries.count > 0) {
+                Section {
+                    Toggle(isOn: Bindable(userConfig).autoUpdateDictionaries) {
+                        Text("Update Automatically", tableName: "Dictionaries")
+                    }
+                    if userConfig.autoUpdateDictionaries {
+                        Picker(selection: Bindable(userConfig).dictionaryUpdateInterval) {
+                            ForEach(DictionaryUpdateInterval.allCases, id: \.self) { interval in
+                                dictionaryUpdateIntervalText(interval).tag(interval)
+                            }
+                        } label: {
+                            Text("Interval", tableName: "Dictionaries")
+                        }
+                    }
+                    LabeledContent {
+                        Text(verbatim: lastUpdate)
+                    } label: {
+                        Text("Last Update", tableName: "Dictionaries")
+                    }
                     Button {
                         showUpdateConfirmation = true
                     } label: {
-                        Text("Update Dictionaries", tableName: "Dictionaries")
+                        Text("Update", tableName: "Dictionaries")
                     }
                     .alert(String(localized: "Update Dictionaries", table: "Dictionaries"), isPresented: $showUpdateConfirmation) {
                         Button {
@@ -67,9 +107,9 @@ struct DictionaryView: View {
                     } message: {
                         Text("This will check for and install updates for these dictionaries:\n\(dictionaryManager.updatableDictionaries.map(\.0.index.title).joined(separator: "\n"))", tableName: "Dictionaries")
                     }
+                } header: {
+                    Text("Updates", tableName: "Dictionaries")
                 }
-            } footer: {
-                Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
             }
             
             Section {

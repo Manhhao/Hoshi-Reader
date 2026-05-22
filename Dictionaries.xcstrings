@@ -232,6 +232,17 @@
         }
       }
     },
+    "Daily" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天"
+          }
+        }
+      }
+    },
     "Deck" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
       "localizations" : {
@@ -474,6 +485,28 @@
         }
       }
     },
+    "Interval" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "间隔"
+          }
+        }
+      }
+    },
+    "Last Update" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次更新"
+          }
+        }
+      }
+    },
     "Lookup" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -514,6 +547,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "笔记类型"
+          }
+        }
+      }
+    },
+    "Monthly" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每月"
+          }
+        }
+      }
+    },
+    "Never" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从未"
           }
         }
       }
@@ -727,6 +782,17 @@
         }
       }
     },
+    "Update Automatically" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动更新"
+          }
+        }
+      }
+    },
     "Update Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -738,6 +804,17 @@
         }
       }
     },
+    "Updates" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新"
+          }
+        }
+      }
+    },
     "Use AnkiConnect" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -745,6 +822,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用 AnkiConnect"
+          }
+        }
+      }
+    },
+    "Weekly" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每周"
           }
         }
       }

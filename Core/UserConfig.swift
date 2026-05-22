@@ -9,6 +9,23 @@
 import Foundation
 import SwiftUI
 
+enum DictionaryUpdateInterval: String, CaseIterable, Codable {
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case monthly = "Monthly"
+    
+    var timeInterval: TimeInterval {
+        switch self {
+        case .daily:
+            24 * 60 * 60
+        case .weekly:
+            7 * 24 * 60 * 60
+        case .monthly:
+            30 * 24 * 60 * 60
+        }
+    }
+}
+
 enum SyncMode: String, CaseIterable, Codable {
     case auto = "Auto"
     case manual = "Manual"
@@ -51,6 +68,14 @@ class UserConfig {
     
     var bookshelfShowReading: Bool {
         didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
+    }
+    
+    var autoUpdateDictionaries: Bool {
+        didSet { UserDefaults.standard.set(autoUpdateDictionaries, forKey: "autoUpdateDictionaries") }
+    }
+    
+    var dictionaryUpdateInterval: DictionaryUpdateInterval {
+        didSet { UserDefaults.standard.set(dictionaryUpdateInterval.rawValue, forKey: "dictionaryUpdateInterval") }
     }
     
     var dictionaryTabDefault: Bool {
@@ -181,6 +206,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(justifyText, forKey: "justifyText") }
     }
     
+    var blurImages: Bool {
+        didSet { UserDefaults.standard.set(blurImages, forKey: "blurImages") }
+    }
+    
     var layoutAdvanced: Bool {
         didSet { UserDefaults.standard.set(layoutAdvanced, forKey: "layoutAdvanced") }
     }
@@ -191,6 +220,10 @@ class UserConfig {
     
     var characterSpacing: Double {
         didSet { UserDefaults.standard.set(characterSpacing, forKey: "characterSpacing") }
+    }
+    
+    var paragraphSpacing: Double {
+        didSet { UserDefaults.standard.set(paragraphSpacing, forKey: "paragraphSpacing") }
     }
     
     var readerShowTitle: Bool {
@@ -364,6 +397,9 @@ class UserConfig {
             .flatMap(SortOption.init) ?? .recent
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
         
+        self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
+        self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")
+            .flatMap(DictionaryUpdateInterval.init) ?? .weekly
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
@@ -404,9 +440,11 @@ class UserConfig {
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
         self.avoidPageBreak = defaults.object(forKey: "avoidPageBreak") as? Bool ?? false
         self.justifyText = defaults.object(forKey: "justifyText") as? Bool ?? false
+        self.blurImages = defaults.object(forKey: "blurImages") as? Bool ?? false
         self.layoutAdvanced = defaults.object(forKey: "layoutAdvanced") as? Bool ?? false
         self.lineHeight = defaults.object(forKey: "lineHeight") as? Double ?? 1.65
         self.characterSpacing = defaults.object(forKey: "characterSpacing") as? Double ?? 0
+        self.paragraphSpacing = defaults.object(forKey: "paragraphSpacing") as? Double ?? 0
         
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true

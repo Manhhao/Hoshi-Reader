@@ -117,7 +117,7 @@ window.hoshiSelection = {
         return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
     },
     
-    getCaretRange(x, y) {
+    getCaretRange(x, y, rectX = x, rectY = y) {
         if (document.caretPositionFromPoint) {
             const pos = document.caretPositionFromPoint(x, y);
             if (!pos) {
@@ -143,7 +143,7 @@ window.hoshiSelection = {
                 for (let i = 0; i < node.textContent.length; i++) {
                     range.setStart(node, i);
                     range.setEnd(node, i + 1);
-                    if (this.inCharRange(range, x, y)) {
+                    if (this.inCharRange(range, rectX, rectY)) {
                         range.collapse(true);
                         return range;
                     }
@@ -153,8 +153,8 @@ window.hoshiSelection = {
         }
     },
     
-    getCharacterAtPoint(x, y) {
-        const range = this.getCaretRange(x, y);
+    getCharacterAtPoint(x, y, rectX = x, rectY = y) {
+        const range = this.getCaretRange(x, y, rectX, rectY);
         if (!range) {
             return null;
         }
@@ -179,7 +179,7 @@ window.hoshiSelection = {
             const charRange = document.createRange();
             charRange.setStart(node, offset);
             charRange.setEnd(node, offset + 1);
-            if (this.inCharRange(charRange, x, y)) {
+            if (this.inCharRange(charRange, rectX, rectY)) {
                 if (this.isScanBoundary(text[offset])) {
                     return null;
                 }
@@ -294,12 +294,16 @@ window.hoshiSelection = {
         return sentence.slice(startSlice, endSlice + 1).trim();
     },
     
-    selectText(x, y, maxLength) {
-        if (document.elementFromPoint(x, y)?.closest('a')) {
-            return
+    selectText(x, y, maxLength, rectX = x, rectY = y) {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('a')) {
+            return 'link'
+        }
+        if (el?.closest('img, svg, .blur-wrapper')) {
+            return 'image'
         }
         
-        const hit = this.getCharacterAtPoint(x, y);
+        const hit = this.getCharacterAtPoint(x, y, rectX, rectY);
         
         if (!hit) {
             this.clearSelection();
@@ -365,7 +369,7 @@ window.hoshiSelection = {
         webkit.messageHandlers.textSelected.postMessage({
             text,
             sentence,
-            rect: this.getSelectionRect(x, y),
+            rect: this.getSelectionRect(rectX, rectY),
             normalizedOffset
         });
         
@@ -384,7 +388,15 @@ window.hoshiSelection = {
         
         const rects = Array.from(range.getClientRects());
         const rect = rects.find(rect => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) ?? range.getBoundingClientRect();
-        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        const scale = window.getButtonRectScale?.() ?? 1;
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
+        return {
+            x: (rect.x + scrollX) * scale - scrollX,
+            y: (rect.y + scrollY) * scale - scrollY,
+            width: rect.width * scale,
+            height: rect.height * scale
+        };
     },
     
     highlightSelection(charCount) {

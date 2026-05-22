@@ -372,18 +372,18 @@ class BookshelfViewModel {
         let safeTitle = sanitizeFileName(title)
         
         let booksDir = try BookStorage.getBooksDirectory()
-        let targetFolder = booksDir.appendingPathComponent(safeTitle)
+        let bookFolder = booksDir.appendingPathComponent(safeTitle)
         
-        if FileManager.default.fileExists(atPath: targetFolder.path(percentEncoded: false)) {
+        if FileManager.default.fileExists(atPath: bookFolder.path(percentEncoded: false)) {
             return
         }
         
-        let destinationPath = "Books/\(safeTitle).epub"
-        let localURL = try BookStorage.copyFile(from: tempURL, to: destinationPath)
-        let bookFolder = localURL.deletingPathExtension()
+        try FileManager.default.createDirectory(at: bookFolder, withIntermediateDirectories: true)
+        
+        let localURL = bookFolder.appendingPathComponent(sourceURL.lastPathComponent)
+        try BookStorage.copyFile(from: tempURL, to: "Books/\(safeTitle)/\(localURL.lastPathComponent)")
         
         let document = try BookStorage.loadEpub(localURL)
-        
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
     }
     
@@ -399,6 +399,7 @@ class BookshelfViewModel {
             
             let metadata = BookMetadata(
                 title: title,
+                epub: localURL.lastPathComponent,
                 cover: coverURL,
                 folder: bookFolder.lastPathComponent,
                 lastAccess: Date()
@@ -408,7 +409,6 @@ class BookshelfViewModel {
             
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
-            try BookStorage.delete(at: localURL)
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)

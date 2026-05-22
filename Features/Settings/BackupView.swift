@@ -8,7 +8,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
-import ZipArchive
+import ZIPFoundation
 
 struct BackupView: View {
     @State private var isExporting = false
@@ -79,10 +79,9 @@ struct BackupView: View {
             formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
             let archiveName = "\(folder)_\(formatter.string(from: Date())).hoshi"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(archiveName)
-            guard SSZipArchive.createZipFile(
-                atPath: tempURL.path(percentEncoded: false),
-                withContentsOfDirectory: directory.path(percentEncoded: false)
-            ) else {
+            do {
+                try FileManager.default.zipItem(at: directory, to: tempURL, shouldKeepParent: false, compressionMethod: .deflate)
+            } catch {
                 await MainActor.run {
                     isLoading = false
                 }
@@ -113,7 +112,7 @@ struct BackupView: View {
             defer { url.stopAccessingSecurityScopedResource() }
             try? FileManager.default.removeItem(at: destination)
             try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-            SSZipArchive.unzipFile(atPath: url.path(percentEncoded: false), toDestination: destination.path(percentEncoded: false))
+            try? FileManager.default.unzipItem(at: url, to: destination)
             await MainActor.run {
                 isLoading = false
                 DictionaryManager.shared.loadDictionaries()

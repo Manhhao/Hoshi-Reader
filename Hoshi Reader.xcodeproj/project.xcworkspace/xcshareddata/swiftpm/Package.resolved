@@ -16,7 +16,7 @@
       "location" : "https://github.com/Manhhao/hoshidicts.git",
       "state" : {
         "branch" : "main",
-        "revision" : "2dd5199870fb93a53db00ead9c91b4a11cf2ceda"
+        "revision" : "1a34a59c9d84dcef6d872afce44c7fa7241b0709"
       }
     },
     {
@@ -29,12 +29,12 @@
       }
     },
     {
-      "identity" : "ziparchive",
+      "identity" : "zipfoundation",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ZipArchive/ZipArchive",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
       "state" : {
-        "revision" : "df35718ea19a94e015b91dc4881dee028ce4cdba",
-        "version" : "2.6.0"
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
       }
     },
     {

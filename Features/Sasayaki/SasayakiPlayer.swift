@@ -558,15 +558,14 @@ class SasayakiPlayer {
                 Task { @MainActor in self?.skip(forward: true) }
                 return .success
             }
-        } else {
-            center.previousTrackCommand.addTarget { [weak self] _ in
-                Task { @MainActor in self?.prevCue() }
-                return .success
-            }
-            center.nextTrackCommand.addTarget { [weak self] _ in
-                Task { @MainActor in self?.nextCue() }
-                return .success
-            }
+        }
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.prevCue() }
+            return .success
+        }
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.nextCue() }
+            return .success
         }
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
