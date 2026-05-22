@@ -321,8 +321,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 }
             }
             
-            let verticalPadding = Double(parent.userConfig.verticalPadding)
-            let horizontalPadding = Double(parent.userConfig.horizontalPadding)
+            let verticalPadding = parent.userConfig.verticalWriting ? Double(parent.userConfig.verticalPadding) : 0
+            let horizontalPadding = parent.userConfig.verticalWriting ? 0 : Double(parent.userConfig.horizontalPadding)
             let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
             let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
             ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"

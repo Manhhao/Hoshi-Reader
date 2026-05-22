@@ -258,7 +258,23 @@ struct ReaderView: View {
             GeometryReader { geometry in
                 ZStack {
                     let viewSize = CGSize(width: geometry.size.width.rounded(), height: (geometry.size.height + (userConfig.verticalWriting ? CGFloat(userConfig.fontSize) : 0)).rounded())
+                    let scrollViewSize = CGSize(
+                        width: userConfig.verticalWriting ? (geometry.size.width * (1 - CGFloat(userConfig.horizontalPadding) / 100)).rounded() : viewSize.width,
+                        height: userConfig.verticalWriting ? viewSize.height : (geometry.size.height * (1 - CGFloat(userConfig.verticalPadding) / 100)).rounded()
+                    )
                     if userConfig.continuousMode {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            }
+                        
                         ScrollReaderWebView(
                             userConfig: userConfig,
                             bridge: viewModel.bridge,
@@ -277,7 +293,16 @@ struct ReaderView: View {
                                         focusMode = true
                                     }
                                 }
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
+                                let selection = SelectionData(
+                                    text: $0.text,
+                                    sentence: $0.sentence,
+                                    rect: $0.rect.offsetBy(
+                                        dx: (geometry.size.width - scrollViewSize.width) / 2,
+                                        dy: (geometry.size.height - scrollViewSize.height) / 2
+                                    ),
+                                    normalizedOffset: $0.normalizedOffset
+                                )
+                                return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
                                 if viewModel.popups.isEmpty {
@@ -323,9 +348,9 @@ struct ReaderView: View {
                             lineHeight: userConfig.lineHeight,
                             characterSpacing: userConfig.characterSpacing,
                             paragraphSpacing: userConfig.paragraphSpacing,
-                            size: geometry.size,
+                            size: scrollViewSize,
                         ))
-                        .frame(width: viewSize.width, height: viewSize.height)
+                        .frame(width: scrollViewSize.width, height: scrollViewSize.height)
                     } else {
                         ReaderWebView(
                             userConfig: userConfig,
@@ -448,6 +473,7 @@ struct ReaderView: View {
                             .tint(.secondary)
                     }
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
             }
             
             if UIApplication.bottomSafeArea == 0 {
