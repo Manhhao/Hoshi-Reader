@@ -384,6 +384,9 @@ struct ReaderWebView: UIViewRepresentable {
             let columnGap = parent.userConfig.verticalWriting
             ? "calc(\(columnGapValue)\(columnGapUnit) + \(bottomOverlap)px)"
             : "\(columnGapValue)\(columnGapUnit)"
+            let columnWidth = parent.userConfig.verticalWriting
+            ? "var(--page-height, 100vh)"
+            : "var(--page-width, 100vw)"
             
             let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
             ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
@@ -481,7 +484,7 @@ struct ReaderWebView: UIViewRepresentable {
                 -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
-                column-width: var(--page-width, 100vw) !important;
+                column-width: \(columnWidth) !important;
                 column-gap: \(columnGap);
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
                 \(bottomPaddingCss)
