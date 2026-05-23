@@ -64,7 +64,7 @@ struct ReaderView: View {
     
     private var bottomSafeArea: CGFloat {
         if UIDevice.current.userInterfaceIdiom == .pad {
-            return 24
+            return 20
         }
         return UIApplication.bottomSafeArea
     }
