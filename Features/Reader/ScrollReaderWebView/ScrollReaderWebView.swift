@@ -12,6 +12,7 @@ import UIKit
 
 struct ScrollReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
+    let viewportWidth: Int
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
@@ -41,6 +42,19 @@ struct ScrollReaderWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "selectionState")
         config.userContentController.add(context.coordinator, name: "imageTapped")
         config.defaultWebpagePreferences.preferredContentMode = .mobile
+        
+        let viewportScript = """
+        (function() {
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) { viewport.remove(); }
+            
+            var newViewport = document.createElement('meta');
+            newViewport.name = 'viewport';
+            newViewport.content = 'width=\(max(viewportWidth, 1)), initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            document.head.appendChild(newViewport);
+        })();
+        """
+        config.userContentController.addUserScript(WKUserScript(source: viewportScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         
         let webView = HoshiWKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
@@ -442,14 +456,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
             
             let script = """
             (function() {
-                var viewport = document.querySelector('meta[name="viewport"]');
-                if (viewport) { viewport.remove(); }
-                
-                var newViewport = document.createElement('meta');
-                newViewport.name = 'viewport';
-                newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                document.head.appendChild(newViewport);
-                
                 var style = document.createElement('style');
                 style.innerHTML = `\(css)`;
                 document.head.appendChild(style);
