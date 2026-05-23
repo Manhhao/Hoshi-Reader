@@ -243,6 +243,13 @@ struct AppearanceView: View {
                     Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
                     
                     if userConfig.readerShowCharacters || userConfig.readerShowPercentage {
+                        VStack {
+                            Toggle("Always Show Progress", isOn: $userConfig.readerAlwaysShowProgress)
+                            Text("Shows progress at the bottom even when the UI is hidden.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         HStack {
                             Text("Progress Position")
                             Spacer()
@@ -253,6 +260,7 @@ struct AppearanceView: View {
                             .pickerStyle(.segmented)
                             .frame(width: 120)
                         }
+                        .disabled(userConfig.readerAlwaysShowProgress)
                     }
                     
                     if userConfig.enableStatistics {

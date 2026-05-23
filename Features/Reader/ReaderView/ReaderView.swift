@@ -490,11 +490,23 @@ struct ReaderView: View {
             
             Color.clear
                 .frame(height: readerBottomPadding)
+                .overlay(alignment: .center) {
+                    if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
+                        VStack {
+                            Text(progressString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                        .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                        .offset(y: -3)
+                    }
+                }
         }
         .background(readerBackgroundColor.ignoresSafeArea())
         .overlay(alignment: .top) {
             let showTitle = userConfig.readerShowTitle
-            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty
+            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
             if showTitle || showTopProgress {
                 VStack(spacing: 2) {
                     if showTitle {
@@ -537,7 +549,7 @@ struct ReaderView: View {
                 
                 Spacer()
                 
-                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty
+                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
                 let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
                 if showBottomProgress || showStats {
                     VStack(spacing: 2) {
