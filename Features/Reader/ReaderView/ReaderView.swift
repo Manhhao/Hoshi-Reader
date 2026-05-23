@@ -62,6 +62,17 @@ struct ReaderView: View {
     @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
     
+    private var bottomSafeArea: CGFloat {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return 24
+        }
+        return UIApplication.bottomSafeArea
+    }
+    
+    private var readerBottomPadding: CGFloat {
+        bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
+    }
+    
     private var sepiaInverted: Bool {
         userConfig.theme == .sepia && userConfig.sepiaInvertInDark && systemColorScheme == .dark
     }
@@ -277,6 +288,7 @@ struct ReaderView: View {
                         
                         ScrollReaderWebView(
                             userConfig: userConfig,
+                            viewportWidth: Int(scrollViewSize.width),
                             bridge: viewModel.bridge,
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
@@ -476,10 +488,8 @@ struct ReaderView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
             }
             
-            if UIApplication.bottomSafeArea == 0 {
-                Color.clear
-                    .frame(height: max(topSafeArea, 25))
-            }
+            Color.clear
+                .frame(height: readerBottomPadding)
         }
         .background(readerBackgroundColor.ignoresSafeArea())
         .overlay(alignment: .top) {
@@ -598,7 +608,7 @@ struct ReaderView: View {
                 .conditionalGlassEffect()
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, UIApplication.bottomSafeArea > 0 ? 0 : 8)
+            .padding(.bottom, bottomSafeArea > 0 ? bottomSafeArea : 8)
             .opacity(focusMode ? 0 : 1)
             .allowsHitTesting(!focusMode)
         }
@@ -714,7 +724,7 @@ struct ReaderView: View {
                 await viewModel.flushAutoSync()
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
         .persistentSystemOverlays(focusMode ? .hidden : .automatic)
