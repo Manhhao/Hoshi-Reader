@@ -370,39 +370,46 @@ const COMPACT_GLOSSARIES_ANKI = `.yomitan-glossary ul[data-sc-content="glossary"
 // 24.03.2026: fixed compact glossaries for jmdict legacy
 function constructSingleGlossaryHtml(entryIndex) {
     if (!window.lookupEntries || entryIndex >= window.lookupEntries.length) {
-        return {};
+        return {singleGlossaries: {}, singleGlossariesBrief: {}};
     }
     
     const entry = window.lookupEntries[entryIndex];
     const glossaries = {};
+    const glossariesBrief = {};
     
     let lastDict = null;
     let currentGlossary = '';
+    let currentGlossaryBrief = '';
     let prevTags = null;
     const flush = () => {
         if (!lastDict) {
             return;
         }
         
-        let html = `<div style="text-align: left;" class="yomitan-glossary"><ol>${currentGlossary}</ol>`;
-        const css = window.dictionaryStyles?.[lastDict] ?? '';
-        if (css) {
-            const scopedCss = constructDictCss(css, lastDict);
-            const formatted = scopedCss
-            .replace(/\s+/g, ' ')
-            .replace(/\s*\{\s*/g, ' { ')
-            .replace(/\s*\}\s*/g, ' }\n')
-            .replace(/;\s*/g, '; ')
-            .trim();
-            html += `<style>${formatted}</style>`;
-        }
-        if (window.compactGlossariesAnki) {
-            html += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
-        }
-        html += `</div>`;
+        const wrap = (content) => {
+            let html = `<div style="text-align: left;" class="yomitan-glossary"><ol>${content}</ol>`;
+            const css = window.dictionaryStyles?.[lastDict] ?? '';
+            if (css) {
+                const scopedCss = constructDictCss(css, lastDict);
+                const formatted = scopedCss
+                .replace(/\s+/g, ' ')
+                .replace(/\s*\{\s*/g, ' { ')
+                .replace(/\s*\}\s*/g, ' }\n')
+                .replace(/;\s*/g, '; ')
+                .trim();
+                html += `<style>${formatted}</style>`;
+            }
+            if (window.compactGlossariesAnki) {
+                html += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
+            }
+            html += `</div>`;
+            return html;
+        };
         
-        glossaries[lastDict] = html;
+        glossaries[lastDict] = wrap(currentGlossary);
+        glossariesBrief[lastDict] = wrap(currentGlossaryBrief);
         currentGlossary = '';
+        currentGlossaryBrief = '';
     };
     
     entry.glossaries.forEach(g => {
@@ -433,21 +440,23 @@ function constructSingleGlossaryHtml(entryIndex) {
         } else {
             label = tags ? `(${tags})` : '';
         }
-        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
+        currentGlossaryBrief += `<li data-dictionary="${dictName}"><span>${content}</span></li>`;
         prevTags = currentTags;
     });
     
     flush();
-    return glossaries;
+    return {singleGlossaries: glossaries, singleGlossariesBrief: glossariesBrief};
 }
 
 function constructGlossaryHtml(entryIndex) {
     if (!window.lookupEntries || entryIndex >= window.lookupEntries.length) {
-        return null;
+        return {glossary: null, glossaryBrief: null};
     }
     
     const entry = window.lookupEntries[entryIndex];
     let glossaryItems = '';
+    let glossaryItemsBrief = '';
     const styles = {};
     let lastDict = '';
     let prevTags = null;
@@ -479,7 +488,9 @@ function constructGlossaryHtml(entryIndex) {
             label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        const content = applyTableStyles(tempDiv.innerHTML);
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
+        glossaryItemsBrief += `<li data-dictionary="${dictName}"><span>${content}</span></li>`;
         prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
@@ -488,10 +499,7 @@ function constructGlossaryHtml(entryIndex) {
         }
     });
     
-    let result = '<div style="text-align: left;" class="yomitan-glossary"><ol>';
-    result += glossaryItems;
-    result += '</ol>';
-    
+    let stylesHtml = '';
     for (const [dictName, css] of Object.entries(styles)) {
         const scopedCss = constructDictCss(css, dictName);
         const formatted = scopedCss
@@ -500,13 +508,15 @@ function constructGlossaryHtml(entryIndex) {
         .replace(/\s*\}\s*/g, ' }\n')
         .replace(/;\s*/g, '; ')
         .trim();
-        result += `<style>${formatted}</style>`;
+        stylesHtml += `<style>${formatted}</style>`;
     }
     if (window.compactGlossariesAnki) {
-        result += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
+        stylesHtml += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
     }
-    result += '</div>';
-    return result;
+    
+    const wrap = (items) => `<div style="text-align: left;" class="yomitan-glossary"><ol>${items}</ol>${stylesHtml}</div>`;
+    
+    return {glossary: wrap(glossaryItems), glossaryBrief: wrap(glossaryItemsBrief)};
 }
 
 function constructFrequencyHtml(frequencies) {
@@ -800,13 +810,14 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
     currentDictionaryMedia = new Map();
-    const glossary = constructGlossaryHtml(idx);
+    const {glossary, glossaryBrief} = constructGlossaryHtml(idx);
     const freqHarmonicRank = getFrequencyHarmonicRank(frequencies);
     const frequenciesHtml = constructFrequencyHtml(frequencies);
-    const singleGlossaries = constructSingleGlossaryHtml(idx);
+    const {singleGlossaries, singleGlossariesBrief} = constructSingleGlossaryHtml(idx);
     const dictionaryMedia = currentDictionaryMedia;
     currentDictionaryMedia = null;
     const glossaryFirst = Object.values(singleGlossaries)[0] || '';
+    const glossaryFirstBrief = Object.values(singleGlossariesBrief)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
     
@@ -824,8 +835,11 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         frequenciesHtml,
         freqHarmonicRank,
         glossary,
+        glossaryBrief,
         glossaryFirst,
+        glossaryFirstBrief,
         singleGlossaries: JSON.stringify(singleGlossaries),
+        singleGlossariesBrief: JSON.stringify(singleGlossariesBrief),
         pitchPositions,
         pitchCategories,
         popupSelectionText,

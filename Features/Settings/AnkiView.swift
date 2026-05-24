@@ -16,7 +16,14 @@ struct AnkiView: View {
     @State private var confirmFetch = false
     
     private var availableHandlebars: [String] {
-        var options = Handlebars.allCases.map(\.rawValue)
+        let hidden: Set<Handlebars> = [
+            .glossaryFirstBrief,
+            .selectedGlossaryBrief,
+            .selectedGlossaryBriefFallback
+        ]
+        var options = Handlebars.allCases
+            .filter { !hidden.contains($0) }
+            .map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {
             options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)}")
         }
