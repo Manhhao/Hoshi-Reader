@@ -14,6 +14,7 @@ import EPUBKit
 class BookshelfViewModel {
     var books: [BookMetadata] = []
     var shelves: [BookShelf] = []
+    var googleDriveBooks: [BookMetadata] = []
     var isImporting: Bool = false
     var shouldShowError: Bool = false
     var errorMessage: String = ""
@@ -98,6 +99,14 @@ class BookshelfViewModel {
                     isReading: true
                 ))
             }
+        }
+        
+        if !googleDriveBooks.isEmpty {
+            sections.append(ShelfSection(
+                shelf: BookShelf(name: "Google Drive", bookIds: []),
+                books: sortBooks(googleDriveBooks, by: sortedBy),
+                isGoogleDrive: true
+            ))
         }
         
         for shelf in shelves {
@@ -259,6 +268,53 @@ class BookshelfViewModel {
             } catch {
                 showError(message: "Sync failed: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    func loadGoogleDriveBooks() async {
+        do {
+            let root = try await GoogleDriveHandler.shared.findRootFolder()
+            let folders = try await GoogleDriveHandler.shared.listBooks(rootFolder: root)
+            let localTitles = Set(books.map { GoogleDriveHandler.sanitizeTtuFilename($0.title) })
+            let remoteFolders = folders.filter { !localTitles.contains($0.name) }
+            let allFiles = try await GoogleDriveHandler.shared.listSyncFiles(folderIds: remoteFolders.map(\.id))
+            let cacheDir = FileManager.default.temporaryDirectory.appendingPathComponent("gdrive-covers")
+            try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+            
+            var remoteBooks: [BookMetadata] = []
+            for folder in remoteFolders {
+                guard let files = allFiles[folder.id], files.bookData != nil else {
+                    continue
+                }
+                
+                let title = GoogleDriveHandler.desanitizeTtuFilename(folder.name)
+                var cover: String?
+                if let thumbnailURL = files.cover?.thumbnailLink?
+                    .replacingOccurrences(of: "=s\\d+$", with: "=s768", options: .regularExpression),
+                   let url = URL(string: thumbnailURL) {
+                    let cached = cacheDir.appendingPathComponent(folder.id)
+                    if !FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
+                        if let (data, _) = try? await URLSession.shared.data(from: url) {
+                            try? data.write(to: cached)
+                        }
+                    }
+                    if FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
+                        cover = cached.path(percentEncoded: false)
+                    }
+                }
+                let book = BookMetadata(title: title, cover: cover, folder: "", lastAccess: .distantPast)
+                if let name = files.progress?.name.dropLast(5),
+                   let value = name.split(separator: "_").last.flatMap({ Double($0) }) {
+                    bookProgress[book.id] = value
+                }
+                remoteBooks.append(book)
+            }
+            
+            googleDriveBooks = remoteBooks.sorted {
+                $0.title.localizedStandardCompare($1.title) == .orderedAscending
+            }
+        } catch {
+            showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
         }
     }
     
@@ -459,10 +515,14 @@ struct ShelfSection: Identifiable {
     let shelf: BookShelf?
     var books: [BookMetadata]
     var isReading: Bool = false
+    var isGoogleDrive: Bool = false
     
     var id: String {
         if isReading {
             return "__reading__"
+        }
+        if isGoogleDrive {
+            return "__gdrive__"
         }
         return shelf.map { "shelf:\($0.name)" } ?? "unshelved"
     }

@@ -34,10 +34,11 @@ extension String {
 
 extension BookMetadata {
     var coverURL: URL? {
-        guard let coverPath = self.cover,
-              let appDir = try? BookStorage.getAppDirectory() else {
-            return nil
+        guard let coverPath = self.cover else { return nil }
+        if coverPath.hasPrefix("/") {
+            return URL(fileURLWithPath: coverPath)
         }
+        guard let appDir = try? BookStorage.getAppDirectory() else { return nil }
         return appDir.appendingPathComponent(coverPath)
     }
 }

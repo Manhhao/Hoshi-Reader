@@ -109,19 +109,32 @@ struct ShelfView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(section.books) { book in
-                        BookCell(
-                            book: book,
-                            viewModel: viewModel,
-                            currentShelf: section.shelf?.name,
-                            hideMove: section.isReading,
-                            onSelect: { selectedBook = book },
-                            onMatch: { onMatch(book) },
-                            isSelecting: isSelecting,
-                            selectedBooks: $selectedBooks
-                        )
+                        if section.isGoogleDrive {
+                            BookView(book: book, progress: viewModel.progress(for: book))
+                        } else {
+                            BookCell(
+                                book: book,
+                                viewModel: viewModel,
+                                currentShelf: section.shelf?.name,
+                                hideMove: section.isReading,
+                                onSelect: { selectedBook = book },
+                                onMatch: { onMatch(book) },
+                                isSelecting: isSelecting,
+                                selectedBooks: $selectedBooks
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal)
+            }
+        }
+        .opacity(section.isGoogleDrive && isSelecting ? 0.4 : 1)
+        .allowsHitTesting(!section.isGoogleDrive || !isSelecting)
+        .onChange(of: isSelecting) {
+            if isSelecting && section.isGoogleDrive {
+                withAnimation(.default.speed(1.5)) {
+                    isCollapsed = true
+                }
             }
         }
         .onChange(of: selectedBook) { old, new in

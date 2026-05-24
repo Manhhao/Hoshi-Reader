@@ -45,7 +45,7 @@ struct BookshelfView: View {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
                         let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption, showReading: userConfig.bookshelfShowReading)
-                        if viewModel.books.isEmpty {
+                        if viewModel.books.isEmpty && viewModel.googleDriveBooks.isEmpty {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
                             } description: {
@@ -72,6 +72,11 @@ struct BookshelfView: View {
                     }
                     .navigationTitle("Books")
                     .scrollIndicators(.hidden)
+                    .refreshable {
+                        if userConfig.enableSync {
+                            await viewModel.loadGoogleDriveBooks()
+                        }
+                    }
                     .toolbar {
                         toolbarContent
                     }

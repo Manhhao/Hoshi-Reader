@@ -45,12 +45,24 @@ struct DriveFileList: Codable {
 struct DriveFile: Codable {
     let id: String
     let name: String
+    var parents: [String]?
+    var thumbnailLink: String?
 }
 
 struct DriveSyncFiles {
+    let bookData: DriveFile?
+    let cover: DriveFile?
     let progress: DriveFile?
     let statistics: DriveFile?
     let audioBook: DriveFile?
+    
+    init(files: [DriveFile]) {
+        bookData = files.first { $0.name.hasPrefix("bookdata_") }
+        cover = files.first { $0.name.hasPrefix("cover_") }
+        progress = files.first { $0.name.hasPrefix("progress_") }
+        statistics = files.first { $0.name.hasPrefix("statistics_") }
+        audioBook = files.first { $0.name.hasPrefix("audioBook_") }
+    }
 }
 
 struct TtuProgress: Codable {
@@ -70,21 +82,18 @@ struct TtuAudioBook: Codable {
 class GoogleDriveHandler {
     static let shared = GoogleDriveHandler()
     private static let rootFolderIdKey = "GoogleDriveHandler.rootFolderId"
-    private static let titleToFolderIdKey = "GoogleDriveHandler.titleToFolderId"
     private let pathMonitor = NWPathMonitor()
     
     private var rootFolderId: String?
-    private var titleToFolderId: [String: String]
+    private var titleToFolderId: [String: String] = [:]
     
     private init() {
         rootFolderId = UserDefaults.standard.string(forKey: Self.rootFolderIdKey)
-        titleToFolderId = UserDefaults.standard.dictionary(forKey: Self.titleToFolderIdKey) as? [String: String] ?? [:]
         pathMonitor.start(queue: DispatchQueue(label: "NetworkMonitor"))
     }
     
     static func clearCache() {
         UserDefaults.standard.removeObject(forKey: rootFolderIdKey)
-        UserDefaults.standard.removeObject(forKey: titleToFolderIdKey)
         shared.rootFolderId = nil
         shared.titleToFolderId = [:]
     }
@@ -218,11 +227,40 @@ class GoogleDriveHandler {
         let data = try await performRequest(request)
         let list = try JSONDecoder().decode(DriveFileList.self, from: data)
         
-        return DriveSyncFiles(
-            progress: list.files.first { $0.name.hasPrefix("progress_") },
-            statistics: list.files.first { $0.name.hasPrefix("statistics_") },
-            audioBook: list.files.first { $0.name.hasPrefix("audioBook_") }
-        )
+        return DriveSyncFiles(files: list.files)
+    }
+    
+    func listSyncFiles(folderIds: [String]) async throws -> [String: DriveSyncFiles] {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var grouped: [String: [DriveFile]] = [:]
+        
+        for start in stride(from: 0, to: folderIds.count, by: 50) {
+            let chunk = Array(folderIds[start..<min(start + 50, folderIds.count)])
+            var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+            let parentsQuery = chunk.map { "'\($0)' in parents" }.joined(separator: " or ")
+            let query = "trashed=false and (\(parentsQuery)) and mimeType != 'application/vnd.google-apps.folder'"
+            
+            components.queryItems = [
+                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "fields", value: "files(id, name, parents, thumbnailLink)")
+            ]
+            
+            guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            
+            let data = try await performRequest(request)
+            let list = try JSONDecoder().decode(DriveFileList.self, from: data)
+            
+            for file in list.files {
+                guard let parent = file.parents?.first else { continue }
+                grouped[parent, default: []].append(file)
+            }
+        }
+        
+        return grouped.mapValues { DriveSyncFiles(files: $0) }
     }
     
     func getProgressFile(fileId: String) async throws -> TtuProgress {
@@ -430,7 +468,7 @@ class GoogleDriveHandler {
         let searchResult = try JSONDecoder().decode(DriveFileList.self, from: searchData)
         
         if let existingFolder = searchResult.files.first {
-            cacheBookFolder(id: existingFolder.id, sanitizedTitle: sanitizedTitle)
+            titleToFolderId[sanitizedTitle] = existingFolder.id
             return existingFolder.id
         }
         
@@ -454,7 +492,7 @@ class GoogleDriveHandler {
             throw GoogleDriveError.invalidResponse
         }
         
-        cacheBookFolder(id: folderId, sanitizedTitle: sanitizedTitle)
+        titleToFolderId[sanitizedTitle] = folderId
         
         if let coverData = coverImageDataProvider?() {
             do {
@@ -465,11 +503,6 @@ class GoogleDriveHandler {
         }
         
         return folderId
-    }
-    
-    private func cacheBookFolder(id: String, sanitizedTitle: String) {
-        titleToFolderId[sanitizedTitle] = id
-        UserDefaults.standard.set(titleToFolderId, forKey: Self.titleToFolderIdKey)
     }
     
     // https://github.com/ttu-ttu/ebook-reader/blob/d7d1dc1fd1151e067db218b8ff7eecf1c14d2276/apps/web/src/lib/data/storage/handler/base-handler.ts#L244
@@ -526,6 +559,13 @@ class GoogleDriveHandler {
         }
         
         return result
+    }
+    
+    static func desanitizeTtuFilename(_ title: String) -> String {
+        (title.removingPercentEncoding ?? title)
+            .replacingOccurrences(of: "~ttu-star~", with: "*")
+            .replacingOccurrences(of: "~ttu-dend~", with: ".")
+            .replacingOccurrences(of: "~ttu-spc~", with: " ")
     }
     
     private func uploadCoverImage(folderId: String, coverData: Data) async throws {
