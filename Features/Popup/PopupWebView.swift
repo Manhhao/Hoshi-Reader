@@ -229,14 +229,8 @@ struct PopupWebView: UIViewRepresentable {
         if !context.coordinator.wasLoaded {
             context.coordinator.currentContent = content
             context.coordinator.wasLoaded = true
-            context.coordinator.scale = scale
             let html = constructHtml(content: content)
             webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
-        }
-        
-        if context.coordinator.scale != scale {
-            context.coordinator.scale = scale
-            webView.evaluateJavaScript("document.documentElement.style.zoom = '\(scale)'; if (typeof reportButtonRects === 'function') requestAnimationFrame(reportButtonRects)")
         }
         
         if context.coordinator.clearSelection != clearSelection {
@@ -278,7 +272,6 @@ struct PopupWebView: UIViewRepresentable {
         var clearSelection: Bool = false
         var lastBackTrigger: Bool = false
         var lastForwardTrigger: Bool = false
-        var scale: CGFloat = 1.0
         var entries: [[String: Any]] = []
         weak var webView: WKWebView?
         private var buttons: [String: UIButton] = [:]
@@ -290,7 +283,7 @@ struct PopupWebView: UIViewRepresentable {
         
         private func updateButtons(_ rects: [[String: Any]], in webView: WKWebView) {
             var activeKeys = Set<String>()
-            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13 * scale, weight: .medium)
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13 * parent.scale, weight: .medium)
             
             for rect in rects {
                 guard let kind = rect["kind"] as? String,
@@ -458,7 +451,7 @@ struct PopupWebView: UIViewRepresentable {
             <link rel="stylesheet" href="popup.css">
             <style>
                 \(FontManager.shared.fontfaceCSS)
-                html { zoom: \(scale); }
+                html, body { --popup-scale: \(scale); }
             </style>
             <script>
                 window.scanNonJapaneseText = \(scanNonJapaneseText);
