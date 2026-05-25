@@ -84,6 +84,10 @@ class SyncManager {
         let statsFileId = syncStats ? syncFiles.statistics?.id : nil
         let audioBookFileId = syncAudioBook ? syncFiles.audioBook?.id : nil
         
+        if !importOnly && syncFiles.bookData == nil {
+            try await exportBookData(bookFolder: url, driveFolderId: driveFolderId)
+        }
+        
         let syncDirection = direction ?? determineSyncDirection(local: localBookmark, remoteProgressFile: syncFiles.progress)
         if syncDirection == .synced {
             return .synced(title: book.displayTitle)
@@ -208,6 +212,19 @@ class SyncManager {
         let parts = file.name.split(separator: "_")
         guard parts.count > 4, let timestamp = Int(parts[3]) else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
+    }
+    
+    private func exportBookData(bookFolder: URL, driveFolderId: String) async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        
+        guard let bookDataURL = try TtuConverter.convertToTtu(bookFolder: bookFolder, to: tempDir) else { return }
+        try await GoogleDriveHandler.shared.uploadBookData(
+            folderId: driveFolderId,
+            fileURL: bookDataURL,
+            fileName: bookDataURL.lastPathComponent
+        )
     }
     
     private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {

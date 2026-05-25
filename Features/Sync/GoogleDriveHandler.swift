@@ -350,6 +350,30 @@ class GoogleDriveHandler {
         return try JSONDecoder().decode(TtuAudioBook.self, from: data)
     }
     
+    func uploadBookData(folderId: String, fileURL: URL, fileName: String) async throws {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        let boundary = UUID().uuidString
+        let metadata = try JSONSerialization.data(withJSONObject: ["name": fileName, "parents": [folderId]])
+        let fileData = try Data(contentsOf: fileURL)
+        
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/json; charset=UTF-8\r\n\r\n".data(using: .utf8)!)
+        body.append(metadata)
+        body.append("\r\n--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/zip\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        var request = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        
+        let _ = try await performRequest(request)
+    }
+    
     func updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress) async throws {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         let timestamp = Int(progress.lastBookmarkModified.timeIntervalSince1970 * 1000)

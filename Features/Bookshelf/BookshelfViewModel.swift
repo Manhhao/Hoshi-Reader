@@ -285,6 +285,7 @@ class BookshelfViewModel {
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             
             var remoteBooks: [BookMetadata] = []
+            var remoteSyncFiles: [UUID: DriveSyncFiles] = [:]
             for folder in remoteFolders {
                 guard let files = allFiles[folder.id], files.bookData != nil else {
                     continue
@@ -306,7 +307,7 @@ class BookshelfViewModel {
                     }
                 }
                 let book = BookMetadata(title: title, cover: cover, folder: "", lastAccess: .distantPast)
-                googleDriveSyncFiles[book.id] = files
+                remoteSyncFiles[book.id] = files
                 if let name = files.progress?.name.dropLast(5),
                    let value = name.split(separator: "_").last.flatMap({ Double($0) }) {
                     bookProgress[book.id] = value
@@ -317,6 +318,7 @@ class BookshelfViewModel {
             googleDriveBooks = remoteBooks.sorted {
                 $0.title.localizedStandardCompare($1.title) == .orderedAscending
             }
+            googleDriveSyncFiles = remoteSyncFiles
         } catch {
             showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
         }
