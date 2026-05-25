@@ -419,15 +419,23 @@ struct PopupView: View {
             var pitches: [[String: Any]] = []
             for pitchEntry in result.term.pitches {
                 var pitchPositions: [Int] = []
+                var transcriptions: [String] = []
                 for element in pitchEntry.pitch_positions {
                     let position = Int(element)
                     if !pitchPositions.contains(position) {
                         pitchPositions.append(position)
                     }
                 }
+                for element in pitchEntry.transcriptions {
+                    let transcription = String(element)
+                    if !transcriptions.contains(transcription) {
+                        transcriptions.append(transcription)
+                    }
+                }
                 pitches.append([
                     "dictionary": String(pitchEntry.dict_name),
                     "pitchPositions": pitchPositions,
+                    "transcriptions": transcriptions
                 ])
             }
             
