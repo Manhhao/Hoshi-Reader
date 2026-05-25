@@ -82,6 +82,11 @@ struct BookshelfView: View {
                     }
                     .onAppear {
                         viewModel.loadBooks()
+                        Task {
+                            if userConfig.enableSync {
+                                await viewModel.loadGoogleDriveBooks()
+                            }
+                        }
                     }
                     .fileImporter(
                         isPresented: $viewModel.isImporting,

@@ -104,17 +104,17 @@ class BookshelfViewModel {
             }
         }
         
+        for shelf in shelves {
+            let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
+            sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
+        }
+        
         if !googleDriveBooks.isEmpty {
             sections.append(ShelfSection(
                 shelf: BookShelf(name: "Google Drive", bookIds: []),
                 books: sortBooks(googleDriveBooks, by: sortedBy),
                 isGoogleDrive: true
             ))
-        }
-        
-        for shelf in shelves {
-            let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
-            sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
         }
         
         let shelvedIds = Set(shelves.flatMap { $0.bookIds })
@@ -327,7 +327,6 @@ class BookshelfViewModel {
     
     func importGoogleDriveBook(_ book: BookMetadata, syncStats: Bool, syncAudioBook: Bool) {
         guard let syncFiles = googleDriveSyncFiles[book.id],
-              let bookDataId = syncFiles.bookData?.id,
               downloadingBookId == nil else { return }
         downloadingBookId = book.id
         downloadProgress = 0
@@ -337,30 +336,12 @@ class BookshelfViewModel {
                 downloadProgress = 0
             }
             do {
-                async let downloadedData = GoogleDriveHandler.shared.downloadFile(fileId: bookDataId) { progress in
+                _ = try await SyncManager.shared.importGoogleDriveBook(
+                    syncFiles: syncFiles,
+                    syncStats: syncStats,
+                    syncAudioBook: syncAudioBook
+                ) { progress in
                     self.downloadProgress = progress
-                }
-                async let ttuProgress = SyncManager.shared.fetchProgress(fileId: syncFiles.progress?.id)
-                async let ttuStats = SyncManager.shared.fetchStats(fileId: syncStats ? syncFiles.statistics?.id : nil)
-                async let ttuAudioBook = SyncManager.shared.fetchAudioBook(fileId: syncAudioBook ? syncFiles.audioBook?.id : nil)
-                
-                let data = try await downloadedData
-                let tempURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString)
-                    .appendingPathExtension("zip")
-                try data.write(to: tempURL)
-                defer { try? FileManager.default.removeItem(at: tempURL) }
-                
-                let booksDir = try BookStorage.getBooksDirectory()
-                let bookFolder = try TtuConverter.convertFromTtu(bookData: tempURL, to: booksDir)
-                if let progress = try await ttuProgress {
-                    SyncManager.shared.importProgress(ttuProgress: progress, to: bookFolder)
-                }
-                if let stats = try await ttuStats, !stats.isEmpty {
-                    try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics)
-                }
-                if let audioBook = try await ttuAudioBook {
-                    SyncManager.shared.importAudioBook(ttuAudioBook: audioBook, to: bookFolder)
                 }
                 googleDriveBooks.removeAll { $0.id == book.id }
                 googleDriveSyncFiles.removeValue(forKey: book.id)
