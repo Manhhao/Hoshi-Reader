@@ -392,7 +392,7 @@ struct ReaderWebView: UIViewRepresentable {
             ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
             : ""
             
-            let imgWidth = "\(100 - horizontalPadding)vw"
+            let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
             let imgHeight = parent.userConfig.verticalWriting
             ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)"
             : "\(100 - verticalPadding)vh"
