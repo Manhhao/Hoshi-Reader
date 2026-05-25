@@ -490,6 +490,17 @@ struct ReaderView: View {
             
             Color.clear
                 .frame(height: readerBottomPadding)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.clearSelection()
+                    if viewModel.popups.isEmpty {
+                        withAnimation(.default.speed(2)) {
+                            focusMode.toggle()
+                        }
+                    } else {
+                        viewModel.closePopups()
+                    }
+                }
                 .overlay(alignment: .center) {
                     if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
                         VStack {
