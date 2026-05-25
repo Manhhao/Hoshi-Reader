@@ -149,6 +149,42 @@ class SyncManager {
         }
     }
     
+    func fetchProgress(fileId: String?) async throws -> TtuProgress? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getProgressFile(fileId: fileId)
+    }
+    
+    func fetchStats(fileId: String?) async throws -> [Statistics]? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getStatsFile(fileId: fileId)
+    }
+    
+    func fetchAudioBook(fileId: String?) async throws -> TtuAudioBook? {
+        guard let fileId else { return nil }
+        return try await GoogleDriveHandler.shared.getAudioBookFile(fileId: fileId)
+    }
+    
+    func importProgress(ttuProgress: TtuProgress, to url: URL) {
+        guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
+        
+        let resolved = bookInfo.resolveCharacterPosition(ttuProgress.exploredCharCount)
+        
+        let bookmark = Bookmark(
+            chapterIndex: resolved?.spineIndex ?? 0,
+            progress: resolved?.progress ?? 0,
+            characterCount: ttuProgress.exploredCharCount,
+            lastModified: ttuProgress.lastBookmarkModified
+        )
+        
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+    }
+    
+    func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {
+        var playback = BookStorage.loadSasayakiPlayback(root: url) ?? SasayakiPlaybackData(lastPosition: 0)
+        playback.lastPosition = ttuAudioBook.playbackPosition
+        try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback)
+    }
+    
     private func determineSyncDirection(local: Bookmark?, remoteProgressFile: DriveFile?) -> SyncDirection {
         let localModified = local?.lastModified
         let remoteModified = remoteProgressFile.flatMap(parseProgressTimestamp)
@@ -172,36 +208,6 @@ class SyncManager {
         let parts = file.name.split(separator: "_")
         guard parts.count > 4, let timestamp = Int(parts[3]) else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
-    }
-    
-    private func importProgress(ttuProgress: TtuProgress, to url: URL) {
-        guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
-        
-        let resolved = bookInfo.resolveCharacterPosition(ttuProgress.exploredCharCount)
-        
-        let bookmark = Bookmark(
-            chapterIndex: resolved?.spineIndex ?? 0,
-            progress: resolved?.progress ?? 0,
-            characterCount: ttuProgress.exploredCharCount,
-            lastModified: ttuProgress.lastBookmarkModified
-        )
-        
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
-    }
-    
-    private func fetchProgress(fileId: String?) async throws -> TtuProgress? {
-        guard let fileId else { return nil }
-        return try await GoogleDriveHandler.shared.getProgressFile(fileId: fileId)
-    }
-    
-    private func fetchStats(fileId: String?) async throws -> [Statistics]? {
-        guard let fileId else { return nil }
-        return try await GoogleDriveHandler.shared.getStatsFile(fileId: fileId)
-    }
-    
-    private func fetchAudioBook(fileId: String?) async throws -> TtuAudioBook? {
-        guard let fileId else { return nil }
-        return try await GoogleDriveHandler.shared.getAudioBookFile(fileId: fileId)
     }
     
     private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {
@@ -260,12 +266,6 @@ class SyncManager {
         }
         
         return Array(grouped.values)
-    }
-    
-    private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {
-        var playback = BookStorage.loadSasayakiPlayback(root: url) ?? SasayakiPlaybackData(lastPosition: 0)
-        playback.lastPosition = ttuAudioBook.playbackPosition
-        try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback)
     }
     
     private func exportAudioBook(title: String, playbackData: SasayakiPlaybackData?, folderId: String, fileId: String?) async throws {

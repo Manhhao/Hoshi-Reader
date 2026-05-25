@@ -263,6 +263,42 @@ class GoogleDriveHandler {
         return grouped.mapValues { DriveSyncFiles(files: $0) }
     }
     
+    func downloadFile(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!
+        components.queryItems = [URLQueryItem(name: "alt", value: "media")]
+        
+        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        final class ObservationHolder: @unchecked Sendable {
+            var observation: NSKeyValueObservation?
+        }
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let observationRetainer = ObservationHolder()
+            let task = URLSession.shared.dataTask(with: request) { data, _, error in
+                _ = observationRetainer
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: data!)
+            }
+            observationRetainer.observation = task.observe(\.countOfBytesReceived) { task, _ in
+                let total = task.countOfBytesExpectedToReceive
+                guard total > 0 else { return }
+                Task { @MainActor in
+                    onProgress(Double(task.countOfBytesReceived) / Double(total))
+                }
+            }
+            task.resume()
+        }
+    }
+    
     func getProgressFile(fileId: String) async throws -> TtuProgress {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!

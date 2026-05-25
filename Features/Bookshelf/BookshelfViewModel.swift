@@ -23,8 +23,11 @@ class BookshelfViewModel {
     var isSyncing: Bool = false
     var isDownloading: Bool = false
     var importBooksProgress: String?
+    var downloadingBookId: UUID?
+    var downloadProgress: Double = 0
     
     private var bookProgress: [UUID: Double] = [:]
+    private var googleDriveSyncFiles: [UUID: DriveSyncFiles] = [:]
     
     func loadBooks() {
         do {
@@ -303,6 +306,7 @@ class BookshelfViewModel {
                     }
                 }
                 let book = BookMetadata(title: title, cover: cover, folder: "", lastAccess: .distantPast)
+                googleDriveSyncFiles[book.id] = files
                 if let name = files.progress?.name.dropLast(5),
                    let value = name.split(separator: "_").last.flatMap({ Double($0) }) {
                     bookProgress[book.id] = value
@@ -315,6 +319,52 @@ class BookshelfViewModel {
             }
         } catch {
             showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
+        }
+    }
+    
+    func importGoogleDriveBook(_ book: BookMetadata, syncStats: Bool, syncAudioBook: Bool) {
+        guard let syncFiles = googleDriveSyncFiles[book.id],
+              let bookDataId = syncFiles.bookData?.id,
+              downloadingBookId == nil else { return }
+        downloadingBookId = book.id
+        downloadProgress = 0
+        Task {
+            defer {
+                downloadingBookId = nil
+                downloadProgress = 0
+            }
+            do {
+                async let downloadedData = GoogleDriveHandler.shared.downloadFile(fileId: bookDataId) { progress in
+                    self.downloadProgress = progress
+                }
+                async let ttuProgress = SyncManager.shared.fetchProgress(fileId: syncFiles.progress?.id)
+                async let ttuStats = SyncManager.shared.fetchStats(fileId: syncStats ? syncFiles.statistics?.id : nil)
+                async let ttuAudioBook = SyncManager.shared.fetchAudioBook(fileId: syncAudioBook ? syncFiles.audioBook?.id : nil)
+                
+                let data = try await downloadedData
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension("zip")
+                try data.write(to: tempURL)
+                defer { try? FileManager.default.removeItem(at: tempURL) }
+                
+                let booksDir = try BookStorage.getBooksDirectory()
+                let bookFolder = try TtuConverter.convertFromTtu(bookData: tempURL, to: booksDir)
+                if let progress = try await ttuProgress {
+                    SyncManager.shared.importProgress(ttuProgress: progress, to: bookFolder)
+                }
+                if let stats = try await ttuStats, !stats.isEmpty {
+                    try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics)
+                }
+                if let audioBook = try await ttuAudioBook {
+                    SyncManager.shared.importAudioBook(ttuAudioBook: audioBook, to: bookFolder)
+                }
+                googleDriveBooks.removeAll { $0.id == book.id }
+                googleDriveSyncFiles.removeValue(forKey: book.id)
+                loadBooks()
+            } catch {
+                showError(message: "Failed to import book from Google Drive: \(error.localizedDescription)")
+            }
         }
     }
     

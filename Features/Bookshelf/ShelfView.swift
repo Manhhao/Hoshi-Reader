@@ -110,7 +110,30 @@ struct ShelfView: View {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(section.books) { book in
                         if section.isGoogleDrive {
-                            BookView(book: book, progress: viewModel.progress(for: book))
+                            Button {
+                                viewModel.importGoogleDriveBook(book, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                            } label: {
+                                VStack(spacing: 6) {
+                                    BookCover(book: book, progress: viewModel.progress(for: book))
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(book.displayTitle)
+                                            .font(.system(size: 16))
+                                            .lineLimit(viewModel.downloadingBookId == book.id ? 1 : 2)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        if viewModel.downloadingBookId == book.id {
+                                            HStack(spacing: 3) {
+                                                Image(systemName: "arrow.down.circle")
+                                                    .font(.system(.caption, weight: .semibold))
+                                                ProgressView(value: viewModel.downloadProgress)
+                                            }
+                                            .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .frame(height: 40, alignment: .top)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             BookCell(
                                 book: book,
