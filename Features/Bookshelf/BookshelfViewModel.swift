@@ -281,7 +281,8 @@ class BookshelfViewModel {
             let localTitles = Set(books.map { GoogleDriveHandler.sanitizeTtuFilename($0.title) })
             let remoteFolders = folders.filter { !localTitles.contains($0.name) }
             let allFiles = try await GoogleDriveHandler.shared.listSyncFiles(folderIds: remoteFolders.map(\.id))
-            let cacheDir = FileManager.default.temporaryDirectory.appendingPathComponent("gdrive-covers")
+            let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+                .appendingPathComponent("gdrive-covers")
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             
             var remoteBooks: [BookMetadata] = []
