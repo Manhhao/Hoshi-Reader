@@ -104,7 +104,7 @@ struct TtuConverter {
         }
         
         // xhtml/*.xhtml
-        let xhtmlFiles = splitElementHtml(html: normalizeTags(normalizeImages(staticData.elementHtml)), sections: staticData.sections)
+        let xhtmlFiles = splitElementHTML(html: normalizeTagsToXHTML(normalizeImages(staticData.elementHtml)), sections: staticData.sections)
         for file in xhtmlFiles {
             let formatted = generateXHTML(file, title: escapeXML(staticData.title))
             try archive.addEntry(with: "item/xhtml/\(file.fileName)", contents: formatted, compressionMethod: .deflate)
@@ -167,7 +167,8 @@ struct TtuConverter {
             let bodyHtml = String(content.firstMatch(of: /<body\b[^>]*>([\s\S]*)<\/body>/)?.1 ?? "")
             let htmlClasses = Self.classList("ttu-book-html-wrapper", htmlClass, ttuNoText)
             let bodyClasses = Self.classList("ttu-book-body-wrapper", bodyClass, ttuNoText)
-            elementParts.append("<div id=\"ttu-\(item.idref)\"><div class=\"\(htmlClasses)\"><div class=\"\(bodyClasses)\">\(Self.rewriteImages(bodyHtml, path: manifestItem.path))</div></div></div>")
+            let ttuBodyHtml = Self.normalizeTagsToHTML(Self.rewriteImages(bodyHtml, path: manifestItem.path))
+            elementParts.append("<div id=\"ttu-\(item.idref)\"><div class=\"\(htmlClasses)\"><div class=\"\(bodyClasses)\">\(ttuBodyHtml)</div></div></div>")
             
             let reference = "ttu-\(item.idref)"
             let startCharacter = chapterInfo?.currentTotal ?? 0
@@ -244,10 +245,16 @@ struct TtuConverter {
         return bookDataURL
     }
     
-    private static func normalizeTags(_ html: String) -> String {
+    private static func normalizeTagsToXHTML(_ html: String) -> String {
         html
             .replacing("<br>", with: "<br/>")
             .replacing(/(<img [^>]+)>/) { "\($0.1)/>" }
+    }
+    
+    private static func normalizeTagsToHTML(_ html: String) -> String {
+        html
+            .replacing(/<br\s*\/>/, with: "<br>")
+            .replacing(/<img\b([^>]*)\/>/) { "<img\($0.1)>" }
     }
     
     private static func normalizeImages(_ html: String) -> String {
@@ -281,7 +288,7 @@ struct TtuConverter {
         return files.sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
     
-    private static func splitElementHtml(html: String, sections: [Section]) -> [XHTMLFile] {
+    private static func splitElementHTML(html: String, sections: [Section]) -> [XHTMLFile] {
         let split = sections.compactMap { section -> (Section, String.Index)? in
             guard let range = html.range(of: "<div id=\"\(section.reference)\"") else {
                 return nil
