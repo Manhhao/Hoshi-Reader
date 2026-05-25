@@ -111,6 +111,13 @@ struct BookCell: View {
                 Label("Rename", systemImage: "character.cursor.ibeam.ja")
             }
             
+            if let epub = book.epub,
+               let booksDir = try? BookStorage.getBooksDirectory() {
+                ShareLink(item: booksDir.appendingPathComponent(book.folder).appendingPathComponent(epub)) {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+            }
+            
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
