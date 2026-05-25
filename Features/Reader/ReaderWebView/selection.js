@@ -299,7 +299,7 @@ window.hoshiSelection = {
         if (el?.closest('a')) {
             return 'link'
         }
-        if (el?.closest('img, svg, .blur-wrapper')) {
+        if (el?.closest('img, image, .blur-wrapper')) {
             return 'image'
         }
         
