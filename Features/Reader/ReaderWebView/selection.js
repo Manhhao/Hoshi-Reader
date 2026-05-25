@@ -409,17 +409,17 @@ window.hoshiSelection = {
                 break;
             }
             
-            let end = r.start;
-            while (end < r.end && remaining > 0) {
-                const char = String.fromCodePoint(r.node.textContent.codePointAt(end));
-                end += char.length;
+            let offset = r.start;
+            while (offset < r.end && remaining > 0) {
+                const char = String.fromCodePoint(r.node.textContent.codePointAt(offset));
+                const end = offset + char.length;
+                const range = document.createRange();
+                range.setStart(r.node, offset);
+                range.setEnd(r.node, end);
+                highlights.push(range);
+                offset = end;
                 remaining--;
             }
-            
-            const range = document.createRange();
-            range.setStart(r.node, r.start);
-            range.setEnd(r.node, end);
-            highlights.push(range);
         }
         
         CSS.highlights?.set('hoshi-selection', new Highlight(...highlights));
