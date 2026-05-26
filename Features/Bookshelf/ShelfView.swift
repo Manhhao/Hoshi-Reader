@@ -110,30 +110,18 @@ struct ShelfView: View {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(section.books) { book in
                         if section.isGoogleDrive {
-                            Button {
-                                viewModel.importGoogleDriveBook(book, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
-                            } label: {
-                                VStack(spacing: 6) {
-                                    BookCover(book: book, progress: viewModel.progress(for: book))
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(book.displayTitle)
-                                            .font(.system(size: 16))
-                                            .lineLimit(viewModel.downloadingBookId == book.id ? 1 : 2)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        if viewModel.downloadingBookId == book.id {
-                                            HStack(spacing: 3) {
-                                                Image(systemName: "arrow.down.circle")
-                                                    .font(.system(.caption, weight: .semibold))
-                                                ProgressView(value: viewModel.downloadProgress)
-                                            }
-                                            .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .frame(height: 40, alignment: .top)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            DriveBookCell(
+                                book: book,
+                                progress: viewModel.progress(for: book),
+                                isDownloading: viewModel.downloadingBookId == book.id,
+                                downloadProgress: viewModel.downloadProgress,
+                                onImport: {
+                                    viewModel.importGoogleDriveBook(book, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                                },
+                                onDelete: {
+                                    viewModel.deleteGoogleDriveBook(book)
                                 }
-                            }
-                            .buttonStyle(.plain)
+                            )
                         } else {
                             BookCell(
                                 book: book,
@@ -183,6 +171,60 @@ struct ShelfView: View {
         .onChange(of: pendingTab) { _, tab in
             if tab != nil && selectedBook != nil {
                 selectedBook = nil
+            }
+        }
+    }
+}
+
+private struct DriveBookCell: View {
+    @State private var showDeleteConfirmation = false
+    let book: BookMetadata
+    let progress: Double
+    let isDownloading: Bool
+    let downloadProgress: Double
+    let onImport: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        Button {
+            onImport()
+        } label: {
+            VStack(spacing: 6) {
+                BookCover(book: book, progress: progress)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(book.displayTitle)
+                        .font(.system(size: 16))
+                        .lineLimit(isDownloading ? 1 : 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if isDownloading {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(.caption, weight: .semibold))
+                            ProgressView(value: downloadProgress)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(height: 40, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete from Google Drive", systemImage: "trash")
+            }
+            .disabled(isDownloading)
+        }
+        .confirmationDialog(
+            "Delete \"\(book.displayTitle)\" from Google Drive?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                onDelete()
             }
         }
     }

@@ -299,6 +299,22 @@ class GoogleDriveHandler {
         }
     }
     
+    func trashFile(fileId: String) async throws {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!
+        components.queryItems = [URLQueryItem(name: "fields", value: "id")]
+        
+        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["trashed": true])
+        
+        let _ = try await performRequest(request)
+    }
+    
     func getProgressFile(fileId: String) async throws -> TtuProgress {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileId)")!

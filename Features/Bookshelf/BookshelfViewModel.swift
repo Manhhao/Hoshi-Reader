@@ -307,7 +307,7 @@ class BookshelfViewModel {
                         cover = cached.path(percentEncoded: false)
                     }
                 }
-                let book = BookMetadata(title: title, cover: cover, folder: "", lastAccess: .distantPast)
+                let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
                 remoteSyncFiles[book.id] = files
                 if let name = files.progress?.name.dropLast(5),
                    let value = name.split(separator: "_").last.flatMap({ Double($0) }) {
@@ -348,6 +348,20 @@ class BookshelfViewModel {
                 loadBooks()
             } catch {
                 showError(message: "Failed to import book from Google Drive: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    func deleteGoogleDriveBook(_ book: BookMetadata) {
+        guard downloadingBookId != book.id else { return }
+        Task {
+            do {
+                try await GoogleDriveHandler.shared.trashFile(fileId: book.folder)
+                googleDriveBooks.removeAll { $0.id == book.id }
+                googleDriveSyncFiles.removeValue(forKey: book.id)
+                bookProgress.removeValue(forKey: book.id)
+            } catch {
+                showError(message: "Failed to delete book from Google Drive: \(error.localizedDescription)")
             }
         }
     }
