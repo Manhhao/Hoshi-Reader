@@ -317,7 +317,9 @@ struct ReaderWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
+                let scrollBounds = message.webView?.scrollView.bounds ?? .zero
                 let rect = CGRect(x: x, y: y, width: w, height: h)
+                    .offsetBy(dx: 0, dy: -scrollBounds.origin.y)
                 let normalizedOffset = body["normalizedOffset"] as? Int
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
                 

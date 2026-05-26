@@ -310,7 +310,7 @@ struct ReaderView: View {
                                     sentence: $0.sentence,
                                     rect: $0.rect.offsetBy(
                                         dx: (geometry.size.width - scrollViewSize.width) / 2,
-                                        dy: (geometry.size.height - scrollViewSize.height) / 2
+                                        dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
                                     ),
                                     normalizedOffset: $0.normalizedOffset
                                 )
