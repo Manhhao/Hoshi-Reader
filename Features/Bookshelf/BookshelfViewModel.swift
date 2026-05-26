@@ -320,6 +320,7 @@ class BookshelfViewModel {
                 $0.title.localizedStandardCompare($1.title) == .orderedAscending
             }
             googleDriveSyncFiles = remoteSyncFiles
+        } catch let error as URLError where error.code == .cancelled {
         } catch {
             showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
         }

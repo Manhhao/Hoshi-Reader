@@ -96,6 +96,11 @@ class GoogleDriveHandler {
         UserDefaults.standard.removeObject(forKey: rootFolderIdKey)
         shared.rootFolderId = nil
         shared.titleToFolderId = [:]
+        
+        if let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("gdrive-covers") {
+            try? FileManager.default.removeItem(at: cacheDir)
+        }
     }
     
     private func performRequest(_ request: URLRequest, retry: Bool = true) async throws -> Data {
