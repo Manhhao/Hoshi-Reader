@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Network
 
 enum GoogleDriveError: LocalizedError {
     case invalidResponse
@@ -70,6 +71,7 @@ class GoogleDriveHandler {
     static let shared = GoogleDriveHandler()
     private static let rootFolderIdKey = "GoogleDriveHandler.rootFolderId"
     private static let titleToFolderIdKey = "GoogleDriveHandler.titleToFolderId"
+    private let pathMonitor = NWPathMonitor()
     
     private var rootFolderId: String?
     private var titleToFolderId: [String: String]
@@ -77,6 +79,7 @@ class GoogleDriveHandler {
     private init() {
         rootFolderId = UserDefaults.standard.string(forKey: Self.rootFolderIdKey)
         titleToFolderId = UserDefaults.standard.dictionary(forKey: Self.titleToFolderIdKey) as? [String: String] ?? [:]
+        pathMonitor.start(queue: DispatchQueue(label: "NetworkMonitor"))
     }
     
     static func clearCache() {
@@ -87,6 +90,9 @@ class GoogleDriveHandler {
     }
     
     private func performRequest(_ request: URLRequest, retry: Bool = true) async throws -> Data {
+        if pathMonitor.currentPath.status != .satisfied {
+            throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
+        }
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
