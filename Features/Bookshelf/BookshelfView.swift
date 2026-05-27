@@ -29,6 +29,7 @@ struct BookshelfView: View {
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
     @State private var sasayakiBook: BookMetadata?
+    @State private var didLoadGDrive = false
     @Binding var pendingImportURL: URL?
     @Binding var pendingRemoteImportURL: URL?
     @Binding var pendingLookup: String?
@@ -83,8 +84,9 @@ struct BookshelfView: View {
                     .onAppear {
                         viewModel.loadBooks()
                         Task {
-                            if userConfig.enableSync {
+                            if userConfig.enableSync && !didLoadGDrive {
                                 await viewModel.loadGoogleDriveBooks()
+                                didLoadGDrive = true
                             }
                         }
                     }
