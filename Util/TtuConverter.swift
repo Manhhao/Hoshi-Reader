@@ -117,9 +117,6 @@ struct TtuConverter {
         let standard = generateOPF(imagePaths: imagePaths, xhtmlFiles: xhtmlFiles, title: escapeXML(staticData.title))
         try archive.addEntry(with: "item/standard.opf", contents: standard, compressionMethod: .deflate)
         
-        // store source
-        // try FileManager.default.copyItem(at: bookData, to: destinationFolder.appendingPathComponent(bookData.lastPathComponent))
-        
         // process converted book
         let document = try BookStorage.loadEpub(epubURL)
         let coverPath = cover.map { "Books/\(folderName)/\($0.lastPathComponent)" }
@@ -247,12 +244,15 @@ struct TtuConverter {
     private static func normalizeTagsToXHTML(_ html: String) -> String {
         html
             .replacing("<br>", with: "<br/>")
+            .replacing("<hr>", with: "<hr/>")
             .replacing(/(<img [^>]+)>/) { "\($0.1)/>" }
+            .replacing("&nbsp;", with: "&#160;")
     }
     
     private static func normalizeTagsToHTML(_ html: String) -> String {
         html
             .replacing(/<br\s*\/>/, with: "<br>")
+            .replacing(/<hr\s*\/>/, with: "<hr>")
             .replacing(/<img\b([^>]*)\/>/) { "<img\($0.1)>" }
     }
     
