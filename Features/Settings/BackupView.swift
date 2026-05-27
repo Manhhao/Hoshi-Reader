@@ -18,6 +18,8 @@ struct BackupView: View {
     @State private var target = ""
     @State private var isLoading = false
     @State private var loadingString = ""
+    @State private var errorMessage = ""
+    @State private var showError = false
     
     var body: some View {
         List {
@@ -90,6 +92,11 @@ struct BackupView: View {
             }
         }
         .navigationTitle("Backup")
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
     }
     
     private func backupFolder(folder: String) {
@@ -106,6 +113,8 @@ struct BackupView: View {
             } catch {
                 await MainActor.run {
                     isLoading = false
+                    errorMessage = error.localizedDescription
+                    showError = true
                 }
                 return
             }
@@ -132,9 +141,18 @@ struct BackupView: View {
         let destination = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             defer { url.stopAccessingSecurityScopedResource() }
-            try? FileManager.default.removeItem(at: destination)
-            try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-            try? FileManager.default.unzipItem(at: url, to: destination)
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+                try FileManager.default.unzipItem(at: url, to: destination)
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+                return
+            }
             await MainActor.run {
                 isLoading = false
                 if folder == "Dictionaries" {
@@ -200,6 +218,8 @@ struct BackupView: View {
                     }
                 }
             } catch {
+                errorMessage = error.localizedDescription
+                showError = true
             }
         }
     }
@@ -274,6 +294,8 @@ struct BackupView: View {
                 exportURL = archiveURL
                 isExporting = true
             } catch {
+                errorMessage = error.localizedDescription
+                showError = true
             }
         }
     }
