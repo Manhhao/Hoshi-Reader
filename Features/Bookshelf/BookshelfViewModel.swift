@@ -286,38 +286,48 @@ class BookshelfViewModel {
                 .appendingPathComponent("gdrive-covers")
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             
-            var remoteBooks: [BookMetadata] = []
-            var remoteSyncFiles: [UUID: DriveSyncFiles] = [:]
-            for folder in remoteFolders {
-                guard let files = allFiles[folder.id], files.bookData != nil else {
-                    continue
-                }
-                
-                let title = GoogleDriveHandler.desanitizeTtuFilename(folder.name)
-                var cover: String?
-                if let thumbnailURL = files.cover?.thumbnailLink?
-                    .replacingOccurrences(of: "=s\\d+$", with: "=s768", options: .regularExpression),
-                   let url = URL(string: thumbnailURL) {
-                    let cached = cacheDir.appendingPathComponent(folder.id)
-                    if !FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
-                        if let (data, _) = try? await URLSession.shared.data(from: url) {
-                            try? data.write(to: cached)
+            let results = await withTaskGroup(of: (BookMetadata, DriveSyncFiles)?.self) { group in
+                for folder in remoteFolders {
+                    guard let files = allFiles[folder.id], files.bookData != nil else { continue }
+                    group.addTask {
+                        var cover: String?
+                        if let thumbnailURL = files.cover?.thumbnailLink?
+                            .replacingOccurrences(of: "=s\\d+$", with: "=s768", options: .regularExpression),
+                           let url = URL(string: thumbnailURL) {
+                            let cached = cacheDir.appendingPathComponent(folder.id)
+                            if !FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
+                                if let (data, _) = try? await URLSession.shared.data(from: url) {
+                                    try? data.write(to: cached)
+                                }
+                            }
+                            if FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
+                                cover = cached.path(percentEncoded: false)
+                            }
                         }
-                    }
-                    if FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
-                        cover = cached.path(percentEncoded: false)
+                        let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
+                        let book = await BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                        return (book, files)
                     }
                 }
-                let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                var collected: [(BookMetadata, DriveSyncFiles)] = []
+                for await result in group {
+                    if let result {
+                        collected.append(result)
+                    }
+                }
+                return collected
+            }
+            
+            var remoteSyncFiles: [UUID: DriveSyncFiles] = [:]
+            for (book, files) in results {
                 remoteSyncFiles[book.id] = files
                 if let name = files.progress?.name.dropLast(5),
                    let value = name.split(separator: "_").last.flatMap({ Double($0) }) {
                     bookProgress[book.id] = value
                 }
-                remoteBooks.append(book)
             }
             
-            googleDriveBooks = remoteBooks.sorted {
+            googleDriveBooks = results.map(\.0).sorted {
                 $0.title.localizedStandardCompare($1.title) == .orderedAscending
             }
             googleDriveSyncFiles = remoteSyncFiles
