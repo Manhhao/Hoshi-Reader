@@ -34,7 +34,6 @@ struct TtuConverter {
         let html: String
     }
     
-    @discardableResult
     static func convertFromTtu(bookData: URL, to directory: URL) throws -> URL {
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)

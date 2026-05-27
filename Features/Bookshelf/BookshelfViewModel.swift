@@ -23,8 +23,7 @@ class BookshelfViewModel {
     var isSyncing: Bool = false
     var isDownloading: Bool = false
     var importBooksProgress: String?
-    var downloadingBookId: UUID?
-    var downloadProgress: Double = 0
+    var downloadingBooks: [UUID: Double] = [:]
     
     private var bookProgress: [UUID: Double] = [:]
     private var googleDriveSyncFiles: [UUID: DriveSyncFiles] = [:]
@@ -339,13 +338,13 @@ class BookshelfViewModel {
     
     func importGoogleDriveBook(_ book: BookMetadata, syncStats: Bool, syncAudioBook: Bool) {
         guard let syncFiles = googleDriveSyncFiles[book.id],
-              downloadingBookId == nil else { return }
-        downloadingBookId = book.id
-        downloadProgress = 0
+              downloadingBooks[book.id] == nil else {
+            return
+        }
+        downloadingBooks[book.id] = 0
         Task {
             defer {
-                downloadingBookId = nil
-                downloadProgress = 0
+                downloadingBooks.removeValue(forKey: book.id)
             }
             do {
                 _ = try await SyncManager.shared.importGoogleDriveBook(
@@ -353,7 +352,7 @@ class BookshelfViewModel {
                     syncStats: syncStats,
                     syncAudioBook: syncAudioBook
                 ) { progress in
-                    self.downloadProgress = progress
+                    self.downloadingBooks[book.id] = progress
                 }
                 googleDriveBooks.removeAll { $0.id == book.id }
                 googleDriveSyncFiles.removeValue(forKey: book.id)
@@ -365,7 +364,7 @@ class BookshelfViewModel {
     }
     
     func deleteGoogleDriveBook(_ book: BookMetadata) {
-        guard downloadingBookId != book.id else { return }
+        guard downloadingBooks[book.id] == nil else { return }
         Task {
             do {
                 try await GoogleDriveHandler.shared.trashFile(fileId: book.folder)

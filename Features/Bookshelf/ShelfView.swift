@@ -113,8 +113,8 @@ struct ShelfView: View {
                             DriveBookCell(
                                 book: book,
                                 progress: viewModel.progress(for: book),
-                                isDownloading: viewModel.downloadingBookId == book.id,
-                                downloadProgress: viewModel.downloadProgress,
+                                isDownloading: viewModel.downloadingBooks[book.id] != nil,
+                                downloadProgress: viewModel.downloadingBooks[book.id] ?? 0,
                                 onImport: {
                                     viewModel.importGoogleDriveBook(book, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
                                 },
