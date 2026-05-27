@@ -40,6 +40,7 @@ enum SyncDirection: Equatable {
 
 struct DriveFileList: Codable {
     let files: [DriveFile]
+    let nextPageToken: String?
 }
 
 struct DriveFile: Codable {
@@ -193,62 +194,19 @@ class GoogleDriveHandler {
     
     func listBooks(rootFolder: String) async throws -> [DriveFile] {
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
         let query = "trashed=false and '\(rootFolder)' in parents and mimeType='application/vnd.google-apps.folder'"
+        var allFiles: [DriveFile] = []
+        var pageToken: String?
         
-        components.queryItems = [
-            URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "fields", value: "files(id, name)")
-        ]
-        
-        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        let data = try await performRequest(request)
-        
-        let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        return list.files
-    }
-    
-    func listSyncFiles(folderId: String) async throws -> DriveSyncFiles {
-        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-        let query = "trashed=false and '\(folderId)' in parents and mimeType != 'application/vnd.google-apps.folder'"
-        
-        components.queryItems = [
-            URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "fields", value: "files(id, name)")
-        ]
-        
-        guard let url = components.url else { throw GoogleDriveError.invalidResponse }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        let data = try await performRequest(request)
-        let list = try JSONDecoder().decode(DriveFileList.self, from: data)
-        
-        return DriveSyncFiles(files: list.files)
-    }
-    
-    func listSyncFiles(folderIds: [String]) async throws -> [String: DriveSyncFiles] {
-        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
-        var grouped: [String: [DriveFile]] = [:]
-        
-        for start in stride(from: 0, to: folderIds.count, by: 50) {
-            let chunk = Array(folderIds[start..<min(start + 50, folderIds.count)])
+        repeat {
             var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
-            let parentsQuery = chunk.map { "'\($0)' in parents" }.joined(separator: " or ")
-            let query = "trashed=false and (\(parentsQuery)) and mimeType != 'application/vnd.google-apps.folder'"
-            
             components.queryItems = [
                 URLQueryItem(name: "q", value: query),
-                URLQueryItem(name: "fields", value: "files(id, name, parents, thumbnailLink)")
+                URLQueryItem(name: "fields", value: "nextPageToken, files(id, name)")
             ]
+            if let pageToken {
+                components.queryItems?.append(URLQueryItem(name: "pageToken", value: pageToken))
+            }
             
             guard let url = components.url else { throw GoogleDriveError.invalidResponse }
             
@@ -258,11 +216,53 @@ class GoogleDriveHandler {
             
             let data = try await performRequest(request)
             let list = try JSONDecoder().decode(DriveFileList.self, from: data)
+            allFiles.append(contentsOf: list.files)
+            pageToken = list.nextPageToken
+        } while pageToken != nil
+        
+        return allFiles
+    }
+    
+    func listSyncFiles(folderId: String) async throws -> DriveSyncFiles {
+        let result = try await listSyncFiles(folderIds: [folderId])
+        return result[folderId] ?? DriveSyncFiles(files: [])
+    }
+    
+    func listSyncFiles(folderIds: [String]) async throws -> [String: DriveSyncFiles] {
+        let accessToken = try GoogleDriveAuth.shared.getAccessToken()
+        var grouped: [String: [DriveFile]] = [:]
+        
+        for start in stride(from: 0, to: folderIds.count, by: 50) {
+            let chunk = Array(folderIds[start..<min(start + 50, folderIds.count)])
+            let parentsQuery = chunk.map { "'\($0)' in parents" }.joined(separator: " or ")
+            let query = "trashed=false and (\(parentsQuery)) and mimeType != 'application/vnd.google-apps.folder'"
+            var pageToken: String?
             
-            for file in list.files {
-                guard let parent = file.parents?.first else { continue }
-                grouped[parent, default: []].append(file)
-            }
+            repeat {
+                var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+                components.queryItems = [
+                    URLQueryItem(name: "q", value: query),
+                    URLQueryItem(name: "fields", value: "nextPageToken, files(id, name, parents, thumbnailLink)")
+                ]
+                if let pageToken {
+                    components.queryItems?.append(URLQueryItem(name: "pageToken", value: pageToken))
+                }
+                
+                guard let url = components.url else { throw GoogleDriveError.invalidResponse }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                
+                let data = try await performRequest(request)
+                let list = try JSONDecoder().decode(DriveFileList.self, from: data)
+                
+                for file in list.files {
+                    guard let parent = file.parents?.first else { continue }
+                    grouped[parent, default: []].append(file)
+                }
+                pageToken = list.nextPageToken
+            } while pageToken != nil
         }
         
         return grouped.mapValues { DriveSyncFiles(files: $0) }
