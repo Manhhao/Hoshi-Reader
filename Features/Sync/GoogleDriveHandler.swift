@@ -576,10 +576,8 @@ class GoogleDriveHandler {
         titleToFolderId[sanitizedTitle] = folderId
         
         if let coverData = coverImageDataProvider?() {
-            do {
+            Task {
                 try await uploadCoverImage(folderId: folderId, coverData: coverData)
-            } catch {
-                print("Warning: Failed to upload cover image for '\(bookTitle)': \(error.localizedDescription)")
             }
         }
         

@@ -253,7 +253,7 @@ class BookshelfViewModel {
         }
     }
     
-    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
+    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncBookData: Bool, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
         isSyncing = true
         Task {
             defer {
@@ -263,6 +263,7 @@ class BookshelfViewModel {
                 let result = try await SyncManager.shared.syncBook(
                     book: book,
                     direction: direction,
+                    syncBookData: syncBookData,
                     syncStats: syncStats,
                     statsSyncMode: statsSyncMode,
                     syncAudioBook: syncAudioBook

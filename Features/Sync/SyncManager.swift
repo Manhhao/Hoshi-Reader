@@ -23,6 +23,7 @@ class SyncManager {
     func syncBook(
         book: BookMetadata,
         direction: SyncDirection?,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool,
@@ -32,6 +33,7 @@ class SyncManager {
             return try await syncBookOnce(
                 book: book,
                 direction: direction,
+                syncBookData: syncBookData,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
                 syncAudioBook: syncAudioBook,
@@ -42,6 +44,7 @@ class SyncManager {
             return try await syncBookOnce(
                 book: book,
                 direction: direction,
+                syncBookData: syncBookData,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
                 syncAudioBook: syncAudioBook,
@@ -53,6 +56,7 @@ class SyncManager {
     private func syncBookOnce(
         book: BookMetadata,
         direction: SyncDirection?,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool,
@@ -84,7 +88,7 @@ class SyncManager {
         let statsFileId = syncStats ? syncFiles.statistics?.id : nil
         let audioBookFileId = syncAudioBook ? syncFiles.audioBook?.id : nil
         
-        if !importOnly && syncFiles.bookData == nil {
+        if syncBookData && !importOnly && syncFiles.bookData == nil {
             try await exportBookData(bookFolder: url, driveFolderId: driveFolderId)
         }
         
