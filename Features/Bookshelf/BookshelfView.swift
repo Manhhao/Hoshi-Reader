@@ -85,7 +85,7 @@ struct BookshelfView: View {
                         viewModel.loadBooks()
                         Task {
                             if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated && !didLoadGDrive {
-                                await viewModel.loadGoogleDriveBooks()
+                                await viewModel.loadGoogleDriveBooks(suppressOfflineErrors: true)
                                 didLoadGDrive = true
                             }
                         }

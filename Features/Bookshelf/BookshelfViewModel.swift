@@ -274,7 +274,7 @@ class BookshelfViewModel {
         }
     }
     
-    func loadGoogleDriveBooks() async {
+    func loadGoogleDriveBooks(suppressOfflineErrors: Bool = false) async {
         do {
             let root = try await GoogleDriveHandler.shared.findRootFolder()
             let folders = try await GoogleDriveHandler.shared.listBooks(rootFolder: root)
@@ -331,6 +331,7 @@ class BookshelfViewModel {
             }
             googleDriveSyncFiles = remoteSyncFiles
         } catch let error as URLError where error.code == .cancelled {
+        } catch let error as URLError where suppressOfflineErrors && error.code == .notConnectedToInternet {
         } catch {
             showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
         }
