@@ -65,6 +65,8 @@ class ReaderLoaderViewModel {
             return
         }
         
+        CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
+        
         var bookCopy = self.book
         bookCopy.lastAccess = Date()
         try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)

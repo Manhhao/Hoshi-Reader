@@ -86,6 +86,7 @@
 			membershipExceptions = (
 				BookProcessor.swift,
 				CoverImage.swift,
+				CSSSanitizer.swift,
 				Extensions.swift,
 				TtuConverter.swift,
 			);
