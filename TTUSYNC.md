@@ -1,5 +1,16 @@
 To sync between Hoshi Reader and ッツ Reader, a Google Cloud project is required.
 
+## Table of Contents
+- [Setting up the Google Cloud project](#setting-up-the-google-cloud-project)
+  - [ッツ](#ッツ)
+  - [iOS](#ios)
+  - [Android](#android)
+- [Syncing](#syncing)
+  - [ッツ](#ッツ-1)
+    - [Auto Sync](#auto-sync)
+    - [Manual](#manual)
+  - [Hoshi Reader](#hoshi-reader)
+
 # Setting up the Google Cloud project
 1. Login to a Google account.
 2. Navigate to https://console.cloud.google.com/projectselector2/home/dashboard.
@@ -57,7 +68,7 @@ To sync between Hoshi Reader and ッツ Reader, a Google Cloud project is requir
 
 You will need to create clients under the **same** project for each platform that you want to use. 
 
-Navigate to clients and press on create client.
+Navigate to `Clients` and press on `Create Client`.
 
 <img src="Pictures/gdrive_13.png" width="80%" alt="">
 
