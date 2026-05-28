@@ -88,7 +88,7 @@ class SyncManager {
         let statsFileId = syncStats ? syncFiles.statistics?.id : nil
         let audioBookFileId = syncAudioBook ? syncFiles.audioBook?.id : nil
         
-        if syncBookData && !importOnly && syncFiles.bookData == nil {
+        if syncBookData && !importOnly && direction != .importFromTtu && syncFiles.bookData == nil {
             try await exportBookData(bookFolder: url, driveFolderId: driveFolderId)
         }
         
