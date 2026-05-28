@@ -105,6 +105,10 @@ Navigate to clients and press on create client.
 <img src="Pictures/gdrive_21.png" width="40%" alt="">
 
 ## Android
+1. Choose TVs and Limited Input devices as the `Application type` and choose any name
+2. Copy the `Client ID`, and the `Client secret` and save it somewhere. I also recommended downloading the JSON and saving it in case you need the credentials later. You can find Client ID and secret by looking for "client_id" and "client_secret" in the file. (see ッツ section)
+3. Copy the authorization code from the app and go to the domain (you might have to use a different device).
+4. Log-in to your Google account and authorize the app.
 
 # Syncing
 
