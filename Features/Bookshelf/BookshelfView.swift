@@ -73,8 +73,8 @@ struct BookshelfView: View {
                     }
                     .navigationTitle("Books")
                     .scrollIndicators(.hidden)
-                    .refreshable {
-                        if userConfig.enableSync {
+                    .applyIf(userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated) { view in
+                        view.refreshable {
                             await viewModel.loadGoogleDriveBooks()
                         }
                     }
@@ -84,7 +84,7 @@ struct BookshelfView: View {
                     .onAppear {
                         viewModel.loadBooks()
                         Task {
-                            if userConfig.enableSync && !didLoadGDrive {
+                            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated && !didLoadGDrive {
                                 await viewModel.loadGoogleDriveBooks()
                                 didLoadGDrive = true
                             }
