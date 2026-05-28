@@ -118,6 +118,9 @@ struct SyncView: View {
         } message: {
             Text("This will clear cached folder ids and book covers.")
         }
+        .onAppear {
+            isAuthenticated = GoogleDriveAuth.shared.isAuthenticated
+        }
         .alert("Sign out?", isPresented: $showSignOutConfirmation) {
             Button("Confirm", role: .destructive) {
                 TokenStorage.clear()
