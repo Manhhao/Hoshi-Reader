@@ -57,7 +57,7 @@ struct BackupView: View {
             } header: {
                 Text("ッツ Backup")
             } footer: {
-                Text("Importing a backup will skip existing books and only add new books.")
+                Text("Importing a backup adds new books and overwrites the statistics and reading progress of books already present.")
             }
         }
         .fileMover(isPresented: $isExporting, file: exportURL) { result in
@@ -278,7 +278,7 @@ struct BackupView: View {
                         let progress = TtuProgress(
                             dataId: 0,
                             exploredCharCount: bookmark.characterCount,
-                            progress: Double(bookmark.characterCount) / Double(bookInfo.characterCount),
+                            progress: bookInfo.characterCount > 0 ? Double(bookmark.characterCount) / Double(bookInfo.characterCount) : 0,
                             lastBookmarkModified: roundedDate
                         )
                         let progressFileName = "progress_1_6_\(unixTimestamp)_\(progress.progress).json"

@@ -271,7 +271,7 @@ class SyncManager {
         let progress = TtuProgress(
             dataId: ttuProgress?.dataId ?? 0,
             exploredCharCount: localBookmark.characterCount,
-            progress: Double(localBookmark.characterCount) / Double(bookInfo.characterCount),
+            progress: bookInfo.characterCount > 0 ? Double(localBookmark.characterCount) / Double(bookInfo.characterCount) : 0,
             lastBookmarkModified: roundedDate
         )
         
