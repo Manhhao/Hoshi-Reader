@@ -17,9 +17,13 @@ struct AnkiView: View {
     
     private var availableHandlebars: [String] {
         let hidden: Set<Handlebars> = [
+            .glossaryNoDictionary,
             .glossaryFirstBrief,
+            .glossaryFirstNoDictionary,
             .selectedGlossaryBrief,
-            .selectedGlossaryBriefFallback
+            .selectedGlossaryBriefFallback,
+            .selectedGlossaryNoDictionary,
+            .selectedGlossaryNoDictionaryFallback
         ]
         var options = Handlebars.allCases
             .filter { !hidden.contains($0) }

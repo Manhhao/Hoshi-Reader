@@ -187,18 +187,12 @@ class AnkiManager {
         }
         
         let singleGlossaries: [String: String]
-        let singleGlossariesBrief: [String: String]
         if let singleGlossariesJson = content["singleGlossaries"],
-           let singleGlossariesBriefJson = content["singleGlossariesBrief"],
            let singleGlossariesData = singleGlossariesJson.data(using: .utf8),
-           let singleGlossariesBriefData = singleGlossariesBriefJson.data(using: .utf8),
-           let singleGlossariesParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesData),
-           let singleGlossariesBriefParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesBriefData) {
+           let singleGlossariesParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesData) {
             singleGlossaries = singleGlossariesParsed
-            singleGlossariesBrief = singleGlossariesBriefParsed
         } else {
             singleGlossaries = [:]
-            singleGlossariesBrief = [:]
         }
         
         var urlComponents = URLComponents(string: Self.addNoteCallback)
@@ -221,7 +215,7 @@ class AnkiManager {
         
         for (field, fieldContent) in fieldMappings {
             var value = fieldContent.replacing(Self.handlebarRegex) { match in
-                return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries, singleGlossariesBrief: singleGlossariesBrief)
+                return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
             }
             if !value.isEmpty {
                 if embedMedia {
@@ -256,18 +250,12 @@ class AnkiManager {
     
     private func addNoteAnkiConnect(content: [String: String], context: MiningContext, deck: String, noteType: String) async -> Bool {
         let singleGlossaries: [String: String]
-        let singleGlossariesBrief: [String: String]
         if let singleGlossariesJson = content["singleGlossaries"],
-           let singleGlossariesBriefJson = content["singleGlossariesBrief"],
            let singleGlossariesData = singleGlossariesJson.data(using: .utf8),
-           let singleGlossariesBriefData = singleGlossariesBriefJson.data(using: .utf8),
-           let singleGlossariesParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesData),
-           let singleGlossariesBriefParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesBriefData) {
+           let singleGlossariesParsed = try? JSONDecoder().decode([String: String].self, from: singleGlossariesData) {
             singleGlossaries = singleGlossariesParsed
-            singleGlossariesBrief = singleGlossariesBriefParsed
         } else {
             singleGlossaries = [:]
-            singleGlossariesBrief = [:]
         }
         
         var fields: [String: String] = [:]
@@ -284,7 +272,7 @@ class AnkiManager {
                 pictureFields.append(field)
             } else {
                 fields[field] = fieldContent.replacing(Self.handlebarRegex) { match in
-                    handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries, singleGlossariesBrief: singleGlossariesBrief)
+                    handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
                 }
             }
         }
@@ -464,9 +452,17 @@ class AnkiManager {
         try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
     }
     
-    private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String], singleGlossariesBrief: [String: String]) -> String {
+    private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
         if handlebar.hasPrefix(Handlebars.singleGlossaryPrefix) {
             let dictName = String(handlebar.dropFirst(Handlebars.singleGlossaryPrefix.count).dropLast())
+            if dictName.hasSuffix("-brief") {
+                let baseDictName = String(dictName.dropLast("-brief".count))
+                return Self.stripGlossaryHeaders(singleGlossaries[baseDictName] ?? "")
+            }
+            if dictName.hasSuffix("-no-dictionary") {
+                let baseDictName = String(dictName.dropLast("-no-dictionary".count))
+                return Self.stripDictionaryName(singleGlossaries[baseDictName] ?? "")
+            }
             return singleGlossaries[dictName] ?? ""
         } else if let standardHandlebar = Handlebars(rawValue: handlebar) {
             switch standardHandlebar {
@@ -479,19 +475,29 @@ class AnkiManager {
             case .glossary:
                 return content["glossary"] ?? ""
             case .glossaryBrief:
-                return content["glossaryBrief"] ?? ""
+                return Self.stripGlossaryHeaders(content["glossary"] ?? "")
+            case .glossaryNoDictionary:
+                return Self.stripDictionaryName(content["glossary"] ?? "")
             case .glossaryFirst:
                 return content["glossaryFirst"] ?? ""
             case .glossaryFirstBrief:
-                return content["glossaryFirstBrief"] ?? ""
+                return Self.stripGlossaryHeaders(content["glossaryFirst"] ?? "")
+            case .glossaryFirstNoDictionary:
+                return Self.stripDictionaryName(content["glossaryFirst"] ?? "")
             case .selectedGlossary:
                 return singleGlossaries[content["selectedDictionary"] ?? ""] ?? ""
             case .selectedGlossaryFallback:
                 return singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
             case .selectedGlossaryBrief:
-                return singleGlossariesBrief[content["selectedDictionary"] ?? ""] ?? ""
+                return Self.stripGlossaryHeaders(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
             case .selectedGlossaryBriefFallback:
-                return singleGlossariesBrief[content["selectedDictionary"] ?? ""] ?? content["glossaryFirstBrief"] ?? ""
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                return Self.stripGlossaryHeaders(selected)
+            case .selectedGlossaryNoDictionary:
+                return Self.stripDictionaryName(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
+            case .selectedGlossaryNoDictionaryFallback:
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                return Self.stripDictionaryName(selected)
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:
@@ -587,6 +593,22 @@ class AnkiManager {
     func addWord(_ word: String) {
         savedWords.insert(word)
         try? Self.saveWords(savedWords)
+    }
+    
+    private static func stripGlossaryHeaders(_ html: String) -> String {
+        html.replacing(#/(<li data-dictionary="[^"]*">)<i>[^<]*</i> /#) { $0.output.1 }
+    }
+    
+    private static func stripDictionaryName(_ html: String) -> String {
+        html.replacing(#/<li data-dictionary="(?<dict>[^"]+)"><i>(?<label>[^<]*)</i> /#) { match in
+            let dict = String(match.dict)
+            let label = String(match.label)
+            let stripped = label.replacingOccurrences(of: ", \(dict))", with: ")")
+            if stripped == "(\(dict))" {
+                return "<li data-dictionary=\"\(dict)\">"
+            }
+            return "<li data-dictionary=\"\(dict)\"><i>\(stripped)</i> "
+        }
     }
     
     private static func saveWords(_ words: Set<String>) throws {
