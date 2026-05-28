@@ -30,6 +30,7 @@ struct SyncView: View {
                         Text("2. Select **iOS** as the **Application type** and set the **Bundle ID** to '**de.manhhao.hoshi**'.")
                         Text("3. Paste the **Client ID** in the textbox below and press '**Connect Google Drive**'.")
                         Text("4. You can sync individual books by long-pressing and selecting '**Sync**'.")
+                        Text("**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/develop/TTUSYNC.md)**")
                     }
                 }
             }

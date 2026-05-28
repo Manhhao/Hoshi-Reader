@@ -94,15 +94,17 @@ struct AnkiView: View {
                         .onChange(of: ankiManager.compactGlossaries) { _, _ in ankiManager.save() }
                     
                     if !ankiManager.useAnkiConnect {
-                        Toggle("Embed Dictionary Media", isOn: $ankiManager.embedMedia)
-                            .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
+                        VStack {
+                            Toggle("Embed Dictionary Media", isOn: $ankiManager.embedMedia)
+                                .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
+                            Text("Embedding media will increase size of glossaries (AnkiMobile).")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 } header: {
                     Text("Settings")
-                } footer: {
-                    if !ankiManager.useAnkiConnect {
-                        Text("Embedding media will increase size of glossaries (AnkiMobile).")
-                    }
                 }
             }
             
