@@ -306,6 +306,13 @@ struct BookStorage {
         }
     }
     
+    static func sanitizeFileName(_ string: String) -> String {
+        return string
+            .components(separatedBy: CharacterSet(charactersIn: "\\/:*?\"<>|").union(.newlines).union(.controlCharacters))
+            .joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
     enum BookStorageError: LocalizedError {
         case accessDenied
         case appDirectoryNotFound

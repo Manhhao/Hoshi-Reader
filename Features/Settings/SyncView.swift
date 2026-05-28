@@ -13,6 +13,8 @@ struct SyncView: View {
     @State private var isAuthenticated = GoogleDriveAuth.shared.isAuthenticated
     @State private var errorMessage = ""
     @State private var showError = false
+    @State private var showClearCacheConfirmation = false
+    @State private var showSignOutConfirmation = false
     
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -33,17 +35,10 @@ struct SyncView: View {
             }
             
             if userConfig.enableSync {
-                Section {
-                    Picker("Direction", selection: $userConfig.syncMode) {
-                        ForEach(SyncMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
-                }
-                
                 Section("Client ID") {
                     TextField("Required", text: $userConfig.googleClientId)
+                        .disabled(isAuthenticated)
+                        .opacity(isAuthenticated ? 0.6 : 1)
                 }
                 
                 Section {
@@ -55,8 +50,12 @@ struct SyncView: View {
                     }
                     if isAuthenticated {
                         Button(role: .destructive) {
-                            TokenStorage.clear()
-                            isAuthenticated = false
+                            showClearCacheConfirmation = true
+                        } label: {
+                            Text("Clear Cache")
+                        }
+                        Button(role: .destructive) {
+                            showSignOutConfirmation = true
                         } label: {
                             Text("Sign out")
                         }
@@ -76,6 +75,33 @@ struct SyncView: View {
                         }
                     }
                 }
+                
+                Section("Behaviour") {
+                    Picker("Direction", selection: $userConfig.syncMode) {
+                        ForEach(SyncMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
+                }
+                
+                Section("Data") {
+                    VStack {
+                        Toggle("Upload Books", isOn: $userConfig.syncUploadBooks)
+                        Text("Uploads books on first sync if no bookdata is stored on Google Drive.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    if userConfig.enableStatistics {
+                        Toggle("Sync Stats", isOn: $userConfig.statisticsEnableSync)
+                    }
+                    
+                    if userConfig.enableSasayaki {
+                        Toggle("Sync Audiobook Progress", isOn: $userConfig.sasayakiEnableSync)
+                    }
+                }
             }
         }
         .navigationTitle("Syncing")
@@ -83,6 +109,27 @@ struct SyncView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+        .alert("Clear Cache?", isPresented: $showClearCacheConfirmation) {
+            Button("Clear", role: .destructive) {
+                GoogleDriveHandler.clearCache()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will clear cached folder ids and book covers.")
+        }
+        .onAppear {
+            isAuthenticated = GoogleDriveAuth.shared.isAuthenticated
+        }
+        .alert("Sign out?", isPresented: $showSignOutConfirmation) {
+            Button("Confirm", role: .destructive) {
+                TokenStorage.clear()
+                GoogleDriveHandler.clearCache()
+                isAuthenticated = false
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Signing out will clear authorization tokens, cached folder ids and book covers.")
         }
     }
 }

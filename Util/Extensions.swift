@@ -34,10 +34,11 @@ extension String {
 
 extension BookMetadata {
     var coverURL: URL? {
-        guard let coverPath = self.cover,
-              let appDir = try? BookStorage.getAppDirectory() else {
-            return nil
+        guard let coverPath = self.cover else { return nil }
+        if coverPath.hasPrefix("/") {
+            return URL(fileURLWithPath: coverPath)
         }
+        guard let appDir = try? BookStorage.getAppDirectory() else { return nil }
         return appDir.appendingPathComponent(coverPath)
     }
 }
@@ -137,6 +138,15 @@ extension UIColor {
 }
 
 extension View {
+    @ViewBuilder
+    func applyIf<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+    
     @ViewBuilder
     func conditionalGlassEffect() -> some View {
         if #available(iOS 26, *) {
