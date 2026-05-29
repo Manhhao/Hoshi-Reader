@@ -16,7 +16,7 @@ enum GoogleDriveError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "Invalid response from Google Drive"
+            return String(localized: "Invalid response from Google Drive")
         case .apiError(let message, _):
             return message
         }

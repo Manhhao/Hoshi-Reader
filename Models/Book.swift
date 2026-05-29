@@ -16,7 +16,7 @@ enum SortOption: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .recent: return "clock"
-        case .title: return "textformat"
+        case .title: return "textformat.size.larger.ja"
         }
     }
 }

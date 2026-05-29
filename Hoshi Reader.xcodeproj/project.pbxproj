@@ -14,6 +14,8 @@
 		48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */ = {isa = PBXBuildFile; productRef = 48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */; };
 		48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */; };
 		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */; };
+		90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +48,8 @@
 		48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hoshi Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		48FE8D462F76AB88002C2C49 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Dictionaries.xcstrings; sourceTree = "<group>"; };
+		90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -173,6 +177,8 @@
 		48107AAE2F114021009E12D1 = {
 			isa = PBXGroup;
 			children = (
+				90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */,
+				90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */,
 				48568A622F1E926300F9C126 /* App */,
 				48568A662F1E926300F9C126 /* Core */,
 				48568A792F1E926300F9C126 /* Features */,
@@ -263,6 +269,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 48107AAE2F114021009E12D1;
 			minimizedProjectReferenceProxies = 1;
@@ -287,6 +294,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */,
+				90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */,
 				48568A5B2F1E7F5C00F9C126 /* Assets.xcassets in Resources */,
 				48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */,
 				48568A5C2F1E7F5C00F9C126 /* HoshiIcon.icon in Resources */,

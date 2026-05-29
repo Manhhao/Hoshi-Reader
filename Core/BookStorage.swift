@@ -321,11 +321,11 @@ struct BookStorage {
         var errorDescription: String? {
             switch self {
             case .accessDenied:
-                return "Could not access .epub file"
+                return String(localized: "Could not access .epub file")
             case .appDirectoryNotFound:
-                return "App directory not found"
+                return String(localized: "App directory not found")
             case .epubImportFailed(let error):
-                return "Could not import .epub file: \(error.localizedDescription)"
+                return String(localized: "Could not import .epub file: \(error.localizedDescription)")
             }
         }
     }

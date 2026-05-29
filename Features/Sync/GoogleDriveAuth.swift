@@ -21,19 +21,19 @@ enum GoogleDriveAuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidClientId:
-            return "Invalid Client ID format"
+            return String(localized: "Invalid Client ID format")
         case .invalidAuthURL:
-            return "Failed to construct authentication URL"
+            return String(localized: "Failed to construct authentication URL")
         case .noCallbackURL:
-            return "No callback URL received"
+            return String(localized: "No callback URL received")
         case .missingAuthorizationCode:
-            return "Authorization code missing from callback"
+            return String(localized: "Authorization code missing from callback")
         case .tokenExchangeFailed(let statusCode):
-            return "Token exchange failed: \(statusCode)"
+            return String(localized: "Token exchange failed: \(statusCode)")
         case .notAuthenticated:
-            return "Not authenticated\nPlease sign in"
+            return String(localized: "Not authenticated\nPlease sign in")
         case .tokenRefreshFailed:
-            return "Failed to refresh token\nPlease sign in again"
+            return String(localized: "Failed to refresh token\nPlease sign in again")
         }
     }
 }
