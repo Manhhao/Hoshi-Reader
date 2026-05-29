@@ -44,7 +44,7 @@ struct SasayakiMatcher {
             if guideTocPaths.contains(manifestItem.path) {
                 continue
             }
-
+            
             let url = document.contentDirectory.appendingPathComponent(manifestItem.path)
             guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                 continue

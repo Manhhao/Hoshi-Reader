@@ -89,7 +89,7 @@ struct AnkiConnectView: View {
         }
         .navigationTitle(String(localized: "AnkiConnect", table: "Dictionaries"))
     }
-
+    
     private var connectionStatus: String {
         if ankiManager.isConnected {
             String(localized: "Connected", table: "Dictionaries")

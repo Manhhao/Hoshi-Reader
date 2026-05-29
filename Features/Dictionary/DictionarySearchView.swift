@@ -296,7 +296,7 @@ struct DictionarySearchView: View {
             popups.removeAll { popupIds.contains($0.id) }
         }
     }
-
+    
     private func closeChildPopups(parent: Int) {
         let popupIds = Set(popups.dropFirst(parent + 1).map(\.id))
         guard !popupIds.isEmpty else { return }
@@ -513,7 +513,7 @@ fileprivate struct SearchResetInset: View {
     private var pullTitle: String {
         isQueryEmpty ? "Pull down to show keyboard" : "Pull down to clear"
     }
-
+    
     private var releaseTitle: String {
         isQueryEmpty && !isResettingTextField ? "Release to show keyboard" : "Release to clear"
     }

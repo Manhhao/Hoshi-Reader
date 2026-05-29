@@ -17,7 +17,7 @@ struct DictionaryView: View {
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
     @State private var selectedType: DictionaryType = .term
-
+    
     private var dictionaries: [DictionaryInfo] {
         switch selectedType {
         case .term: return dictionaryManager.termDictionaries
@@ -25,14 +25,14 @@ struct DictionaryView: View {
         case .pitch: return dictionaryManager.pitchDictionaries
         }
     }
-
+    
     private var lastUpdate: String {
         guard let date = UserDefaults.standard.object(forKey: "lastDictionaryUpdate") as? Date else {
             return String(localized: "Never", table: "Dictionaries")
         }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
-
+    
     private func dictionaryUpdateIntervalText(_ interval: DictionaryUpdateInterval) -> Text {
         switch interval {
         case .daily:
@@ -69,7 +69,7 @@ struct DictionaryView: View {
             } footer: {
                 Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
             }
-
+            
             if (dictionaryManager.updatableDictionaries.count > 0) {
                 Section {
                     Toggle(isOn: Bindable(userConfig).autoUpdateDictionaries) {
@@ -290,7 +290,7 @@ struct DictionarySettingsView: View {
         .navigationTitle(String(localized: "Settings", table: "Dictionaries"))
         .navigationBarTitleDisplayMode(.inline)
     }
-
+    
     private func collapseModeText(_ mode: CollapseMode) -> Text {
         switch mode {
         case .expandAll:

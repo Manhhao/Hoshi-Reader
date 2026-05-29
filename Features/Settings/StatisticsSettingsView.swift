@@ -49,21 +49,21 @@ struct StatisticsSettingsView: View {
     
     private func textOfAutoRestartMode(_ mode: StatisticsAutostartMode) -> some View {
         switch mode {
-            case .off:
-                Text("Off")
-            case .pageturn:
-                Text("Page Turn")
-            case .on:
-                Text("On")
+        case .off:
+            Text("Off")
+        case .pageturn:
+            Text("Page Turn")
+        case .on:
+            Text("On")
         }
     }
     
     private func textOfAutoSyncMode(_ mode: StatisticsSyncMode) -> some View {
         switch mode {
-            case .merge:
-                Text("Merge")
-            case .replace:
-                Text("Replace")
+        case .merge:
+            Text("Merge")
+        case .replace:
+            Text("Replace")
         }
     }
 }

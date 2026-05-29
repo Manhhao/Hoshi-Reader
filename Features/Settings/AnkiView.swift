@@ -237,7 +237,7 @@ struct AnkiView: View {
             Text(verbatim: ankiManager.errorMessage ?? "")
         }
     }
-
+    
     private var ankiConnectReachabilityStatus: String {
         if ankiManager.isAnkiConnectReachable {
             String(localized: "Connected", table: "Dictionaries")

@@ -46,8 +46,8 @@ class GoogleDriveAuth: NSObject {
     
     var isAuthenticated: Bool {
         TokenStorage.get("accessToken") != nil
-            && TokenStorage.get("refreshToken") != nil
-            && TokenStorage.get("clientId") != nil
+        && TokenStorage.get("refreshToken") != nil
+        && TokenStorage.get("clientId") != nil
     }
     
     func getAccessToken() throws -> String {
