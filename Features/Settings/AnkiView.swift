@@ -109,16 +109,16 @@ struct AnkiView: View {
                     
                     if !ankiManager.useAnkiConnect {
                         VStack {
-                            Toggle("Embed Dictionary Media", isOn: $ankiManager.embedMedia)
+                            Toggle(String(localized: "Embed Dictionary Media", table: "Dictionaries"), isOn: $ankiManager.embedMedia)
                                 .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
-                            Text("Embedding media will increase size of glossaries (AnkiMobile).")
+                            Text("Embedding media will increase size of glossaries (AnkiMobile).", tableName: "Dictionaries")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 } header: {
-                    Text("Settings")
+                    Text("Settings", tableName: "Dictionaries")
                 }
             }
             

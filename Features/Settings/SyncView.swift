@@ -80,7 +80,7 @@ struct SyncView: View {
                 Section("Behaviour") {
                     Picker("Direction", selection: $userConfig.syncMode) {
                         ForEach(SyncMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            textOfSyncMode(mode).tag(mode)
                         }
                     }
                     Toggle("Auto Sync", isOn: $userConfig.enableAutoSync)
@@ -137,9 +137,9 @@ struct SyncView: View {
     private func textOfSyncMode(_ mode: SyncMode) -> some View {
         switch mode {
         case .auto:
-            Text("auto")
+            Text("Auto")
         case .manual:
-            Text("manual")
+            Text("Manual")
         }
     }
 }
