@@ -243,16 +243,16 @@ struct TtuConverter {
     
     private static func normalizeTagsToXHTML(_ html: String) -> String {
         html
-            .replacing("<br>", with: "<br/>")
-            .replacing("<hr>", with: "<hr/>")
+            .replacing(/<br\b([^>\/]*)>/) { "<br\($0.1)/>" }
+            .replacing(/<hr\b([^>\/]*)>/) { "<hr\($0.1)/>" }
             .replacing(/(<img [^>]+)>/) { "\($0.1)/>" }
             .replacing("&nbsp;", with: "&#160;")
     }
     
     private static func normalizeTagsToHTML(_ html: String) -> String {
         html
-            .replacing(/<br\s*\/>/, with: "<br>")
-            .replacing(/<hr\s*\/>/, with: "<hr>")
+            .replacing(/<br\b([^>]*)\/>/) { "<br\($0.1)>" }
+            .replacing(/<hr\b([^>]*)\/>/) { "<hr\($0.1)>" }
             .replacing(/<img\b([^>]*)\/>/) { "<img\($0.1)>" }
     }
     
@@ -306,15 +306,16 @@ struct TtuConverter {
     
     private static func generateXHTML(_ xhtml: XHTMLFile, title: String) -> String {
         var content = String(xhtml.html
-            .dropFirst("<div id=\"ttu-\(xhtml.fileName.dropLast(6))\">".count)
-            .dropLast(18))
+            .dropFirst("<div id=\"ttu-\(xhtml.fileName.dropLast(6))\">".count))
+        let hasTtuWrappers = content.contains("ttu-book-html-wrapper") && content.contains("ttu-book-body-wrapper")
+        content = String(content.dropLast(hasTtuWrappers ? 18 : 6))
         let htmlClass = (content.firstMatch(of: /ttu-book-html-wrapper\s*([^"]*)"/)?.1 ?? "")
             .replacing("ttu-no-text", with: "").trimmingCharacters(in: .whitespaces)
         let bodyClass = (content.firstMatch(of: /ttu-book-body-wrapper\s*([^"]*)"/)?.1 ?? "")
             .replacing("ttu-no-text", with: "").trimmingCharacters(in: .whitespaces)
         content = content
-            .replacing(/<div class="ttu-book-html-wrapper[^"]*">/, with: "")
-            .replacing(/<div class="ttu-book-body-wrapper[^"]*">/, with: "")
+            .replacing(/<div class="ttu-book-html-wrapper[^"]*"[^>]*>/, with: "")
+            .replacing(/<div class="ttu-book-body-wrapper[^"]*"[^>]*>/, with: "")
         
         return """
         <?xml version="1.0" encoding="UTF-8"?>
