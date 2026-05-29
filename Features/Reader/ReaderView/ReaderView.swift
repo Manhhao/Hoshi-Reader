@@ -43,6 +43,7 @@ struct ReaderLoader: View {
                 enableStatistics: userConfig.enableStatistics,
                 autostartStatistics: userConfig.statisticsAutostartMode == .on,
                 autoSyncEnabled: userConfig.enableSync && userConfig.enableAutoSync,
+                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
                 syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
                 statsSyncMode: userConfig.statisticsSyncMode,
                 syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
@@ -61,6 +62,17 @@ struct ReaderView: View {
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
+    
+    private var bottomSafeArea: CGFloat {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return 20
+        }
+        return UIApplication.bottomSafeArea
+    }
+    
+    private var readerBottomPadding: CGFloat {
+        bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
+    }
     
     private var sepiaInverted: Bool {
         userConfig.theme == .sepia && userConfig.sepiaInvertInDark && systemColorScheme == .dark
@@ -132,6 +144,7 @@ struct ReaderView: View {
         enableStatistics: Bool,
         autostartStatistics: Bool,
         autoSyncEnabled: Bool,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool
@@ -143,6 +156,7 @@ struct ReaderView: View {
             enableStatistics: enableStatistics,
             autostartStatistics: autostartStatistics,
             autoSyncEnabled: autoSyncEnabled,
+            syncBookData: syncBookData,
             syncStats: syncStats,
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
@@ -177,7 +191,7 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: max(topSafeArea, 25) + webViewPadding)
+                .frame(height: max(topSafeArea, 40) + webViewPadding)
                 .contentShape(Rectangle())
                 .overlay(alignment: .bottom) {
                     HStack {
@@ -250,7 +264,7 @@ struct ReaderView: View {
                         }
                     }
                     .padding(.horizontal, 15)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 16)
                     .opacity(focusMode ? 1 : 0)
                     .allowsHitTesting(focusMode)
                 }
@@ -277,6 +291,7 @@ struct ReaderView: View {
                         
                         ScrollReaderWebView(
                             userConfig: userConfig,
+                            viewportWidth: Int(scrollViewSize.width),
                             bridge: viewModel.bridge,
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
@@ -298,7 +313,7 @@ struct ReaderView: View {
                                     sentence: $0.sentence,
                                     rect: $0.rect.offsetBy(
                                         dx: (geometry.size.width - scrollViewSize.width) / 2,
-                                        dy: (geometry.size.height - scrollViewSize.height) / 2
+                                        dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
                                     ),
                                     normalizedOffset: $0.normalizedOffset
                                 )
@@ -476,15 +491,36 @@ struct ReaderView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
             }
             
-            if UIApplication.bottomSafeArea == 0 {
-                Color.clear
-                    .frame(height: max(topSafeArea, 25))
-            }
+            Color.clear
+                .frame(height: readerBottomPadding)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.clearSelection()
+                    if viewModel.popups.isEmpty {
+                        withAnimation(.default.speed(2)) {
+                            focusMode.toggle()
+                        }
+                    } else {
+                        viewModel.closePopups()
+                    }
+                }
+                .overlay(alignment: .center) {
+                    if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
+                        VStack {
+                            Text(progressString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                        .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                        .offset(y: -3)
+                    }
+                }
         }
         .background(readerBackgroundColor.ignoresSafeArea())
         .overlay(alignment: .top) {
             let showTitle = userConfig.readerShowTitle
-            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty
+            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
             if showTitle || showTopProgress {
                 VStack(spacing: 2) {
                     if showTitle {
@@ -527,7 +563,7 @@ struct ReaderView: View {
                 
                 Spacer()
                 
-                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty
+                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
                 let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
                 if showBottomProgress || showStats {
                     VStack(spacing: 2) {
@@ -598,7 +634,7 @@ struct ReaderView: View {
                 .conditionalGlassEffect()
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, UIApplication.bottomSafeArea > 0 ? 0 : 8)
+            .padding(.bottom, bottomSafeArea > 0 ? bottomSafeArea : 8)
             .opacity(focusMode ? 0 : 1)
             .allowsHitTesting(!focusMode)
         }
@@ -714,7 +750,7 @@ struct ReaderView: View {
                 await viewModel.flushAutoSync()
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
         .persistentSystemOverlays(focusMode ? .hidden : .automatic)

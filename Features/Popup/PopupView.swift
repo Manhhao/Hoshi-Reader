@@ -419,15 +419,23 @@ struct PopupView: View {
             var pitches: [[String: Any]] = []
             for pitchEntry in result.term.pitches {
                 var pitchPositions: [Int] = []
+                var transcriptions: [String] = []
                 for element in pitchEntry.pitch_positions {
                     let position = Int(element)
                     if !pitchPositions.contains(position) {
                         pitchPositions.append(position)
                     }
                 }
+                for element in pitchEntry.transcriptions {
+                    let transcription = String(element)
+                    if !transcriptions.contains(transcription) {
+                        transcriptions.append(transcription)
+                    }
+                }
                 pitches.append([
                     "dictionary": String(pitchEntry.dict_name),
                     "pitchPositions": pitchPositions,
+                    "transcriptions": transcriptions
                 ])
             }
             
@@ -455,7 +463,8 @@ struct PopupView: View {
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
-        let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
+        let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
+        let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         let content = """

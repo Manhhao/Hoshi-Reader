@@ -317,7 +317,9 @@ struct ReaderWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
+                let scrollBounds = message.webView?.scrollView.bounds ?? .zero
                 let rect = CGRect(x: x, y: y, width: w, height: h)
+                    .offsetBy(dx: 0, dy: -scrollBounds.origin.y)
                 let normalizedOffset = body["normalizedOffset"] as? Int
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
                 
@@ -384,12 +386,15 @@ struct ReaderWebView: UIViewRepresentable {
             let columnGap = parent.userConfig.verticalWriting
             ? "calc(\(columnGapValue)\(columnGapUnit) + \(bottomOverlap)px)"
             : "\(columnGapValue)\(columnGapUnit)"
+            let columnWidth = parent.userConfig.verticalWriting
+            ? "var(--page-height, 100vh)"
+            : "var(--page-width, 100vw)"
             
             let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
             ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
             : ""
             
-            let imgWidth = "\(100 - horizontalPadding)vw"
+            let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
             let imgHeight = parent.userConfig.verticalWriting
             ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)"
             : "\(100 - verticalPadding)vh"
@@ -481,7 +486,7 @@ struct ReaderWebView: UIViewRepresentable {
                 -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
-                column-width: var(--page-width, 100vw) !important;
+                column-width: \(columnWidth) !important;
                 column-gap: \(columnGap);
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
                 \(bottomPaddingCss)

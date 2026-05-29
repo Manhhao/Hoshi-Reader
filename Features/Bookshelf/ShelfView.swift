@@ -109,19 +109,43 @@ struct ShelfView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(section.books) { book in
-                        BookCell(
-                            book: book,
-                            viewModel: viewModel,
-                            currentShelf: section.shelf?.name,
-                            hideMove: section.isReading,
-                            onSelect: { selectedBook = book },
-                            onMatch: { onMatch(book) },
-                            isSelecting: isSelecting,
-                            selectedBooks: $selectedBooks
-                        )
+                        if section.isGoogleDrive {
+                            DriveBookCell(
+                                book: book,
+                                progress: viewModel.progress(for: book),
+                                isDownloading: viewModel.downloadingBooks[book.id] != nil,
+                                downloadProgress: viewModel.downloadingBooks[book.id] ?? 0,
+                                onImport: {
+                                    viewModel.importGoogleDriveBook(book, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                                },
+                                onDelete: {
+                                    viewModel.deleteGoogleDriveBook(book)
+                                }
+                            )
+                        } else {
+                            BookCell(
+                                book: book,
+                                viewModel: viewModel,
+                                currentShelf: section.shelf?.name,
+                                hideMove: section.isReading,
+                                onSelect: { selectedBook = book },
+                                onMatch: { onMatch(book) },
+                                isSelecting: isSelecting,
+                                selectedBooks: $selectedBooks
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal)
+            }
+        }
+        .opacity(section.isGoogleDrive && isSelecting ? 0.4 : 1)
+        .allowsHitTesting(!section.isGoogleDrive || !isSelecting)
+        .onChange(of: isSelecting) {
+            if isSelecting && section.isGoogleDrive {
+                withAnimation(.default.speed(1.5)) {
+                    isCollapsed = true
+                }
             }
         }
         .onChange(of: selectedBook) { old, new in
@@ -147,6 +171,60 @@ struct ShelfView: View {
         .onChange(of: pendingTab) { _, tab in
             if tab != nil && selectedBook != nil {
                 selectedBook = nil
+            }
+        }
+    }
+}
+
+private struct DriveBookCell: View {
+    @State private var showDeleteConfirmation = false
+    let book: BookMetadata
+    let progress: Double
+    let isDownloading: Bool
+    let downloadProgress: Double
+    let onImport: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        Button {
+            onImport()
+        } label: {
+            VStack(spacing: 6) {
+                BookCover(book: book, progress: progress)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(book.displayTitle)
+                        .font(.system(size: 16))
+                        .lineLimit(isDownloading ? 1 : 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if isDownloading {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(.caption, weight: .semibold))
+                            ProgressView(value: downloadProgress)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(height: 40, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete from Google Drive", systemImage: "trash")
+            }
+            .disabled(isDownloading)
+        }
+        .confirmationDialog(
+            "Delete \"\(book.displayTitle)\" from Google Drive?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                onDelete()
             }
         }
     }

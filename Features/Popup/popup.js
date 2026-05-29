@@ -400,7 +400,6 @@ function constructSingleGlossaryHtml(entryIndex) {
             html += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
         }
         html += `</div>`;
-        
         glossaries[lastDict] = html;
         currentGlossary = '';
     };
@@ -433,7 +432,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         } else {
             label = tags ? `(${tags})` : '';
         }
-        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
         prevTags = currentTags;
     });
     
@@ -479,7 +478,8 @@ function constructGlossaryHtml(entryIndex) {
             label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        const content = applyTableStyles(tempDiv.innerHTML);
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
         prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
@@ -488,10 +488,7 @@ function constructGlossaryHtml(entryIndex) {
         }
     });
     
-    let result = '<div style="text-align: left;" class="yomitan-glossary"><ol>';
-    result += glossaryItems;
-    result += '</ol>';
-    
+    let stylesHtml = '';
     for (const [dictName, css] of Object.entries(styles)) {
         const scopedCss = constructDictCss(css, dictName);
         const formatted = scopedCss
@@ -500,13 +497,13 @@ function constructGlossaryHtml(entryIndex) {
         .replace(/\s*\}\s*/g, ' }\n')
         .replace(/;\s*/g, '; ')
         .trim();
-        result += `<style>${formatted}</style>`;
+        stylesHtml += `<style>${formatted}</style>`;
     }
     if (window.compactGlossariesAnki) {
-        result += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
+        stylesHtml += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
     }
-    result += '</div>';
-    return result;
+    
+    return `<div style="text-align: left;" class="yomitan-glossary"><ol>${glossaryItems}</ol>${stylesHtml}</div>`;
 }
 
 function constructFrequencyHtml(frequencies) {
@@ -1097,6 +1094,11 @@ function createPitchGroup(pitchData, reading) {
         li.appendChild(document.createTextNode(` [${pitch}]`));
         list.appendChild(li);
     });
+    pitchData.transcriptions.forEach((transcription) => {
+        const li = el('li');
+        li.appendChild(document.createTextNode(transcription));
+        list.appendChild(li);
+    });
     container.appendChild(list);
     
     return container;
@@ -1161,9 +1163,10 @@ function createTags(entry) {
             const seen = new Set();
             pitches.forEach(pitch => {
                 const unique = pitch.pitchPositions.filter(pos => !seen.has(pos));
-                if (unique.length > 0) {
+                const transcriptions = pitch.transcriptions;
+                if (unique.length > 0 || transcriptions.length > 0) {
                     unique.forEach(pos => seen.add(pos));
-                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique }, reading));
+                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique, transcriptions }, reading));
                 }
             });
         } else {
@@ -1211,30 +1214,16 @@ function playWordAudio(audioUrl) {
     }
 }
 
-function getButtonRectScale() {
-    const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom);
-    if (zoom === 1) {
-        return 1;
-    }
-    
-    const probe = el('div', { style: 'position:absolute;width:100px;visibility:hidden;' });
-    document.body.appendChild(probe);
-    const width = probe.getBoundingClientRect().width;
-    probe.remove();
-    return 100 * zoom / width;
-}
-
 function reportButtonRects() {
-    const scale = getButtonRectScale();
     const rects = [...document.querySelectorAll('.button-slot')].map(slot => {
         const rect = slot.getBoundingClientRect();
         return {
             kind: slot.dataset.kind,
             entryIndex: Number(slot.dataset.entryIndex),
-            x: (rect.left + window.scrollX) * scale,
-            y: (rect.top + window.scrollY) * scale,
-            width: rect.width * scale,
-            height: rect.height * scale,
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY,
+            width: rect.width,
+            height: rect.height,
             state: slot.dataset.state || 'default',
             enabled: slot.dataset.enabled !== 'false'
         };
@@ -1628,10 +1617,7 @@ window.renderPopup = function() {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }
-        const scale = getButtonRectScale();
-        const rectX = (e.clientX + window.scrollX) / scale - window.scrollX;
-        const rectY = (e.clientY + window.scrollY) / scale - window.scrollY;
-        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, window.scanLength, rectX, rectY);
+        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, window.scanLength);
         if (!selected) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;

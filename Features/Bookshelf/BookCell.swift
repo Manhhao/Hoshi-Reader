@@ -69,12 +69,26 @@ struct BookCell: View {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
-                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                            viewModel.syncBook(
+                                book: book,
+                                direction: .importFromTtu,
+                                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                                syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                                statsSyncMode: userConfig.statisticsSyncMode,
+                                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                            )
                         } label: {
                             Label("Import", systemImage: "arrow.down")
                         }
                         Button {
-                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                            viewModel.syncBook(
+                                book: book,
+                                direction: .exportToTtu,
+                                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                                syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                                statsSyncMode: userConfig.statisticsSyncMode,
+                                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                            )
                         } label: {
                             Label("Export", systemImage: "arrow.up")
                         }
@@ -83,7 +97,14 @@ struct BookCell: View {
                     }
                 } else {
                     Button {
-                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                        viewModel.syncBook(
+                            book: book,
+                            direction: nil,
+                            syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                            syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                            statsSyncMode: userConfig.statisticsSyncMode,
+                            syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                        )
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -109,6 +130,13 @@ struct BookCell: View {
                 showRenameAlert = true
             } label: {
                 Label("Rename", systemImage: "character.cursor.ibeam.ja")
+            }
+            
+            if let epub = book.epub,
+               let booksDir = try? BookStorage.getBooksDirectory() {
+                ShareLink(item: booksDir.appendingPathComponent(book.folder).appendingPathComponent(epub)) {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
             }
             
             Button(role: .destructive) {

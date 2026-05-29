@@ -65,6 +65,8 @@ class ReaderLoaderViewModel {
             return
         }
         
+        CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
+        
         var bookCopy = self.book
         bookCopy.lastAccess = Date()
         try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)
@@ -107,6 +109,7 @@ class ReaderViewModel {
     
     // sync
     let autoSyncEnabled: Bool
+    let syncBookData: Bool
     let syncStats: Bool
     let statsSyncMode: StatisticsSyncMode
     let syncAudioBook: Bool
@@ -132,6 +135,7 @@ class ReaderViewModel {
         enableStatistics: Bool,
         autostartStatistics: Bool,
         autoSyncEnabled: Bool,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool
@@ -142,6 +146,7 @@ class ReaderViewModel {
         self.enableStatistics = enableStatistics
         self.autostartStatistics = autostartStatistics
         self.autoSyncEnabled = autoSyncEnabled
+        self.syncBookData = syncBookData
         self.syncStats = syncStats
         self.statsSyncMode = statsSyncMode
         self.syncAudioBook = syncAudioBook
@@ -256,6 +261,7 @@ class ReaderViewModel {
             let result = try? await SyncManager.shared.syncBook(
                 book: book,
                 direction: nil,
+                syncBookData: syncBookData,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
                 syncAudioBook: syncAudioBook,
@@ -278,6 +284,7 @@ class ReaderViewModel {
         let result = try? await SyncManager.shared.syncBook(
             book: book,
             direction: nil,
+            syncBookData: syncBookData,
             syncStats: syncStats,
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook,
@@ -622,6 +629,7 @@ class ReaderViewModel {
             _ = try? await SyncManager.shared.syncBook(
                 book: self.book,
                 direction: direction,
+                syncBookData: syncBookData,
                 syncStats: self.syncStats,
                 statsSyncMode: self.statsSyncMode,
                 syncAudioBook: self.syncAudioBook

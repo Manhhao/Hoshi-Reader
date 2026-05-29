@@ -138,6 +138,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
     }
     
+    var syncUploadBooks: Bool {
+        didSet { UserDefaults.standard.set(syncUploadBooks, forKey: "syncUploadBooks") }
+    }
+    
     var theme: Themes {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: "theme") }
     }
@@ -236,6 +240,10 @@ class UserConfig {
     
     var readerShowPercentage: Bool {
         didSet { UserDefaults.standard.set(readerShowPercentage, forKey: "readerShowPercentage") }
+    }
+    
+    var readerAlwaysShowProgress: Bool {
+        didSet { UserDefaults.standard.set(readerAlwaysShowProgress, forKey: "readerAlwaysShowProgress") }
     }
     
     var readerShowProgressTop: Bool {
@@ -418,6 +426,7 @@ class UserConfig {
             .flatMap(SyncMode.init) ?? .auto
         self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
+        self.syncUploadBooks = defaults.object(forKey: "syncUploadBooks") as? Bool ?? true
         
         self.theme = defaults.string(forKey: "theme")
             .flatMap(Themes.init) ?? .system
@@ -449,6 +458,7 @@ class UserConfig {
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
+        self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
         self.readerShowStatisticsToggle = defaults.object(forKey: "readerShowStatisticsToggle") as? Bool ?? false
         self.readerShowReadingSpeed = defaults.object(forKey: "readerShowReadingSpeed") as? Bool ?? false

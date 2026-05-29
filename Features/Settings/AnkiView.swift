@@ -16,7 +16,18 @@ struct AnkiView: View {
     @State private var confirmFetch = false
     
     private var availableHandlebars: [String] {
-        var options = Handlebars.allCases.map(\.rawValue)
+        let hidden: Set<Handlebars> = [
+            .glossaryNoDictionary,
+            .glossaryFirstBrief,
+            .glossaryFirstNoDictionary,
+            .selectedGlossaryBrief,
+            .selectedGlossaryBriefFallback,
+            .selectedGlossaryNoDictionary,
+            .selectedGlossaryNoDictionaryFallback
+        ]
+        var options = Handlebars.allCases
+            .filter { !hidden.contains($0) }
+            .map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {
             options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)}")
         }
@@ -97,17 +108,17 @@ struct AnkiView: View {
                     .onChange(of: ankiManager.compactGlossaries) { _, _ in ankiManager.save() }
                     
                     if !ankiManager.useAnkiConnect {
-                        Toggle(isOn: $ankiManager.embedMedia) {
-                            Text("Embed Dictionary Media", tableName: "Dictionaries")
+                        VStack {
+                            Toggle("Embed Dictionary Media", isOn: $ankiManager.embedMedia)
+                                .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
+                            Text("Embedding media will increase size of glossaries (AnkiMobile).")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
                     }
                 } header: {
-                    Text("Settings", tableName: "Dictionaries")
-                } footer: {
-                    if !ankiManager.useAnkiConnect {
-                        Text("Embedding media will increase size of glossaries (AnkiMobile).", tableName: "Dictionaries")
-                    }
+                    Text("Settings")
                 }
             }
             
