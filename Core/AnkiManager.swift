@@ -131,6 +131,7 @@ class AnkiManager {
         if let noteType = availableNoteTypes.first {
             selectedNoteType = noteType.name
             fieldMappings.removeAll()
+            autofillFieldMappings()
         } else {
             selectedNoteType = nil
             fieldMappings.removeAll()
@@ -165,6 +166,7 @@ class AnkiManager {
             if let noteType = noteTypes.first {
                 selectedNoteType = noteType.name
                 fieldMappings.removeAll()
+                autofillFieldMappings()
             } else {
                 selectedNoteType = nil
                 fieldMappings.removeAll()
@@ -450,6 +452,20 @@ class AnkiManager {
             return
         }
         try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
+    }
+    
+    func autofillFieldMappings() {
+        guard let noteTypeName = selectedNoteType,
+              let template = AnkiFieldTemplate.templates.first(where: { $0.noteType == noteTypeName }),
+              let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+              !noteType.fields.contains(where: { fieldMappings[$0] != nil }) else {
+            return
+        }
+        for field in noteType.fields {
+            if let mapping = template.mappings[field] {
+                fieldMappings[field] = mapping
+            }
+        }
     }
     
     private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {

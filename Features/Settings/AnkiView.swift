@@ -79,7 +79,10 @@ struct AnkiView: View {
                     } label: {
                         Text("Model", tableName: "Dictionaries")
                     }
-                    .onChange(of: ankiManager.selectedNoteType) { _, _ in ankiManager.save() }
+                    .onChange(of: ankiManager.selectedNoteType) { _, _ in
+                        ankiManager.autofillFieldMappings()
+                        ankiManager.save()
+                    }
                     
                     if !ankiManager.useAnkiConnect {
                         Button {
