@@ -105,7 +105,7 @@ class GoogleDriveHandler {
     }
     
     private func performRequest(_ request: URLRequest, retry: Bool = true) async throws -> Data {
-        if pathMonitor.currentPath.status != .satisfied {
+        if pathMonitor.currentPath.status == .unsatisfied {
             throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
         }
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -278,7 +278,7 @@ class GoogleDriveHandler {
     }
     
     private func downloadFileRequest(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
-        if pathMonitor.currentPath.status != .satisfied {
+        if pathMonitor.currentPath.status == .unsatisfied {
             throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
         }
         let accessToken = try GoogleDriveAuth.shared.getAccessToken()

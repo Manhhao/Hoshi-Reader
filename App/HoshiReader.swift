@@ -27,6 +27,7 @@ struct HoshiReaderApp: App {
         BookStorage.migrateBooks()
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
+        _ = GoogleDriveHandler.shared
         configureTabBarAppearance()
     }
     
