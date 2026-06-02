@@ -60,9 +60,15 @@ struct ShelfView: View {
                         }
                     } label: {
                         HStack {
-                            Text(section.shelf!.name)
-                                .font(.title3.bold())
-                                .lineLimit(1)
+                            Group {
+                                if section.isReading {
+                                    Text("Reading")
+                                } else {
+                                    Text(section.shelf!.name)
+                                }
+                            }
+                            .font(.title3.bold())
+                            .lineLimit(1)
                             Text("\(section.books.count)")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
