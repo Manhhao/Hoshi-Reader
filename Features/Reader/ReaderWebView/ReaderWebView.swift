@@ -492,6 +492,10 @@ struct ReaderWebView: UIViewRepresentable {
                 \(bottomPaddingCss)
                 \(gridCss)
             }
+            body * {
+                column-count: auto !important;
+                -webkit-column-count: auto !important;
+            }
             img.block-img {
                 max-width: \(imgWidth) !important;
                 max-height: \(imgHeight) !important;
