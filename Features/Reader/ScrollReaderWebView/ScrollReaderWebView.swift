@@ -475,11 +475,17 @@ struct ScrollReaderWebView: UIViewRepresentable {
             
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
-                    ruby.childNodes.forEach(node => {
-                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    [...ruby.childNodes].forEach(node => {
+                        if (node.nodeType !== Node.TEXT_NODE) {
+                            return;
+                        }
+                        if (node.textContent.trim()) {
                             const span = document.createElement('span');
                             span.textContent = node.textContent;
                             node.replaceWith(span);
+                        } else {
+                            // remove whitespaces in ruby nodes that prevent lookups
+                            node.remove();
                         }
                     });
                 });
