@@ -32,6 +32,14 @@ struct BackupView: View {
                     isImporting = true
                 }
             }
+            .fileImporter(
+                isPresented: $isImporting,
+                allowedContentTypes: [UTType(filenameExtension: "hoshi")!]
+            ) { result in
+                if case .success(let url) = result {
+                    restoreFolder(from: url, to: target)
+                }
+            }
             
             Section {
                 Button("Backup") {
@@ -59,6 +67,14 @@ struct BackupView: View {
             } footer: {
                 Text("Importing a backup adds new books and overwrites the statistics and reading progress of books already present.")
             }
+            .fileImporter(
+                isPresented: $isImportingTtu,
+                allowedContentTypes: [.zip]
+            ) { result in
+                if case .success(let url) = result {
+                    importTtuBookData(from: url)
+                }
+            }
         }
         .fileMover(isPresented: $isExporting, file: exportURL) { result in
             switch result {
@@ -69,22 +85,6 @@ struct BackupView: View {
             }
         } onCancellation: {
             cleanup()
-        }
-        .fileImporter(
-            isPresented: $isImporting,
-            allowedContentTypes: [UTType(filenameExtension: "hoshi")!]
-        ) { result in
-            if case .success(let url) = result {
-                restoreFolder(from: url, to: target)
-            }
-        }
-        .fileImporter(
-            isPresented: $isImportingTtu,
-            allowedContentTypes: [.zip]
-        ) { result in
-            if case .success(let url) = result {
-                importTtuBookData(from: url)
-            }
         }
         .overlay {
             if isLoading {
