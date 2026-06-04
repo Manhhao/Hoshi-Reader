@@ -12,38 +12,55 @@ import CHoshiDicts
 class LookupEngine {
     static let shared = LookupEngine()
     
-    private var dictQuery: DictionaryQuery?
-    private var deinflector: Deinflector?
-    private var lookupEngine: Lookup?
-    
-    private init() {
-        deinflector = Deinflector()
+    private nonisolated final class Bundle: @unchecked Sendable {
+        var dictQuery = DictionaryQuery()
+        var deinflector = Deinflector()
+        var lookup: Lookup!
+        
+        init(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL]) {
+            for path in termPaths {
+                dictQuery.add_term_dict(std.string(path.path(percentEncoded: false)))
+            }
+            for path in freqPaths {
+                dictQuery.add_freq_dict(std.string(path.path(percentEncoded: false)))
+            }
+            for path in pitchPaths {
+                dictQuery.add_pitch_dict(std.string(path.path(percentEncoded: false)))
+            }
+            lookup = Lookup(&dictQuery, &deinflector)
+        }
     }
     
+    private var bundle: Bundle?
+    private var generation = 0
+    
+    private init() {}
+    
     func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL]) {
-        dictQuery = DictionaryQuery()
-        for path in termPaths {
-            dictQuery?.add_term_dict(std.string(path.path(percentEncoded: false)))
+        generation += 1
+        let token = generation
+        Task.detached(priority: .userInitiated) {
+            let newBundle = Bundle(termPaths: termPaths, freqPaths: freqPaths, pitchPaths: pitchPaths)
+            await MainActor.run {
+                guard token == self.generation else { return }
+                self.bundle = newBundle
+            }
         }
-        for path in freqPaths {
-            dictQuery?.add_freq_dict(std.string(path.path(percentEncoded: false)))
-        }
-        for path in pitchPaths {
-            dictQuery?.add_pitch_dict(std.string(path.path(percentEncoded: false)))
-        }
-        lookupEngine = Lookup(&dictQuery!, &deinflector!)
     }
     
     func lookup(_ str: String, maxResults: Int = 16, scanLength: Int = 16) -> [LookupResult] {
-        return Array(lookupEngine?.lookup(std.string(str), Int32(maxResults), scanLength) ?? [])
+        guard let bundle else { return [] }
+        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength))
     }
     
     func getStyles() -> [DictionaryStyle] {
-        return Array(dictQuery?.get_styles() ?? [])
+        guard let bundle else { return [] }
+        return Array(bundle.dictQuery.get_styles())
     }
     
     func withMediaFile<T>(dictName: String, mediaPath: String, _ body: (Data) -> T) -> T {
-        let view = dictQuery!.get_media_file_view(std.string(dictName), std.string(mediaPath))
+        guard let bundle else { return body(Data()) }
+        let view = bundle.dictQuery.get_media_file_view(std.string(dictName), std.string(mediaPath))
         let size = Int(view.size)
         guard size > 0, let ptr = UnsafeMutableRawPointer(mutating: view.data) else {
             return body(Data())
