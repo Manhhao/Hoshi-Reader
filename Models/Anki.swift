@@ -52,6 +52,7 @@ struct AnkiConnectConfig: Codable {
     var duplicateScope: DuplicateScope
     var checkAllModels: Bool? = false
     var forceSync: Bool
+    var apiKey: String?
 }
 
 struct MiningContext {

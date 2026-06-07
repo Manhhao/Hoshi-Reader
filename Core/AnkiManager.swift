@@ -690,6 +690,9 @@ class AnkiManager {
         if let params {
             body["params"] = params
         }
+        if let apiKey = ankiConnectConfig?.apiKey, !apiKey.isEmpty {
+            body["key"] = apiKey
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

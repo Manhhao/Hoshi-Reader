@@ -33,6 +33,13 @@ struct AnkiConnectView: View {
                         }
                         .onSubmit { ankiManager.save() }
                     }
+                    SecureField(text: Binding(
+                        get: { ankiManager.ankiConnectConfig?.apiKey ?? "" },
+                        set: { ankiManager.ankiConnectConfig?.apiKey = $0 }
+                    ), prompt: Text("API Key (optional)", tableName: "Dictionaries")) {
+                        Text("API Key (optional)", tableName: "Dictionaries")
+                    }
+                    .onSubmit { ankiManager.save() }
                     Button {
                         Task { await ankiManager.pingAnkiConnect() }
                     } label: {

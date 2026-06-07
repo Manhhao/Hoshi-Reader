@@ -67,6 +67,16 @@
         }
       }
     },
+    "API Key (optional)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 密钥（可选）"
+          }
+        }
+      }
+    },
     "Behaviour" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
