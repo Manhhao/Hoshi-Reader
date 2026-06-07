@@ -20,11 +20,8 @@ struct AudioView: View {
         @Bindable var userConfig = userConfig
         List {
             Section("Sources") {
-                ForEach(Array(userConfig.audioSources.enumerated()), id: \.element.id) { index, source in
-                    Toggle(isOn: Binding(
-                        get: { source.isEnabled },
-                        set: { userConfig.audioSources[index].isEnabled = $0 }
-                    )) {
+                ForEach($userConfig.audioSources) { $source in
+                    Toggle(isOn: $source.isEnabled) {
                         VStack(alignment: .leading) {
                             sourceName(of: source)
                                 .lineLimit(1)
