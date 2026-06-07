@@ -14,11 +14,7 @@ struct BookshelfView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel = BookshelfViewModel()
-    @State private var showDictionaries = false
-    @State private var showAnkiSettings = false
-    @State private var showAppearance = false
-    @State private var showAdvanced = false
-    @State private var showAbout = false
+    @State private var settingsRoute: SettingsRoute?
     @State private var showShelfManagement = false
     @State private var selectedTab = 0
     @State private var focusDictionarySearch = false
@@ -133,25 +129,25 @@ struct BookshelfView: View {
                 NavigationStack {
                     List {
                         Button {
-                            showDictionaries = true
+                            settingsRoute = .dictionaries
                         } label: {
                             Label("Dictionaries", systemImage: "character.book.closed.ja")
                         }
                         .foregroundStyle(.primary)
                         Button {
-                            showAnkiSettings = true
+                            settingsRoute = .anki
                         } label: {
                             Label("Anki", systemImage: "tray.full")
                         }
                         .foregroundStyle(.primary)
                         Button {
-                            showAppearance = true
+                            settingsRoute = .appearance
                         } label: {
                             Label("Appearance", systemImage: "paintpalette")
                         }
                         .foregroundStyle(.primary)
                         Button {
-                            showAdvanced = true
+                            settingsRoute = .advanced
                         } label: {
                             Label("Advanced", systemImage: "gearshape.2")
                         }
@@ -162,7 +158,7 @@ struct BookshelfView: View {
                                 Label("Report an Issue", systemImage: "exclamationmark.bubble")
                             }
                             Button {
-                                showAbout = true
+                                settingsRoute = .about
                             } label: {
                                 Label("About", systemImage: "info.circle")
                             }
@@ -170,20 +166,19 @@ struct BookshelfView: View {
                         }
                     }
                     .navigationTitle("Settings")
-                    .navigationDestination(isPresented: $showDictionaries) {
-                        DictionaryView()
-                    }
-                    .navigationDestination(isPresented: $showAnkiSettings) {
-                        AnkiView()
-                    }
-                    .navigationDestination(isPresented: $showAdvanced) {
-                        AdvancedView()
-                    }
-                    .navigationDestination(isPresented: $showAbout) {
-                        AboutView()
-                    }
-                    .navigationDestination(isPresented: $showAppearance) {
-                        AppearanceView(userConfig: userConfig, showDismiss: false)
+                    .navigationDestination(item: $settingsRoute) { route in
+                        switch route {
+                        case .dictionaries:
+                            DictionaryView()
+                        case .anki:
+                            AnkiView()
+                        case .appearance:
+                            AppearanceView(userConfig: userConfig, showDismiss: false)
+                        case .advanced:
+                            AdvancedView()
+                        case .about:
+                            AboutView()
+                        }
                     }
                 }
             }
@@ -363,6 +358,14 @@ struct BookshelfView: View {
             Label(LocalizedStringKey("Sort Option Title"), systemImage: sortOption.icon)
         }
     }
+}
+
+private enum SettingsRoute: Hashable {
+    case dictionaries
+    case anki
+    case appearance
+    case advanced
+    case about
 }
 
 private struct DictionaryRoute {
