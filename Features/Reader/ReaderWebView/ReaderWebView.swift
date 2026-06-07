@@ -469,9 +469,6 @@ struct ReaderWebView: UIViewRepresentable {
                 --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
             }
-            html {
-                -webkit-line-box-contain: block glyphs replaced;
-            }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;

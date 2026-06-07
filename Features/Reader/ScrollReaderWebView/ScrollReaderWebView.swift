@@ -362,9 +362,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
             }
-            html {
-                -webkit-line-box-contain: block glyphs replaced;
-            }
             html, body {
                 margin: 0 !important;
                 padding: 0 !important;
