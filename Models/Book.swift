@@ -16,21 +16,25 @@ enum SortOption: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .recent: return "clock"
-        case .title: return "textformat"
+        case .title: return "textformat.size.larger.ja"
         }
     }
 }
 
 struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
-    let title: String?
+    let title: String
+    let epub: String?
     let cover: String?
-    let folder: String?
+    let folder: String
     var lastAccess: Date
+    var renamedTitle: String?
+    var displayTitle: String { renamedTitle ?? title }
     
-    init(id: UUID = UUID(), title: String?, cover: String?, folder: String?, lastAccess: Date) {
+    init(id: UUID = UUID(), title: String, epub: String? = nil, cover: String?, folder: String, lastAccess: Date) {
         self.id = id
         self.title = title
+        self.epub = epub
         self.cover = cover
         self.folder = folder
         self.lastAccess = lastAccess

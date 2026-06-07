@@ -18,9 +18,11 @@ struct WebViewState: Hashable {
     var verticalPadding: Int
     var avoidPageBreak: Bool
     var justifyText: Bool
+    var blurImages: Bool
     var layoutAdvanced: Bool
     var lineHeight: Double
     var characterSpacing: Double
+    var paragraphSpacing: Double
     var size: CGSize
 }
 
@@ -41,6 +43,7 @@ struct ReaderLoader: View {
                 enableStatistics: userConfig.enableStatistics,
                 autostartStatistics: userConfig.statisticsAutostartMode == .on,
                 autoSyncEnabled: userConfig.enableSync && userConfig.enableAutoSync,
+                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
                 syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
                 statsSyncMode: userConfig.statisticsSyncMode,
                 syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
@@ -57,13 +60,19 @@ struct ReaderView: View {
     @State private var topSafeArea: CGFloat = UIApplication.topSafeArea
     @State private var focusMode = false
     @State private var inactiveSince: Date?
-    @State private var topBarLeftWidth: CGFloat = 0
-    @State private var topBarRightWidth: CGFloat = 0
-    @State private var topBarTotalWidth: CGFloat = 0
-    @State private var titleNaturalWidth: CGFloat = 0
-    
+    @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
-    private let lineHeight: CGFloat = 16
+    
+    private var bottomSafeArea: CGFloat {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return 20
+        }
+        return UIApplication.bottomSafeArea
+    }
+    
+    private var readerBottomPadding: CGFloat {
+        bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
+    }
     
     private var sepiaInverted: Bool {
         userConfig.theme == .sepia && userConfig.sepiaInvertInDark && systemColorScheme == .dark
@@ -135,6 +144,7 @@ struct ReaderView: View {
         enableStatistics: Bool,
         autostartStatistics: Bool,
         autoSyncEnabled: Bool,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool
@@ -146,6 +156,7 @@ struct ReaderView: View {
             enableStatistics: enableStatistics,
             autostartStatistics: autostartStatistics,
             autoSyncEnabled: autoSyncEnabled,
+            syncBookData: syncBookData,
             syncStats: syncStats,
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
@@ -180,20 +191,107 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: max(topSafeArea, 25) + webViewPadding
-                       + (userConfig.readerShowProgressTop && !progressString.isEmpty ? lineHeight : 0)
-                       + ((userConfig.readerShowTitle
-                           || (userConfig.enableStatistics && userConfig.readerShowStatisticsToggle)
-                           || (userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio)
-                           || viewModel.backTarget != nil || viewModel.forwardTarget != nil) ? lineHeight : 0))
+                .frame(height: max(topSafeArea, 40) + webViewPadding)
                 .contentShape(Rectangle())
+                .overlay(alignment: .bottom) {
+                    HStack {
+                        HStack(spacing: 2) {
+                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
+                                Button {
+                                    if viewModel.isTracking {
+                                        viewModel.stopTracking()
+                                    } else {
+                                        viewModel.startTracking()
+                                    }
+                                } label: {
+                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
+                                        .font(.system(size: 16))
+                                        .frame(width: 26, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                            
+                            if let character = viewModel.backTarget {
+                                Button {
+                                    viewModel.navigateBackwards()
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "arrow.uturn.backward.circle")
+                                        Text(character.formatted(.number.grouping(.never)))
+                                    }
+                                    .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 2) {
+                            if let character = viewModel.forwardTarget {
+                                Button {
+                                    viewModel.navigateForwards()
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Text(character.formatted(.number.grouping(.never)))
+                                        Image(systemName: "arrow.uturn.right.circle")
+                                    }
+                                    .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                            
+                            if userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio {
+                                Button {
+                                    if viewModel.wasPaused {
+                                        viewModel.wasPaused = false
+                                    } else {
+                                        viewModel.sasayakiPlayer.togglePlayback()
+                                    }
+                                } label: {
+                                    Image(systemName: viewModel.sasayakiPlayer.isPlaying || viewModel.wasPaused ? "pause.fill" : "waveform")
+                                        .font(.system(size: 16))
+                                        .frame(width: 26, height: 20)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.bottom, 16)
+                    .opacity(focusMode ? 1 : 0)
+                    .allowsHitTesting(focusMode)
+                }
             
             GeometryReader { geometry in
                 ZStack {
                     let viewSize = CGSize(width: geometry.size.width.rounded(), height: (geometry.size.height + (userConfig.verticalWriting ? CGFloat(userConfig.fontSize) : 0)).rounded())
+                    let scrollViewSize = CGSize(
+                        width: userConfig.verticalWriting ? (geometry.size.width * (1 - CGFloat(userConfig.horizontalPadding) / 100)).rounded() : viewSize.width,
+                        height: userConfig.verticalWriting ? viewSize.height : (geometry.size.height * (1 - CGFloat(userConfig.verticalPadding) / 100)).rounded()
+                    )
                     if userConfig.continuousMode {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            }
+                        
                         ScrollReaderWebView(
                             userConfig: userConfig,
+                            viewportWidth: Int(scrollViewSize.width),
                             bridge: viewModel.bridge,
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
@@ -205,11 +303,38 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
+                                let selection = SelectionData(
+                                    text: $0.text,
+                                    sentence: $0.sentence,
+                                    rect: $0.rect.offsetBy(
+                                        dx: (geometry.size.width - scrollViewSize.width) / 2,
+                                        dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
+                                    ),
+                                    normalizedOffset: $0.normalizedOffset
+                                )
+                                return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
-                            onTapOutside: viewModel.closePopups,
+                            onTapOutside: {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            },
                             onScroll: {
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
@@ -221,7 +346,8 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
-                            onHighlightCreated: viewModel.addHighlight
+                            onHighlightCreated: viewModel.addHighlight,
+                            onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -232,12 +358,14 @@ struct ReaderView: View {
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,
                             justifyText: userConfig.justifyText,
+                            blurImages: userConfig.blurImages,
                             layoutAdvanced: userConfig.layoutAdvanced,
                             lineHeight: userConfig.lineHeight,
                             characterSpacing: userConfig.characterSpacing,
-                            size: geometry.size,
+                            paragraphSpacing: userConfig.paragraphSpacing,
+                            size: scrollViewSize,
                         ))
-                        .frame(width: viewSize.width, height: viewSize.height)
+                        .frame(width: scrollViewSize.width, height: scrollViewSize.height)
                     } else {
                         ReaderWebView(
                             userConfig: userConfig,
@@ -253,12 +381,30 @@ struct ReaderView: View {
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
-                            onTapOutside: viewModel.closePopups,
+                            onTapOutside: {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            },
                             onPageTurn: {
                                 viewModel.clearForwardHistory()
                                 viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
                                 if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
@@ -266,7 +412,8 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
-                            onHighlightCreated: viewModel.addHighlight
+                            onHighlightCreated: viewModel.addHighlight,
+                            onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -277,9 +424,11 @@ struct ReaderView: View {
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,
                             justifyText: userConfig.justifyText,
+                            blurImages: userConfig.blurImages,
                             layoutAdvanced: userConfig.layoutAdvanced,
                             lineHeight: userConfig.lineHeight,
                             characterSpacing: userConfig.characterSpacing,
+                            paragraphSpacing: userConfig.paragraphSpacing,
                             size: geometry.size,
                         ))
                         .frame(width: viewSize.width, height: viewSize.height)
@@ -339,17 +488,103 @@ struct ReaderView: View {
                             .tint(.secondary)
                     }
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
             }
             
-            HStack {
-                CircleButton(systemName: "chevron.left")
-                    .onTapGesture {
-                        if viewModel.isTracking {
-                            viewModel.stopTracking()
+            Color.clear
+                .frame(height: readerBottomPadding)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.clearSelection()
+                    if viewModel.popups.isEmpty {
+                        withAnimation(.default.speed(2)) {
+                            focusMode.toggle()
                         }
-                        dismissReader?()
+                    } else {
+                        viewModel.closePopups()
                     }
-                    .opacity(focusMode ? 0 : 1)
+                }
+                .overlay(alignment: .center) {
+                    if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
+                        VStack {
+                            Text(progressString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                        .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                        .offset(y: -3)
+                    }
+                }
+        }
+        .background(readerBackgroundColor.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            let showTitle = userConfig.readerShowTitle
+            let showTopProgress = userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
+            if showTitle || showTopProgress {
+                VStack(spacing: 2) {
+                    if showTitle {
+                        Text(viewModel.book.displayTitle)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                    }
+                    if showTopProgress {
+                        Text(progressString)
+                            .font(.caption)
+                            .monospacedDigit()
+                            .tracking(-0.4)
+                    }
+                }
+                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .conditionalGlassEffect()
+                .padding(.horizontal, 40)
+                .padding(.top, max(topSafeArea, 25))
+                .opacity(focusMode ? 0 : 1)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            HStack {
+                Button {
+                    if viewModel.isTracking {
+                        viewModel.stopTracking()
+                    }
+                    dismissReader?()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.primary)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .conditionalGlassEffect()
+                
+                Spacer()
+                
+                let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
+                let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
+                if showBottomProgress || showStats {
+                    VStack(spacing: 2) {
+                        if showStats {
+                            Text(statisticsString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                        if showBottomProgress {
+                            Text(progressString)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .tracking(-0.4)
+                        }
+                    }
+                    .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .conditionalGlassEffect()
+                }
                 
                 Spacer()
                 
@@ -388,155 +623,20 @@ struct ReaderView: View {
                         }
                     }
                 } label: {
-                    CircleButton(systemName: "slider.horizontal.3")
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.primary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
                 }
-                .tint(.primary)
-                .opacity(focusMode ? 0 : 1)
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .conditionalGlassEffect()
             }
             .padding(.horizontal, 20)
-            .frame(height: (UIApplication.bottomSafeArea > 25 ? UIApplication.bottomSafeArea : 44) + 10, alignment: .top)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.default.speed(2)) {
-                    focusMode.toggle()
-                }
-            }
-        }
-        .background(readerBackgroundColor)
-        .overlay(alignment: .top) {
-            VStack(spacing: 1) {
-                ZStack(alignment: .leading) {
-                    HStack {
-                        HStack(spacing: 2) {
-                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
-                                Button {
-                                    if viewModel.isTracking {
-                                        viewModel.stopTracking()
-                                    } else {
-                                        viewModel.startTracking()
-                                    }
-                                } label: {
-                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
-                                        .font(.subheadline)
-                                        .frame(width: 24, height: lineHeight)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                            }
-                            
-                            if let character = viewModel.backTarget {
-                                Button {
-                                    viewModel.navigateBackwards()
-                                } label: {
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "arrow.uturn.backward.circle")
-                                        Text(character.formatted(.number.grouping(.never)))
-                                    }
-                                    .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                                .opacity(focusMode ? 0 : 1)
-                            }
-                        }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarLeftWidth = $0 }
-                        
-                        Spacer(minLength: 0)
-                        
-                        HStack(spacing: 2) {
-                            if let character = viewModel.forwardTarget {
-                                Button {
-                                    viewModel.navigateForwards()
-                                } label: {
-                                    HStack(spacing: 2) {
-                                        Text(character.formatted(.number.grouping(.never)))
-                                        Image(systemName: "arrow.uturn.right.circle")
-                                    }
-                                    .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                                .opacity(focusMode ? 0 : 1)
-                            }
-                            
-                            if userConfig.enableSasayaki && userConfig.readerShowSasayakiToggle && viewModel.sasayakiPlayer.hasAudio {
-                                Button {
-                                    if viewModel.wasPaused {
-                                        viewModel.wasPaused = false
-                                    } else {
-                                        viewModel.sasayakiPlayer.togglePlayback()
-                                    }
-                                } label: {
-                                    Image(systemName: viewModel.sasayakiPlayer.isPlaying || viewModel.wasPaused ? "pause.fill" : "waveform")
-                                        .font(.subheadline)
-                                        .frame(width: 24, height: lineHeight)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                            }
-                        }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarRightWidth = $0 }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topBarTotalWidth = $0 }
-                    
-                    if userConfig.readerShowTitle, let title = viewModel.document.title {
-                        let gap: CGFloat = 2
-                        let leftEdge = topBarLeftWidth + gap
-                        let rightEdge = topBarTotalWidth - topBarRightWidth - gap
-                        let availableSpace = max(0, rightEdge - leftEdge)
-                        let displayWidth = min(titleNaturalWidth, availableSpace)
-                        let titleLeading = max(leftEdge, min(rightEdge - displayWidth, (topBarTotalWidth - displayWidth) / 2))
-                        
-                        Text(title)
-                            .font(.subheadline)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor.opacity(0.5)) : AnyShapeStyle(.tertiary))
-                            .lineLimit(1)
-                            .frame(width: min(titleNaturalWidth, availableSpace), alignment: .center)
-                            .offset(x: titleLeading)
-                            .opacity(focusMode ? 0 : 1)
-                    }
-                }
-                .overlay {
-                    if userConfig.readerShowTitle, let title = viewModel.document.title {
-                        Text(title)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .fixedSize()
-                            .hidden()
-                            .allowsHitTesting(false)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { titleNaturalWidth = $0 }
-                    }
-                }
-                .padding(.horizontal, 15)
-                
-                if userConfig.readerShowProgressTop && !progressString.isEmpty {
-                    Text(progressString)
-                        .font(.caption)
-                        .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                        .monospacedDigit()
-                        .tracking(-0.4)
-                        .opacity(focusMode ? 0 : 1)
-                }
-            }
-            .padding(.top, max(topSafeArea, 25))
-        }
-        .overlay(alignment: .bottom) {
-            VStack {
-                if !focusMode {
-                    if userConfig.enableStatistics && !statisticsString.isEmpty {
-                        Text(statisticsString)
-                            .font(.caption)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    }
-                    if !userConfig.readerShowProgressTop && !progressString.isEmpty {
-                        Text(progressString)
-                            .font(.caption)
-                            .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    }
-                }
-            }
-            .monospacedDigit()
-            .tracking(-0.4)
+            .padding(.bottom, bottomSafeArea > 0 ? bottomSafeArea : 8)
+            .opacity(focusMode ? 0 : 1)
+            .allowsHitTesting(!focusMode)
         }
         .overlay {
             if viewModel.isSyncing {
@@ -550,6 +650,14 @@ struct ReaderView: View {
                 }
             }
         }
+        .overlay {
+            if let url = imageURL {
+                FullscreenImageView(url: url, backgroundColor: readerBackgroundColor) {
+                    imageURL = nil
+                }
+                .ignoresSafeArea()
+            }
+        }
         .sheet(item: $viewModel.activeSheet) { item in
             switch item {
             case .appearance:
@@ -557,7 +665,7 @@ struct ReaderView: View {
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
             case .chapters:
-                ChapterListView(document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
+                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
                     viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
                     viewModel.activeSheet = nil
                     viewModel.clearSelection()
@@ -642,7 +750,7 @@ struct ReaderView: View {
                 await viewModel.flushAutoSync()
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)
         .statusBarHidden(focusMode)
         .persistentSystemOverlays(focusMode ? .hidden : .automatic)

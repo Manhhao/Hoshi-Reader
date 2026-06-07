@@ -24,6 +24,12 @@ struct SasayakiSheet: View {
                     if player.hasAudio {
                         HStack(spacing: 20) {
                             Button {
+                                player.skip(forward: false)
+                            } label: {
+                                Image(systemName: "15.arrow.trianglehead.counterclockwise")
+                            }
+                            
+                            Button {
                                 player.prevCue()
                             } label: {
                                 Image(systemName: "backward.fill")
@@ -33,12 +39,19 @@ struct SasayakiSheet: View {
                                 player.togglePlayback()
                             } label: {
                                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 30))
                             }
                             
                             Button {
                                 player.nextCue()
                             } label: {
                                 Image(systemName: "forward.fill")
+                            }
+                            
+                            Button {
+                                player.skip(forward: true)
+                            } label: {
+                                Image(systemName: "15.arrow.trianglehead.clockwise")
                             }
                         }
                         .buttonStyle(.borderless)

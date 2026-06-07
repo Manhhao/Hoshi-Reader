@@ -24,7 +24,7 @@ struct SasayakiSettingsView: View {
                         Text("Choose the **.srt** and press **Match**. Matching only has to be done once.")
                         Text("You can now open the book and choose **Sasayaki** from the context menu.")
                         Text("Load the audiobook and press play, lines will be highlighted as the audiobook plays.")
-                        Text("**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/develop/SASAYAKI.md)**")
+                        Text("**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/main/SASAYAKI.md)**")
                     }
                 }
             }
@@ -34,6 +34,14 @@ struct SasayakiSettingsView: View {
                     Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)
+                }
+                
+                Section {
+                    Toggle("Show Skip (±15s) Controls", isOn: $userConfig.sasayakiSkipControls)
+                } header: {
+                    Text("Command Center")
+                } footer: {
+                    Text("Skip Controls will replace Next/Previous Cue controls as media controls.")
                 }
                 
                 Section("Light Theme") {

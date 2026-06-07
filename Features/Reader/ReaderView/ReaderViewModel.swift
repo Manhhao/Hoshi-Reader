@@ -44,11 +44,10 @@ class ReaderLoaderViewModel {
     let book: BookMetadata
     
     var rootURL: URL? {
-        guard let booksFolder = try? BookStorage.getBooksDirectory(),
-              let folder = book.folder else {
+        guard let booksFolder = try? BookStorage.getBooksDirectory() else {
             return nil
         }
-        return booksFolder.appendingPathComponent(folder)
+        return booksFolder.appendingPathComponent(book.folder)
     }
     
     init(book: BookMetadata) {
@@ -57,13 +56,16 @@ class ReaderLoaderViewModel {
     }
     
     func loadBook() {
-        guard let root = rootURL else {
+        guard let root = rootURL,
+              let epub = book.epub else {
             return
         }
         
-        guard let doc = try? BookStorage.loadEpub(root) else {
+        guard let doc = try? BookStorage.loadEpub(root.appendingPathComponent(epub)) else {
             return
         }
+        
+        CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
         
         var bookCopy = self.book
         bookCopy.lastAccess = Date()
@@ -107,6 +109,7 @@ class ReaderViewModel {
     
     // sync
     let autoSyncEnabled: Bool
+    let syncBookData: Bool
     let syncStats: Bool
     let statsSyncMode: StatisticsSyncMode
     let syncAudioBook: Bool
@@ -132,6 +135,7 @@ class ReaderViewModel {
         enableStatistics: Bool,
         autostartStatistics: Bool,
         autoSyncEnabled: Bool,
+        syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
         syncAudioBook: Bool
@@ -142,6 +146,7 @@ class ReaderViewModel {
         self.enableStatistics = enableStatistics
         self.autostartStatistics = autostartStatistics
         self.autoSyncEnabled = autoSyncEnabled
+        self.syncBookData = syncBookData
         self.syncStats = syncStats
         self.statsSyncMode = statsSyncMode
         self.syncAudioBook = syncAudioBook
@@ -256,6 +261,7 @@ class ReaderViewModel {
             let result = try? await SyncManager.shared.syncBook(
                 book: book,
                 direction: nil,
+                syncBookData: syncBookData,
                 syncStats: syncStats,
                 statsSyncMode: statsSyncMode,
                 syncAudioBook: syncAudioBook,
@@ -278,6 +284,7 @@ class ReaderViewModel {
         let result = try? await SyncManager.shared.syncBook(
             book: book,
             direction: nil,
+            syncBookData: syncBookData,
             syncStats: syncStats,
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook,
@@ -406,10 +413,13 @@ class ReaderViewModel {
     }
     
     func closePopups() {
+        guard !popups.isEmpty else { return }
         let popupIds = Set(popups.map(\.id))
         withAnimation(.default.speed(2.4)) {
-            for index in popups.indices {
-                popups[index].showPopup = false
+            popups = popups.map {
+                var p = $0
+                p.showPopup = false
+                return p
             }
         } completion: {
             self.popups.removeAll { popupIds.contains($0.id) }
@@ -423,11 +433,15 @@ class ReaderViewModel {
     }
     
     func closeChildPopups(parent: Int) {
-        var popupIds: Set<UUID> = []
+        let popupIds = Set(popups.dropFirst(parent + 1).map(\.id))
+        guard !popupIds.isEmpty else { return }
         withAnimation(.default.speed(2.4)) {
-            for index in popups.indices.dropFirst(parent + 1) {
-                popups[index].showPopup = false
-                popupIds.insert(popups[index].id)
+            popups = popups.map {
+                var p = $0
+                if popupIds.contains(p.id) {
+                    p.showPopup = false
+                }
+                return p
             }
         } completion: {
             self.popups.removeAll { popupIds.contains($0.id) }
@@ -615,6 +629,7 @@ class ReaderViewModel {
             _ = try? await SyncManager.shared.syncBook(
                 book: self.book,
                 direction: direction,
+                syncBookData: syncBookData,
                 syncStats: self.syncStats,
                 statsSyncMode: self.statsSyncMode,
                 syncAudioBook: self.syncAudioBook

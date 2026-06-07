@@ -47,7 +47,7 @@ struct AppearanceView: View {
                 Section("Theme") {
                     Picker("Appearance", selection: $userConfig.theme) {
                         ForEach(Themes.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            textForTheme(mode).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -203,6 +203,8 @@ struct AppearanceView: View {
                     
                     Toggle("Justify Text", isOn: $userConfig.justifyText)
                     
+                    Toggle("Blur Images", isOn: $userConfig.blurImages)
+                    
                     Toggle("Advanced", isOn: $userConfig.layoutAdvanced)
                     if userConfig.layoutAdvanced {
                         VStack {
@@ -223,6 +225,15 @@ struct AppearanceView: View {
                             }
                             Slider(value: $userConfig.characterSpacing, in: -10...10, step: 1)
                         }
+                        VStack {
+                            HStack {
+                                Text("Paragraph Spacing")
+                                Spacer()
+                                Text("\(userConfig.paragraphSpacing, specifier: "%.1f")em")
+                                    .fontWeight(.semibold)
+                            }
+                            Slider(value: $userConfig.paragraphSpacing, in: 0...3, step: 0.1)
+                        }
                     }
                 }
                 
@@ -232,6 +243,13 @@ struct AppearanceView: View {
                     Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
                     
                     if userConfig.readerShowCharacters || userConfig.readerShowPercentage {
+                        VStack {
+                            Toggle("Always Show Progress", isOn: $userConfig.readerAlwaysShowProgress)
+                            Text("Shows progress at the bottom even when the UI is hidden.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         HStack {
                             Text("Progress Position")
                             Spacer()
@@ -242,6 +260,7 @@ struct AppearanceView: View {
                             .pickerStyle(.segmented)
                             .frame(width: 120)
                         }
+                        .disabled(userConfig.readerAlwaysShowProgress)
                     }
                     
                     if userConfig.enableStatistics {
@@ -278,7 +297,19 @@ struct AppearanceView: View {
                             get: { Double(userConfig.popupHeight) },
                             set: { userConfig.popupHeight = Int($0) }
                         ), in: 100...500, step: 10)
+                        
+                        HStack {
+                            Text("Scale")
+                            Spacer()
+                            Text("\(userConfig.popupScale, specifier: "%.2f")")
+                                .fontWeight(.semibold)
+                        }
+                        Slider(value: Bindable(userConfig).popupScale, in: 0.8...1.5, step: 0.05)
                     }
+                    
+                    Toggle("Show Action Bar", isOn: Bindable(userConfig).popupActionBar)
+                    
+                    Toggle("Disable Transparency", isOn: Bindable(userConfig).popupDisableTransparency)
                     
                     Toggle("Full-width", isOn: Bindable(userConfig).popupFullWidth)
                     
@@ -315,6 +346,21 @@ struct AppearanceView: View {
             .onAppear {
                 importedFonts = (try? FontManager.shared.storedFonts())?.map { $0.deletingPathExtension().lastPathComponent } ?? []
             }
+        }
+    }
+    
+    private func textForTheme(_ theme: Themes) -> Text {
+        switch theme {
+        case .system:
+            Text("System")
+        case .light:
+            Text("Light")
+        case .dark:
+            Text("Dark")
+        case .sepia:
+            Text("Sepia")
+        case .custom:
+            Text("Custom")
         }
     }
 }

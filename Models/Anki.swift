@@ -73,8 +73,17 @@ enum Handlebars: String, CaseIterable {
     case furiganaPlain = "{furigana-plain}"
     case audio = "{audio}"
     case glossary = "{glossary}"
+    case glossaryBrief = "{glossary-brief}"
+    case glossaryNoDictionary = "{glossary-no-dictionary}"
     case glossaryFirst = "{glossary-first}"
+    case glossaryFirstBrief = "{glossary-first-brief}"
+    case glossaryFirstNoDictionary = "{glossary-first-no-dictionary}"
     case selectedGlossary = "{selected-glossary}"
+    case selectedGlossaryFallback = "{selected-glossary-fallback}"
+    case selectedGlossaryBrief = "{selected-glossary-brief}"
+    case selectedGlossaryBriefFallback = "{selected-glossary-brief-fallback}"
+    case selectedGlossaryNoDictionary = "{selected-glossary-no-dictionary}"
+    case selectedGlossaryNoDictionaryFallback = "{selected-glossary-no-dictionary-fallback}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
     case frequencies = "{frequencies}"
@@ -86,4 +95,59 @@ enum Handlebars: String, CaseIterable {
     case sasayakiAudio = "{sasayaki-audio}"
     
     static let singleGlossaryPrefix = "{single-glossary-"
+}
+
+struct AnkiFieldTemplate {
+    let noteType: String
+    let mappings: [String: String]
+    
+    static let templates: [AnkiFieldTemplate] = [
+        AnkiFieldTemplate(noteType: "Lapis", mappings: [
+            "Expression": Handlebars.expression.rawValue,
+            "ExpressionFurigana": Handlebars.furiganaPlain.rawValue,
+            "ExpressionReading": Handlebars.reading.rawValue,
+            "ExpressionAudio": Handlebars.audio.rawValue,
+            "SelectionText": Handlebars.popupSelectionText.rawValue,
+            "MainDefinition": Handlebars.glossaryFirst.rawValue,
+            "Sentence": Handlebars.sentence.rawValue,
+            "Picture": Handlebars.bookCover.rawValue,
+            "Glossary": Handlebars.glossary.rawValue,
+            "PitchPosition": Handlebars.pitchPositions.rawValue,
+            "PitchCategories": Handlebars.pitchCategories.rawValue,
+            "Frequency": Handlebars.frequencies.rawValue,
+            "FreqSort": Handlebars.frequencyHarmonicRank.rawValue,
+            "MiscInfo": Handlebars.documentTitle.rawValue,
+        ]),
+        AnkiFieldTemplate(noteType: "Kiku", mappings: [
+            "Expression": Handlebars.expression.rawValue,
+            "ExpressionFurigana": Handlebars.furiganaPlain.rawValue,
+            "ExpressionReading": Handlebars.reading.rawValue,
+            "ExpressionAudio": Handlebars.audio.rawValue,
+            "SelectionText": Handlebars.popupSelectionText.rawValue,
+            "MainDefinition": Handlebars.glossaryFirst.rawValue,
+            "Sentence": Handlebars.sentence.rawValue,
+            "Picture": Handlebars.bookCover.rawValue,
+            "Glossary": Handlebars.glossary.rawValue,
+            "PitchPosition": Handlebars.pitchPositions.rawValue,
+            "PitchCategories": Handlebars.pitchCategories.rawValue,
+            "Frequency": Handlebars.frequencies.rawValue,
+            "FreqSort": Handlebars.frequencyHarmonicRank.rawValue,
+            "MiscInfo": Handlebars.documentTitle.rawValue,
+        ]),
+        AnkiFieldTemplate(noteType: "Senren", mappings: [
+            "word": Handlebars.expression.rawValue,
+            "reading": Handlebars.reading.rawValue,
+            "sentence": Handlebars.sentence.rawValue,
+            "selectionText": Handlebars.popupSelectionText.rawValue,
+            "definition": Handlebars.glossaryFirst.rawValue,
+            "wordAudio": Handlebars.audio.rawValue,
+            "picture": Handlebars.bookCover.rawValue,
+            "glossary": Handlebars.glossary.rawValue,
+            "pitchPositions": Handlebars.pitchPositions.rawValue,
+            "pitchCategories": Handlebars.pitchCategories.rawValue,
+            "frequencies": Handlebars.frequencies.rawValue,
+            "freqSort": Handlebars.frequencyHarmonicRank.rawValue,
+            "miscInfo": Handlebars.documentTitle.rawValue,
+        ])
+    ]
 }

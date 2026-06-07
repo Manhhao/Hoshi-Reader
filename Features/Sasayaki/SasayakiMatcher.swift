@@ -10,6 +10,10 @@ import EPUBKit
 import Foundation
 
 struct SasayakiMatcher {
+    private enum MatchError: Error {
+        case missingEpub
+    }
+    
     private struct Chapter {
         let chapterIndex: Int
         let start: Int
@@ -18,7 +22,11 @@ struct SasayakiMatcher {
     }
     
     static func match(rootURL: URL, cues: [SasayakiCue], searchWindow: Int) throws -> SasayakiMatchData {
-        let document = try BookStorage.loadEpub(rootURL)
+        guard let epub = BookStorage.loadMetadata(root: rootURL)?.epub else {
+            throw MatchError.missingEpub
+        }
+        
+        let document = try BookStorage.loadEpub(rootURL.appendingPathComponent(epub))
         let guideTocPaths: Set<String> = Set(
             (document.guide?.references ?? [])
                 .filter { $0.type.lowercased() == "toc" }
@@ -36,7 +44,7 @@ struct SasayakiMatcher {
             if guideTocPaths.contains(manifestItem.path) {
                 continue
             }
-
+            
             let url = document.contentDirectory.appendingPathComponent(manifestItem.path)
             guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                 continue
@@ -78,7 +86,12 @@ struct SasayakiMatcher {
             }
             
             let chars = Array(text)
-            guard let index = findText(source: source, text: chars, start: cursor, end: min(source.count, cursor + searchWindow)) else {
+            if cue.text.hasPrefix("＊") && chars.count < 5 {
+                unmatched += 1
+                continue
+            }
+            
+            guard let index = findText(source: source, text: chars, start: cursor, end: min(source.count, cursor + chars.count + searchWindow)) else {
                 unmatched += 1
                 continue
             }

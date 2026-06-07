@@ -17,10 +17,10 @@ const SMALL_KANA_SET = new Set('ぁぃぅぇぉゃゅょゎァィゥェォャュ
 const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
-const audioUrls = {};
+let audioUrls = {};
 let lastSelection = '';
 let currentDictionaryMedia = null;
-const selectedDictionaries = {};
+let selectedDictionaries = {};
 
 function el(tag, props = {}, children = []) {
     const element = document.createElement(tag);
@@ -48,11 +48,14 @@ function toKebabCase(str) {
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/ja/japanese.js#L332
-function isStringPartiallyJapanese(text) {
-    if (!text) {
-        return false;
+function isStringPartiallyJapanese(str) {
+    if (str.length === 0) { return false; }
+    for (const c of str) {
+        if (window.hoshiSelection?.isCodePointJapanese(c.codePointAt(0))) {
+            return true;
+        }
     }
-    return KANA_PATTERN.test(text) || KANJI_PATTERN.test(text);
+    return false;
 }
 
 // https://github.com/yomidevs/yomitan/blob/c0abb9e98a15aeb6b6f8f6e2d91fe5e54240b54a/ext/js/language/zh/chinese.js#L54
@@ -397,7 +400,6 @@ function constructSingleGlossaryHtml(entryIndex) {
             html += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
         }
         html += `</div>`;
-        
         glossaries[lastDict] = html;
         currentGlossary = '';
     };
@@ -430,7 +432,7 @@ function constructSingleGlossaryHtml(entryIndex) {
         } else {
             label = tags ? `(${tags})` : '';
         }
-        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`
+        currentGlossary += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
         prevTags = currentTags;
     });
     
@@ -476,7 +478,8 @@ function constructGlossaryHtml(entryIndex) {
             label = tags ? `(${index}, ${tags})` : `(${index})`
         }
         
-        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${applyTableStyles(tempDiv.innerHTML)}</span></li>`;
+        const content = applyTableStyles(tempDiv.innerHTML);
+        glossaryItems += `<li data-dictionary="${dictName}"><i>${label}</i> <span>${content}</span></li>`;
         prevTags = currentTags;
         
         const css = window.dictionaryStyles?.[dictName];
@@ -485,10 +488,7 @@ function constructGlossaryHtml(entryIndex) {
         }
     });
     
-    let result = '<div style="text-align: left;" class="yomitan-glossary"><ol>';
-    result += glossaryItems;
-    result += '</ol>';
-    
+    let stylesHtml = '';
     for (const [dictName, css] of Object.entries(styles)) {
         const scopedCss = constructDictCss(css, dictName);
         const formatted = scopedCss
@@ -497,13 +497,13 @@ function constructGlossaryHtml(entryIndex) {
         .replace(/\s*\}\s*/g, ' }\n')
         .replace(/;\s*/g, '; ')
         .trim();
-        result += `<style>${formatted}</style>`;
+        stylesHtml += `<style>${formatted}</style>`;
     }
     if (window.compactGlossariesAnki) {
-        result += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
+        stylesHtml += `<style>${COMPACT_GLOSSARIES_ANKI}</style>`;
     }
-    result += '</div>';
-    return result;
+    
+    return `<div style="text-align: left;" class="yomitan-glossary"><ol>${glossaryItems}</ol>${stylesHtml}</div>`;
 }
 
 function constructFrequencyHtml(frequencies) {
@@ -655,6 +655,13 @@ function createDefinitionImage(data, dictionary, exporting = false) {
                 img.addEventListener('load', () => {
                     imageContainer.style.width = `${Math.min(img.naturalWidth, window.innerWidth - 20)}px`;
                     aspectRatioSizer.style.paddingTop = `${(img.naturalHeight / img.naturalWidth) * 100}%`;
+                }, {once: true});
+            } else if (!hasPreferredWidth && !hasPreferredHeight && sizeUnits === 'em') {
+                img.addEventListener('load', () => {
+                    const aspectRatio = img.naturalHeight / img.naturalWidth;
+                    const widthEm = typeof data.width === 'number' ? data.width : data.height / aspectRatio;
+                    imageContainer.style.width = `${widthEm}em`;
+                    aspectRatioSizer.style.paddingTop = `${aspectRatio * 100}%`;
                 }, {once: true});
             }
             img.src = imageUrl;
@@ -904,12 +911,18 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
     if (node.href) {
         element.setAttribute('href', node.href);
         const isExternal = /^https?:\/\//i.test(node.href);
-        element.onclick = (e) => {
+        element.onclick = async (e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (isExternal) {
                 openExternalLink(node.href);
             } else {
-                // TODO: handle redirect to other entry
+                const i = node.href.indexOf('?');
+                const query = i < 0 ? null : new URLSearchParams(node.href.slice(i + 1)).get('query');
+                const count = query ? await webkit.messageHandlers.lookupRedirect.postMessage(query) : 0;
+                if (count > 0) {
+                    redirect(count);
+                }
             }
         };
     }
@@ -1081,6 +1094,11 @@ function createPitchGroup(pitchData, reading) {
         li.appendChild(document.createTextNode(` [${pitch}]`));
         list.appendChild(li);
     });
+    pitchData.transcriptions.forEach((transcription) => {
+        const li = el('li');
+        li.appendChild(document.createTextNode(transcription));
+        list.appendChild(li);
+    });
     container.appendChild(list);
     
     return container;
@@ -1125,6 +1143,7 @@ function createTags(entry) {
                 const swap = harmonicRow.style.display !== 'none';
                 harmonicRow.style.display = swap ? 'none' : '';
                 normalRow.style.display = swap ? '' : 'none';
+                requestAnimationFrame(reportButtonRects);
             };
             
             normalRow.addEventListener('click', toggle);
@@ -1144,9 +1163,10 @@ function createTags(entry) {
             const seen = new Set();
             pitches.forEach(pitch => {
                 const unique = pitch.pitchPositions.filter(pos => !seen.has(pos));
-                if (unique.length > 0) {
+                const transcriptions = pitch.transcriptions;
+                if (unique.length > 0 || transcriptions.length > 0) {
                     unique.forEach(pos => seen.add(pos));
-                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique }, reading));
+                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique, transcriptions }, reading));
                 }
             });
         } else {
@@ -1194,35 +1214,87 @@ function playWordAudio(audioUrl) {
     }
 }
 
-function showAudioError(button) {
-    button.textContent = '✕';
-    setTimeout(() => {
-        button.textContent = '♪';
-    }, 1500);
+function reportButtonRects() {
+    const rects = [...document.querySelectorAll('.button-slot')].map(slot => {
+        const rect = slot.getBoundingClientRect();
+        return {
+            kind: slot.dataset.kind,
+            entryIndex: Number(slot.dataset.entryIndex),
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY,
+            width: rect.width,
+            height: rect.height,
+            state: slot.dataset.state || 'default',
+            enabled: slot.dataset.enabled !== 'false'
+        };
+    });
+    webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-function createAudioButton(expression, reading, entryIndex) {
-    const button = el('button', {
-        className: 'audio-button',
-        textContent: '♪',
-        onclick: async () => {
-            if (!audioUrls[entryIndex]) {
-                audioUrls[entryIndex] = await fetchAudioUrl(expression, reading);
-            }
-            if (!audioUrls[entryIndex]) {
-                showAudioError(button);
-                return;
-            }
-            if (!playWordAudio(audioUrls[entryIndex])) {
-                showAudioError(button);
-            }
-        }
+window.addEventListener('resize', () => requestAnimationFrame(reportButtonRects));
+document.addEventListener('toggle', () => requestAnimationFrame(reportButtonRects), true);
+
+function createButtonSlot(kind, entryIndex, enabled = true) {
+    return el('span', {
+        className: 'button-slot',
+        'data-kind': kind,
+        'data-entry-index': entryIndex,
+        'data-enabled': String(enabled)
     });
-    return button;
+}
+
+function getButtonSlot(kind, entryIndex) {
+    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
+}
+
+function updateButtonSlot(slot, changes) {
+    if (!slot || !slot.isConnected) { return; }
+    if ('state' in changes) { slot.dataset.state = changes.state; }
+    if ('enabled' in changes) { slot.dataset.enabled = String(changes.enabled); }
+    requestAnimationFrame(reportButtonRects);
+}
+
+async function playEntryAudio(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) { return; }
+    const audioSlot = getButtonSlot('audio', entryIndex);
+    
+    if (!audioUrls[entryIndex]) {
+        audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
+    }
+    if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex])) {
+        updateButtonSlot(audioSlot, { state: 'error' });
+        setTimeout(() => updateButtonSlot(audioSlot, { state: 'default' }), 1500);
+    }
+}
+
+async function mineEntryAtIndex(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) { return; }
+    const { expression, reading, frequencies, pitches, rules, matched } = entry;
+    const mineSlot = getButtonSlot('mine', entryIndex);
+    
+    lastSelection = window.getSelection()?.toString() || '';
+    updateButtonSlot(mineSlot, { enabled: false });
+    
+    const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection);
+    const checkDuplicate = async () => {
+        const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(expression);
+        updateButtonSlot(mineSlot, {
+            state: wasAdded ? 'duplicate' : 'default',
+            enabled: !(wasAdded && !window.allowDupes)
+        });
+    };
+    
+    if (isAnkiConnect) {
+        await checkDuplicate();
+    } else {
+        setTimeout(checkDuplicate, 1000);
+    }
 }
 
 function createEntryHeader(entry, idx) {
-    const { expression, reading, matched, frequencies, pitches, rules } = entry;
+    const { expression, reading } = entry;
     const header = el('div', { className: 'entry-header' });
     
     const expressionSpan = el('span', { className: 'expression' });
@@ -1243,54 +1315,29 @@ function createEntryHeader(entry, idx) {
     const buttonsContainer = el('div', { className: 'header-buttons' });
     
     if (window.audioSources?.length) {
-        buttonsContainer.appendChild(createAudioButton(expression, reading, idx));
+        buttonsContainer.appendChild(createButtonSlot('audio', idx));
     }
     
-    const mineButton = el('button', {
-        className: 'mine-button',
-        textContent: '+',
-        disabled: true,
-        ontouchstart: () => {
-            lastSelection = window.getSelection()?.toString() || '';
-        },
-        onclick: async () => {
-            mineButton.disabled = true;
-            const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, idx, lastSelection);
-            const checkDuplicate = async () => {
-                const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(expression);
-                mineButton.textContent = wasAdded ? '✓' : '+';
-                if (wasAdded) {
-                    mineButton.classList.add('duplicate');
-                }
-                mineButton.disabled = wasAdded && !window.allowDupes;
-            };
-            
-            if (isAnkiConnect) {
-                await checkDuplicate();
-            } else {
-                setTimeout(checkDuplicate, 1000);
-            }
-        }
-    });
-    buttonsContainer.appendChild(mineButton);
+    const mineSlot = createButtonSlot('mine', idx, false);
+    buttonsContainer.appendChild(mineSlot);
     webkit.messageHandlers.duplicateCheck.postMessage(expression).then(isDuplicate => {
-        if (isDuplicate) {
-            mineButton.textContent = '✓';
-            mineButton.classList.add('duplicate');
-        }
-        mineButton.disabled = isDuplicate && !window.allowDupes;
+        updateButtonSlot(mineSlot, {
+            state: isDuplicate ? 'duplicate' : 'default',
+            enabled: !(isDuplicate && !window.allowDupes)
+        });
     });
     
     header.appendChild(buttonsContainer);
+    requestAnimationFrame(reportButtonRects);
     
     return header;
 }
 
 function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const details = el('details', { className: 'glossary-group' });
-    if (!window.collapseDictionaries || isFirst) {
-        details.open = true;
-    }
+    const collapsed = window.collapseMode === 'Collapse All'
+    || (window.collapseMode === 'Custom' && window.collapsedDictionaries.includes(dictName));
+    details.open = !collapsed || (window.expandFirstDictionary && isFirst);
     
     const summary = el('summary', { className: 'dict-label' });
     summary.appendChild(el('span', { className: 'dict-name', textContent: dictName }));
@@ -1318,31 +1365,6 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     
     const dictWrapper = document.createElement('div');
     dictWrapper.setAttribute('data-dictionary', dictName);
-    const compactCss = window.compactGlossaries ? `
-        ul[data-sc-content="glossary"],
-        ol[data-sc-content="glossary"],
-        .glossary-list {
-            list-style: none;
-            padding-left: 0;
-            margin: 0;
-        }
-        ul[data-sc-content="glossary"] > li,
-        ol[data-sc-content="glossary"] > li,
-        .glossary-list > li {
-            display: inline;
-        }
-        ul[data-sc-content="glossary"] > li::after,
-        ol[data-sc-content="glossary"] > li::after,
-        .glossary-list > li::after {
-            content: " | ";
-            opacity: 0.6;
-        }
-        ul[data-sc-content="glossary"] > li:last-child::after,
-        ol[data-sc-content="glossary"] > li:last-child::after,
-        .glossary-list > li:last-child::after {
-            content: "";
-        }
-    ` : '';
     
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
@@ -1351,7 +1373,6 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
                 @media (prefers-color-scheme: light) { color: #000; }
                 @media (prefers-color-scheme: dark) { color: #fff; }
                 ${dictStyle}
-                ${compactCss}
             }
         `.trim()
     }));
@@ -1408,6 +1429,60 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     return details;
 }
 
+const backStack = [];
+const forwardStack = [];
+
+function redirect(count) {
+    backStack.push(snapshot());
+    forwardStack.length = 0;
+    window.lookupEntries = undefined;
+    window.entryCount = count;
+    audioUrls = {};
+    selectedDictionaries = {};
+    document.getElementById('entries-container').innerHTML = '';
+    reportButtonRects();
+    window.renderPopup();
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = 0;
+        requestAnimationFrame(() => {
+            document.scrollingElement.scrollTop = 0;
+        });
+    });
+}
+
+function snapshot() {
+    const container = document.getElementById('entries-container');
+    return {
+        nodes: [...container.childNodes],
+        scrollTop: document.scrollingElement.scrollTop,
+        lookupEntries: window.lookupEntries,
+        entryCount: window.entryCount,
+    };
+}
+
+function restore(s) {
+    const container = document.getElementById('entries-container');
+    container.replaceChildren(...s.nodes);
+    window.lookupEntries = s.lookupEntries;
+    window.entryCount = s.entryCount;
+    audioUrls = {};
+    selectedDictionaries = {};
+    requestAnimationFrame(reportButtonRects);
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = s.scrollTop;
+    });
+}
+
+function navigate(org, to) {
+    if (!org.length) {
+        return;
+    }
+    to.push(snapshot());
+    restore(org.pop());
+}
+window.navigateBack = () => navigate(backStack, forwardStack);
+window.navigateForward = () => navigate(forwardStack, backStack);
+
 window.renderPopup = function() {
     const container = document.getElementById('entries-container');
     if (!window.entryCount) {
@@ -1416,11 +1491,20 @@ window.renderPopup = function() {
     
     (async () => {
         for (let idx = 0; idx < window.entryCount; idx++) {
-            const entry = await webkit.messageHandlers.getEntry.postMessage(idx);
-            if (!entry) continue;
-            
             window.lookupEntries ??= [];
-            window.lookupEntries[idx] = entry;
+            if (!window.lookupEntries[idx]) {
+                const entries = await webkit.messageHandlers.getEntries.postMessage({
+                    start: idx,
+                    count: Math.min(4, window.entryCount - idx)
+                });
+                entries.forEach((entry, offset) => {
+                    window.lookupEntries[idx + offset] = entry;
+                });
+            }
+            const entry = window.lookupEntries[idx];
+            if (!entry) {
+                continue;
+            }
             
             if (idx > 0) {
                 container.appendChild(document.createElement('hr'));
@@ -1431,10 +1515,7 @@ window.renderPopup = function() {
             
             if (window.audioEnableAutoplay && window.audioSources?.length && idx === 0) {
                 setTimeout(() => {
-                    const audioButton = entryDiv.querySelector('.audio-button');
-                    if (audioButton) {
-                        audioButton.click();
-                    }
+                    playEntryAudio(idx);
                 }, 70);
             }
             
@@ -1444,7 +1525,6 @@ window.renderPopup = function() {
             }
             
             container.appendChild(entryDiv);
-            await new Promise(r => requestAnimationFrame(r));
             
             const grouped = {};
             entry.glossaries.forEach(g => {
@@ -1458,6 +1538,12 @@ window.renderPopup = function() {
             const dictNames = Object.keys(grouped);
             for (let dictIdx = 0; dictIdx < dictNames.length; dictIdx++) {
                 entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
+                if (idx === 0) {
+                    await new Promise(r => requestAnimationFrame(r));
+                }
+            }
+            
+            if (idx > 0) {
                 await new Promise(r => requestAnimationFrame(r));
             }
         }
@@ -1473,19 +1559,65 @@ window.renderPopup = function() {
         });
     })();
     
-    if (window.customCSS) {
+    if (window.compactGlossaries && !document.getElementById('popup-compact-glossaries')) {
+        const glossaryStyle = document.createElement('style');
+        glossaryStyle.id = 'popup-compact-glossaries';
+        glossaryStyle.textContent = `
+            ul[data-sc-content="glossary"],
+            ol[data-sc-content="glossary"],
+            .glossary-list {
+                list-style: none;
+                padding-left: 0;
+                margin: 0;
+            }
+            ul[data-sc-content="glossary"] > li,
+            ol[data-sc-content="glossary"] > li,
+            .glossary-list > li {
+                display: inline;
+            }
+            ul[data-sc-content="glossary"] > li:not(:last-child)::after,
+            ol[data-sc-content="glossary"] > li:not(:last-child)::after,
+            .glossary-list > li:not(:last-child)::after {
+                content: " | ";
+                opacity: 0.6;
+            }
+        `;
+        document.body.appendChild(glossaryStyle);
+    }
+    
+    if (window.compactPitchAccents && !document.getElementById('popup-compact-pitch-accents')) {
+        const pitchStyle = document.createElement('style');
+        pitchStyle.id = 'popup-compact-pitch-accents';
+        pitchStyle.textContent = `
+            .pitch-entries, .pitch-entries > li { display: inline; }
+            .pitch-entries > li { white-space: nowrap; }
+            .pitch-entries > li:not(:last-child)::after { content: " | "; opacity: 0.6; white-space: normal; }
+            .pitch-dict-label { margin-right: 4px; }
+        `;
+        document.body.appendChild(pitchStyle);
+    }
+    
+    if (window.customCSS && !document.getElementById('popup-custom-css')) {
         const customStyle = document.createElement('style');
+        customStyle.id = 'popup-custom-css';
         customStyle.textContent = window.customCSS;
         document.body.appendChild(customStyle);
     }
     
+    if (container.clickAttached) {
+        return;
+    }
+    container.clickAttached = true;
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+        if (target?.closest('summary')) {
+            return;
+        }
         if (!target?.closest('.glossary-content') && !target?.closest('.expr-tag')) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }
-        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, 16);
+        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, window.scanLength);
         if (!selected) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;

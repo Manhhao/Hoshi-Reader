@@ -9,6 +9,23 @@
 import Foundation
 import SwiftUI
 
+enum DictionaryUpdateInterval: String, CaseIterable, Codable {
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case monthly = "Monthly"
+    
+    var timeInterval: TimeInterval {
+        switch self {
+        case .daily:
+            24 * 60 * 60
+        case .weekly:
+            7 * 24 * 60 * 60
+        case .monthly:
+            30 * 24 * 60 * 60
+        }
+    }
+}
+
 enum SyncMode: String, CaseIterable, Codable {
     case auto = "Auto"
     case manual = "Manual"
@@ -18,6 +35,12 @@ enum AudioPlaybackMode: String, CaseIterable, Codable {
     case interrupt = "interrupt"
     case duck = "duck"
     case mix = "mix"
+}
+
+enum CollapseMode: String, CaseIterable, Codable {
+    case expandAll = "Expand All"
+    case collapseAll = "Collapse All"
+    case custom = "Custom"
 }
 
 enum Themes: String, CaseIterable, Codable {
@@ -47,8 +70,20 @@ class UserConfig {
         didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
     }
     
+    var autoUpdateDictionaries: Bool {
+        didSet { UserDefaults.standard.set(autoUpdateDictionaries, forKey: "autoUpdateDictionaries") }
+    }
+    
+    var dictionaryUpdateInterval: DictionaryUpdateInterval {
+        didSet { UserDefaults.standard.set(dictionaryUpdateInterval.rawValue, forKey: "dictionaryUpdateInterval") }
+    }
+    
     var dictionaryTabDefault: Bool {
         didSet { UserDefaults.standard.set(dictionaryTabDefault, forKey: "dictionaryTabDefault") }
+    }
+    
+    var scanNonJapaneseText: Bool {
+        didSet { UserDefaults.standard.set(scanNonJapaneseText, forKey: "scanNonJapaneseText") }
     }
     
     var maxResults: Int {
@@ -59,8 +94,12 @@ class UserConfig {
         didSet { UserDefaults.standard.set(scanLength, forKey: "scanLength") }
     }
     
-    var collapseDictionaries: Bool {
-        didSet { UserDefaults.standard.set(collapseDictionaries, forKey: "collapseDictionaries") }
+    var collapseMode: CollapseMode {
+        didSet { UserDefaults.standard.set(collapseMode.rawValue, forKey: "collapseMode") }
+    }
+    
+    var expandFirstDictionary: Bool {
+        didSet { UserDefaults.standard.set(expandFirstDictionary, forKey: "expandFirstDictionary") }
     }
     
     var compactGlossaries: Bool {
@@ -79,6 +118,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(deduplicatePitchAccents, forKey: "deduplicatePitchAccents") }
     }
     
+    var compactPitchAccents: Bool {
+        didSet { UserDefaults.standard.set(compactPitchAccents, forKey: "compactPitchAccents") }
+    }
+    
     var enableSync: Bool {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
     }
@@ -93,6 +136,10 @@ class UserConfig {
     
     var googleClientId: String {
         didSet { UserDefaults.standard.set(googleClientId, forKey: "googleClientId") }
+    }
+    
+    var syncUploadBooks: Bool {
+        didSet { UserDefaults.standard.set(syncUploadBooks, forKey: "syncUploadBooks") }
     }
     
     var theme: Themes {
@@ -163,6 +210,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(justifyText, forKey: "justifyText") }
     }
     
+    var blurImages: Bool {
+        didSet { UserDefaults.standard.set(blurImages, forKey: "blurImages") }
+    }
+    
     var layoutAdvanced: Bool {
         didSet { UserDefaults.standard.set(layoutAdvanced, forKey: "layoutAdvanced") }
     }
@@ -175,6 +226,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(characterSpacing, forKey: "characterSpacing") }
     }
     
+    var paragraphSpacing: Double {
+        didSet { UserDefaults.standard.set(paragraphSpacing, forKey: "paragraphSpacing") }
+    }
+    
     var readerShowTitle: Bool {
         didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
     }
@@ -185,6 +240,10 @@ class UserConfig {
     
     var readerShowPercentage: Bool {
         didSet { UserDefaults.standard.set(readerShowPercentage, forKey: "readerShowPercentage") }
+    }
+    
+    var readerAlwaysShowProgress: Bool {
+        didSet { UserDefaults.standard.set(readerAlwaysShowProgress, forKey: "readerAlwaysShowProgress") }
     }
     
     var readerShowProgressTop: Bool {
@@ -213,6 +272,18 @@ class UserConfig {
     
     var popupHeight: Int {
         didSet { UserDefaults.standard.set(popupHeight, forKey: "popupHeight") }
+    }
+    
+    var popupScale: Double {
+        didSet { UserDefaults.standard.set(popupScale, forKey: "popupScale") }
+    }
+    
+    var popupActionBar: Bool {
+        didSet { UserDefaults.standard.set(popupActionBar, forKey: "popupActionBar") }
+    }
+    
+    var popupDisableTransparency: Bool {
+        didSet { UserDefaults.standard.set(popupDisableTransparency, forKey: "popupDisableTransparency") }
     }
     
     var popupFullWidth: Bool {
@@ -303,6 +374,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiAutoPause, forKey: "sasayakiAutoPause") }
     }
     
+    var sasayakiSkipControls: Bool {
+        didSet { UserDefaults.standard.set(sasayakiSkipControls, forKey: "sasayakiSkipControls") }
+    }
+    
     var sasayakiEnableSync: Bool {
         didSet { UserDefaults.standard.set(sasayakiEnableSync, forKey: "sasayakiEnableSync") }
     }
@@ -330,20 +405,28 @@ class UserConfig {
             .flatMap(SortOption.init) ?? .recent
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
         
+        self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
+        self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")
+            .flatMap(DictionaryUpdateInterval.init) ?? .weekly
         self.dictionaryTabDefault = defaults.object(forKey: "dictionaryTabDefault") as? Bool ?? false
+        self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
-        self.collapseDictionaries = defaults.object(forKey: "collapseDictionaries") as? Bool ?? false
+        self.collapseMode = defaults.string(forKey: "collapseMode")
+            .flatMap(CollapseMode.init) ?? .expandAll
+        self.expandFirstDictionary = defaults.object(forKey: "expandFirstDictionary") as? Bool ?? false
         self.compactGlossaries = defaults.object(forKey: "compactGlossaries") as? Bool ?? true
         self.showExpressionTags = defaults.object(forKey: "showExpressionTags") as? Bool ?? false
         self.harmonicFrequency = defaults.object(forKey: "harmonicFrequency") as? Bool ?? false
         self.deduplicatePitchAccents = defaults.object(forKey: "deduplicatePitchAccents") as? Bool ?? false
+        self.compactPitchAccents = defaults.object(forKey: "compactPitchAccents") as? Bool ?? true
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
         self.syncMode = defaults.string(forKey: "syncMode")
             .flatMap(SyncMode.init) ?? .auto
         self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
+        self.syncUploadBooks = defaults.object(forKey: "syncUploadBooks") as? Bool ?? true
         
         self.theme = defaults.string(forKey: "theme")
             .flatMap(Themes.init) ?? .system
@@ -366,13 +449,16 @@ class UserConfig {
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
         self.avoidPageBreak = defaults.object(forKey: "avoidPageBreak") as? Bool ?? false
         self.justifyText = defaults.object(forKey: "justifyText") as? Bool ?? false
+        self.blurImages = defaults.object(forKey: "blurImages") as? Bool ?? false
         self.layoutAdvanced = defaults.object(forKey: "layoutAdvanced") as? Bool ?? false
         self.lineHeight = defaults.object(forKey: "lineHeight") as? Double ?? 1.65
         self.characterSpacing = defaults.object(forKey: "characterSpacing") as? Double ?? 0
+        self.paragraphSpacing = defaults.object(forKey: "paragraphSpacing") as? Double ?? 0
         
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
+        self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
         self.readerShowStatisticsToggle = defaults.object(forKey: "readerShowStatisticsToggle") as? Bool ?? false
         self.readerShowReadingSpeed = defaults.object(forKey: "readerShowReadingSpeed") as? Bool ?? false
@@ -381,6 +467,9 @@ class UserConfig {
         
         self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
         self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupScale = defaults.object(forKey: "popupScale") as? Double ?? 1.0
+        self.popupActionBar = defaults.object(forKey: "popupActionBar") as? Bool ?? false
+        self.popupDisableTransparency = defaults.object(forKey: "popupDisableTransparency") as? Bool ?? false
         self.popupFullWidth = defaults.object(forKey: "popupFullWidth") as? Bool ?? false
         self.popupSwipeToDismiss = defaults.object(forKey: "popupSwipeToDismiss") as? Bool ?? false
         self.popupSwipeThreshold = defaults.object(forKey: "popupSwipeThreshold") as? Int ?? 40
@@ -407,6 +496,7 @@ class UserConfig {
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
+        self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false
         self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
         self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         self.sasayakiBackgroundColor = UserConfig.loadColor(key: "sasayakiBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)

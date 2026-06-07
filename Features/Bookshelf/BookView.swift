@@ -21,7 +21,7 @@ struct BookView: View {
                 isSelected: isSelected
             )
             
-            Text(book.title ?? "")
+            Text(book.displayTitle)
                 .font(.system(size: 16))
                 .lineLimit(2)
                 .frame(height: 40, alignment: .top)

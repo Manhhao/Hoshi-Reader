@@ -27,7 +27,9 @@ struct HighlightListView: View {
     private var sections: [HighlightSection] {
         let labels = chapterLabels()
         let grouped = Dictionary(grouping: highlights) {
-            bookInfo.resolveCharacterPosition($0.character)?.spineIndex ?? -1
+            var spine = bookInfo.resolveCharacterPosition($0.character)?.spineIndex ?? -1
+            while spine > 0 && labels[spine] == nil { spine -= 1 }
+            return spine
         }
         return grouped.map { spineIndex, list in
             let label = labels[spineIndex] ?? ""

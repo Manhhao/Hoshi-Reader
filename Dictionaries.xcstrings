@@ -1,0 +1,853 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Address" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地址"
+          }
+        }
+      }
+    },
+    "Allow Duplicates" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许重复"
+          }
+        }
+      }
+    },
+    "Anki" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anki"
+          }
+        }
+      }
+    },
+    "AnkiConnect" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AnkiConnect"
+          }
+        }
+      }
+    },
+    "AnkiConnect Status: %@" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AnkiConnect 状态：%@"
+          }
+        }
+      }
+    },
+    "AnkiMobile or an AnkiConnect instance is required to mine words." : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要连接AnkiMobile 或 AnkiConnect 才能制卡。"
+          }
+        }
+      }
+    },
+    "Behaviour" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词典显示"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "Check All Models" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查所有笔记类型"
+          }
+        }
+      }
+    },
+    "Collapse All" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部折叠"
+          }
+        }
+      }
+    },
+    "Collapse Dictionaries" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词典折叠"
+          }
+        }
+      }
+    },
+    "Collection" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有牌组"
+          }
+        }
+      }
+    },
+    "Compact Glossaries" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "紧凑显示释义"
+          }
+        }
+      }
+    },
+    "Compact Pitch Accents" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "紧凑显示音调"
+          }
+        }
+      }
+    },
+    "Config" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配置"
+          }
+        }
+      }
+    },
+    "Configure" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配置"
+          }
+        }
+      }
+    },
+    "Connect" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已连接"
+          }
+        }
+      }
+    },
+    "Connection" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接"
+          }
+        }
+      }
+    },
+    "Custom" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义"
+          }
+        }
+      }
+    },
+    "Custom CSS" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义 CSS"
+          }
+        }
+      }
+    },
+    "Daily" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天"
+          }
+        }
+      }
+    },
+    "Deck" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出牌组"
+          }
+        }
+      }
+    },
+    "Deck Root" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "根牌组"
+          }
+        }
+      }
+    },
+    "Deduplicate Pitch Accents" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音调去重"
+          }
+        }
+      }
+    },
+    "Default to Dictionary Tab" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认打开词典标签页"
+          }
+        }
+      }
+    },
+    "Dictionaries" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词典"
+          }
+        }
+      }
+    },
+    "Download" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载"
+          }
+        }
+      }
+    },
+    "Download Dictionaries" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载词典"
+          }
+        }
+      }
+    },
+    "Download Recommended Dictionaries" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载推荐词典"
+          }
+        }
+      }
+    },
+    "Duplicate Scope" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片查重范围"
+          }
+        }
+      }
+    },
+    "Embed Dictionary Media" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入词典媒体"
+          }
+        }
+      }
+    },
+    "Embedding media will increase size of glossaries (AnkiMobile)." : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入媒体会增加释义内容的大小（AnkiMobile）。"
+          }
+        }
+      }
+    },
+    "Error" : {
+      "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "错误"
+          }
+        }
+      }
+    },
+    "Expand All" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部展开"
+          }
+        }
+      }
+    },
+    "Expand First Dictionary" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开第一个词典"
+          }
+        }
+      }
+    },
+    "Fetch decks and models from Anki" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 Anki 导入牌组和笔记类型"
+          }
+        }
+      }
+    },
+    "Fetch from Anki?" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 Anki 导入？"
+          }
+        }
+      }
+    },
+    "Fields" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字段"
+          }
+        }
+      }
+    },
+    "Force Sync on adding card" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加卡片后强制同步"
+          }
+        }
+      }
+    },
+    "Frequency" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词频"
+          }
+        }
+      }
+    },
+    "Harmonic Frequency" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调和词频"
+          }
+        }
+      }
+    },
+    "Import Anki Backup (Stored Words: %@)" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入 Anki 备份（已储存单词：%@）"
+          }
+        }
+      }
+    },
+    "Importing a .colpkg/.apkg backup from Anki will allow Hoshi Reader to check for duplicates immediately. It's recommended to do this periodically to reduce drift." : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入 Anki 的 .colpkg/.apkg 备份后，Hoshi Reader 可以立即检查重复卡牌。建议定期导入，以减少数据偏差。"
+          }
+        }
+      }
+    },
+    "Interval" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "间隔"
+          }
+        }
+      }
+    },
+    "Last Update" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次更新"
+          }
+        }
+      }
+    },
+    "Lookup" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查词"
+          }
+        }
+      }
+    },
+    "Max Results" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查词结果上限"
+          }
+        }
+      }
+    },
+    "Mode" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模式"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记类型"
+          }
+        }
+      }
+    },
+    "Monthly" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每月"
+          }
+        }
+      }
+    },
+    "Never" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从未"
+          }
+        }
+      }
+    },
+    "None" : {
+      "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
+    },
+    "Not connected" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未连接"
+          }
+        }
+      }
+    },
+    "Not Connected" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未连接"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好"
+          }
+        }
+      }
+    },
+    "Pitch" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音调"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
+          }
+        }
+      }
+    },
+    "Scan Length" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描长度"
+          }
+        }
+      }
+    },
+    "Scan Non-Japanese Text" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描非日语文本"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置"
+          }
+        }
+      }
+    },
+    "Show Expression Tags" : {
+      "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示词条标签"
+          }
+        }
+      }
+    },
+    "Status: %@" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态：%@"
+          }
+        }
+      }
+    },
+    "Tags" : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags"
+          }
+        }
+      }
+    },
+    "Term" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词条"
+          }
+        }
+      }
+    },
+    "This will check for and install updates for these dictionaries:\n%@" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将检查并安装这些词典的更新：\n%@"
+          }
+        }
+      }
+    },
+    "This will clear your current mappings." : {
+      "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前字段配置将会重置。"
+          }
+        }
+      }
+    },
+    "This will download the latest version of the following dictionaries (33 MB):\nJMdict (Term)\nJMnedict (Term)\nJiten (Frequency)" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将下载以下词典的最新版本（33 MB）：\nJMdict（词条）\nJMnedict（词条）\nJiten（词频）"
+          }
+        }
+      }
+    },
+    "This will replace AnkiMobile callbacks with AnkiConnect requests." : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制卡模式将由 AnkiMobile 替换为 AnkiConnect。"
+          }
+        }
+      }
+    },
+    "Type" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型"
+          }
+        }
+      }
+    },
+    "Update" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新"
+          }
+        }
+      }
+    },
+    "Update Automatically" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动更新"
+          }
+        }
+      }
+    },
+    "Update Dictionaries" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新词典"
+          }
+        }
+      }
+    },
+    "Updates" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新"
+          }
+        }
+      }
+    },
+    "Use AnkiConnect" : {
+      "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 AnkiConnect"
+          }
+        }
+      }
+    },
+    "Weekly" : {
+      "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每周"
+          }
+        }
+      }
+    },
+    "Yomitan term, frequency and pitch dictionaries (.zip) are supported" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持 Yomitan 词条、词频和音调词典（.zip）"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.2"
+}

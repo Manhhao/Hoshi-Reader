@@ -31,7 +31,7 @@ struct PopupLayout {
     }
     
     private var showOnRight: Bool {
-        spaceRight >= spaceLeft
+        spaceRight >= spaceLeft || spaceRight >= maxWidth
     }
     
     private var spaceAbove: CGFloat {
@@ -124,7 +124,11 @@ struct PopupView: View {
     
     @State private var content: String = ""
     @State private var lookupEntries: [[String: Any]] = []
-    @State private var sasayakiBarHeight: CGFloat = 0
+    @State private var controlsHeight: CGFloat = 0
+    @State private var backCount: Int = 0
+    @State private var forwardCount: Int = 0
+    @State private var backTrigger: Bool = false
+    @State private var forwardTrigger: Bool = false
     
     init(
         userConfig: UserConfig,
@@ -200,6 +204,46 @@ struct PopupView: View {
     }
     
     @ViewBuilder
+    private var actionBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 24) {
+                Button {
+                    backTrigger.toggle()
+                    backCount -= 1
+                    forwardCount += 1
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .opacity(backCount > 0 ? 1 : 0.3)
+                }
+                .disabled(backCount == 0)
+                
+                Button {
+                    forwardTrigger.toggle()
+                    forwardCount -= 1
+                    backCount += 1
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .opacity(forwardCount > 0 ? 1 : 0.3)
+                }
+                .disabled(forwardCount == 0)
+                Spacer()
+                Button {
+                    onSwipeDismiss?()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+            }
+            .font(.body)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            Divider()
+        }
+    }
+    
+    @ViewBuilder
     private func sasayakiControls(for cue: SasayakiMatch, player: SasayakiPlayer) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 20) {
@@ -242,63 +286,76 @@ struct PopupView: View {
             .contentShape(Rectangle())
             Divider()
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-            sasayakiBarHeight = $0
+    }
+    
+    private func popupContent(selectionData: SelectionData, layout: PopupLayout) -> some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                if userConfig.popupActionBar || backCount > 0 || forwardCount > 0 {
+                    actionBar
+                }
+                if let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
+                    sasayakiControls(for: cue, player: player)
+                }
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                controlsHeight = $0
+            }
+            
+            PopupWebView(
+                content: content,
+                position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + controlsHeight),
+                scale: CGFloat(userConfig.popupScale),
+                clearSelection: clearSelection,
+                dictionaryStyles: dictionaryStyles,
+                lookupEntries: lookupEntries,
+                scanNonJapaneseText: userConfig.scanNonJapaneseText,
+                scanLength: userConfig.scanLength,
+                backTrigger: backTrigger,
+                forwardTrigger: forwardTrigger,
+                onMine: { content in
+                    await mineEntry(content: content, sentence: selectionData.sentence)
+                },
+                onTextSelected: onTextSelected,
+                onTapOutside: onTapOutside,
+                onSwipeDismiss: onSwipeDismiss,
+                onRedirect: { query in
+                    let results = LookupEngine.shared.lookup(
+                        query,
+                        maxResults: userConfig.maxResults,
+                        scanLength: userConfig.scanLength
+                    )
+                    let entries = Self.buildLookupEntries(lookupResults: results)
+                    if !entries.isEmpty {
+                        backCount += 1
+                        forwardCount = 0
+                    }
+                    return entries
+                }
+            )
         }
+        .frame(width: layout.width, height: layout.height)
     }
     
     var body: some View {
-        if #available(iOS 26, *) {
+        if #available(iOS 26, *), !userConfig.popupDisableTransparency {
             GlassEffectContainer {
                 if isVisible, let selectionData, let layout, !content.isEmpty {
-                    VStack(spacing: 0) {
-                        if let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
-                            sasayakiControls(for: cue, player: player)
-                        }
-                        PopupWebView(
-                            content: content,
-                            position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
-                            clearSelection: clearSelection,
-                            dictionaryStyles: dictionaryStyles,
-                            lookupEntries: lookupEntries,
-                            onMine: { content in
-                                await mineEntry(content: content, sentence: selectionData.sentence)
-                            },
-                            onTextSelected: onTextSelected,
-                            onTapOutside: onTapOutside,
-                            onSwipeDismiss: onSwipeDismiss
-                        )
-                    }
-                    .frame(width: max(1, layout.width), height: max(1, layout.height))
-                    .glassEffect(.regular, in: .rect(cornerRadius: 8))
-                    .position(layout.position)
+                    popupContent(selectionData: selectionData, layout: layout)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 8))
+                        .position(layout.position)
                 }
             }
         } else {
             Group {
                 if isVisible, let selectionData, let layout, !content.isEmpty {
-                    VStack(spacing: 0) {
-                        if let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
-                            sasayakiControls(for: cue, player: player)
-                        }
-                        PopupWebView(
-                            content: content,
-                            position: CGPoint(x: layout.position.x - layout.width / 2, y: layout.position.y - layout.height / 2 + sasayakiBarHeight),
-                            clearSelection: clearSelection,
-                            dictionaryStyles: dictionaryStyles,
-                            lookupEntries: lookupEntries,
-                            onMine: { content in
-                                await mineEntry(content: content, sentence: selectionData.sentence)
-                            },
-                            onTextSelected: onTextSelected,
-                            onTapOutside: onTapOutside,
-                            onSwipeDismiss: onSwipeDismiss
+                    popupContent(selectionData: selectionData, layout: layout)
+                        .background(
+                            userConfig.popupDisableTransparency ? AnyShapeStyle(Color(.systemBackground)) : AnyShapeStyle(.ultraThinMaterial),
+                            in: RoundedRectangle(cornerRadius: 8)
                         )
-                    }
-                    .frame(width: max(1, layout.width), height: max(1, layout.height))
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
-                    .position(layout.position)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
+                        .position(layout.position)
                 }
             }
         }
@@ -321,7 +378,7 @@ struct PopupView: View {
         )
     }
     
-    private static func buildContent(lookupResults: [LookupResult], userConfig: UserConfig) -> (content: String, lookupEntries: [[String: Any]]) {
+    private static func buildLookupEntries(lookupResults: [LookupResult]) -> [[String: Any]] {
         var entries: [[String: Any]] = []
         for result in lookupResults {
             let expression = String(result.term.expression)
@@ -362,15 +419,23 @@ struct PopupView: View {
             var pitches: [[String: Any]] = []
             for pitchEntry in result.term.pitches {
                 var pitchPositions: [Int] = []
+                var transcriptions: [String] = []
                 for element in pitchEntry.pitch_positions {
                     let position = Int(element)
                     if !pitchPositions.contains(position) {
                         pitchPositions.append(position)
                     }
                 }
+                for element in pitchEntry.transcriptions {
+                    let transcription = String(element)
+                    if !transcriptions.contains(transcription) {
+                        transcriptions.append(transcription)
+                    }
+                }
                 pitches.append([
                     "dictionary": String(pitchEntry.dict_name),
                     "pitchPositions": pitchPositions,
+                    "transcriptions": transcriptions
                 ])
             }
             
@@ -387,19 +452,31 @@ struct PopupView: View {
                 "rules": rules,
             ])
         }
+        return entries
+    }
+    
+    private static func buildContent(lookupResults: [LookupResult], userConfig: UserConfig) -> (content: String, lookupEntries: [[String: Any]]) {
+        let entries = buildLookupEntries(lookupResults: lookupResults)
         
+        let collapsedDictionaries = userConfig.collapseMode == .custom
+        ? ((try? JSONEncoder().encode(DictionaryManager.shared.collapsedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
-        let customCSS = (try? JSONSerialization.data(withJSONObject: userConfig.customCSS, options: .fragmentsAllowed))
+        let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
+        let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         let content = """
         <script>
-            window.collapseDictionaries = \(userConfig.collapseDictionaries);
+            window.collapseMode = "\(userConfig.collapseMode.rawValue)";
+            window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
+            window.collapsedDictionaries = \(collapsedDictionaries);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.showExpressionTags = \(userConfig.showExpressionTags);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);
             window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
+            window.compactPitchAccents = \(userConfig.compactPitchAccents);
             window.audioSources = \(audioSources);
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";

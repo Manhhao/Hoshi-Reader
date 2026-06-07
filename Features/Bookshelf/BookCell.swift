@@ -11,6 +11,8 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     @State private var showDeleteConfirmation = false
     @State private var markReadConfirmation = false
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -67,12 +69,26 @@ struct BookCell: View {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
-                            viewModel.syncBook(book: book, direction: .importFromTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                            viewModel.syncBook(
+                                book: book,
+                                direction: .importFromTtu,
+                                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                                syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                                statsSyncMode: userConfig.statisticsSyncMode,
+                                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                            )
                         } label: {
                             Label("Import", systemImage: "arrow.down")
                         }
                         Button {
-                            viewModel.syncBook(book: book, direction: .exportToTtu, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                            viewModel.syncBook(
+                                book: book,
+                                direction: .exportToTtu,
+                                syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                                syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                                statsSyncMode: userConfig.statisticsSyncMode,
+                                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                            )
                         } label: {
                             Label("Export", systemImage: "arrow.up")
                         }
@@ -81,7 +97,14 @@ struct BookCell: View {
                     }
                 } else {
                     Button {
-                        viewModel.syncBook(book: book, direction: nil, syncStats: userConfig.enableSync && userConfig.statisticsEnableSync, statsSyncMode: userConfig.statisticsSyncMode, syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync)
+                        viewModel.syncBook(
+                            book: book,
+                            direction: nil,
+                            syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
+                            syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
+                            statsSyncMode: userConfig.statisticsSyncMode,
+                            syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                        )
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -102,14 +125,35 @@ struct BookCell: View {
                 Label("Mark Read", systemImage: "checkmark")
             }
             
+            Button {
+                renameText = book.displayTitle
+                showRenameAlert = true
+            } label: {
+                Label("Rename", systemImage: "character.cursor.ibeam.ja")
+            }
+            
+            if let epub = book.epub,
+               let booksDir = try? BookStorage.getBooksDirectory() {
+                ShareLink(item: booksDir.appendingPathComponent(book.folder).appendingPathComponent(epub)) {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+            }
+            
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         })
+        .alert("Rename", isPresented: $showRenameAlert) {
+            TextField("Title", text: $renameText)
+            Button("Save") {
+                viewModel.renameBook(book, title: renameText.trimmingCharacters(in: .whitespaces))
+            }
+            Button("Cancel", role: .cancel) { }
+        }
         .confirmationDialog(
-            "Delete \"\(book.title ?? "")\"?",
+            "Delete \"\(book.displayTitle)\"?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -118,7 +162,7 @@ struct BookCell: View {
             }
         }
         .confirmationDialog(
-            "Mark \"\(book.title ?? "")\" as read?",
+            "Mark \"\(book.displayTitle)\" as read?",
             isPresented: $markReadConfirmation,
             titleVisibility: .visible
         ) {

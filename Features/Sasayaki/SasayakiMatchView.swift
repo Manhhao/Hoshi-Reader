@@ -26,8 +26,7 @@ struct SasayakiMatchView: View {
             Form {
                 Section("File") {
                     HStack {
-                        Text(fileURL?.lastPathComponent ?? "No file selected")
-                            .lineLimit(1)
+                        fileNameView
                         Spacer()
                         Button("Open") {
                             isImporting = true
@@ -43,7 +42,7 @@ struct SasayakiMatchView: View {
                             Text("\(Int(searchWindow))")
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: $searchWindow, in: 50...350, step: 25)
+                        Slider(value: $searchWindow, in: 50...1000, step: 50)
                     }
                     Button {
                         matchFile()
@@ -110,6 +109,17 @@ struct SasayakiMatchView: View {
                 srtURL: fileURL,
                 searchWindow: Int(searchWindow)
             )
+        }
+    }
+    
+    @ViewBuilder
+    private var fileNameView: some View {
+        if fileURL?.lastPathComponent == nil {
+            Text("No file selected")
+                .lineLimit(1)
+        } else {
+            Text(fileURL!.lastPathComponent)
+                .lineLimit(1)
         }
     }
 }
