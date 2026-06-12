@@ -14,11 +14,15 @@ import WebKit
 struct HoshiReaderApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
-    @State private var userConfig = UserConfig()
+    @State private var userConfig = UserConfig.shared
     @State private var pendingImportURL: URL?
     @State private var pendingRemoteImportURL: URL?
     @State private var pendingLookup: String?
     @State private var pendingTab: Int?
+    @State private var showSignOutConfirmation = false
+    @State private var cloudManagedBooks = [BookMetadata]()
+    @State private var showUploadLocalBooksConfirmation = false
+    @State private var showQuotaExceededConfirmation = false
     private var shortcutHandler = ShortcutHandler.shared
     
     init() {
@@ -28,6 +32,11 @@ struct HoshiReaderApp: App {
         WebViewPreloader.shared.warmup()
         _ = DictionaryManager.shared
         _ = GoogleDriveHandler.shared
+        if userConfig.enableCloudKitSync {
+            Task {
+                await CloudKitSyncManager.shared.initializeSyncEngine()
+            }
+        }
         configureTabBarAppearance()
     }
     
@@ -81,6 +90,34 @@ struct HoshiReaderApp: App {
                 }
                 shortcutHandler.pendingType = nil
             }
+            .task {
+                await registerCloudKitErrorCallback()
+            }
+            .alert("Clear local books?", isPresented: $showSignOutConfirmation) {
+                Button("Confirm", role: .destructive) {
+                    Task {
+                        try await CloudKitSyncManager.shared.deleteLocal(books: cloudManagedBooks)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("You have logged out iCloud account. Do you want to clear local book data of the previous account?")
+            }
+            .alert("Upload local books?", isPresented: $showUploadLocalBooksConfirmation) {
+                Button("Upload") {
+                    Task {
+                        try? await CloudKitSyncManager.shared.uploadUnmanagedBooks()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You have logged in a new iCloud account. Do you want to upload local books to this iCloud server?")
+            }
+            .alert("iCloud Storage Full", isPresented: $showQuotaExceededConfirmation) {
+                Button("OK") {}
+            } message: {
+                Text("iCloud syncing has been disabled because you have run out of iCloud space. Please free up space or upgrade your storage.")
+            }
         }
     }
     
@@ -105,6 +142,30 @@ struct HoshiReaderApp: App {
         } else if url.isFileURL {
             pendingImportURL = url
         }
+    }
+    
+    private func registerCloudKitErrorCallback() async {
+        let onError: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
+            if case let .account(accountEvent) = event {
+                switch accountEvent {
+                case .signOut(managedBooks: let managedBooks):
+                    self.cloudManagedBooks = managedBooks
+                    showSignOutConfirmation = true
+                    userConfig.enableCloudKitSync = false
+                case .signIn:
+                    fallthrough
+                case .accountChanged:
+                    showUploadLocalBooksConfirmation = true
+                }
+            } else if case let .error(syncError) = event {
+                switch syncError {
+                case .quotaExceeded:
+                    showQuotaExceededConfirmation = true
+                    userConfig.enableCloudKitSync = false
+                }
+            }
+        }
+        await CloudKitSyncManager.shared.addEventHandlers([onError])
     }
 }
 

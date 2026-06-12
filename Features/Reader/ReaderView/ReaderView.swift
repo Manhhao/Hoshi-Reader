@@ -56,6 +56,7 @@ struct ReaderView: View {
     @Environment(\.dismissReader) private var dismissReader
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) private var userConfig
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: ReaderViewModel
     @State private var topSafeArea: CGFloat = UIApplication.topSafeArea
     @State private var focusMode = false
@@ -717,6 +718,13 @@ struct ReaderView: View {
         }
         .task {
             await viewModel.syncOnOpen()
+        }
+        .task {
+            let onSynced: @MainActor (CloudKitSyncManager.Event) -> Void = { [weak viewModel] direction in
+                guard let viewModel else { return }
+                viewModel.handleCloudKitSync(event: direction, dismiss: dismiss)
+            }
+            await CloudKitSyncManager.shared.addEventHandlers([onSynced])
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }

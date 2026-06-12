@@ -168,9 +168,18 @@ class BookshelfViewModel {
             for i in shelves.indices {
                 shelves[i].bookIds.removeAll { $0 == book.id }
             }
+            deleteCloudBook(book)
             saveShelves()
         } catch {
             showError(message: error.localizedDescription)
+        }
+    }
+    
+    func deleteCloudBook(_ book: borrowing BookMetadata) {
+        guard UserConfig.shared.enableCloudKitSync else { return }
+        let uuid = book.id
+        Task {
+            await CloudKitSyncManager.shared.deleteCloudBook(uuid: uuid)
         }
     }
     
@@ -523,8 +532,30 @@ class BookshelfViewModel {
             
             let bookinfo = BookProcessor.process(document: document)
             
-            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
-            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
+            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata, createCloudBook: true)
+            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo, createCloudBook: true)
+            
+            if UserConfig.shared.enableCloudKitSync {
+                Task.detached {
+                    let folderName = bookFolder.lastPathComponent
+                    if let coverURL {
+                        await CloudKitSyncManager.shared.saveCloudFile(
+                            uuid: metadata.id,
+                            fileType: .cover,
+                            fileName: (coverURL as NSString).lastPathComponent,
+                            folderName: folderName,
+                            createCloudBook: true
+                        )
+                    }
+                    await CloudKitSyncManager.shared.saveCloudFile(
+                        uuid: metadata.id,
+                        fileType: .book,
+                        fileName: localURL.lastPathComponent,
+                        folderName: folderName,
+                        createCloudBook: true
+                    )
+                }
+            }
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)

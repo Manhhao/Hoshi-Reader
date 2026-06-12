@@ -313,6 +313,36 @@ class ReaderViewModel {
         flushStats()
     }
     
+    func handleCloudKitSync(event: CloudKitSyncManager.Event, dismiss: DismissAction) {
+        switch event {
+        case .sent(let uuid, let success):
+            guard uuid == book.id else { return }
+            if success {
+                isPaused = false
+            } else {
+                fallthrough
+            }
+        case .fetched(let uuid):
+            guard uuid == book.id else { return }
+            highlights = BookStorage.loadHighlights(root: rootURL) ?? []
+            syncHighlights()
+            reloadAfterImport()
+            loadCurrentChapter()
+            resetTrackingBaseline()
+            isPaused = true
+        case .delete(let deleteEvent):
+            switch deleteEvent {
+            case .book(uuid: let uuid):
+                guard uuid == book.id else { return }
+                dismiss()
+            case .zones:
+                break
+            }
+        case .account, .error:
+            break
+        }
+    }
+    
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
         recordPosition()

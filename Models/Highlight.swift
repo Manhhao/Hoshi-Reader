@@ -45,7 +45,7 @@ enum HighlightColor: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct Highlight: Codable, Identifiable, Hashable {
+nonisolated struct Highlight: Codable, Identifiable, Hashable, Equatable {
     let id: UUID
     let character: Int
     let offset: Int
