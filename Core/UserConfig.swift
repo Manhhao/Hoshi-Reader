@@ -68,6 +68,9 @@ enum Themes: String, CaseIterable, Codable {
 
 @Observable
 class UserConfig {
+    
+    static let shared = UserConfig()
+    
     var bookshelfSortOption: SortOption {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
@@ -154,6 +157,21 @@ class UserConfig {
     
     var syncUploadBooks: Bool {
         didSet { UserDefaults.standard.set(syncUploadBooks, forKey: "syncUploadBooks") }
+    }
+    
+    var enableCloudKitSync: Bool {
+        didSet {
+            UserDefaults.standard.set(enableCloudKitSync, forKey: "enableCloudKitSync")
+            if enableCloudKitSync {
+                Task {
+                    await CloudKitSyncManager.shared.initializeSyncEngine()
+                }
+            } else {
+                Task {
+                    await CloudKitSyncManager.shared.disableSync()
+                }
+            }
+        }
     }
     
     var theme: Themes {
@@ -447,6 +465,8 @@ class UserConfig {
         self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
         self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
         self.syncUploadBooks = defaults.object(forKey: "syncUploadBooks") as? Bool ?? true
+        
+        self.enableCloudKitSync = defaults.object(forKey: "enableCloudKitSync") as? Bool ?? false
         
         self.theme = defaults.string(forKey: "theme")
             .flatMap(Themes.init) ?? .system

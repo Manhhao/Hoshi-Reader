@@ -79,6 +79,7 @@
 			membershipExceptions = (
 				Anki.swift,
 				Book.swift,
+				CloudKitBook.swift,
 				Dictionary.swift,
 				Highlight.swift,
 				Sasayaki.swift,
@@ -93,6 +94,7 @@
 				CoverImage.swift,
 				CSSSanitizer.swift,
 				Extensions.swift,
+				Merger.swift,
 				TtuConverter.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;

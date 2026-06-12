@@ -9,9 +9,19 @@
 import SwiftUI
 
 struct BookView: View {
+    @Environment(UserConfig.self) var userConfig
     let book: BookMetadata
     let progress: Double
+    let isCloudManaged: Bool
     var isSelected: Bool = false
+        
+    var titleText: Text {
+        if userConfig.enableCloudKitSync && !isCloudManaged {
+            return Text(Image(systemName: "icloud.slash")) + Text(" ") + Text(book.displayTitle)
+        } else {
+            return Text(book.displayTitle)
+        }
+    }
     
     var body: some View {
         VStack(spacing: 6) {
@@ -21,7 +31,7 @@ struct BookView: View {
                 isSelected: isSelected
             )
             
-            Text(book.displayTitle)
+            titleText
                 .font(.system(size: 16))
                 .lineLimit(2)
                 .frame(height: 40, alignment: .top)

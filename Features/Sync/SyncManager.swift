@@ -116,7 +116,7 @@ class SyncManager {
             guard let ttuProgress else { return .skipped }
             importProgress(ttuProgress: ttuProgress, to: url)
             if syncStats {
-                let mergedStats = mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
+                let mergedStats = Merger.mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
                 if !mergedStats.isEmpty {
                     try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
                 }
@@ -127,7 +127,7 @@ class SyncManager {
             return .imported(title: book.displayTitle, characterCount: ttuProgress.exploredCharCount)
         case .exportToTtu:
             guard let localBookmark else { return .skipped }
-            let statsToExport: [Statistics]? = syncStats ? mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode) : nil
+            let statsToExport: [Statistics]? = syncStats ? Merger.mergeStatistics(localStatistics: ttuStats ?? [], externalStatistics: localStats ?? [], syncMode: statsSyncMode) : nil
             
             async let exportedProgress: Void = exportProgress(
                 localBookmark: localBookmark,
@@ -293,30 +293,6 @@ class SyncManager {
     private func exportStats(stats: [Statistics]?, folderId: String, fileId: String?) async throws {
         guard let stats, !stats.isEmpty else { return }
         try await GoogleDriveHandler.shared.updateStatsFile(folderId: folderId, fileId: fileId, stats: stats)
-    }
-    
-    private func mergeStatistics(localStatistics: [Statistics], externalStatistics: [Statistics], syncMode: StatisticsSyncMode) -> [Statistics] {
-        if syncMode == .replace {
-            return externalStatistics
-        }
-        
-        var grouped: [String: Statistics] = [:]
-        
-        for stat in localStatistics {
-            grouped[stat.dateKey] = stat
-        }
-        
-        for stat in externalStatistics {
-            if let existing = grouped[stat.dateKey] {
-                if stat.lastStatisticModified > existing.lastStatisticModified {
-                    grouped[stat.dateKey] = stat
-                }
-            } else {
-                grouped[stat.dateKey] = stat
-            }
-        }
-        
-        return Array(grouped.values)
     }
     
     private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {
