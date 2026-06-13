@@ -300,7 +300,9 @@ class SasayakiPlayer {
             center.changePlaybackPositionCommand.removeTarget(nil)
         }
         nowPlayingSession = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        Task.detached {
+            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        }
         
         if let url = audioURL {
             url.stopAccessingSecurityScopedResource()
