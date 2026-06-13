@@ -43,14 +43,16 @@ struct BookCell: View {
         } label: {
             BookView(book: book, progress: viewModel.progress(for: book), isCloudManaged: isCloudManaged, isSelected: isSelecting && isSelected)
         }
-        .task {
+        .task(id: userConfig.enableCloudKitSync) {
             isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+            guard userConfig.enableCloudKitSync else { return }
+
             let refreshManagedState: @MainActor (CloudKitSyncManager.Event) -> Void = { _ in
                 Task {
                     isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
                 }
             }
-            await CloudKitSyncManager.shared.addEventHandlers([refreshManagedState])
+            await CloudKitSyncManager.shared.observeEvents(refreshManagedState)
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {

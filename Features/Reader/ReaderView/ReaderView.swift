@@ -719,12 +719,14 @@ struct ReaderView: View {
         .task {
             await viewModel.syncOnOpen()
         }
-        .task {
+        .task(id: userConfig.enableCloudKitSync) {
+            guard userConfig.enableCloudKitSync else { return }
+
             let onSynced: @MainActor (CloudKitSyncManager.Event) -> Void = { [weak viewModel] direction in
                 guard let viewModel else { return }
                 viewModel.handleCloudKitSync(event: direction, dismiss: dismiss)
             }
-            await CloudKitSyncManager.shared.addEventHandlers([onSynced])
+            await CloudKitSyncManager.shared.observeEvents(onSynced)
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }

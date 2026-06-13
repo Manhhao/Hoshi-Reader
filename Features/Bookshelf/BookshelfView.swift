@@ -85,15 +85,15 @@ struct BookshelfView: View {
                                 didLoadGDrive = true
                             }
                         }
-                        if userConfig.enableCloudKitSync {
-                            Task {
-                                let refreshBooks: @MainActor (CloudKitSyncManager.Event) -> Void = { [weak viewModel] _ in
-                                    guard let viewModel else { return }
-                                    viewModel.loadBooks()
-                                }
-                                await CloudKitSyncManager.shared.addEventHandlers([refreshBooks])
-                            }
+                    }
+                    .task(id: userConfig.enableCloudKitSync) {
+                        guard userConfig.enableCloudKitSync else { return }
+
+                        let refreshBooks: @MainActor (CloudKitSyncManager.Event) -> Void = { [weak viewModel] _ in
+                            guard let viewModel else { return }
+                            viewModel.loadBooks()
                         }
+                        await CloudKitSyncManager.shared.observeEvents(refreshBooks)
                     }
                     .fileImporter(
                         isPresented: $viewModel.isImporting,
