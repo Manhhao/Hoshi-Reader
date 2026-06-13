@@ -152,6 +152,9 @@ struct ReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            webView.scrollView.contentInsetAdjustmentBehavior = .never
+        }
         webView.scrollView.isScrollEnabled = false
         webView.navigationDelegate = context.coordinator
         

@@ -57,11 +57,17 @@ struct ReaderView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
-    @State private var topSafeArea: CGFloat = UIApplication.topSafeArea
     @State private var focusMode = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
     private let webViewPadding: CGFloat = 4
+    
+    private var topSafeArea: CGFloat {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return 35
+        }
+        return UIApplication.topSafeArea
+    }
     
     private var bottomSafeArea: CGFloat {
         if UIDevice.current.userInterfaceIdiom == .pad {
@@ -191,7 +197,7 @@ struct ReaderView: View {
         // if you tab out and tab back in, the area recalculates causing the reader to be misaligned
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: max(topSafeArea, 40) + webViewPadding)
+                .frame(height: topSafeArea + webViewPadding)
                 .contentShape(Rectangle())
                 .overlay(alignment: .bottom) {
                     HStack {
@@ -264,7 +270,7 @@ struct ReaderView: View {
                         }
                     }
                     .padding(.horizontal, 15)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 12)
                     .opacity(focusMode ? 1 : 0)
                     .allowsHitTesting(focusMode)
                 }
@@ -540,7 +546,7 @@ struct ReaderView: View {
                 .padding(.vertical, 6)
                 .conditionalGlassEffect()
                 .padding(.horizontal, 40)
-                .padding(.top, max(topSafeArea, 25))
+                .padding(.top, topSafeArea)
                 .opacity(focusMode ? 0 : 1)
             }
         }

@@ -60,6 +60,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            webView.scrollView.contentInsetAdjustmentBehavior = .never
+        }
         webView.scrollView.delegate = context.coordinator
         webView.scrollView.alwaysBounceVertical = !userConfig.verticalWriting
         webView.scrollView.alwaysBounceHorizontal = userConfig.verticalWriting
