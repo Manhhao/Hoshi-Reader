@@ -88,6 +88,13 @@ class GoogleDriveHandler {
     private var rootFolderId: String?
     private var titleToFolderId: [String: String] = [:]
     
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+    
     private init() {
         rootFolderId = UserDefaults.standard.string(forKey: Self.rootFolderIdKey)
         pathMonitor.start(queue: DispatchQueue(label: "NetworkMonitor"))
@@ -108,7 +115,7 @@ class GoogleDriveHandler {
         if pathMonitor.currentPath.status == .unsatisfied {
             throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw GoogleDriveError.invalidResponse
@@ -297,7 +304,7 @@ class GoogleDriveHandler {
         
         return try await withCheckedThrowingContinuation { continuation in
             let observationRetainer = ObservationHolder()
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let task = session.dataTask(with: request) { data, response, error in
                 _ = observationRetainer
                 if let error {
                     continuation.resume(throwing: error)
