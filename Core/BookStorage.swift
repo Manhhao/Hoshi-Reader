@@ -245,7 +245,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .metadata,
                     fileName: FileNames.metadata,
-                    folderName: url.deletingLastPathComponent().lastPathComponent
+                    folderName: url.deletingLastPathComponent().lastPathComponent,
+                    createCloudBook: createCloudBook
                 )
             }
             return
@@ -262,7 +263,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .bookinfo,
                     fileName: FileNames.bookinfo,
-                    folderName: folderName
+                    folderName: folderName,
+                    createCloudBook: createCloudBook
                 )
             }
         } else if T.self == Bookmark.self {
@@ -271,7 +273,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .bookmark,
                     fileName: FileNames.bookmark,
-                    folderName: folderName
+                    folderName: folderName,
+                    createCloudBook: createCloudBook
                 )
             }
         } else if T.self == [Highlight].self {
@@ -280,7 +283,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .highlights,
                     fileName: FileNames.highlights,
-                    folderName: folderName
+                    folderName: folderName,
+                    createCloudBook: createCloudBook
                 )
             }
         } else if T.self == [Statistics].self {
@@ -289,7 +293,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .statistics,
                     fileName: FileNames.statistics,
-                    folderName: folderName
+                    folderName: folderName,
+                    createCloudBook: createCloudBook
                 )
             }
         } else if T.self == SasayakiPlaybackData.self {
@@ -298,7 +303,8 @@ struct BookStorage {
                     uuid: metadata.id,
                     fileType: .sasayakiPlayback,
                     fileName: FileNames.sasayakiPlayback,
-                    folderName: folderName
+                    folderName: folderName,
+                    createCloudBook: createCloudBook
                 )
             }
         }
