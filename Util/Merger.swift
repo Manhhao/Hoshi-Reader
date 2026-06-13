@@ -48,8 +48,11 @@ nonisolated struct Merger {
         let ancestorMap = Self.makeMap(array: ancestor, id: id)
         
         if isOnlyOrderChanged(localMap, remoteMap) {
-            let localOrderChanged = isOnlyOrderChanged(localMap, ancestorMap)
-            let remoteOrderChanged = isOnlyOrderChanged(remoteMap, ancestorMap)
+            let localOrder = local.map { $0[keyPath: id] }
+            let remoteOrder = remote.map { $0[keyPath: id] }
+            let ancestorOrder = ancestor.map { $0[keyPath: id] }
+            let localOrderChanged = localOrder != ancestorOrder
+            let remoteOrderChanged = remoteOrder != ancestorOrder
 
             if localOrderChanged && !remoteOrderChanged {
                 return local
@@ -122,6 +125,13 @@ nonisolated struct Merger {
         return true
     }
     
+    static func shelvesAreEquivalent(_ lhs: [BookShelf], _ rhs: [BookShelf]) -> Bool {
+        guard lhs.map(\.name) == rhs.map(\.name) else { return false }
+        return zip(lhs, rhs).allSatisfy { lhsShelf, rhsShelf in
+            Set(lhsShelf.bookIds) == Set(rhsShelf.bookIds)
+        }
+    }
+
     static func mergeBookIds(
         local: [UUID],
         remote: [UUID],
