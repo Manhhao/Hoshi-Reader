@@ -45,12 +45,17 @@ nonisolated struct Merger {
         
         let localMap = Self.makeMap(array: local, id: id)
         let remoteMap = Self.makeMap(array: remote, id: id)
+        let ancestorMap = Self.makeMap(array: ancestor, id: id)
         
         if isOnlyOrderChanged(localMap, remoteMap) {
+            let localOrderChanged = isOnlyOrderChanged(localMap, ancestorMap)
+            let remoteOrderChanged = isOnlyOrderChanged(remoteMap, ancestorMap)
+
+            if localOrderChanged && !remoteOrderChanged {
+                return local
+            }
             return remote
         }
-            
-        let ancestorMap = Self.makeMap(array: ancestor, id: id)
         
         let localNames = localMap.keys
         let remoteNames = remoteMap.keys
