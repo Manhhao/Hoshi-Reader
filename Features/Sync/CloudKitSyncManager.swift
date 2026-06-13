@@ -256,7 +256,11 @@ private extension CloudKitSyncManager {
                 }
                 do {
                     try onFetchedRecord(serverRecord)
-                    self.cloudKitData.books[uuid]?[fileType]?.localModificationDate = .now
+                    if fileType == .shelves {
+                        self.cloudKitData.shelves.localModificationDate = .now
+                    } else {
+                        self.cloudKitData.books[uuid]?[fileType]?.localModificationDate = .now
+                    }
                     pendingRecordZoneChanges.append(.saveRecord(failedRecord.recordID))
                 } catch {
                     logger.error("Failed to merge new record of record name \(serverRecord.recordID.recordName, privacy: .public) when solving merge conflicts: \(error, privacy: .public)")
@@ -484,20 +488,27 @@ extension CloudKitSyncManager {
                 continue
             }
             let remoteModificationDate = try record.localModificationDate
-            if self.cloudKitData.shelves.localModificationDate > remoteModificationDate {
-                let remoteIndex = mergedShelves.firstIndex(where: {$0.name == remoteContainingShelf.name})!
-                mergedShelves[remoteIndex].bookIds.removeAll(where: {$0 == bookId})
-            } else {
-                let localIndex = mergedShelves.firstIndex(where: {$0.name == localContainingShelf.name})!
-                mergedShelves[localIndex].bookIds.removeAll(where: {$0 == bookId})
+            let losingShelfName = self.cloudKitData.shelves.localModificationDate > remoteModificationDate
+                ? remoteContainingShelf.name
+                : localContainingShelf.name
+            if let losingShelfIndex = mergedShelves.firstIndex(where: { $0.name == losingShelfName }) {
+                mergedShelves[losingShelfIndex].bookIds.removeAll(where: { $0 == bookId })
             }
         }
         
+        let shouldSaveMergedShelves = !Merger.shelvesAreEquivalent(mergedShelves, remoteShelves)
         let fileURL = try record.fileURL
         try BookStorage.saveLocal(mergedShelves, url: fileURL)
         
         self.cloudKitData.shelves.setLastKnownRecordIfNewer(record)
-        self.cloudKitData.shelves.localModificationDate = try record.localModificationDate
+        if shouldSaveMergedShelves {
+            self.cloudKitData.shelves.localModificationDate = .now
+            syncEngine.state.add(pendingRecordZoneChanges: [
+                .saveRecord(CloudKitBookShelves.recordID)
+            ])
+        } else {
+            self.cloudKitData.shelves.localModificationDate = try record.localModificationDate
+        }
     }
 }
 
