@@ -114,6 +114,7 @@ extension CloudKitSyncManager: CKSyncEngineDelegate {
                 (uuid, fileType) = try CKRecord.parseRecordName(recordID.recordName)
             } catch {
                 logger.error("Failed to parse record name \(recordID.recordName, privacy: .public): \(error, privacy: .public)")
+                syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
                 return nil
             }
             do {
@@ -122,12 +123,14 @@ extension CloudKitSyncManager: CKSyncEngineDelegate {
                 }
                 guard let cloudFile = books[uuid]?[fileType] else {
                     logger.log("CloudKit file of uuid \(uuid, privacy: .public) and type \(fileType, privacy: .public) had become stale before sending to iCloud server")
+                    syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
                     return nil
                 }
                 let record = try cloudFile.makeRecord()
                 return record
             } catch {
                 logger.error("Failed to generate CKRecord from file of uuid \(uuid, privacy: .public) and type \(fileType, privacy: .public): \(error, privacy: .public)")
+                syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
                 return nil
             }
         }

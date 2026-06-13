@@ -214,9 +214,11 @@ struct SyncView: View {
     }
     
     private func iCloudStatusRefresh() async {
-        guard let accountStatus = try? await CloudKitSyncManager.container.accountStatus() else { return }
-        if accountStatus == .available {
-            iCloudAvailable = true
+        do {
+            let accountStatus = try await CloudKitSyncManager.container.accountStatus()
+            iCloudAvailable = accountStatus == .available
+        } catch {
+            iCloudAvailable = false
         }
     }
 }
