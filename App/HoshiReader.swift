@@ -109,7 +109,7 @@ struct HoshiReaderApp: App {
                 shortcutHandler.pendingType = nil
             }
             .task {
-                await registerCloudKitErrorCallback()
+                await observeCloudKitEvents()
             }
             .alert("Clear local books?", isPresented: $showSignOutConfirmation) {
                 Button("Confirm", role: .destructive) {
@@ -162,7 +162,7 @@ struct HoshiReaderApp: App {
         }
     }
     
-    private func registerCloudKitErrorCallback() async {
+    private func observeCloudKitEvents() async {
         let onError: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
             if case let .account(accountEvent) = event {
                 switch accountEvent {
@@ -183,7 +183,7 @@ struct HoshiReaderApp: App {
                 }
             }
         }
-        await CloudKitSyncManager.shared.addEventHandlers([onError])
+        await CloudKitSyncManager.shared.observeEvents(onError)
     }
 }
 

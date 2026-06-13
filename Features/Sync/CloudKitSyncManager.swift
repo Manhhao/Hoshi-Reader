@@ -25,7 +25,7 @@ actor CloudKitSyncManager {
     
     nonisolated private var logger: Logger { Self.logger }
     
-    private var eventHandlers: [@MainActor (CloudKitSyncManager.Event) -> Void] = []
+    private var eventHandlers: [UUID: @MainActor (CloudKitSyncManager.Event) -> Void] = [:]
     
     private var cloudKitData: CloudKitData {
         didSet {
@@ -691,13 +691,27 @@ extension CloudKitSyncManager {
         case error(SyncError)
     }
     
-    func addEventHandlers(_ eventHandlers: [@MainActor (CloudKitSyncManager.Event) -> Void]) {
-        self.eventHandlers.append(contentsOf: eventHandlers)
+    func observeEvents(_ eventHandler: @escaping @MainActor (CloudKitSyncManager.Event) -> Void) async {
+        let id = UUID()
+        eventHandlers[id] = eventHandler
+        defer {
+            eventHandlers[id] = nil
+        }
+
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .seconds(60))
+            } catch is CancellationError {
+                break
+            } catch {
+                break
+            }
+        }
     }
     
     private func fire(event: CloudKitSyncManager.Event) {
         Task {
-            let allCallbacks = self.eventHandlers
+            let allCallbacks = Array(self.eventHandlers.values)
             await MainActor.run {
                 for callBack in allCallbacks {
                     callBack(event)

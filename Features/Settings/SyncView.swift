@@ -136,12 +136,14 @@ struct SyncView: View {
         }
         .task {
             await iCloudStatusRefresh()
-            let onChanged: @MainActor (CloudKitSyncManager.Event) -> Void = { _ in
+            let onChanged: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
+                guard case .account = event else { return }
+
                 Task {
                     await self.iCloudStatusRefresh()
                 }
             }
-            await CloudKitSyncManager.shared.addEventHandlers([onChanged])
+            await CloudKitSyncManager.shared.observeEvents(onChanged)
         }
         .navigationTitle("Syncing")
         .alert("Error", isPresented: $showError) {
