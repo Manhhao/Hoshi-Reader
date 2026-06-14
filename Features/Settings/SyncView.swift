@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import CloudKit
 
 struct SyncView: View {
     @Environment(UserConfig.self) var userConfig
@@ -17,37 +16,9 @@ struct SyncView: View {
     @State private var showClearCacheConfirmation = false
     @State private var showSignOutConfirmation = false
     
-    @State private var iCloudAvailable = false
-    @State private var showUploadLocalBooksConfirmation = false
-    @State private var showClearLocalBooksConfirmation = false
-    @State private var showClearCloudKitConfirmation = false
-    
     var body: some View {
         @Bindable var userConfig = userConfig
         List {
-            Section {
-                Toggle("Enable iCloud Sync", isOn: $userConfig.enableCloudKitSync)
-                    .disabled(!iCloudAvailable)
-                
-                if userConfig.enableCloudKitSync {
-                    Button("Upload Unsynced Local Books") {
-                        showUploadLocalBooksConfirmation.toggle()
-                    }
-                    
-                    Button("Clear Unsynced Local Books", role: .destructive) {
-                        showClearLocalBooksConfirmation.toggle()
-                    }
-                    
-                    Button("Clear iCloud data", role: .destructive) {
-                        showClearCloudKitConfirmation.toggle()
-                    }
-                }
-            } footer: {
-                if !iCloudAvailable {
-                    Text("Log in to an iCloud account to sync with iCloud.")
-                }
-            }
-            
             Section {
                 Toggle("Enable", isOn: $userConfig.enableSync)
             } footer: {
@@ -134,17 +105,6 @@ struct SyncView: View {
                 }
             }
         }
-        .task {
-            await iCloudStatusRefresh()
-            let onChanged: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
-                guard case .account = event else { return }
-
-                Task {
-                    await self.iCloudStatusRefresh()
-                }
-            }
-            await CloudKitSyncManager.shared.observeEvents(onChanged)
-        }
         .navigationTitle("Syncing")
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
@@ -172,36 +132,6 @@ struct SyncView: View {
         } message: {
             Text("Signing out will clear authorization tokens, cached folder ids and book covers.")
         }
-        .alert("Upload local books?", isPresented: $showUploadLocalBooksConfirmation) {
-            Button("Confirm") {
-                Task {
-                    try? await CloudKitSyncManager.shared.uploadUnmanagedBooks()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will upload local only books to iCloud server.")
-        }
-        .alert("Clear local books?", isPresented: $showClearLocalBooksConfirmation) {
-            Button("Confirm", role: .destructive) {
-                Task {
-                    try await CloudKitSyncManager.shared.deleteLocalBooks(isManaged: false)
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will clear all data of local only books")
-        }
-        .alert("Clear iCloud data?", isPresented: $showClearCloudKitConfirmation) {
-            Button("Confirm", role: .destructive) {
-                Task {
-                    await CloudKitSyncManager.shared.deleteServerData()
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will clear all data on iCloud server.")
-        }
     }
     
     private func textOfSyncMode(_ mode: SyncMode) -> some View {
@@ -210,15 +140,6 @@ struct SyncView: View {
             Text("Auto")
         case .manual:
             Text("Manual")
-        }
-    }
-    
-    private func iCloudStatusRefresh() async {
-        do {
-            let accountStatus = try await CloudKitSyncManager.container.accountStatus()
-            iCloudAvailable = accountStatus == .available
-        } catch {
-            iCloudAvailable = false
         }
     }
 }

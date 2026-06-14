@@ -15,7 +15,7 @@ enum StatisticsAutostartMode: String, CaseIterable, Codable {
     case on = "On"
 }
 
-nonisolated enum StatisticsSyncMode: String, CaseIterable, Codable {
+enum StatisticsSyncMode: String, CaseIterable, Codable {
     case merge = "Merge"
     case replace = "Replace"
 }
