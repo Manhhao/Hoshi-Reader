@@ -143,6 +143,9 @@
         }
       }
     },
+    "Two-Column Layout" : {
+
+    },
     "Compact Glossaries" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {

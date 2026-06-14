@@ -102,6 +102,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(expandFirstDictionary, forKey: "expandFirstDictionary") }
     }
     
+    var twoColumnLayout: Bool {
+        didSet { UserDefaults.standard.set(twoColumnLayout, forKey: "twoColumnLayout") }
+    }
+    
     var compactGlossaries: Bool {
         didSet { UserDefaults.standard.set(compactGlossaries, forKey: "compactGlossaries") }
     }
@@ -415,6 +419,7 @@ class UserConfig {
         self.collapseMode = defaults.string(forKey: "collapseMode")
             .flatMap(CollapseMode.init) ?? .expandAll
         self.expandFirstDictionary = defaults.object(forKey: "expandFirstDictionary") as? Bool ?? false
+        self.twoColumnLayout = defaults.object(forKey: "twoColumnLayout") as? Bool ?? false
         self.compactGlossaries = defaults.object(forKey: "compactGlossaries") as? Bool ?? true
         self.showExpressionTags = defaults.object(forKey: "showExpressionTags") as? Bool ?? false
         self.harmonicFrequency = defaults.object(forKey: "harmonicFrequency") as? Bool ?? false

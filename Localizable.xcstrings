@@ -333,6 +333,9 @@
         }
       }
     },
+    "Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens." : {
+
+    },
     "Attribution" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
       "localizations" : {

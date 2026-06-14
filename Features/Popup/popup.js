@@ -717,7 +717,7 @@ function renderDefinitionImageToCanvas(canvas, image, usedWidth, invAspectRatio,
     const scaleFactor = Math.ceil(window.devicePixelRatio * 2);
     const pixelWidth = Math.round(usedWidth * emSize * scaleFactor);
     const pixelHeight = Math.round(usedWidth * emSize * invAspectRatio * scaleFactor);
-    const maxCanvasSize = 128;
+    const maxCanvasSize = 256;
     const scale = Math.min(
                            1,
                            maxCanvasSize / Math.max(pixelWidth, pixelHeight),
@@ -1231,9 +1231,6 @@ function reportButtonRects() {
     webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-window.addEventListener('resize', () => requestAnimationFrame(reportButtonRects));
-document.addEventListener('toggle', () => requestAnimationFrame(reportButtonRects), true);
-
 function createButtonSlot(kind, entryIndex, enabled = true) {
     return el('span', {
         className: 'button-slot',
@@ -1483,6 +1480,59 @@ function navigate(org, to) {
 window.navigateBack = () => navigate(backStack, forwardStack);
 window.navigateForward = () => navigate(forwardStack, backStack);
 
+const MASONRY_GAP = 5;
+const HAS_NATIVE_MASONRY = CSS.supports('display', 'grid-lanes');
+let masonryRaf = null;
+let masonryObserver = null;
+
+function layoutMasonry() {
+    if (!window.twoColumnLayout || HAS_NATIVE_MASONRY) {
+        return;
+    }
+    document.querySelectorAll('#entries-container .glossary-sections:not(.single-section)').forEach(section => {
+        const columnWidth = (section.clientWidth - MASONRY_GAP) / 2;
+        const columnHeights = [0, 0];
+        [...section.children].forEach(item => {
+            const column = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+            const x = column * (columnWidth + MASONRY_GAP);
+            const y = columnHeights[column];
+            item.style.width = `${columnWidth}px`;
+            item.style.transform = `translate(${x}px, ${y}px)`;
+            item.style.visibility = 'visible';
+            columnHeights[column] += item.offsetHeight + MASONRY_GAP;
+        });
+        
+        section.style.height = `${Math.max(columnHeights[0], columnHeights[1]) - MASONRY_GAP}px`;
+    });
+}
+
+function scheduleMasonry() {
+    if (!window.twoColumnLayout || HAS_NATIVE_MASONRY || masonryRaf) {
+        return;
+    }
+    masonryRaf = requestAnimationFrame(() => {
+        masonryRaf = null;
+        layoutMasonry();
+        reportButtonRects();
+    });
+}
+
+function observeMasonry(root) {
+    if (!window.twoColumnLayout || HAS_NATIVE_MASONRY || root.classList.contains('single-section')) {
+        return;
+    }
+    masonryObserver ??= new ResizeObserver(scheduleMasonry);
+    [...root.children].forEach(item => masonryObserver.observe(item));
+    scheduleMasonry();
+}
+
+window.addEventListener('resize', () => {
+    requestAnimationFrame(reportButtonRects);
+    scheduleMasonry();
+});
+
+document.addEventListener('toggle', () => requestAnimationFrame(reportButtonRects), true);
+
 window.renderPopup = function() {
     const container = document.getElementById('entries-container');
     if (!window.entryCount) {
@@ -1526,6 +1576,9 @@ window.renderPopup = function() {
             
             container.appendChild(entryDiv);
             
+            const glossarySections = el('div', { className: 'glossary-sections' });
+            entryDiv.appendChild(glossarySections);
+            
             const grouped = {};
             entry.glossaries.forEach(g => {
                 (grouped[g.dictionary] ??= []).push({
@@ -1536,12 +1589,15 @@ window.renderPopup = function() {
             });
             
             const dictNames = Object.keys(grouped);
+            glossarySections.classList.toggle('single-section', dictNames.length === 1);
             for (let dictIdx = 0; dictIdx < dictNames.length; dictIdx++) {
-                entryDiv.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
+                glossarySections.appendChild(createGlossarySection(dictNames[dictIdx], grouped[dictNames[dictIdx]], dictIdx === 0, idx));
                 if (idx === 0) {
+                    scheduleMasonry();
                     await new Promise(r => requestAnimationFrame(r));
                 }
             }
+            observeMasonry(glossarySections);
             
             if (idx > 0) {
                 await new Promise(r => requestAnimationFrame(r));
@@ -1558,6 +1614,37 @@ window.renderPopup = function() {
             });
         });
     })();
+    
+    if (window.twoColumnLayout && !document.getElementById('popup-two-column-layout')) {
+        const layoutStyle = document.createElement('style');
+        layoutStyle.id = 'popup-two-column-layout';
+        layoutStyle.textContent = `
+            .glossary-sections {
+                ${HAS_NATIVE_MASONRY
+                ? `display: grid-lanes;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: ${MASONRY_GAP}px;
+                align-items: start;`
+                : `position: relative;`}
+                margin-top: calc(8px * var(--popup-scale));
+            }
+            .glossary-sections > .glossary-group {
+                margin-top: 0;
+            }
+            ${HAS_NATIVE_MASONRY ? '' : `
+            .glossary-sections:not(.single-section) > .glossary-group {
+                position: absolute;
+                left: 0;
+                top: 0;
+                visibility: hidden;
+            }
+            `}
+            .glossary-sections.single-section {
+                display: block;
+            }
+        `;
+        document.body.appendChild(layoutStyle);
+    }
     
     if (window.compactGlossaries && !document.getElementById('popup-compact-glossaries')) {
         const glossaryStyle = document.createElement('style');

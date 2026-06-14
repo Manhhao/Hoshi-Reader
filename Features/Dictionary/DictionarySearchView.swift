@@ -335,6 +335,7 @@ struct DictionarySearchView: View {
             window.collapseMode = "\(userConfig.collapseMode.rawValue)";
             window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
             window.collapsedDictionaries = \(collapsedDictionaries);
+            window.twoColumnLayout = \(userConfig.twoColumnLayout);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.showExpressionTags = \(userConfig.showExpressionTags);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);

@@ -268,6 +268,15 @@ struct DictionarySettingsView: View {
             }
             
             Section {
+                VStack {
+                    Toggle(isOn: Bindable(userConfig).twoColumnLayout) {
+                        Text("Two-Column Layout", tableName: "Dictionaries")
+                    }
+                    Text("Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 Toggle(isOn: Bindable(userConfig).compactGlossaries) {
                     Text("Compact Glossaries", tableName: "Dictionaries")
                 }
