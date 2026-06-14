@@ -38,7 +38,14 @@ struct AdvancedView: View {
                 NavigationLink {
                     SyncView()
                 } label: {
-                    Label("ッツ Sync", systemImage: "cloud")
+                    Label("ッツ Sync", systemImage: "externaldrive.badge.icloud")
+                }
+                .foregroundStyle(.primary)
+                
+                NavigationLink {
+                    CloudKitSyncView()
+                } label: {
+                    Label("iCloud Sync", systemImage: "icloud")
                 }
                 .foregroundStyle(.primary)
                 

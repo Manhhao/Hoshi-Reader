@@ -391,3 +391,32 @@ nonisolated extension CKRecord {
         return (uuid, fileType)
     }
 }
+
+// MARK: - UI
+nonisolated enum CloudKitStatus: String, Codable {
+    case none
+    case signOut
+    case quotaExceeded
+    
+    var title: String {
+        switch self {
+        case .none:
+            ""
+        case .signOut:
+            String(localized:"Signed Out")
+        case .quotaExceeded:
+            String(localized:"Quota Exceeded")
+        }
+    }
+    
+    var message: String {
+        switch self {
+        case .none:
+            ""
+        case .signOut:
+            String(localized: "You have logged out of iCloud account.")
+        case .quotaExceeded:
+            String(localized: "iCloud syncing has been disabled because you have run out of iCloud space. Please free up space or upgrade your storage.")
+        }
+    }
+}
