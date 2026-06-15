@@ -1,5 +1,5 @@
 //
-//  CloudKitSyncHanlder.swift
+//  CloudKitSyncManager.swift
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
@@ -343,23 +343,13 @@ extension CloudKitSyncManager {
         }
         
         switch fileType {
-        case .metadata:
-            try replaceIfNewer(record: record)
-        case .bookmark:
-            try replaceIfNewer(record: record)
-        case .bookinfo:
-            try replaceIfNewer(record: record)
         case .shelves:
             try mergeShelves(record: record)
         case .statistics:
             try mergeStats(record: record)
-        case .sasayakiPlayback:
-            try replaceIfNewer(record: record)
         case .highlights:
             try mergeHighlights(record: record)
-        case .cover:
-            try replaceIfNewer(record: record)
-        case .book:
+        default:
             try replaceIfNewer(record: record)
         }
     }
@@ -559,15 +549,6 @@ extension CloudKitSyncManager {
         ])
     }
     
-    func refresh() {
-        Task {
-            var fetchChangesOptions = CKSyncEngine.FetchChangesOptions()
-            fetchChangesOptions.prioritizedZoneIDs = Self.prioritizedZoneIDs
-            try? await syncEngine.fetchChanges(fetchChangesOptions)
-            try? await syncEngine.sendChanges()
-        }
-    }
-    
     func uploadUnmanagedBooks() throws {
         let unmanagedBooks = try getBooks(isManaged: false)
         for book in unmanagedBooks {
@@ -702,19 +683,8 @@ extension CloudKitSyncManager {
     func observeEvents(_ eventHandler: @escaping @MainActor (CloudKitSyncManager.Event) -> Void) async {
         let id = UUID()
         eventHandlers[id] = eventHandler
-        defer {
-            eventHandlers[id] = nil
-        }
-
-        while !Task.isCancelled {
-            do {
-                try await Task.sleep(for: .seconds(60))
-            } catch is CancellationError {
-                break
-            } catch {
-                break
-            }
-        }
+        defer { eventHandlers[id] = nil }
+        try? await Task.sleep(for: .seconds(Int32.max))
     }
     
     private func fire(event: CloudKitSyncManager.Event) {

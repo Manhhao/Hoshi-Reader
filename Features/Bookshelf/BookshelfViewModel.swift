@@ -314,7 +314,7 @@ class BookshelfViewModel {
                             }
                         }
                         let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
-                        let book = await BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                        let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
                         return (book, files)
                     }
                 }
