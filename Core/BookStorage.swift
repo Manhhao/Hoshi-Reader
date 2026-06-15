@@ -339,7 +339,12 @@ struct BookStorage {
             if FileManager.default.fileExists(atPath: metadataURL.path(percentEncoded: false)) {
                 let data = try Data(contentsOf: metadataURL)
                 let book = try JSONDecoder().decode(BookMetadata.self, from: data)
-                books.append(book)
+                if let bookFileName = book.epub {
+                    let bookFileURL = url.appending(path: bookFileName)
+                    if FileManager.default.fileExists(atPath: bookFileURL.path(percentEncoded: false)) {
+                        books.append(book)
+                    }
+                }
             }
         }
         
