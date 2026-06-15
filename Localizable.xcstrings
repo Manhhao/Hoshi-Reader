@@ -637,6 +637,9 @@
         }
       }
     },
+    "Close" : {
+
+    },
     "Command Center" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -711,6 +714,9 @@
           }
         }
       }
+    },
+    "Couldn't open book" : {
+
     },
     "Current Match" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
