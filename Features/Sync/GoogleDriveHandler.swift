@@ -608,7 +608,7 @@ class GoogleDriveHandler {
         titleToFolderId[sanitizedTitle] = folderId
         
         if let coverData = coverImageDataProvider?() {
-            Task {
+            _ = Task {
                 try await uploadCoverImage(folderId: folderId, coverData: coverData)
             }
         }
