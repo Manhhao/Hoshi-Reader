@@ -21,7 +21,7 @@ enum SortOption: String, CaseIterable, Identifiable {
     }
 }
 
-struct BookMetadata: Codable, Identifiable, Hashable {
+nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
     let epub: String?
@@ -41,14 +41,14 @@ struct BookMetadata: Codable, Identifiable, Hashable {
     }
 }
 
-struct Bookmark: Codable {
+nonisolated struct Bookmark: Codable {
     let chapterIndex: Int
     let progress: Double
     let characterCount: Int
     var lastModified: Date?
 }
 
-struct BookInfo: Codable {
+nonisolated struct BookInfo: Codable {
     let characterCount: Int
     let chapterInfo: [String: ChapterInfo]
     
@@ -75,7 +75,7 @@ struct BookInfo: Codable {
     }
 }
 
-struct BookShelf: Codable {
+nonisolated struct BookShelf: Codable, Equatable {
     let name: String
     var bookIds: [UUID]
 }

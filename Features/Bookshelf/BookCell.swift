@@ -13,6 +13,7 @@ struct BookCell: View {
     @State private var markReadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var isCloudManaged = true
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -40,7 +41,18 @@ struct BookCell: View {
                 onSelect()
             }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book), isSelected: isSelecting && isSelected)
+            BookView(book: book, progress: viewModel.progress(for: book), isCloudManaged: isCloudManaged, isSelected: isSelecting && isSelected)
+        }
+        .task(id: userConfig.enableCloudKitSync) {
+            isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+            guard userConfig.enableCloudKitSync else { return }
+
+            let refreshManagedState: @MainActor (CloudKitSyncManager.Event) -> Void = { _ in
+                Task {
+                    isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+                }
+            }
+            await CloudKitSyncManager.shared.observeEvents(refreshManagedState)
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
@@ -62,6 +74,17 @@ struct BookCell: View {
                     }
                 } label: {
                     Label("Move", systemImage: "folder")
+                }
+            }
+            
+            if userConfig.enableCloudKitSync && !isCloudManaged {
+                Button {
+                    Task {
+                        try? await CloudKitSyncManager.shared.uploadUnmanagedBook(book)
+                        isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+                    }
+                } label: {
+                    Label("Sync to iCloud", systemImage: "icloud")
                 }
             }
             

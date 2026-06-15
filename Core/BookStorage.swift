@@ -9,8 +9,9 @@
 import EPUBKit
 import Foundation
 import ZIPFoundation
+import OSLog
 
-enum FileNames: Sendable {
+nonisolated enum FileNames: Sendable {
     static let metadata = "metadata.json"
     static let bookmark = "bookmark.json"
     static let bookinfo = "bookinfo.json"
@@ -22,7 +23,7 @@ enum FileNames: Sendable {
 }
 
 struct BookStorage {
-    static func getAppDirectory() throws -> URL {
+    nonisolated static func getAppDirectory() throws -> URL {
         guard let url = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -154,8 +155,12 @@ struct BookStorage {
         }
     }
     
-    static func getBooksDirectory() throws -> URL {
+    nonisolated static func getBooksDirectory() throws -> URL {
         try getAppDirectory().appendingPathComponent("Books")
+    }
+    
+    nonisolated static func getCloudKitSyncDirectory() throws -> URL {
+        try getAppDirectory().appendingPathComponent("CloudKitSync")
     }
     
     @discardableResult
@@ -200,24 +205,75 @@ struct BookStorage {
         try FileManager.default.copyItem(at: source, to: destination)
     }
     
-    static func delete(at url: URL) throws {
+    nonisolated static func delete(at url: URL) throws {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             return
         }
         try FileManager.default.removeItem(at: url)
     }
     
-    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String) throws {
+    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String, createCloudBook: Bool = false) throws {
         let targetURL = directory.appendingPathComponent(fileName)
         
+        try saveLocal(object, url: targetURL)
+        
+        saveCloudKitFile(object, url: targetURL, createCloudBook: createCloudBook)
+    }
+    
+    nonisolated static func saveLocal<T: Encodable>(_ object: T, url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(object)
         
-        try data.write(to: targetURL, options: .atomic)
+        try data.write(to: url, options: .atomic)
     }
     
-    static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
+    static func saveCloudKitFile<T: Encodable>(_ object: T, url: URL, createCloudBook: Bool) {
+        guard UserConfig.shared.enableCloudKitSync else { return }
+        
+        if T.self == [BookShelf].self {
+            Task {
+                await CloudKitSyncManager.shared.saveCloudShelves()
+            }
+            return
+        }
+        
+        if T.self == BookMetadata.self {
+            guard let metadata = object as? BookMetadata else { fatalError() }
+            Task {
+                await CloudKitSyncManager.shared.saveCloudFile(
+                    uuid: metadata.id,
+                    fileType: .metadata,
+                    fileName: FileNames.metadata,
+                    folderName: url.deletingLastPathComponent().lastPathComponent,
+                    createCloudBook: createCloudBook
+                )
+            }
+            return
+        }
+        
+        guard let metadata = Self.loadMetadata(root: url.deletingLastPathComponent()) else {
+            CloudKitSyncManager.logger.error("Failed to load BookMetadata in url \(url)")
+            return
+        }
+        let folderName = url.deletingLastPathComponent().lastPathComponent
+        let fileName = url.lastPathComponent
+        guard let fileType = CloudKitFileType(fileName: fileName) else {
+            CloudKitSyncManager.logger.error("Tried to upload an known file type in \(folderName, privacy: .public)/\(fileName, privacy: .public)")
+            return
+        }
+        Task {
+            await CloudKitSyncManager.shared.saveCloudFile(
+                uuid: metadata.id,
+                fileType: fileType,
+                fileName: fileName,
+                folderName: folderName,
+                createCloudBook: createCloudBook
+            )
+        }
+    }
+    
+    nonisolated static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let data = try? Data(contentsOf: url) else {
             return nil
@@ -253,11 +309,11 @@ struct BookStorage {
         load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
     }
     
-    static func loadShelves() -> [BookShelf]? {
+    nonisolated static func loadShelves() -> [BookShelf]? {
         load([BookShelf].self, from: try! getBooksDirectory().appendingPathComponent(FileNames.shelves))
     }
     
-    static func loadAllBooks() throws -> [BookMetadata] {
+    nonisolated static func loadAllBooks() throws -> [BookMetadata] {
         let booksDirectory = try getBooksDirectory()
         
         if !FileManager.default.fileExists(atPath: booksDirectory.path(percentEncoded: false)) {
@@ -283,7 +339,12 @@ struct BookStorage {
             if FileManager.default.fileExists(atPath: metadataURL.path(percentEncoded: false)) {
                 let data = try Data(contentsOf: metadataURL)
                 let book = try JSONDecoder().decode(BookMetadata.self, from: data)
-                books.append(book)
+                if let bookFileName = book.epub {
+                    let bookFileURL = url.appending(path: bookFileName)
+                    if FileManager.default.fileExists(atPath: bookFileURL.path(percentEncoded: false)) {
+                        books.append(book)
+                    }
+                }
             }
         }
         

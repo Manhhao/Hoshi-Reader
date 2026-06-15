@@ -21,7 +21,7 @@ enum StatisticsSyncMode: String, CaseIterable, Codable {
 }
 
 // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/data/database/books-db/versions/v6/books-db-v6.ts#L68
-struct Statistics: Codable {
+nonisolated struct Statistics: Codable, Hashable {
     let title: String
     let dateKey: String
     var charactersRead: Int
