@@ -370,13 +370,7 @@ extension CloudKitSyncManager {
         
         var shouldReplace = false
         if let localFile {
-            shouldReplace = try {
-                let localModified = localFile.localModificationDate
-                let remoteModified = try record.localModificationDate
-                if localModified > remoteModified { return false }
-                if remoteModified > localModified { return true }
-                return false
-            }()
+            shouldReplace = try record.localModificationDate > localFile.localModificationDate
         } else {
             shouldReplace = true
         }
