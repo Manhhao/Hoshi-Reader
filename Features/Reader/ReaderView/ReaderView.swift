@@ -28,6 +28,7 @@ struct WebViewState: Hashable {
 
 struct ReaderLoader: View {
     @Environment(UserConfig.self) private var userConfig
+    @Environment(\.dismissReader) private var dismissReader
     @State private var viewModel: ReaderLoaderViewModel
     
     init(book: BookMetadata) {
@@ -48,6 +49,23 @@ struct ReaderLoader: View {
                 statsSyncMode: userConfig.statisticsSyncMode,
                 syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
             )
+        } else {
+            BookLoadFailedView { dismissReader?() }
+        }
+    }
+}
+
+private struct BookLoadFailedView: View {
+    let onClose: () -> Void
+    
+    var body: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Text("Couldn't open book")
+                    .foregroundStyle(.secondary)
+                Button("Close", action: onClose)
+            }
         }
     }
 }
