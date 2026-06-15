@@ -257,56 +257,19 @@ struct BookStorage {
             return
         }
         let folderName = url.deletingLastPathComponent().lastPathComponent
-        if T.self == BookInfo.self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .bookinfo,
-                    fileName: FileNames.bookinfo,
-                    folderName: folderName,
-                    createCloudBook: createCloudBook
-                )
-            }
-        } else if T.self == Bookmark.self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .bookmark,
-                    fileName: FileNames.bookmark,
-                    folderName: folderName,
-                    createCloudBook: createCloudBook
-                )
-            }
-        } else if T.self == [Highlight].self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .highlights,
-                    fileName: FileNames.highlights,
-                    folderName: folderName,
-                    createCloudBook: createCloudBook
-                )
-            }
-        } else if T.self == [Statistics].self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .statistics,
-                    fileName: FileNames.statistics,
-                    folderName: folderName,
-                    createCloudBook: createCloudBook
-                )
-            }
-        } else if T.self == SasayakiPlaybackData.self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .sasayakiPlayback,
-                    fileName: FileNames.sasayakiPlayback,
-                    folderName: folderName,
-                    createCloudBook: createCloudBook
-                )
-            }
+        let fileName = url.lastPathComponent
+        guard let fileType = CloudKitFileType(fileName: fileName) else {
+            CloudKitSyncManager.logger.error("Tried to upload an known file type in \(folderName, privacy: .public)/\(fileName, privacy: .public)")
+            return
+        }
+        Task {
+            await CloudKitSyncManager.shared.saveCloudFile(
+                uuid: metadata.id,
+                fileType: fileType,
+                fileName: fileName,
+                folderName: folderName,
+                createCloudBook: createCloudBook
+            )
         }
     }
     
