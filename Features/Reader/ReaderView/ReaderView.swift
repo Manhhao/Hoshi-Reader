@@ -13,7 +13,7 @@ struct WebViewState: Hashable {
     var verticalWriting: Bool
     var fontSize: Int
     var selectedFont: String
-    var hideFurigana: Bool
+    var furiganaMode: FuriganaMode
     var horizontalPadding: Int
     var verticalPadding: Int
     var avoidPageBreak: Bool
@@ -377,7 +377,7 @@ struct ReaderView: View {
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
-                            hideFurigana: userConfig.readerHideFurigana,
+                            furiganaMode: userConfig.furiganaMode,
                             horizontalPadding: userConfig.horizontalPadding,
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,
@@ -443,7 +443,7 @@ struct ReaderView: View {
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
-                            hideFurigana: userConfig.readerHideFurigana,
+                            furiganaMode: userConfig.furiganaMode,
                             horizontalPadding: userConfig.horizontalPadding,
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,

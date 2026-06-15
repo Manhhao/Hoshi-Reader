@@ -419,6 +419,16 @@ struct ScrollReaderWebView: UIViewRepresentable {
             ruby > rt, ruby > rp {
                 -webkit-user-select: none;
             }
+            ruby.furigana-hidden > rt,
+            ruby.furigana-hidden > rp {
+                visibility: hidden !important;
+            }
+            ruby.furigana-hidden {
+                text-decoration-line: underline !important;
+                text-decoration-style: dotted !important;
+                text-decoration-color: rgba(160, 160, 160, 0.8) !important;
+                text-underline-offset: 0.05em !important;
+            }
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;
@@ -427,6 +437,23 @@ struct ScrollReaderWebView: UIViewRepresentable {
             \(paragraphSpacingCss)
             \(textColorCss)
             """
+            
+            let furiganaJs: String = {
+                switch parent.userConfig.furiganaMode {
+                case .off:
+                    return ""
+                case .toggle:
+                    return """
+                    document.querySelectorAll('ruby').forEach(ruby => {
+                        if (ruby.querySelector('rt')) {
+                            ruby.classList.add('furigana-hidden');
+                        }
+                    });
+                    """
+                case .hidden:
+                    return "document.querySelectorAll('rt').forEach(rt => rt.remove());"
+                }
+            }()
             
             let sasayakiSetupScript: String = {
                 if let cues = pendingSasayakiCues {
@@ -469,9 +496,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 \(highlightsJs)
                 window.hoshiReader.registerCopyText();
                 
-                if (\(parent.userConfig.readerHideFurigana)) {
-                    document.querySelectorAll('rt').forEach(rt => rt.remove());
-                }
+                \(furiganaJs)
             
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {

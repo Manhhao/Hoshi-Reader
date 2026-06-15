@@ -37,6 +37,12 @@ enum AudioPlaybackMode: String, CaseIterable, Codable {
     case mix = "mix"
 }
 
+enum FuriganaMode: String, CaseIterable, Codable {
+    case off = "Off"
+    case toggle = "Toggle"
+    case hidden = "Hidden"
+}
+
 enum CollapseMode: String, CaseIterable, Codable {
     case expandAll = "Expand All"
     case collapseAll = "Collapse All"
@@ -186,8 +192,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
     }
     
-    var readerHideFurigana: Bool {
-        didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
+    var furiganaMode: FuriganaMode {
+        didSet { UserDefaults.standard.set(furiganaMode.rawValue, forKey: "furiganaMode") }
     }
     
     var continuousMode: Bool {
@@ -446,7 +452,8 @@ class UserConfig {
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
         self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
-        self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
+        self.furiganaMode = defaults.string(forKey: "furiganaMode")
+            .flatMap(FuriganaMode.init) ?? .off
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20

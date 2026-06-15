@@ -151,7 +151,17 @@ struct AppearanceView: View {
                             .labelsHidden()
                     }
                     
-                    Toggle("Hide Furigana", isOn: $userConfig.readerHideFurigana)
+                    HStack {
+                        Text("Hide Furigana")
+                        Spacer()
+                        Picker("", selection: $userConfig.furiganaMode) {
+                            Text("Off").tag(FuriganaMode.off)
+                            Text("Toggle").tag(FuriganaMode.toggle)
+                            Text("Hidden").tag(FuriganaMode.hidden)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
                 }
                 
                 Section("Layout") {

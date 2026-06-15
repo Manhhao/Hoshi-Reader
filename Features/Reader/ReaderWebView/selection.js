@@ -303,6 +303,13 @@ window.hoshiSelection = {
             return 'image'
         }
         
+        const furigana = el?.closest('ruby.furigana-hidden');
+        if (furigana) {
+            furigana.classList.remove('furigana-hidden');
+            this.clearSelection();
+            return 'furigana';
+        }
+        
         const hit = this.getCharacterAtPoint(x, y);
         
         if (!hit) {

@@ -1112,6 +1112,9 @@
         }
       }
     },
+    "Hidden" : {
+
+    },
     "Hide Furigana" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -2459,6 +2462,9 @@
           }
         }
       }
+    },
+    "Toggle" : {
+
     },
     "Token exchange failed: %lld" : {
       "localizations" : {
