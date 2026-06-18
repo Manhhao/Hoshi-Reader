@@ -48,17 +48,24 @@ class LocalFileServer {
             return
         }
         
-        let newListener = try! NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: Self.port)!)
+        guard let newListener = try? NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: Self.port)!) else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self else { return }
+                if self.listener == nil && (self.localAudioEnabled || self.coverData != nil || self.sasayakiAudioData != nil) {
+                    self.startServer()
+                }
+            }
+            return
+        }
         newListener.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
                 guard let self else {
                     return
                 }
                 if case .failed = state {
-                    // retry start if failed with a small delay in case port is still taken by old listener
                     self.listener = nil
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        if self.listener == nil && (self.localAudioEnabled || self.coverData != nil) {
+                        if self.listener == nil && (self.localAudioEnabled || self.coverData != nil || self.sasayakiAudioData != nil) {
                             self.startServer()
                         }
                     }

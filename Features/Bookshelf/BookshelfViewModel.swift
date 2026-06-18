@@ -43,7 +43,8 @@ class BookshelfViewModel {
     }
     
     func saveShelves() {
-        try? BookStorage.save(shelves, inside: try! BookStorage.getBooksDirectory(), as: FileNames.shelves)
+        guard let directory = try? BookStorage.getBooksDirectory() else { return }
+        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves)
     }
     
     func createShelf(name: String) {

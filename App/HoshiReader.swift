@@ -19,15 +19,10 @@ struct HoshiReaderApp: App {
     @State private var pendingRemoteImportURL: URL?
     @State private var pendingLookup: String?
     @State private var pendingTab: Int?
+    @State private var didFinishLaunch = BookStorage.migrationsComplete
     private var shortcutHandler = ShortcutHandler.shared
     
     init() {
-        TokenStorage.clearOldKeys()
-        BookStorage.migrateFromDocuments()
-        BookStorage.migrateBooks()
-        WebViewPreloader.shared.warmup()
-        _ = DictionaryManager.shared
-        _ = GoogleDriveHandler.shared
         configureTabBarAppearance()
     }
     
@@ -40,16 +35,37 @@ struct HoshiReaderApp: App {
         UITabBar.appearance().scrollEdgeAppearance = tab
     }
     
+    private func startup() async {
+        TokenStorage.clearOldKeys()
+        await Task.detached(priority: .userInitiated) {
+            BookStorage.migrateFromDocuments()
+            BookStorage.migrateBooks()
+        }.value
+        didFinishLaunch = true
+        _ = DictionaryManager.shared
+        _ = GoogleDriveHandler.shared
+        WebViewPreloader.shared.warmup()
+    }
+    
     var body: some Scene {
         WindowGroup {
-            BookshelfView(
-                pendingImportURL: $pendingImportURL,
-                pendingRemoteImportURL: $pendingRemoteImportURL,
-                pendingLookup: $pendingLookup,
-                pendingTab: $pendingTab
-            )
+            Group {
+                if didFinishLaunch {
+                    BookshelfView(
+                        pendingImportURL: $pendingImportURL,
+                        pendingRemoteImportURL: $pendingRemoteImportURL,
+                        pendingLookup: $pendingLookup,
+                        pendingTab: $pendingTab
+                    )
+                } else {
+                    LaunchView()
+                }
+            }
             .environment(userConfig)
             .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme == .sepia && userConfig.sepiaInvertInDark ? nil : userConfig.theme.colorScheme))
+            .task {
+                await startup()
+            }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 switch phase {
                 case .active:
@@ -155,6 +171,16 @@ class WebViewPreloader {
         }
         DispatchQueue.main.async {
             self.dummy = nil
+        }
+    }
+}
+
+struct LaunchView: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            ProgressView()
         }
     }
 }

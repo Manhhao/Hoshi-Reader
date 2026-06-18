@@ -10,7 +10,7 @@ import EPUBKit
 import Foundation
 import ZIPFoundation
 
-enum FileNames: Sendable {
+nonisolated enum FileNames: Sendable {
     static let metadata = "metadata.json"
     static let bookmark = "bookmark.json"
     static let bookinfo = "bookinfo.json"
@@ -22,7 +22,15 @@ enum FileNames: Sendable {
 }
 
 struct BookStorage {
-    static func getAppDirectory() throws -> URL {
+    nonisolated static let migratedDocumentsKey = "migratedToAppSupport"
+    nonisolated static let migratedBooksKey = "migratedBooks"
+    
+    static var migrationsComplete: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: migratedDocumentsKey) && defaults.bool(forKey: migratedBooksKey)
+    }
+    
+    nonisolated static func getAppDirectory() throws -> URL {
         guard let url = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -35,11 +43,11 @@ struct BookStorage {
         return url
     }
     
-    static func migrateFromDocuments() {
+    nonisolated static func migrateFromDocuments() {
         guard let appSupport = try? getAppDirectory(),
               let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         
-        let migrated = UserDefaults.standard.bool(forKey: "migratedToAppSupport")
+        let migrated = UserDefaults.standard.bool(forKey: Self.migratedDocumentsKey)
         guard !migrated else { return }
         
         let items = ["Books", "Fonts", "Dictionaries", "Audio", "anki_words.json", "anki_config.json"]
@@ -51,15 +59,17 @@ struct BookStorage {
             try? FileManager.default.moveItem(at: src, to: dst)
         }
         
-        UserDefaults.standard.set(true, forKey: "migratedToAppSupport")
+        UserDefaults.standard.set(true, forKey: Self.migratedDocumentsKey)
     }
     
-    static func migrateBooks() {
-        guard let booksDir = try? getBooksDirectory(),
-              FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else { return }
+    nonisolated static func migrateBooks() {
+        guard !UserDefaults.standard.bool(forKey: Self.migratedBooksKey) else {
+            return
+        }
         
-        let migrated = UserDefaults.standard.bool(forKey: "migratedBooks")
-        guard !migrated else {
+        guard let booksDir = try? getBooksDirectory(),
+              FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else {
+            UserDefaults.standard.set(true, forKey: Self.migratedBooksKey)
             return
         }
         
@@ -68,6 +78,7 @@ struct BookStorage {
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else {
+            // transient read failure — leave the flag unset so we retry next launch
             return
         }
         
@@ -96,14 +107,14 @@ struct BookStorage {
                     lastAccess: metadata.lastAccess
                 )
                 updated.renamedTitle = metadata.renamedTitle
-                try? save(updated, inside: folder, as: FileNames.metadata)
+                try? saveMetadata(updated, inside: folder)
             }
         }
         
-        UserDefaults.standard.set(true, forKey: "migratedBooks")
+        UserDefaults.standard.set(true, forKey: Self.migratedBooksKey)
     }
     
-    private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
+    nonisolated private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
         let tempURL = destination.appendingPathExtension("tmp")
         try? FileManager.default.removeItem(at: tempURL)
         let archive = try Archive(url: tempURL, accessMode: .create, pathEncoding: .utf8)
@@ -154,7 +165,7 @@ struct BookStorage {
         }
     }
     
-    static func getBooksDirectory() throws -> URL {
+    nonisolated static func getBooksDirectory() throws -> URL {
         try getAppDirectory().appendingPathComponent("Books")
     }
     
@@ -233,8 +244,20 @@ struct BookStorage {
         load(BookInfo.self, from: root.appendingPathComponent(FileNames.bookinfo))
     }
     
-    static func loadMetadata(root: URL) -> BookMetadata? {
-        load(BookMetadata.self, from: root.appendingPathComponent(FileNames.metadata))
+    nonisolated static func loadMetadata(root: URL) -> BookMetadata? {
+        let url = root.appendingPathComponent(FileNames.metadata)
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
+              let data = try? Data(contentsOf: url) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(BookMetadata.self, from: data)
+    }
+    
+    nonisolated static func saveMetadata(_ metadata: BookMetadata, inside directory: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(metadata)
+        try data.write(to: directory.appendingPathComponent(FileNames.metadata), options: .atomic)
     }
     
     static func loadStatistics(root: URL) -> [Statistics]? {
@@ -254,7 +277,8 @@ struct BookStorage {
     }
     
     static func loadShelves() -> [BookShelf]? {
-        load([BookShelf].self, from: try! getBooksDirectory().appendingPathComponent(FileNames.shelves))
+        guard let booksDirectory = try? getBooksDirectory() else { return nil }
+        return load([BookShelf].self, from: booksDirectory.appendingPathComponent(FileNames.shelves))
     }
     
     static func loadAllBooks() throws -> [BookMetadata] {
@@ -313,7 +337,7 @@ struct BookStorage {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
-    enum BookStorageError: LocalizedError {
+    nonisolated enum BookStorageError: LocalizedError {
         case accessDenied
         case appDirectoryNotFound
         case epubImportFailed(Error)
