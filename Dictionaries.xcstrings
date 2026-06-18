@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "{selected-glossary} Fallback" : {
+
+    },
     "Address" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -11,6 +14,9 @@
           }
         }
       }
+    },
+    "Advanced" : {
+
     },
     "Allow Duplicates" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -99,6 +105,9 @@
         }
       }
     },
+    "Categorize Dictionaries" : {
+
+    },
     "Check All Models" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -142,9 +151,6 @@
           }
         }
       }
-    },
-    "Two-Column Layout" : {
-
     },
     "Compact Glossaries" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -685,6 +691,9 @@
         }
       }
     },
+    "Show All Handlebars" : {
+
+    },
     "Show Expression Tags" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -772,6 +781,9 @@
           }
         }
       }
+    },
+    "Two-Column Layout" : {
+
     },
     "Type" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",

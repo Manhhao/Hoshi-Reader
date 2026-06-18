@@ -8,19 +8,34 @@
 
 import Foundation
 
+enum DictionaryCategory: String, Codable, CaseIterable, Identifiable {
+    case none, monolingual, bilingual
+    
+    var id: String { self.rawValue }
+    var label: String {
+        switch self {
+        case .none: return "None"
+        case .monolingual: return "Monolingual"
+        case .bilingual: return "Bilingual"
+        }
+    }
+}
+
 struct DictionaryInfo: Identifiable, Codable {
     let id: UUID
     let index: DictionaryIndex
     let path: URL
     var isEnabled: Bool
     var order: Int
+    var category: DictionaryCategory
     
-    init(id: UUID = UUID(), index: DictionaryIndex, path: URL, isEnabled: Bool = true, order: Int = 0) {
+    init(id: UUID = UUID(), index: DictionaryIndex, path: URL, isEnabled: Bool = true, order: Int = 0, category: DictionaryCategory = .none) {
         self.id = id
         self.index = index
         self.path = path
         self.isEnabled = isEnabled
         self.order = order
+        self.category = category
     }
 }
 
@@ -33,6 +48,7 @@ struct DictionaryConfig: Codable {
         let fileName: String
         var isEnabled: Bool
         var order: Int
+        var category: DictionaryCategory?
     }
 }
 

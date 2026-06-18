@@ -16,20 +16,16 @@ struct AnkiView: View {
     @State private var confirmFetch = false
     
     private var availableHandlebars: [String] {
-        let hidden: Set<Handlebars> = [
-            .glossaryNoDictionary,
-            .glossaryFirstBrief,
-            .glossaryFirstNoDictionary,
-            .selectedGlossaryBrief,
-            .selectedGlossaryBriefFallback,
-            .selectedGlossaryNoDictionary,
-            .selectedGlossaryNoDictionaryFallback
-        ]
+        let showAll = ankiManager.showAllHandlebars
         var options = Handlebars.allCases
-            .filter { !hidden.contains($0) }
+            .filter { showAll || !Handlebars.advanced.contains($0) }
             .map(\.rawValue)
         for dict in dictionaryManager.termDictionaries {
             options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)}")
+            if showAll {
+                options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)-brief}")
+                options.append("\(Handlebars.singleGlossaryPrefix)\(dict.index.title)-no-dictionary}")
+            }
         }
         return options
     }
@@ -119,6 +115,11 @@ struct AnkiView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                    }
+                    NavigationLink {
+                        AnkiAdvancedView()
+                    } label: {
+                        Text("Advanced", tableName: "Dictionaries")
                     }
                 } header: {
                     Text("Settings", tableName: "Dictionaries")

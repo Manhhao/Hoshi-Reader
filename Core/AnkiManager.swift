@@ -29,6 +29,9 @@ class AnkiManager {
     var compactGlossaries: Bool = false
     var embedMedia: Bool = false
     
+    var selectedGlossaryFallback: String = Handlebars.glossaryFirst.rawValue
+    var showAllHandlebars: Bool = false
+    
     var errorMessage: String?
     
     var savedWords: Set<String> = []
@@ -426,8 +429,11 @@ class AnkiManager {
     
     func updateHandlebar(old: String, new: String) {
         guard old != new else { return }
+        let prefix = Handlebars.singleGlossaryPrefix
         fieldMappings = fieldMappings.mapValues {
-            $0.replacingOccurrences(of: "\(Handlebars.singleGlossaryPrefix)\(old)}", with: "\(Handlebars.singleGlossaryPrefix)\(new)}")
+            $0.replacingOccurrences(of: "\(prefix)\(old)}", with: "\(prefix)\(new)}")
+                .replacingOccurrences(of: "\(prefix)\(old)-brief}", with: "\(prefix)\(new)-brief}")
+                .replacingOccurrences(of: "\(prefix)\(old)-no-dictionary}", with: "\(prefix)\(new)-no-dictionary}")
         }
         
         save()
@@ -445,7 +451,9 @@ class AnkiManager {
             availableDecks: availableDecks,
             availableNoteTypes: availableNoteTypes,
             useAnkiConnect: useAnkiConnect,
-            ankiConnectConfig: ankiConnectConfig
+            ankiConnectConfig: ankiConnectConfig,
+            selectedGlossaryFallback: selectedGlossaryFallback,
+            showAllHandlebars: showAllHandlebars
         )
         
         guard let directory = try? BookStorage.getAppDirectory() else {
@@ -466,6 +474,27 @@ class AnkiManager {
                 fieldMappings[field] = mapping
             }
         }
+    }
+    
+    private func firstGlossary(ofCategory category: DictionaryCategory? = nil, singleGlossaries: [String: String]) -> String {
+        for dict in DictionaryManager.shared.termDictionaries {
+            guard category == nil || dict.category == category, let glossary = singleGlossaries[dict.index.title] else {
+                continue
+            }
+            return glossary
+        }
+        return ""
+    }
+    
+    private static let selectedGlossaryFallbackHandlebars: Set<String> = [
+        Handlebars.selectedGlossary.rawValue,
+        Handlebars.selectedGlossaryBrief.rawValue,
+        Handlebars.selectedGlossaryNoDictionary.rawValue,
+    ]
+    
+    private func resolveSelectedGlossaryFallback(context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
+        guard !Self.selectedGlossaryFallbackHandlebars.contains(selectedGlossaryFallback) else { return "" }
+        return handlebarToValue(handlebar: selectedGlossaryFallback, context: context, content: content, singleGlossaries: singleGlossaries)
     }
     
     private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
@@ -495,25 +524,29 @@ class AnkiManager {
             case .glossaryNoDictionary:
                 return Self.stripDictionaryName(content["glossary"] ?? "")
             case .glossaryFirst:
-                return content["glossaryFirst"] ?? ""
+                return firstGlossary(singleGlossaries: singleGlossaries)
             case .glossaryFirstBrief:
-                return Self.stripGlossaryHeaders(content["glossaryFirst"] ?? "")
+                return Self.stripGlossaryHeaders(firstGlossary(singleGlossaries: singleGlossaries))
             case .glossaryFirstNoDictionary:
-                return Self.stripDictionaryName(content["glossaryFirst"] ?? "")
+                return Self.stripDictionaryName(firstGlossary(singleGlossaries: singleGlossaries))
             case .selectedGlossary:
-                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? ""
-            case .selectedGlossaryFallback:
-                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
             case .selectedGlossaryBrief:
-                return Self.stripGlossaryHeaders(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
-            case .selectedGlossaryBriefFallback:
-                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
                 return Self.stripGlossaryHeaders(selected)
             case .selectedGlossaryNoDictionary:
-                return Self.stripDictionaryName(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
-            case .selectedGlossaryNoDictionaryFallback:
-                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
                 return Self.stripDictionaryName(selected)
+            case .monolingualDefinition:
+                return firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+            case .bilingualDefinition:
+                return firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+            case .monolingualDefinitionFallback:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary
+            case .bilingualDefinitionFallback:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:
@@ -570,6 +603,8 @@ class AnkiManager {
         availableNoteTypes = config.availableNoteTypes
         useAnkiConnect = config.useAnkiConnect ?? false
         ankiConnectConfig = config.ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
+        selectedGlossaryFallback = config.selectedGlossaryFallback ?? ""
+        showAllHandlebars = config.showAllHandlebars ?? false
     }
     
     func importAnkiBackup(from url: URL) throws {

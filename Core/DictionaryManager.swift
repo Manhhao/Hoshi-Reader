@@ -84,6 +84,7 @@ class DictionaryManager {
                 var dictInfo = stored
                 dictInfo.isEnabled = configDict.isEnabled
                 dictInfo.order = configDict.order
+                dictInfo.category = configDict.category ?? .none
                 result.append(dictInfo)
             }
         }
@@ -165,21 +166,24 @@ class DictionaryManager {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
                 )
             },
             frequencyDictionaries: frequencyDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
                 )
             },
             pitchDictionaries: pitchDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
                 )
             }
         )
@@ -424,10 +428,15 @@ class DictionaryManager {
                             if let currentIndex = self.getDictionaryIndex(title: old, type: type) {
                                 let wasEnabled = self.isDictionaryEnabled(at: currentIndex, type: type)
                                 let wasCollapsed = self.collapsedDictionaries.contains(old)
+                                let wasCategory = type == .term ? self.termDictionaries[currentIndex].category : .none
                                 self.deleteDictionary(indexSet: IndexSet(integer: currentIndex), type: type)
                                 let importedIndex = self.getDictionaryIndex(title: new, type: type)!
                                 self.setDictionaryEnabled(index: importedIndex, enabled: wasEnabled, type: type)
+                                let newId = type == .term ? self.termDictionaries[importedIndex].id : nil
                                 self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
+                                if let newId, wasCategory != .none {
+                                    self.setDictionaryCategory(id: newId, category: wasCategory)
+                                }
                                 AnkiManager.shared.updateHandlebar(old: old, new: new)
                                 if wasCollapsed {
                                     self.collapsedDictionaries.insert(new)
@@ -488,6 +497,12 @@ class DictionaryManager {
         }
         saveDictionaryConfig()
         rebuildLookupQuery()
+    }
+    
+    func setDictionaryCategory(id: UUID, category: DictionaryCategory) {
+        guard let index = termDictionaries.firstIndex(where: { $0.id == id }) else { return }
+        termDictionaries[index].category = category
+        saveDictionaryConfig()
     }
     
     func moveDictionary(from: IndexSet, to: Int, type: DictionaryType) {

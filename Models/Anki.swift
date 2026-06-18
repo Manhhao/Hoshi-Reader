@@ -38,6 +38,8 @@ struct AnkiConfig: Codable {
     let availableNoteTypes: [AnkiNoteType]
     let useAnkiConnect: Bool?
     let ankiConnectConfig: AnkiConnectConfig?
+    let selectedGlossaryFallback: String?
+    let showAllHandlebars: Bool?
 }
 
 enum DuplicateScope: String, Codable, CaseIterable {
@@ -79,12 +81,13 @@ enum Handlebars: String, CaseIterable {
     case glossaryFirst = "{glossary-first}"
     case glossaryFirstBrief = "{glossary-first-brief}"
     case glossaryFirstNoDictionary = "{glossary-first-no-dictionary}"
+    case monolingualDefinition = "{monolingual-definition}"
+    case bilingualDefinition = "{bilingual-definition}"
+    case monolingualDefinitionFallback = "{monolingual-definition-fallback}"
+    case bilingualDefinitionFallback = "{bilingual-definition-fallback}"
     case selectedGlossary = "{selected-glossary}"
-    case selectedGlossaryFallback = "{selected-glossary-fallback}"
     case selectedGlossaryBrief = "{selected-glossary-brief}"
-    case selectedGlossaryBriefFallback = "{selected-glossary-brief-fallback}"
     case selectedGlossaryNoDictionary = "{selected-glossary-no-dictionary}"
-    case selectedGlossaryNoDictionaryFallback = "{selected-glossary-no-dictionary-fallback}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
     case frequencies = "{frequencies}"
@@ -96,6 +99,19 @@ enum Handlebars: String, CaseIterable {
     case sasayakiAudio = "{sasayaki-audio}"
     
     static let singleGlossaryPrefix = "{single-glossary-"
+    
+    static let advanced: Set<Handlebars> = [
+        .glossaryBrief,
+        .glossaryNoDictionary,
+        .glossaryFirstBrief,
+        .glossaryFirstNoDictionary,
+        .monolingualDefinition,
+        .bilingualDefinition,
+        .monolingualDefinitionFallback,
+        .bilingualDefinitionFallback,
+        .selectedGlossaryBrief,
+        .selectedGlossaryNoDictionary
+    ]
 }
 
 struct AnkiFieldTemplate {

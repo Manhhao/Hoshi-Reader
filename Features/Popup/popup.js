@@ -803,7 +803,6 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
     const singleGlossaries = constructSingleGlossaryHtml(idx);
     const dictionaryMedia = currentDictionaryMedia;
     currentDictionaryMedia = null;
-    const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
     
@@ -821,7 +820,6 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         frequenciesHtml,
         freqHarmonicRank,
         glossary,
-        glossaryFirst,
         singleGlossaries: JSON.stringify(singleGlossaries),
         pitchPositions,
         pitchCategories,
@@ -1619,12 +1617,12 @@ window.renderPopup = function() {
         const layoutStyle = document.createElement('style');
         layoutStyle.id = 'popup-two-column-layout';
         layoutStyle.textContent = `
-            .glossary-sections {
+                .glossary-sections {
                 ${HAS_NATIVE_MASONRY
                 ? `display: grid-lanes;
-                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-                gap: ${MASONRY_GAP}px;
-                align-items: start;`
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: ${MASONRY_GAP}px;
+        align-items: start;`
                 : `position: relative;`}
                 margin-top: calc(8px * var(--popup-scale));
             }
@@ -1632,12 +1630,12 @@ window.renderPopup = function() {
                 margin-top: 0;
             }
             ${HAS_NATIVE_MASONRY ? '' : `
-            .glossary-sections:not(.single-section) > .glossary-group {
-                position: absolute;
-                left: 0;
-                top: 0;
-                visibility: hidden;
-            }
+        .glossary-sections:not(.single-section) > .glossary-group {
+            position: absolute;
+            left: 0;
+            top: 0;
+            visibility: hidden;
+        }
             `}
             .glossary-sections.single-section {
                 display: block;

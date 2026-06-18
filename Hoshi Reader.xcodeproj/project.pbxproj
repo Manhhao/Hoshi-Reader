@@ -53,13 +53,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4826FBF22FE3EB3100E7966E /* Exceptions for "Features" folder in "Hoshi Reader" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Settings/AnkiAdvancedView.swift,
-			);
-			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;
-		};
 		48568A912F1E926300F9C126 /* Exceptions for "App" folder in "Hoshi Reader" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -131,9 +124,6 @@
 		};
 		48568A792F1E926300F9C126 /* Features */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				4826FBF22FE3EB3100E7966E /* Exceptions for "Features" folder in "Hoshi Reader" target */,
-			);
 			path = Features;
 			sourceTree = "<group>";
 		};
