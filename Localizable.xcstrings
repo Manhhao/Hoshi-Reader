@@ -12,6 +12,9 @@
         }
       }
     },
+    " " : {
+
+    },
     "**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/develop/TTUSYNC.md)**" : {
       "localizations" : {
         "zh-Hans" : {
@@ -623,6 +626,18 @@
         }
       }
     },
+    "Clear iCloud data" : {
+
+    },
+    "Clear iCloud data?" : {
+
+    },
+    "Clear local books?" : {
+
+    },
+    "Clear Unsynced Local Books" : {
+
+    },
     "Client ID" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1136,6 +1151,15 @@
         }
       }
     },
+    "iCloud Sync" : {
+
+    },
+    "iCloud Syncing" : {
+
+    },
+    "iCloud syncing has been disabled because you have run out of iCloud space. Please free up space or upgrade your storage." : {
+
+    },
     "Import" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
       "localizations" : {
@@ -1396,6 +1420,9 @@
         }
       }
     },
+    "Log in to an iCloud account to sync with iCloud." : {
+
+    },
     "Long press a book and choose **Match**." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1610,6 +1637,9 @@
         }
       }
     },
+    "Not Available" : {
+
+    },
     "Not connected" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
       "localizations" : {
@@ -1748,6 +1778,9 @@
           }
         }
       }
+    },
+    "Quota Exceeded" : {
+
     },
     "Reading" : {
       "localizations" : {
@@ -2117,6 +2150,12 @@
         }
       }
     },
+    "Signed In" : {
+
+    },
+    "Signed Out" : {
+
+    },
     "Signing out will clear authorization tokens, cached folder ids and book covers." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2268,6 +2307,9 @@
         }
       }
     },
+    "Switch on to sync with iCloud" : {
+
+    },
     "Sync" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -2330,6 +2372,9 @@
           }
         }
       }
+    },
+    "Sync to iCloud" : {
+
     },
     "Syncing" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
@@ -2397,6 +2442,12 @@
         }
       }
     },
+    "This will clear all data of local only books" : {
+
+    },
+    "This will clear all data on iCloud server." : {
+
+    },
     "This will clear cached folder ids and book covers." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2406,6 +2457,9 @@
           }
         }
       }
+    },
+    "This will upload local only books to iCloud server." : {
+
     },
     "Time to finish Book:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -2493,6 +2547,12 @@
         }
       }
     },
+    "Upload local books?" : {
+
+    },
+    "Upload Unsynced Local Books" : {
+
+    },
     "Uploads books on first sync if no bookdata is stored on Google Drive." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2579,6 +2639,12 @@
           }
         }
       }
+    },
+    "You have logged in to an iCloud account. You can upload local books to iCloud server" : {
+
+    },
+    "You have logged out of iCloud account." : {
+
     },
     "ッツ Backup" : {
       "localizations" : {

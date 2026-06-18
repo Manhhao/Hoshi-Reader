@@ -19,7 +19,7 @@ actor CloudKitSyncManager {
         category: "CloudKitSync"
     )
     
-    static var container: CKContainer { CKContainer(identifier: "iCloud.com.youwu.hoshi") }
+    static var container: CKContainer { CKContainer(identifier: "iCloud.de.manhhao.hoshi") }
     
     private static let prioritizedZoneIDs = [CKRecordZone.ID(zoneName: CloudKitBookFile.zoneName)]
     
