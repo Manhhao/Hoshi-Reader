@@ -376,6 +376,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(statisticsAutostartMode.rawValue, forKey: "statisticsAutostartMode") }
     }
     
+    var statisticsResetTime: Int {
+        didSet { UserDefaults.standard.set(statisticsResetTime, forKey: "statisticsResetTime") }
+    }
+    
     var enableSasayaki: Bool {
         didSet { UserDefaults.standard.set(enableSasayaki, forKey: "enableSasayaki") }
     }
@@ -509,6 +513,7 @@ class UserConfig {
             .flatMap(StatisticsSyncMode.init) ?? .merge
         self.statisticsAutostartMode = defaults.string(forKey: "statisticsAutostartMode")
             .flatMap(StatisticsAutostartMode.init) ?? .off
+        self.statisticsResetTime = defaults.object(forKey: "statisticsResetTime") as? Int ?? 0
         
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true

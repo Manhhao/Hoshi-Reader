@@ -28,6 +28,14 @@ struct StatisticsSettingsView: View {
                     }
                 }
                 
+                Section {
+                    Picker("Reset Time", selection: $userConfig.statisticsResetTime) {
+                        ForEach(0..<24, id: \.self) { hour in
+                            Text(formattedTime(hour)).tag(hour)
+                        }
+                    }
+                }
+                
                 if userConfig.enableSync {
                     Section {
                         Toggle("ッツ Sync", isOn: $userConfig.statisticsEnableSync)
@@ -56,6 +64,14 @@ struct StatisticsSettingsView: View {
         case .on:
             Text("On")
         }
+    }
+    
+    private func formattedTime(_ hour: Int) -> String {
+        var components = DateComponents()
+        components.hour = hour
+        components.minute = 0
+        let date = Calendar.current.date(from: components) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
     }
     
     private func textOfAutoSyncMode(_ mode: StatisticsSyncMode) -> some View {

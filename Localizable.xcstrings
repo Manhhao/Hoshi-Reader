@@ -1847,6 +1847,9 @@
         }
       }
     },
+    "Reset Time" : {
+
+    },
     "Restore" : {
       "comment" : "Context: Settings > Backup. Surrounding UI offers backup/restore actions for books and dictionaries, with restore overwrite warnings.",
       "localizations" : {
