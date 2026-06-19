@@ -61,6 +61,7 @@ class AnkiManager {
     private static let pasteboardType = "net.ankimobile.json"
     private static let infoCallback = "anki://x-callback-url/infoForAdding"
     private static let addNoteCallback = "anki://x-callback-url/addnote"
+    private static let searchCallback = "anki://x-callback-url/search"
     
     private static let ankiConfig = "anki_config.json"
     private static let ankiWords = "anki_words.json"
@@ -386,6 +387,50 @@ class AnkiManager {
         } catch {}
         
         return results
+    }
+    
+    func showNotes(fields: [String: String], formatIndex: Int) async {
+        guard cardFormats.indices.contains(formatIndex) else {
+            return
+        }
+        let format = cardFormats[formatIndex]
+        guard let noteTypeName = format.selectedNoteType,
+              let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+              let firstField = noteType.fields.first,
+              let deck = format.selectedDeck,
+              let word = firstFieldWord(format: format, resolve: { fields[$0] }),
+              !word.isEmpty else {
+            return
+        }
+        
+        let escapedWord = word.replacingOccurrences(of: "\"", with: "")
+        
+        if useAnkiConnect {
+            var search: [String] = []
+            search.append("\"\(firstField):\(escapedWord)\"")
+            if ankiConnectConfig?.checkAllModels != true {
+                search.append("\"note:\(noteTypeName)\"")
+            }
+            switch ankiConnectConfig?.duplicateScope ?? .collection {
+            case .collection:
+                break
+            case .deck:
+                search.append("\"deck:\(deck)\"")
+            case .deckroot:
+                let rootDeck = deck.split(separator: "::", maxSplits: 1).first.map(String.init) ?? deck
+                search.append("\"deck:\(rootDeck)\"")
+            }
+            _ = try? await ankiConnectRequest(action: "guiBrowse", params: ["query": search.joined(separator: " ")])
+        } else {
+            var urlComponents = URLComponents(string: Self.searchCallback)
+            urlComponents?.queryItems = [
+                URLQueryItem(name: "query", value: "\(firstField):\"\(escapedWord)\"")
+            ]
+            
+            if let url = urlComponents?.url {
+                await UIApplication.shared.open(url)
+            }
+        }
     }
     
     func syncAnkiConnect() async  {

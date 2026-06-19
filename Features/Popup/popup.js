@@ -1214,7 +1214,7 @@ function playWordAudio(audioUrl) {
 }
 
 function reportButtonRects() {
-    const rects = [...document.querySelectorAll('.button-slot')].map(slot => {
+    const rects = [...document.querySelectorAll('.button-slot:not([hidden])')].map(slot => {
         const rect = slot.getBoundingClientRect();
         return {
             kind: slot.dataset.kind,
@@ -1231,14 +1231,19 @@ function reportButtonRects() {
     webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-function createButtonSlot(kind, entryIndex, slotIndex, enabled = true) {
+function createButtonSlot(kind, entryIndex, slotIndex, enabled = true, hidden = false) {
     return el('span', {
         className: 'button-slot',
+        hidden,
         'data-kind': kind,
         'data-entry-index': entryIndex,
         'data-slot-index': slotIndex,
         'data-enabled': String(enabled)
     });
+}
+
+function getButtonSlot(kind, entryIndex, slotIndex) {
+    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"][data-slot-index="${slotIndex}"]`);
 }
 
 function getButtonSlots(kind, entryIndex) {
@@ -1249,6 +1254,7 @@ function updateButtonSlot(slot, changes) {
     if (!slot || !slot.isConnected) { return; }
     if ('state' in changes) { slot.dataset.state = changes.state; }
     if ('enabled' in changes) { slot.dataset.enabled = String(changes.enabled); }
+    if ('hidden' in changes) { slot.hidden = changes.hidden; }
     requestAnimationFrame(reportButtonRects);
 }
 
@@ -1283,6 +1289,9 @@ async function checkDuplicates(entryIndex) {
             state: isDuplicate ? 'duplicate' : 'default',
             enabled: !(isDuplicate && !window.allowDupes)
         });
+        updateButtonSlot(getButtonSlot('note', entryIndex, i), {
+            hidden: !isDuplicate || window.disableShowNotes
+        });
     });
 }
 
@@ -1302,6 +1311,16 @@ async function mineEntryAtIndex(entryIndex, slotIndex) {
     }
 }
 
+function showNotesAtIndex(entryIndex, slotIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) { return; }
+    webkit.messageHandlers.showNotes.postMessage({
+        '{expression}': entry.expression,
+        '{reading}': entry.reading,
+        slotIndex: String(slotIndex)
+    });
+}
+
 function createEntryHeader(entry, idx) {
     const { expression, reading } = entry;
     const header = el('div', { className: 'entry-header' });
@@ -1313,18 +1332,25 @@ function createEntryHeader(entry, idx) {
     } else {
         expressionSpan.textContent = expression;
     }
-    if (needsScroll) {
-        const expressionScroll = el('div', { className: 'expression-scroll' });
-        expressionScroll.appendChild(expressionSpan);
-        header.appendChild(expressionScroll);
-    } else {
-        header.appendChild(expressionSpan);
+    
+    // empty placeholder to reserve space even when no ruby is present
+    if (!expressionSpan.querySelector('rt')) {
+        const zwsp = String.fromCharCode(0x200b);
+        expressionSpan.appendChild(el('ruby', {}, [zwsp, el('rt', { className: 'hidden', textContent: zwsp })]));
     }
     
     const buttonsContainer = el('div', { className: 'header-buttons' });
-    
-    for (let slotIndex = 0; slotIndex < (window.cardFormatCount || 0); slotIndex++) {
-        buttonsContainer.appendChild(createButtonSlot('mine', idx, slotIndex, false));
+    for (let slotIndex = 0; slotIndex < window.cardFormatCount; slotIndex++) {
+        const mineSlot = createButtonSlot('mine', idx, slotIndex, false);
+        const noteSlot = createButtonSlot('note', idx, slotIndex, true, true);
+        if (slotIndex === 0) {
+            buttonsContainer.appendChild(noteSlot);
+            buttonsContainer.appendChild(mineSlot);
+        } else {
+            noteSlot.dataset.placement = 'above';
+            mineSlot.appendChild(noteSlot);
+            buttonsContainer.appendChild(mineSlot);
+        }
     }
     checkDuplicates(idx);
     
@@ -1334,6 +1360,13 @@ function createEntryHeader(entry, idx) {
     
     header.appendChild(buttonsContainer);
     requestAnimationFrame(reportButtonRects);
+    if (needsScroll) {
+        const expressionScroll = el('div', { className: 'expression-scroll' });
+        expressionScroll.appendChild(expressionSpan);
+        header.appendChild(expressionScroll);
+    } else {
+        header.appendChild(expressionSpan);
+    }
     
     return header;
 }

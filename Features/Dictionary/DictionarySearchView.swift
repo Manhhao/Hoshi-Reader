@@ -338,6 +338,7 @@ struct DictionarySearchView: View {
             window.twoColumnLayout = \(userConfig.twoColumnLayout);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.showExpressionTags = \(userConfig.showExpressionTags);
+            window.disableShowNotes = \(userConfig.disableShowNotes);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);
             window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
             window.compactPitchAccents = \(userConfig.compactPitchAccents);

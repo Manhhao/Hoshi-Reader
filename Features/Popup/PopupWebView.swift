@@ -202,6 +202,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "swipeDismiss")
         config.userContentController.add(context.coordinator, name: "playWordAudio")
         config.userContentController.add(context.coordinator, name: "buttonRects")
+        config.userContentController.add(context.coordinator, name: "showNotes")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
@@ -259,6 +260,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "swipeDismiss")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "playWordAudio")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "buttonRects")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "showNotes")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "mineEntry", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntries", contentWorld: .page)
@@ -317,7 +319,7 @@ struct PopupWebView: UIViewRepresentable {
                 let state = rect["state"] as? String ?? "default"
                 button.setImage(symbolImage(kind: kind, state: state, slotIndex: slotIndex, config: symbolConfig), for: .normal)
                 button.isEnabled = rect["enabled"] as? Bool ?? true
-                button.alpha = button.isEnabled ? 0.85 : 0.55
+                button.alpha = button.isEnabled ? (kind == "note" ? 0.58 : 0.85) : 0.55
             }
             
             for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
@@ -332,6 +334,10 @@ struct PopupWebView: UIViewRepresentable {
             if kind == "audio" {
                 return UIImage(systemName: state == "error" ? "speaker.slash" : "speaker.wave.2", withConfiguration: config)
             }
+            if kind == "note" {
+                let noteConfig = UIImage.SymbolConfiguration(pointSize: 9 * parent.scale, weight: .medium)
+                return UIImage(systemName: "magnifyingglass", withConfiguration: noteConfig)
+            }
             var icon = AnkiManager.shared.cardFormats[slotIndex].icon
             let isSmall = icon.hasSuffix(".small")
             if isSmall {
@@ -344,9 +350,12 @@ struct PopupWebView: UIViewRepresentable {
         
         @objc private func buttonTapped(_ sender: UIButton) {
             guard let action = buttonActions[sender] else { return }
-            if action.kind == "audio" {
+            switch action.kind {
+            case "audio":
                 webView?.evaluateJavaScript("playEntryAudio(\(action.entryIndex))")
-            } else {
+            case "note":
+                webView?.evaluateJavaScript("showNotesAtIndex(\(action.entryIndex), \(action.slotIndex))")
+            default:
                 webView?.evaluateJavaScript("mineEntryAtIndex(\(action.entryIndex), \(action.slotIndex))")
             }
         }
@@ -425,6 +434,10 @@ struct PopupWebView: UIViewRepresentable {
                     let rects = message.body as? [[String: Any]] {
                 guard let webView = message.webView else { return }
                 updateButtons(rects, in: webView)
+            }
+            else if message.name == "showNotes", let fields = message.body as? [String: String],
+                    let slotIndex = fields["slotIndex"].flatMap(Int.init) {
+                Task { await AnkiManager.shared.showNotes(fields: fields, formatIndex: slotIndex) }
             }
             else if message.name == "textSelected" {
                 guard let body = message.body as? [String: Any],

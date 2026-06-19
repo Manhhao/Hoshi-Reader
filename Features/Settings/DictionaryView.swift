@@ -283,6 +283,9 @@ struct DictionarySettingsView: View {
                 Toggle(isOn: Bindable(userConfig).showExpressionTags) {
                     Text("Show Expression Tags", tableName: "Dictionaries")
                 }
+                Toggle(isOn: Bindable(userConfig).disableShowNotes) {
+                    Text("Disable Show Notes Button", tableName: "Dictionaries")
+                }
                 Toggle(isOn: Bindable(userConfig).harmonicFrequency) {
                     Text("Harmonic Frequency", tableName: "Dictionaries")
                 }

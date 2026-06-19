@@ -38,7 +38,7 @@ body {
 
 body {
     overflow-x: hidden;
-    padding: 0 calc(5px * var(--popup-scale));
+    padding: 0 calc(8px * var(--popup-scale));
 }
 
 .entry {
@@ -46,14 +46,11 @@ body {
 }
 
 .entry-header {
-    display: flex;
-    align-items: center;
-    padding-top: calc(4px * var(--popup-scale));
+    display: flow-root;
+    padding-top: calc(6px * var(--popup-scale));
 }
 
 .expression-scroll {
-    flex: 1 1 auto;
-    min-width: 0;
     overflow-x: auto;
 }
 
@@ -75,17 +72,40 @@ body {
     -webkit-user-select: none;
 }
 
+.expression rt.hidden {
+    visibility: hidden;
+}
+
 .header-buttons {
+    float: right;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
-    margin-left: auto;
     gap: calc(6px * var(--popup-scale));
+    margin-left: calc(6px * var(--popup-scale));
+    margin-top: calc(12px * var(--popup-scale));
 }
 
 .button-slot {
     width: calc(28px * var(--popup-scale));
     height: calc(28px * var(--popup-scale));
+}
+
+.button-slot[data-kind="mine"] {
+    position: relative;
+}
+
+.button-slot[data-kind="note"] {
+    width: calc(14px * var(--popup-scale));
+    margin-right: calc(-4px * var(--popup-scale));
+}
+
+.button-slot[data-kind="note"][data-placement="above"] {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% - 2px * var(--popup-scale));
+    transform: translateX(-50%);
+    width: calc(22px * var(--popup-scale));
+    height: calc(16px * var(--popup-scale));
 }
 
 .entry-tags {
