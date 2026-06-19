@@ -4,6 +4,9 @@
     "{selected-glossary} Fallback" : {
 
     },
+    "Add Format" : {
+
+    },
     "Address" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -118,6 +121,12 @@
           }
         }
       }
+    },
+    "Circle" : {
+
+    },
+    "Circle Small" : {
+
     },
     "Collapse All" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -306,6 +315,12 @@
         }
       }
     },
+    "Diamond" : {
+
+    },
+    "Diamond Small" : {
+
+    },
     "Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -460,6 +475,9 @@
         }
       }
     },
+    "Formats" : {
+
+    },
     "Frequency" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -481,6 +499,9 @@
           }
         }
       }
+    },
+    "Icon" : {
+
     },
     "Import Anki Backup (Stored Words: %@)" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -580,6 +601,9 @@
           }
         }
       }
+    },
+    "Name" : {
+
     },
     "Never" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
@@ -704,6 +728,12 @@
           }
         }
       }
+    },
+    "Square" : {
+
+    },
+    "Square Small" : {
+
     },
     "Status: %@" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",

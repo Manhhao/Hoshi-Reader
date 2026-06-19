@@ -26,20 +26,41 @@ struct AnkiNoteType: Codable, Hashable, Identifiable {
     let fields: [String]
 }
 
+struct AnkiCardFormat: Codable, Identifiable {
+    let id: UUID
+    var name: String
+    var icon: String
+    var selectedDeck: String?
+    var selectedNoteType: String?
+    var fieldMappings: [String: String]
+    var tags: String
+    
+    static let icons = ["plus.square", "plus.square.small", "plus.circle", "plus.circle.small", "plus.diamond", "plus.diamond.small"]
+    static let duplicateIcons: [String: String] = [
+        "plus.square": "plus.square.on.square",
+        "plus.circle": "plus.circle.fill",
+        "plus.diamond": "plus.diamond.fill",
+    ]
+}
+
 struct AnkiConfig: Codable {
-    let selectedDeck: String?
-    let selectedNoteType: String?
+    var cardFormats: [AnkiCardFormat]?
     let allowDupes: Bool
     let compactGlossaries: Bool?
     let embedMedia: Bool?
-    let fieldMappings: [String: String]
-    var tags: String?
     let availableDecks: [String]
     let availableNoteTypes: [AnkiNoteType]
     let useAnkiConnect: Bool?
     let ankiConnectConfig: AnkiConnectConfig?
     let selectedGlossaryFallback: String?
     let showAllHandlebars: Bool?
+}
+
+struct LegacyAnkiFields: Decodable {
+    let selectedDeck: String?
+    let selectedNoteType: String?
+    let fieldMappings: [String: String]?
+    let tags: String?
 }
 
 enum DuplicateScope: String, Codable, CaseIterable {

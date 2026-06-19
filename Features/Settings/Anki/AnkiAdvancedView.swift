@@ -23,6 +23,17 @@ struct AnkiAdvancedView: View {
     var body: some View {
         List {
             Section {
+                if !ankiManager.useAnkiConnect {
+                    VStack {
+                        Toggle(String(localized: "Embed Dictionary Media", table: "Dictionaries"), isOn: $ankiManager.embedMedia)
+                            .onChange(of: ankiManager.embedMedia) { _, _ in ankiManager.save() }
+                        Text("Embedding media will increase size of glossaries (AnkiMobile).", tableName: "Dictionaries")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                
                 Toggle(isOn: Binding(
                     get: { ankiManager.showAllHandlebars },
                     set: { ankiManager.showAllHandlebars = $0; ankiManager.save() }

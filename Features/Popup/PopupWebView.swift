@@ -157,7 +157,7 @@ struct PopupWebView: UIViewRepresentable {
     var scanLength: Int = 16
     var backTrigger: Bool = false
     var forwardTrigger: Bool = false
-    var onMine: (([String: String]) async -> Bool)? = nil
+    var onMine: (([String: String], UUID) async -> Bool)? = nil
     var onTextSelected: ((SelectionData) -> Int?)? = nil
     var onTapOutside: (() -> Void)? = nil
     var onSwipeDismiss: (() -> Void)? = nil
@@ -275,6 +275,7 @@ struct PopupWebView: UIViewRepresentable {
         var entries: [[String: Any]] = []
         weak var webView: WKWebView?
         private var buttons: [String: UIButton] = [:]
+        private var buttonActions: [UIButton: (kind: String, entryIndex: Int, slotIndex: Int)] = [:]
         let id = UUID()
         
         init(parent: PopupWebView) {
@@ -296,7 +297,8 @@ struct PopupWebView: UIViewRepresentable {
                     continue
                 }
                 
-                let key = "\(kind)-\(entryIndex)"
+                let slotIndex = rect["slotIndex"] as? Int ?? 0
+                let key = "\(kind)-\(entryIndex)-\(slotIndex)"
                 activeKeys.insert(key)
                 
                 let button: UIButton
@@ -310,29 +312,43 @@ struct PopupWebView: UIViewRepresentable {
                     webView.scrollView.addSubview(button)
                 }
                 
-                button.tag = entryIndex * 2 + (kind == "audio" ? 0 : 1)
+                buttonActions[button] = (kind, entryIndex, slotIndex)
                 button.frame = CGRect(x: x, y: y, width: width, height: height)
                 let state = rect["state"] as? String ?? "default"
-                button.setImage(UIImage(systemName: symbolName(kind: kind, state: state), withConfiguration: symbolConfig), for: .normal)
+                button.setImage(symbolImage(kind: kind, state: state, slotIndex: slotIndex, config: symbolConfig), for: .normal)
                 button.isEnabled = rect["enabled"] as? Bool ?? true
                 button.alpha = button.isEnabled ? 0.85 : 0.55
             }
             
             for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
-                buttons.removeValue(forKey: key)?.removeFromSuperview()
+                if let button = buttons.removeValue(forKey: key) {
+                    buttonActions.removeValue(forKey: button)
+                    button.removeFromSuperview()
+                }
             }
         }
         
-        private func symbolName(kind: String, state: String) -> String {
+        private func symbolImage(kind: String, state: String, slotIndex: Int, config: UIImage.SymbolConfiguration) -> UIImage? {
             if kind == "audio" {
-                return state == "error" ? "speaker.slash" : "speaker.wave.2"
+                return UIImage(systemName: state == "error" ? "speaker.slash" : "speaker.wave.2", withConfiguration: config)
             }
-            return state == "duplicate" ? "plus.square.on.square" : "plus.square"
+            var icon = AnkiManager.shared.cardFormats[slotIndex].icon
+            let isSmall = icon.hasSuffix(".small")
+            if isSmall {
+                icon = String(icon.dropLast(".small".count))
+            }
+            let name = state == "duplicate" ? (AnkiCardFormat.duplicateIcons[icon] ?? icon) : icon
+            let iconConfig = isSmall ? UIImage.SymbolConfiguration(pointSize: 10 * parent.scale, weight: .medium) : config
+            return UIImage(systemName: name, withConfiguration: iconConfig)
         }
         
         @objc private func buttonTapped(_ sender: UIButton) {
-            let action = sender.tag % 2 == 0 ? "playEntryAudio" : "mineEntryAtIndex"
-            webView?.evaluateJavaScript("\(action)(\(sender.tag / 2))")
+            guard let action = buttonActions[sender] else { return }
+            if action.kind == "audio" {
+                webView?.evaluateJavaScript("playEntryAudio(\(action.entryIndex))")
+            } else {
+                webView?.evaluateJavaScript("mineEntryAtIndex(\(action.entryIndex), \(action.slotIndex))")
+            }
         }
         
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -373,10 +389,13 @@ struct PopupWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
             if message.name == "mineEntry", let content = message.body as? [String: String] {
-                return (await parent.onMine?(content) ?? false, nil)
+                guard let slotIndex = content["slotIndex"].flatMap(Int.init) else {
+                    return (false, nil)
+                }
+                return (await parent.onMine?(content, AnkiManager.shared.cardFormats[slotIndex].id) ?? false, nil)
             }
-            if message.name == "duplicateCheck", let word = message.body as? String {
-                return (await AnkiManager.shared.checkDuplicate(word: word), nil)
+            if message.name == "duplicateCheck", let fields = message.body as? [String: String] {
+                return (await AnkiManager.shared.checkDuplicates(fields: fields), nil)
             }
             if message.name == "getEntries", let body = message.body as? [String: Any] {
                 let start = body["start"] as? Int ?? 0

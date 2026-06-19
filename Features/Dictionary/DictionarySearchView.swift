@@ -63,8 +63,8 @@ struct DictionarySearchView: View {
                     scanLength: userConfig.scanLength,
                     backTrigger: backTrigger,
                     forwardTrigger: forwardTrigger,
-                    onMine: { minedContent in
-                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+                    onMine: { minedContent, formatId in
+                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil), formatId: formatId)
                     },
                     onTextSelected: {
                         closePopups()
@@ -345,6 +345,7 @@ struct DictionarySearchView: View {
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.embedMedia = \(AnkiManager.shared.embedMedia);

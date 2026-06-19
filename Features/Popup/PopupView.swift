@@ -313,8 +313,8 @@ struct PopupView: View {
                 scanLength: userConfig.scanLength,
                 backTrigger: backTrigger,
                 forwardTrigger: forwardTrigger,
-                onMine: { content in
-                    await mineEntry(content: content, sentence: selectionData.sentence)
+                onMine: { content, formatId in
+                    await mineEntry(content: content, sentence: selectionData.sentence, formatId: formatId)
                 },
                 onTextSelected: onTextSelected,
                 onTapOutside: onTapOutside,
@@ -361,7 +361,7 @@ struct PopupView: View {
         }
     }
     
-    private func mineEntry(content: [String: String], sentence: String) async -> Bool {
+    private func mineEntry(content: [String: String], sentence: String, formatId: UUID) async -> Bool {
         var sasayakiAudioData: Data?
         if AnkiManager.shared.needsSasayakiAudio, let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
             sasayakiAudioData = await player.cueSentenceAudio(cue, sentence: sentence)
@@ -374,7 +374,8 @@ struct PopupView: View {
                 documentTitle: documentTitle,
                 coverURL: coverURL,
                 sasayakiAudioData: sasayakiAudioData
-            )
+            ),
+            formatId: formatId
         )
     }
     
@@ -481,6 +482,7 @@ struct PopupView: View {
             window.audioSources = \(audioSources);
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
+            window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);

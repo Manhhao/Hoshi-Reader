@@ -793,7 +793,7 @@ function getFrequencyHarmonicRank(frequencies) {
     return String(Math.floor(values.length / sumOfReciprocals));
 }
 
-async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText) {
+async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText, slotIndex) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
     currentDictionaryMedia = new Map();
@@ -825,6 +825,7 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         pitchCategories,
         popupSelectionText,
         audio,
+        slotIndex: String(slotIndex),
         selectedDictionary: selectedDictionaries[idx]?.name || '',
         dictionaryMedia: JSON.stringify([...dictionaryMedia.values()])
     });
@@ -1218,6 +1219,7 @@ function reportButtonRects() {
         return {
             kind: slot.dataset.kind,
             entryIndex: Number(slot.dataset.entryIndex),
+            slotIndex: Number(slot.dataset.slotIndex),
             x: rect.left + window.scrollX,
             y: rect.top + window.scrollY,
             width: rect.width,
@@ -1229,17 +1231,18 @@ function reportButtonRects() {
     webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-function createButtonSlot(kind, entryIndex, enabled = true) {
+function createButtonSlot(kind, entryIndex, slotIndex, enabled = true) {
     return el('span', {
         className: 'button-slot',
         'data-kind': kind,
         'data-entry-index': entryIndex,
+        'data-slot-index': slotIndex,
         'data-enabled': String(enabled)
     });
 }
 
-function getButtonSlot(kind, entryIndex) {
-    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
+function getButtonSlots(kind, entryIndex) {
+    return [...document.querySelectorAll(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`)];
 }
 
 function updateButtonSlot(slot, changes) {
@@ -1252,7 +1255,7 @@ function updateButtonSlot(slot, changes) {
 async function playEntryAudio(entryIndex) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
-    const audioSlot = getButtonSlot('audio', entryIndex);
+    const audioSlot = getButtonSlots('audio', entryIndex)[0];
     
     if (!audioUrls[entryIndex]) {
         audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
@@ -1263,28 +1266,39 @@ async function playEntryAudio(entryIndex) {
     }
 }
 
-async function mineEntryAtIndex(entryIndex) {
+async function checkDuplicates(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) {
+        return;
+    }
+    
+    const results = await webkit.messageHandlers.duplicateCheck.postMessage({
+        '{expression}': entry.expression,
+        '{reading}': entry.reading
+    });
+    getButtonSlots('mine', entryIndex).forEach(slot => {
+        const i = Number(slot.dataset.slotIndex);
+        const isDuplicate = results?.[i] === true;
+        updateButtonSlot(slot, {
+            state: isDuplicate ? 'duplicate' : 'default',
+            enabled: !(isDuplicate && !window.allowDupes)
+        });
+    });
+}
+
+async function mineEntryAtIndex(entryIndex, slotIndex) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
     const { expression, reading, frequencies, pitches, rules, matched } = entry;
-    const mineSlot = getButtonSlot('mine', entryIndex);
     
     lastSelection = window.getSelection()?.toString() || '';
-    updateButtonSlot(mineSlot, { enabled: false });
+    getButtonSlots('mine', entryIndex).forEach(slot => updateButtonSlot(slot, { enabled: false }));
     
-    const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection);
-    const checkDuplicate = async () => {
-        const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(expression);
-        updateButtonSlot(mineSlot, {
-            state: wasAdded ? 'duplicate' : 'default',
-            enabled: !(wasAdded && !window.allowDupes)
-        });
-    };
-    
+    const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection, slotIndex);
     if (isAnkiConnect) {
-        await checkDuplicate();
+        await checkDuplicates(entryIndex);
     } else {
-        setTimeout(checkDuplicate, 1000);
+        setTimeout(() => checkDuplicates(entryIndex), 1000);
     }
 }
 
@@ -1309,18 +1323,14 @@ function createEntryHeader(entry, idx) {
     
     const buttonsContainer = el('div', { className: 'header-buttons' });
     
-    if (window.audioSources?.length) {
-        buttonsContainer.appendChild(createButtonSlot('audio', idx));
+    for (let slotIndex = 0; slotIndex < (window.cardFormatCount || 0); slotIndex++) {
+        buttonsContainer.appendChild(createButtonSlot('mine', idx, slotIndex, false));
     }
+    checkDuplicates(idx);
     
-    const mineSlot = createButtonSlot('mine', idx, false);
-    buttonsContainer.appendChild(mineSlot);
-    webkit.messageHandlers.duplicateCheck.postMessage(expression).then(isDuplicate => {
-        updateButtonSlot(mineSlot, {
-            state: isDuplicate ? 'duplicate' : 'default',
-            enabled: !(isDuplicate && !window.allowDupes)
-        });
-    });
+    if (window.audioSources?.length) {
+        buttonsContainer.appendChild(createButtonSlot('audio', idx, null));
+    }
     
     header.appendChild(buttonsContainer);
     requestAnimationFrame(reportButtonRects);
@@ -1616,31 +1626,19 @@ window.renderPopup = function() {
     if (window.twoColumnLayout && !document.getElementById('popup-two-column-layout')) {
         const layoutStyle = document.createElement('style');
         layoutStyle.id = 'popup-two-column-layout';
-        layoutStyle.textContent = `
-                .glossary-sections {
-                ${HAS_NATIVE_MASONRY
-                ? `display: grid-lanes;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: ${MASONRY_GAP}px;
-        align-items: start;`
-                : `position: relative;`}
-                margin-top: calc(8px * var(--popup-scale));
-            }
-            .glossary-sections > .glossary-group {
-                margin-top: 0;
-            }
-            ${HAS_NATIVE_MASONRY ? '' : `
-        .glossary-sections:not(.single-section) > .glossary-group {
-            position: absolute;
-            left: 0;
-            top: 0;
-            visibility: hidden;
-        }
-            `}
-            .glossary-sections.single-section {
-                display: block;
-            }
-        `;
+        layoutStyle.textContent = (HAS_NATIVE_MASONRY
+                                   ? [
+                                       `.glossary-sections { display: grid-lanes; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: ${MASONRY_GAP}px; align-items: start; margin-top: calc(8px * var(--popup-scale)); }`,
+                                       `.glossary-sections > .glossary-group { margin-top: 0; }`,
+                                       `.glossary-sections.single-section { display: block; }`,
+                                   ]
+                                   : [
+                                       `.glossary-sections { position: relative; margin-top: calc(8px * var(--popup-scale)); }`,
+                                       `.glossary-sections > .glossary-group { margin-top: 0; }`,
+                                       `.glossary-sections:not(.single-section) > .glossary-group { position: absolute; left: 0; top: 0; visibility: hidden; }`,
+                                       `.glossary-sections.single-section { display: block; }`,
+                                   ]
+                                   ).join('\n');
         document.body.appendChild(layoutStyle);
     }
     
