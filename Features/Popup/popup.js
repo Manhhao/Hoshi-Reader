@@ -999,7 +999,9 @@ function createDeinflectionTag(tag) {
 function createFrequencyGroup(freqGroup) {
     const values = freqGroup.frequencies.map(f => f.displayValue || f.value).join(', ');
     return el('span', { className: 'frequency-group', 'data-details': freqGroup.dictionary }, [
-        el('span', { className: 'frequency-dict-label', textContent: freqGroup.dictionary }),
+        el('span', { className: 'frequency-dict-label' }, [
+            el('span', { className: 'frequency-dict-label-text', textContent: freqGroup.dictionary })
+        ]),
         el('span', { className: 'frequency-values', textContent: values })
     ]);
 }
@@ -1007,7 +1009,9 @@ function createFrequencyGroup(freqGroup) {
 function createHarmonicFrequencyTag(frequencies) {
     const rank = getFrequencyHarmonicRank(frequencies);
     return el('span', { className: 'frequency-group harmonic-frequency' }, [
-        el('span', { className: 'frequency-dict-label', textContent: 'Average' }),
+        el('span', { className: 'frequency-dict-label' }, [
+            el('span', { className: 'frequency-dict-label-text', textContent: 'Average' })
+        ]),
         el('span', { className: 'frequency-values', textContent: rank })
     ]);
 }
@@ -1084,7 +1088,9 @@ function createPitchHtml(reading, pitchValue) {
 
 function createPitchGroup(pitchData, reading) {
     const container = el('div', { className: 'pitch-group', 'data-details': pitchData.dictionary });
-    container.appendChild(el('span', { className: 'pitch-dict-label', textContent: pitchData.dictionary }));
+    container.appendChild(el('span', { className: 'pitch-dict-label' }, [
+        el('span', { className: 'pitch-dict-label-text', textContent: pitchData.dictionary })
+    ]));
     
     const list = el('ul', { className: 'pitch-entries' });
     pitchData.pitchPositions.forEach((pitch) => {
@@ -1372,7 +1378,7 @@ function createEntryHeader(entry, idx) {
 }
 
 function createGlossarySection(dictName, contents, isFirst, entryIdx) {
-    const details = el('details', { className: 'glossary-group' });
+    const details = el('details', { className: 'glossary-group', 'data-dictionary': dictName });
     const collapsed = window.collapseMode === 'Collapse All'
     || (window.collapseMode === 'Custom' && window.collapsedDictionaries.includes(dictName));
     details.open = !collapsed || (window.expandFirstDictionary && isFirst);
