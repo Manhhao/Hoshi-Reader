@@ -462,7 +462,7 @@ class UserConfig {
         self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
         self.furiganaMode = defaults.string(forKey: "furiganaMode")
-            .flatMap(FuriganaMode.init) ?? .off
+            .flatMap(FuriganaMode.init) ?? (defaults.bool(forKey: "readerHideFurigana") ? .hidden : .off)
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
