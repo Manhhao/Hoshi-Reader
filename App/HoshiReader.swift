@@ -31,7 +31,7 @@ struct HoshiReaderApp: App {
         _ = GoogleDriveHandler.shared
         if userConfig.enableCloudKitSync {
             Task {
-                await CloudKitSyncManager.shared.initializeSyncEngine()
+                await CloudKitSyncManager.shared.initialize()
             }
         }
         configureTabBarAppearance()

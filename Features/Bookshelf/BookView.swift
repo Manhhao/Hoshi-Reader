@@ -12,12 +12,12 @@ struct BookView: View {
     @Environment(UserConfig.self) var userConfig
     let book: BookMetadata
     let progress: Double
-    let isCloudManaged: Bool
+    let downloaded: Bool
     var isSelected: Bool = false
         
     var titleText: Text {
-        if userConfig.enableCloudKitSync && !isCloudManaged {
-            return Text(Image(systemName: "icloud.slash")) + Text(" ") + Text(book.displayTitle)
+        if userConfig.enableCloudKitSync && !downloaded {
+            return Text(Image(systemName: "icloud")) + Text(" ") + Text(book.displayTitle)
         } else {
             return Text(book.displayTitle)
         }

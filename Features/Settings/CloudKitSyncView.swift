@@ -14,9 +14,6 @@ struct CloudKitSyncView: View {
     @AppStorage("cloudKitStatus") private var cloudKitStatus = CloudKitStatus.none
     
     @State private var iCloudAvailable = false
-    @State private var showUploadLocalBooksConfirmation = false
-    @State private var showClearLocalBooksConfirmation = false
-    @State private var showClearCloudKitConfirmation = false
     
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -62,21 +59,6 @@ struct CloudKitSyncView: View {
                     }
                 }
             }
-            if userConfig.enableCloudKitSync {
-                Section {
-                    Button("Upload Unsynced Local Books") {
-                        showUploadLocalBooksConfirmation.toggle()
-                    }
-                    
-                    Button("Clear Unsynced Local Books", role: .destructive) {
-                        showClearLocalBooksConfirmation.toggle()
-                    }
-                    
-                    Button("Clear iCloud data", role: .destructive) {
-                        showClearCloudKitConfirmation.toggle()
-                    }
-                }
-            }
         }
         .task {
             await iCloudStatusRefresh()
@@ -90,36 +72,6 @@ struct CloudKitSyncView: View {
             await CloudKitSyncManager.shared.observeEvents(onChanged)
         }
         .navigationTitle("iCloud Syncing")
-        .alert("Upload local books?", isPresented: $showUploadLocalBooksConfirmation) {
-            Button("Confirm") {
-                Task {
-                    try? await CloudKitSyncManager.shared.uploadUnmanagedBooks()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will upload local only books to iCloud server.")
-        }
-        .alert("Clear local books?", isPresented: $showClearLocalBooksConfirmation) {
-            Button("Confirm", role: .destructive) {
-                Task {
-                    try await CloudKitSyncManager.shared.deleteLocalBooks(isManaged: false)
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will clear all data of local only books")
-        }
-        .alert("Clear iCloud data?", isPresented: $showClearCloudKitConfirmation) {
-            Button("Confirm", role: .destructive) {
-                Task {
-                    await CloudKitSyncManager.shared.deleteServerData()
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will clear all data on iCloud server.")
-        }
     }
     
     private func iCloudStatusRefresh() async {

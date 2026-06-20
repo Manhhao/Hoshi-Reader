@@ -13,7 +13,7 @@ struct BookCell: View {
     @State private var markReadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
-    @State private var isCloudManaged = true
+    @State private var downloaded = true
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -41,18 +41,19 @@ struct BookCell: View {
                 onSelect()
             }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book), isCloudManaged: isCloudManaged, isSelected: isSelecting && isSelected)
+            BookView(book: book, progress: viewModel.progress(for: book), downloaded: downloaded, isSelected: isSelecting && isSelected)
         }
         .task(id: userConfig.enableCloudKitSync) {
-            isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+            refreshEpubState(book: book)
             guard userConfig.enableCloudKitSync else { return }
 
-            let refreshManagedState: @MainActor (CloudKitSyncManager.Event) -> Void = { _ in
-                Task {
-                    isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+            let refresh: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
+                if case let .epubDownloaded(uuid: uuid) = event,
+                   uuid == book.id {
+                    self.refreshEpubState(book: book)
                 }
             }
-            await CloudKitSyncManager.shared.observeEvents(refreshManagedState)
+            await CloudKitSyncManager.shared.observeEvents(refresh)
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
@@ -77,14 +78,14 @@ struct BookCell: View {
                 }
             }
             
-            if userConfig.enableCloudKitSync && !isCloudManaged {
+            if userConfig.enableCloudKitSync && !downloaded {
                 Button {
                     Task {
-                        try? await CloudKitSyncManager.shared.uploadUnmanagedBook(book)
-                        isCloudManaged = await CloudKitSyncManager.shared.isManaged(uuid: book.id)
+                        guard let cloudEpub = CloudKitBookEpub(from: book) else { return }
+                        await CloudKitSyncManager.shared.downloadCloudEpub(cloudEpub)
                     }
                 } label: {
-                    Label("Sync to iCloud", systemImage: "icloud")
+                    Label("Download from iCloud", systemImage: "icloud")
                 }
             }
             
@@ -191,6 +192,20 @@ struct BookCell: View {
         ) {
             Button("Confirm") {
                 viewModel.markRead(book: book)
+            }
+        }
+    }
+    
+    func refreshEpubState(book: BookMetadata) {
+        Task.detached {
+            guard let fileName = book.epub,
+                  let booksDir = try? BookStorage.getBooksDirectory() else {
+                return
+            }
+            let epubURL = booksDir.appending(path: book.folder).appending(path: fileName)
+            let downloaded = FileManager.default.fileExists(atPath: epubURL.path(percentEncoded: false))
+            await MainActor.run {
+                self.downloaded = downloaded
             }
         }
     }

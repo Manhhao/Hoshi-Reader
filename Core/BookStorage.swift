@@ -212,12 +212,12 @@ struct BookStorage {
         try FileManager.default.removeItem(at: url)
     }
     
-    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String, createCloudBook: Bool = false) throws {
+    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String) throws {
         let targetURL = directory.appendingPathComponent(fileName)
         
         try saveLocal(object, url: targetURL)
         
-        saveCloudKitFile(object, url: targetURL, createCloudBook: createCloudBook)
+        saveCloudKitFile(object, url: targetURL)
     }
     
     nonisolated static func saveLocal<T: Encodable>(_ object: T, url: URL) throws {
@@ -228,7 +228,7 @@ struct BookStorage {
         try data.write(to: url, options: .atomic)
     }
     
-    static func saveCloudKitFile<T: Encodable>(_ object: T, url: URL, createCloudBook: Bool) {
+    static func saveCloudKitFile<T: Encodable>(_ object: T, url: URL) {
         guard UserConfig.shared.enableCloudKitSync else { return }
         
         if T.self == [BookShelf].self {
@@ -246,7 +246,6 @@ struct BookStorage {
                     fileType: .metadata,
                     fileName: FileNames.metadata,
                     folderName: url.deletingLastPathComponent().lastPathComponent,
-                    createCloudBook: createCloudBook
                 )
             }
             return
@@ -268,7 +267,6 @@ struct BookStorage {
                 fileType: fileType,
                 fileName: fileName,
                 folderName: folderName,
-                createCloudBook: createCloudBook
             )
         }
     }
@@ -339,12 +337,7 @@ struct BookStorage {
             if FileManager.default.fileExists(atPath: metadataURL.path(percentEncoded: false)) {
                 let data = try Data(contentsOf: metadataURL)
                 let book = try JSONDecoder().decode(BookMetadata.self, from: data)
-                if let bookFileName = book.epub {
-                    let bookFileURL = url.appending(path: bookFileName)
-                    if FileManager.default.fileExists(atPath: bookFileURL.path(percentEncoded: false)) {
-                        books.append(book)
-                    }
-                }
+                books.append(book)
             }
         }
         

@@ -150,7 +150,7 @@ class UserConfig {
             UserDefaults.standard.set(enableCloudKitSync, forKey: "enableCloudKitSync")
             if enableCloudKitSync {
                 Task {
-                    await CloudKitSyncManager.shared.initializeSyncEngine()
+                    await CloudKitSyncManager.shared.initialize()
                 }
             } else {
                 Task {

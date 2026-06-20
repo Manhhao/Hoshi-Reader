@@ -30,7 +30,7 @@ nonisolated enum CloudKitFileType: String, Codable, CustomStringConvertible {
     
     var description: String { self.rawValue }
     
-    var isAssetType: Bool { self == .cover || self == .book}
+    var isAssetType: Bool { self == .cover || self == .book }
     
     init?(fileName: String) {
         switch fileName {
@@ -79,16 +79,28 @@ nonisolated enum CloudKitFileType: String, Codable, CustomStringConvertible {
 
 // MARK: - File Protocol
 nonisolated protocol CloudKitFile {
+    
     var localModificationDate: Date { get set }
     var lastKnownRecordData: Data? { get set }
     var lastKnownRecord: CKRecord? { get set }
     
+    static var zoneName: String { get }
+    static var zoneID: CKRecordZone.ID { get }
     var recordType: CKRecord.RecordType { get }
+    var recordName: String { get }
     var recordID: CKRecord.ID { get }
+    
+    var type: CloudKitFileType { get }
     func populateFields(record: CKRecord) throws
 }
 
 nonisolated extension CloudKitFile {
+    
+    static var zoneName: String { "HoshiBooks" }
+    static var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: Self.zoneName) }
+    
+    var recordType: CKRecord.RecordType { type.rawValue }
+    var recordID: CKRecord.ID { .init(recordName: recordName, zoneID: Self.zoneID) }
     
     @discardableResult
     mutating func setLastKnownRecordIfNewer(_ otherRecord: CKRecord) -> Bool {
@@ -185,13 +197,7 @@ nonisolated struct CloudKitBookFile: Codable {
 
 nonisolated extension CloudKitBookFile: CloudKitFile {
     
-    static let zoneName: String = "HoshiBooks"
-    static let assetZoneName: String = "HoshiBookAssets"
-    
     var recordName: String { "\(uuid.uuidString)___\(type.rawValue)" }
-    var recordType: CKRecord.RecordType { type.rawValue }
-    var zoneID: CKRecordZone.ID { .init(zoneName: type.isAssetType ? Self.assetZoneName : Self.zoneName) }
-    var recordID: CKRecord.ID { .init(recordName: recordName, zoneID: zoneID) }
     
     var fileURL: URL {
         get throws {
@@ -219,6 +225,50 @@ nonisolated extension CloudKitBookFile: CloudKitFile {
             record[.contentData] = try data
         }
         record[.localModificationDate] = localModificationDate
+    }
+}
+
+// MARK: - EPUB
+nonisolated struct CloudKitBookEpub {
+    static let type: CloudKitFileType = .book
+    static let recordType: CKRecord.RecordType = type.rawValue
+    static let zoneName = "HoshiBookEpubs"
+    static let zoneID = CKRecordZone.ID(zoneName: zoneName)
+    
+    let uuid: UUID
+    let fileName: String
+    let folderName: String
+    
+    init(uuid: UUID, fileName: String, folderName: String) {
+        self.uuid = uuid
+        self.fileName = fileName
+        self.folderName = folderName
+    }
+    
+    init?(from metadata: BookMetadata) {
+        guard let fileName = metadata.epub else {
+            return nil
+        }
+        self.uuid = metadata.id
+        self.fileName = fileName
+        self.folderName = metadata.folder
+    }
+    
+    var recordName: String { "\(uuid.uuidString)___\(Self.type.rawValue)" }
+    var recordID: CKRecord.ID { .init(recordName: recordName, zoneID: Self.zoneID) }
+    var fileURL: URL {
+        get throws {
+            let booksDir = try BookStorage.getBooksDirectory()
+            return booksDir.appending(path: folderName).appending(path: fileName)
+        }
+    }
+    
+    func makeNewRecord() throws -> CKRecord {
+        let newRecord = CKRecord(recordType: CloudKitBookEpub.recordType, recordID: recordID)
+        newRecord[.asset] = CKAsset(fileURL: try fileURL)
+        newRecord[.fileName] = fileName
+        newRecord[.folderName] = folderName
+        return newRecord
     }
 }
 
@@ -273,15 +323,12 @@ nonisolated struct CloudKitBookShelves: Codable, CloudKitFile {
         return try JSONDecoder().decode([BookShelf].self, from: data)
     }
     
-    static let recordType: CKRecord.RecordType = "Shelves"
-    static let recordName: String = "shelves"
-    static var recordID: CKRecord.ID { CKRecord.ID(recordName: Self.recordName, zoneID: Self.zoneID) }
-    static let zoneName: String = "HoshiBooks"
-    static var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: Self.zoneName) }
+    static let type = CloudKitFileType.shelves
+    static let recordName: String = type.rawValue
     
     // conformance
-    var recordType: CKRecord.RecordType { Self.recordType }
-    var recordID: CKRecord.ID { Self.recordID }
+    var recordName: String { Self.recordName }
+    var type: CloudKitFileType { Self.type }
 }
 
 // MARK: - CKRecord
