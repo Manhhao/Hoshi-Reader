@@ -26,7 +26,7 @@ class AnkiManager {
     var compactGlossaries: Bool = false
     var embedMedia: Bool = false
     
-    var selectedGlossaryFallback: String = Handlebars.glossaryFirst.rawValue
+    var selectedGlossaryFallback: String = ""
     var showAllHandlebars: Bool = false
     
     var errorMessage: String?
