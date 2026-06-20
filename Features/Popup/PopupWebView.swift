@@ -300,6 +300,9 @@ struct PopupWebView: UIViewRepresentable {
                 }
                 
                 let slotIndex = rect["slotIndex"] as? Int ?? 0
+                if kind != "audio", !AnkiManager.shared.cardFormats.indices.contains(slotIndex) {
+                    continue
+                }
                 let key = "\(kind)-\(entryIndex)-\(slotIndex)"
                 activeKeys.insert(key)
                 
@@ -338,6 +341,7 @@ struct PopupWebView: UIViewRepresentable {
                 let noteConfig = UIImage.SymbolConfiguration(pointSize: 9 * parent.scale, weight: .medium)
                 return UIImage(systemName: "magnifyingglass", withConfiguration: noteConfig)
             }
+            guard AnkiManager.shared.cardFormats.indices.contains(slotIndex) else { return nil }
             var icon = AnkiManager.shared.cardFormats[slotIndex].icon
             let isSmall = icon.hasSuffix(".small")
             if isSmall {
@@ -398,7 +402,8 @@ struct PopupWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
             if message.name == "mineEntry", let content = message.body as? [String: String] {
-                guard let slotIndex = content["slotIndex"].flatMap(Int.init) else {
+                guard let slotIndex = content["slotIndex"].flatMap(Int.init),
+                      AnkiManager.shared.cardFormats.indices.contains(slotIndex) else {
                     return (false, nil)
                 }
                 return (await parent.onMine?(content, AnkiManager.shared.cardFormats[slotIndex].id) ?? false, nil)
