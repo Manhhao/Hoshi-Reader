@@ -41,7 +41,7 @@ actor CloudKitSyncManager {
     
     private var syncEngine: CKSyncEngine {
         if _syncEngine == nil {
-            initializeSyncEngine()
+            initializeSyncEngineWithoutCheck()
         }
         return _syncEngine!
     }
@@ -56,7 +56,7 @@ actor CloudKitSyncManager {
         }
     }
     
-    func initializeSyncEngine() {
+    private func initializeSyncEngineWithoutCheck() {
         let configuration = CKSyncEngine.Configuration(
             database: Self.container.privateCloudDatabase,
             stateSerialization: cloudKitData.stateSerialization,
@@ -64,6 +64,17 @@ actor CloudKitSyncManager {
         )
         _syncEngine = CKSyncEngine(configuration)
         logger.debug("CKSyncEngine initialized")
+    }
+    
+    func initialize() async {
+        do {
+            let allMetadata = try BookStorage.loadAllBooks()
+            try await resolveUUIDConflicts(books: allMetadata)
+            initializeSyncEngineWithoutCheck()
+            try await uploadLocalOnlyData()
+        } catch {
+            logger.error("Failed to initialize sync manager: \(error)")
+        }
     }
     
     func disableSync() {
@@ -83,16 +94,14 @@ extension CloudKitSyncManager: CKSyncEngineDelegate {
         switch event {
         case .stateUpdate(let stateUpdate):
             handleStateUpdate(stateUpdate)
-        case .fetchedDatabaseChanges(let fetchedDatabaseChanges):
-            handleFetchedDatabaseChanges(fetchedDatabaseChanges)
         case .fetchedRecordZoneChanges(let fetchedRecordZoneChanges):
             handleFetchedRecordZoneChanges(fetchedRecordZoneChanges)
-        case .sentDatabaseChanges(let sentDatabaseChanges):
-            handleSentDatabaseChanges(sentDatabaseChanges)
         case .sentRecordZoneChanges(let sentRecordZoneChanges):
             handleSentRecordZoneChanges(sentRecordZoneChanges)
         case .accountChange(let accountChange):
             handleAccountChange(accountChange)
+        case .fetchedDatabaseChanges, .sentDatabaseChanges:
+            break
         case .willFetchChanges, .willFetchRecordZoneChanges, .willSendChanges, .didFetchChanges, .didFetchRecordZoneChanges, .didSendChanges:
             break
         @unknown default:
@@ -138,7 +147,7 @@ extension CloudKitSyncManager: CKSyncEngineDelegate {
     
     func nextFetchChangesOptions(_ context: CKSyncEngine.FetchChangesContext, syncEngine: CKSyncEngine) async -> CKSyncEngine.FetchChangesOptions {
         var options = context.options
-        options.prioritizedZoneIDs = Self.prioritizedZoneIDs
+        options.scope = .zoneIDs([CloudKitBookFile.zoneID])
         return options
     }
 }
@@ -147,17 +156,6 @@ extension CloudKitSyncManager: CKSyncEngineDelegate {
 private extension CloudKitSyncManager {
     private func handleStateUpdate(_ stateUpdate: CKSyncEngine.Event.StateUpdate) {
         cloudKitData.stateSerialization = stateUpdate.stateSerialization
-    }
-    
-    private func handleFetchedDatabaseChanges(_ fetchedDatabaseChanges: CKSyncEngine.Event.FetchedDatabaseChanges) {
-        for deletion in fetchedDatabaseChanges.deletions {
-            let zoneName = deletion.zoneID.zoneName
-            if zoneName == CloudKitBookFile.zoneName || zoneName == CloudKitBookFile.assetZoneName {
-                self.cloudKitData.books = [:]
-                self.cloudKitData.shelves = .init(localModificationDate: .distantPast)
-                fire(event: .delete(.zones))
-            }
-        }
     }
     
     private func handleFetchedRecordZoneChanges(_ fetchedRecordZoneChanges: CKSyncEngine.Event.FetchedRecordZoneChanges) {
@@ -188,27 +186,15 @@ private extension CloudKitSyncManager {
                 continue
             }
             do {
-                try deleteLocal(recordID: deletedRecordID)
+                if fileType == .metadata,
+                   let metadata = try cloudKitData.books[uuid]?[fileType]?.decode(to: BookMetadata.self) {
+                    try deleteLocal(books: [metadata])
+                }
                 cloudKitData.books[uuid]?[fileType] = nil
                 fire(event: .delete(.book(uuid: uuid)))
             } catch {
                 logger.error("Failed to delete local file of uuid \(uuid, privacy: .public) and type \(fileType, privacy: .public) when fetching deletion: \(error, privacy: .public)")
             }
-        }
-    }
-    
-    private func handleSentDatabaseChanges(_ sentDatabaseChanges: CKSyncEngine.Event.SentDatabaseChanges) {
-        let deletedZoneIds = sentDatabaseChanges.deletedZoneIDs
-        var shouldDeleteCloudKitData = false
-        for deletedZoneId in deletedZoneIds {
-            if deletedZoneId.zoneName == CloudKitBookFile.zoneName || deletedZoneId.zoneName == CloudKitBookFile.assetZoneName {
-                shouldDeleteCloudKitData = true
-            }
-        }
-        if shouldDeleteCloudKitData {
-            self.cloudKitData.books = [:]
-            self.cloudKitData.shelves = .init(localModificationDate: .distantPast)
-            fire(event: .delete(.zones))
         }
     }
     
@@ -299,25 +285,30 @@ private extension CloudKitSyncManager {
         case .signIn:
             syncEngine.state.add(pendingDatabaseChanges: [
                 .saveZone(CKRecordZone(zoneName: CloudKitBookFile.zoneName)),
-                .saveZone(CKRecordZone(zoneName: CloudKitBookFile.assetZoneName)),
             ])
             fire(event: .account(.signIn))
         case .signOut:
-            let managedBooks: [BookMetadata]
             do {
-                managedBooks = try getBooks(isManaged: true)
+                try deleteLocalBooksWithoutEpub()
             } catch {
-                managedBooks = []
-                logger.error("Failed to get managed books of previous user when signing out")
+                logger.error("Failed to delete books without epub file when logging out")
             }
             disableSync()
             self.cloudKitData = CloudKitData()
-            fire(event: .account(.signOut(managedBooks: managedBooks)))
+            fire(event: .account(.signOut))
         case .switchAccounts(previousUser: let previousRecordID, currentUser: let currentRecordID):
             guard previousRecordID.recordName != currentRecordID.recordName else { return }
+            do {
+                try deleteLocalBooksWithoutEpub()
+            } catch {
+                logger.error("Failed to delete books without epub file when switching accounts")
+            }
             self.cloudKitData = CloudKitData()
-            initializeSyncEngine()
+            disableSync()
             fire(event: .account(.accountChanged))
+            Task {
+                await initialize()
+            }
         @unknown default:
             break
         }
@@ -488,7 +479,7 @@ extension CloudKitSyncManager {
         if shouldSaveMergedShelves {
             self.cloudKitData.shelves.localModificationDate = .now
             syncEngine.state.add(pendingRecordZoneChanges: [
-                .saveRecord(CloudKitBookShelves.recordID)
+                .saveRecord(self.cloudKitData.shelves.recordID)
             ])
         } else {
             self.cloudKitData.shelves.localModificationDate = try record.localModificationDate
@@ -498,17 +489,9 @@ extension CloudKitSyncManager {
 
 // MARK: - Sending Data
 extension CloudKitSyncManager {
-    // a tricky point: when should we modify `self.cloudKitData`? Before `state.add` or after `sentRecordZoneChanges`? Here we choose the way like example in Apple example repo
-    
-    /// - Parameters:
-    ///     - createCloudBook: If this book is not managed by iCloud, should we continue saving this file?
-    func saveCloudFile(uuid: UUID, fileType: CloudKitFileType, fileName: String, folderName: String, createCloudBook: Bool = false) {
+    func saveCloudFile(uuid: UUID, fileType: CloudKitFileType, fileName: String, folderName: String) {
         if self.cloudKitData.books[uuid] == nil {
-            if createCloudBook {
-                self.cloudKitData.books[uuid] = [:]
-            } else {
-                return
-            }
+            self.cloudKitData.books[uuid] = [:]
         }
         if let cloudFile = self.cloudKitData.books[uuid]?[fileType] {
             self.cloudKitData.books[uuid]?[fileType]!.localModificationDate = .now
@@ -525,69 +508,233 @@ extension CloudKitSyncManager {
     }
     
     /// delete a book stored in iCloud server. If this book is not synced, no-op
-    func deleteCloudBook(uuid: UUID) {
-        guard let files = self.cloudKitData.books[uuid] else { return }
-        self.cloudKitData.books[uuid] = nil
+    func deleteCloudBook(_ book: BookMetadata) {
+        guard let files = self.cloudKitData.books[book.id] else { return }
+        self.cloudKitData.books[book.id] = nil
         syncEngine.state.add(pendingRecordZoneChanges: files.map({ (_, cloudKitBookFile) in
                 .deleteRecord(cloudKitBookFile.recordID)
         }))
+        if let epub = CloudKitBookEpub(from: book) {
+            Task {
+                await deleteCloudEpub(epub)
+            }
+        }
     }
     
     func saveCloudShelves() {
         self.cloudKitData.shelves.localModificationDate = .now
         syncEngine.state.add(pendingRecordZoneChanges: [
             .saveRecord(
-                CloudKitBookShelves.recordID
+                self.cloudKitData.shelves.recordID
             )
         ])
     }
+}
+
+// MARK: - Epub
+// Epubs are managed manually instead of `CKSyncEngine`
+// Be careful with reentrancy. There may be unexpected behaviors for unexpected user behaviors.
+extension CloudKitSyncManager {
     
-    func deleteServerData() {
-        syncEngine.state.add(pendingDatabaseChanges: [
-            .deleteZone(CKRecordZone.ID(zoneName: CloudKitBookFile.zoneName)),
-            .deleteZone(CKRecordZone.ID(zoneName: CloudKitBookFile.assetZoneName))
-        ])
+    private func fetchRecords(folderName: String, fileType: CloudKitFileType, fullDownload: Bool = false) async throws -> [CKRecord] {
+        let predicate = NSPredicate(format: "folderName == %@", argumentArray: [folderName])
+        let query = CKQuery(recordType: fileType.rawValue, predicate: predicate)
+        let database = Self.container.privateCloudDatabase
+        let (matchResults, _) = try await database.records(
+            matching: query,
+            inZoneWith: fileType == .book ? CloudKitBookEpub.zoneID : CloudKitBookFile.zoneID,
+            desiredKeys: (fileType == .book && fullDownload) ? nil : []
+        )
+        var records = [CKRecord]()
+        for (_, recordResult) in matchResults {
+            switch recordResult {
+            case .success(let record):
+                records.append(record)
+            case .failure(let error):
+                Self.logger.error("Failed to fetch records of folder name \(folderName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        return records
     }
     
-    func uploadUnmanagedBooks() throws {
-        let unmanagedBooks = try getBooks(isManaged: false)
-        for book in unmanagedBooks {
-            try uploadUnmanagedBook(book)
+    private func checkCloudShelvesExist() async throws -> Bool {
+        let query = CKQuery(recordType: self.cloudKitData.shelves.recordType, predicate: NSPredicate(value: true))
+        let database = Self.container.privateCloudDatabase
+        let (matchResults, _) = try await database.records(
+            matching: query,
+            inZoneWith: CloudKitBookShelves.zoneID,
+            desiredKeys: []
+        )
+        var records = [CKRecord]()
+        for (_, recordResult) in matchResults {
+            switch recordResult {
+            case .success(let record):
+                records.append(record)
+            case .failure(let error):
+                Self.logger.error("Failed to fetch records of bookshelves: \(error)")
+            }
+        }
+        return !records.isEmpty
+    }
+    
+    private func resolveUUIDConflicts(books: [BookMetadata]) async throws {
+        let collisions = try await withThrowingTaskGroup { group in
+            for book in books {
+                group.addTask {
+                    let records = try await self.fetchRecords(folderName: book.folder, fileType: .metadata)
+                    return (book, records)
+                }
+            }
+            
+            var collisions = [BookMetadata: UUID]()
+            for try await (book, records) in group {
+                if records.isEmpty { continue }
+                let firstRecord = records.first!
+                do {
+                    let (remoteUUID, _) = try CKRecord.parseRecordName(firstRecord.recordID.recordName)
+                    let localUUID = book.id
+                    if localUUID == remoteUUID { continue }
+                    collisions[book] = remoteUUID
+                } catch {
+                    Self.logger.error("Failed to parse record name \(firstRecord.recordID.recordName, privacy: .public)")
+                    continue
+                }
+            }
+            return collisions
+        }
+        
+        await withTaskGroup { group in
+            for (metadata, newUUID) in collisions {
+                group.addTask {
+                    let newMetaData = BookMetadata(
+                        id: newUUID,
+                        title: metadata.title,
+                        epub: metadata.epub,
+                        cover: metadata.cover,
+                        folder: metadata.folder,
+                        lastAccess: metadata.lastAccess
+                    )
+                    do {
+                        let booksDir = try BookStorage.getBooksDirectory()
+                        let metadataURL = booksDir.appending(path: metadata.folder).appending(path: FileNames.metadata)
+                        try BookStorage.saveLocal(newMetaData, url: metadataURL)
+                    } catch {
+                        Self.logger.log("Failed to save book metadata of uuid: \(newUUID, privacy: .public)")
+                    }
+                }
+            }
         }
     }
     
-    func uploadUnmanagedBook(_ book: BookMetadata) throws {
-        if self.cloudKitData.books[book.id] != nil { return }
+    func saveCloudEpub(_ epub: CloudKitBookEpub) async {
+        let database = Self.container.privateCloudDatabase
+        do {
+            let serverRecords = try await fetchRecords(folderName: epub.folderName, fileType: .book)
+            if !serverRecords.isEmpty { return }
+            let newRecord = try epub.makeNewRecord()
+            try await database.save(newRecord)
+        } catch let error as CKError where error.code == .zoneNotFound {
+            _ = try? await database.save(CKRecordZone(zoneName: CloudKitBookEpub.zoneName))
+            await saveCloudEpub(epub)
+        } catch {
+            logger.error("Failed to save epub file of book \(epub.uuid, privacy: .public): \(error.localizedDescription)")
+        }
+    }
+    
+    func downloadCloudEpub(_ epub: CloudKitBookEpub) async {
+        do {
+            if FileManager.default.fileExists(atPath: try epub.fileURL.path(percentEncoded: false)) { return }
+            let records = try await fetchRecords(folderName: epub.folderName, fileType: .book, fullDownload: true)
+            guard let record = records.first else { return }
+            let assetURL = try record.assetURL
+            let data = try Data(contentsOf: assetURL)
+            let fileURL = try epub.fileURL
+            try data.write(to: fileURL, options: .atomic)
+            fire(event: .epubDownloaded(uuid: epub.uuid))
+            logger.log("Saved epub file \(epub.uuid, privacy: .public) to \(epub.folderName, privacy: .public)/\(epub.fileName, privacy: .public)")
+        } catch {
+            logger.log("Failed to download epub file \(epub.uuid, privacy: .public) to \(epub.folderName, privacy: .public)/\(epub.fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    
+    private func deleteCloudEpub(_ epub: CloudKitBookEpub) async {
+        let records: [CKRecord]
+        do {
+            records = try await fetchRecords(folderName: epub.folderName, fileType: .book)
+        } catch {
+            Self.logger.error("Failed to fetch epub of book \(epub.uuid, privacy: .public): \(error)")
+            return
+        }
+        let database = Self.container.privateCloudDatabase
+        await withTaskGroup { group in
+            for record in records {
+                group.addTask {
+                    do {
+                        try await database.deleteRecord(withID: record.recordID)
+                    } catch {
+                        Self.logger.error("Failed to delete epub \(record.recordID.recordName, privacy: .public) on iCloud server: \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func uploadLocalOnlyData() async throws {
+        let localBooks = try BookStorage.loadAllBooks()
+        let localBooksMap = Dictionary(localBooks.map({ ($0.id, $0) })) { old, new in
+            new
+        }
+        let localOnlyBooks = try await withThrowingTaskGroup { group in
+            for (uuid, metadata) in localBooksMap {
+                group.addTask {
+                    return (uuid, try await self.fetchRecords(folderName: metadata.folder, fileType: .metadata))
+                }
+            }
+            
+            var localOnlyBooks = [BookMetadata]()
+            for try await (uuid, records) in group {
+                if records.isEmpty {
+                    localOnlyBooks.append(localBooksMap[uuid]!)
+                }
+            }
+            
+            return localOnlyBooks
+        }
         let booksRootDir = try BookStorage.getBooksDirectory()
-        let bookDir = booksRootDir.appending(path: book.folder)
-        let bookFileURLs = try FileManager.default.contentsOfDirectory(at: bookDir, includingPropertiesForKeys: nil)
-        for fileName in bookFileURLs.map({ $0.lastPathComponent }) {
-            guard let fileType = CloudKitFileType(fileName: fileName) else { continue }
-            saveCloudFile(
-                uuid: book.id,
-                fileType: fileType,
-                fileName: fileName,
-                folderName: book.folder,
-                createCloudBook: true
-            )
+        for book in localOnlyBooks {
+            let bookDir = booksRootDir.appending(path: book.folder)
+            let bookFileURLs: [URL]
+            do {
+                bookFileURLs = try FileManager.default.contentsOfDirectory(at: bookDir, includingPropertiesForKeys: nil)
+            } catch {
+                logger.error("Failed to get directory contents of book \(book.id, privacy: .public): \(error)")
+                continue
+            }
+            for fileName in bookFileURLs.map({ $0.lastPathComponent }) {
+                guard let fileType = CloudKitFileType(fileName: fileName) else { continue }
+                saveCloudFile(
+                    uuid: book.id,
+                    fileType: fileType,
+                    fileName: fileName,
+                    folderName: book.folder,
+                )
+            }
+            if let coverName = (book.cover as? NSString)?.lastPathComponent {
+                saveCloudFile(
+                    uuid: book.id,
+                    fileType: .cover,
+                    fileName: coverName,
+                    folderName: book.folder,
+                )
+            }
+            if let epub = CloudKitBookEpub(from: book) {
+                Task {
+                    await saveCloudEpub(epub)
+                }
+            }
         }
-        if let coverName = (book.cover as? NSString)?.lastPathComponent {
-            saveCloudFile(
-                uuid: book.id,
-                fileType: .cover,
-                fileName: coverName,
-                folderName: book.folder,
-                createCloudBook: true
-            )
-        }
-        if let bookName = book.epub {
-            saveCloudFile(
-                uuid: book.id,
-                fileType: .book,
-                fileName: bookName,
-                folderName: book.folder,
-                createCloudBook: true
-            )
+        if try await !checkCloudShelvesExist() && self.cloudKitData.shelves.data != nil {
+            saveCloudShelves()
         }
     }
 }
@@ -596,13 +743,6 @@ extension CloudKitSyncManager {
 extension CloudKitSyncManager {
     
     private static let cloudKitDataFileName = "cloudkit.json"
-    
-    private func getBooks(isManaged: Bool) throws -> [BookMetadata] {
-        let managedBookIds = Set(self.cloudKitData.books.keys)
-        let localBooks = try BookStorage.loadAllBooks()
-        let targetBooks = localBooks.filter({ managedBookIds.contains($0.id) == isManaged })
-        return targetBooks
-    }
     
     private static var cloudKitDataURL: URL {
         get throws {
@@ -617,16 +757,6 @@ extension CloudKitSyncManager {
         try? FileManager.default.createDirectory(at: cloudKitDirURl, withIntermediateDirectories: true)
         let fileURL = cloudKitDirURl.appending(path: Self.cloudKitDataFileName)
         try BookStorage.saveLocal(cloudKitData, url: fileURL)
-    }
-    
-    // Deleting the whole shelf file is not supported
-    private func deleteLocal(recordID: CKRecord.ID) throws {
-        let recordName = recordID.recordName
-        let (uuid, fileType) = try CKRecord.parseRecordName(recordName)
-        let fileURL = try cloudKitData.books[uuid]?[fileType]?.fileURL
-        if let fileURL, FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
-            try BookStorage.delete(at: fileURL)
-        }
     }
     
     func deleteLocal(books: [BookMetadata]) throws {
@@ -644,15 +774,16 @@ extension CloudKitSyncManager {
         try BookStorage.saveLocal(shelves, url: bookRootDir.appending(path: FileNames.shelves))
     }
     
-    func deleteLocalBooks(isManaged: Bool) throws {
-        let targetBooks = try getBooks(isManaged: isManaged)
-        try deleteLocal(books: targetBooks)
+    func deleteLocalBooksWithoutEpub() throws {
+        let books = try BookStorage.loadAllBooks()
+        let booksWithoutEpub = try books.filter { book in
+            guard let fileName = book.epub else { return true }
+            let booksDir = try BookStorage.getBooksDirectory()
+            let epubURL = booksDir.appending(path: book.folder).appending(path: fileName)
+            return !FileManager.default.fileExists(atPath: epubURL.path(percentEncoded: false))
+        }
+        try deleteLocal(books: booksWithoutEpub)
     }
-}
-
-// MARK: - other internal APIs
-extension CloudKitSyncManager {
-    func isManaged(uuid: UUID) -> Bool { cloudKitData.books[uuid] != nil }
 }
 
 // MARK: - callbacks
@@ -660,7 +791,7 @@ extension CloudKitSyncManager {
     nonisolated enum Event {
         enum AccountEvent {
             case signIn
-            case signOut(managedBooks: [BookMetadata])
+            case signOut
             case accountChanged
         }
         
@@ -675,6 +806,7 @@ extension CloudKitSyncManager {
         
         case fetched(uuid: UUID)
         case sent(uuid: UUID, success: Bool)
+        case epubDownloaded(uuid: UUID)
         case delete(DeleteEvent)
         case account(AccountEvent)
         case error(SyncError)

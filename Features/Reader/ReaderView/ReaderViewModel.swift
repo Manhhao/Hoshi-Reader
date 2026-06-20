@@ -351,7 +351,7 @@ class ReaderViewModel {
             case .zones:
                 break
             }
-        case .account, .error:
+        case .account, .error, .epubDownloaded:
             break
         }
     }

@@ -48,7 +48,7 @@ struct HoshiReaderApp: App {
         WebViewPreloader.shared.warmup()
         if userConfig.enableCloudKitSync {
             Task {
-                await CloudKitSyncManager.shared.initializeSyncEngine()
+                await CloudKitSyncManager.shared.initialize()
             }
         }
     }
