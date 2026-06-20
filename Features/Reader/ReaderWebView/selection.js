@@ -252,7 +252,9 @@ window.hoshiSelection = {
             start = 0;
         }
         
-        let sentence = (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+        const prefix = partsBefore.reverse().join('');
+        const raw = prefix + partsAfter.join('');
+        let sentence = raw.trim();
         
         const closeBrackets = new Set(Object.values(this.brackets));
         const openBrackets = new Set(Object.keys(this.brackets));
@@ -291,7 +293,16 @@ window.hoshiSelection = {
             } else if (!this.sentenceDelimiters.includes(sentence[endIdx])) break;
             endIdx--;
         }
-        return sentence.slice(startSlice, endSlice + 1).trim();
+        
+        const sliced = sentence.slice(startSlice, endSlice + 1);
+        const rawSelectionOffset = prefix.length;
+        const rawSentenceStart =
+        (raw.length - raw.trimStart().length) +
+        startSlice +
+        (sliced.length - sliced.trimStart().length);
+        const clozeOffset = rawSelectionOffset - rawSentenceStart;
+        const trimmed = sliced.trim();
+        return { sentence: trimmed, clozeOffset };
     },
     
     selectText(x, y, maxLength) {
@@ -371,13 +382,14 @@ window.hoshiSelection = {
             text
         };
         
-        const sentence = this.getSentence(hit.node, hit.offset);
+        const { sentence, clozeOffset } = this.getSentence(hit.node, hit.offset);
         const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
         webkit.messageHandlers.textSelected.postMessage({
             text,
             sentence,
             rect: this.getSelectionRect(x, y),
-            normalizedOffset
+            normalizedOffset,
+            clozeOffset
         });
         
         return text;

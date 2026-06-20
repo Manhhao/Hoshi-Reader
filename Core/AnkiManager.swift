@@ -644,8 +644,14 @@ class AnkiManager {
             case .pitchCategories:
                 return content["pitchCategories"] ?? ""
             case .sentence:
-                guard let matched = content["matched"] else { return context.sentence }
-                return context.sentence.replacingOccurrences(of: matched, with: "<b>\(matched)</b>")
+                let parts = Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset)
+                return "\(parts.prefix)<b>\(parts.body)</b>\(parts.suffix)"
+            case .clozePrefix:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).prefix
+            case .clozeBody:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).body
+            case .clozeSuffix:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).suffix
             case .documentTitle:
                 return context.documentTitle ?? ""
             case .popupSelectionText:
@@ -757,6 +763,13 @@ class AnkiManager {
             }
             return "<li data-dictionary=\"\(dict)\"><i>\(stripped)</i> "
         }
+    }
+    
+    private static func clozeParts(sentence: String, matched: String, offset: Int?) -> (prefix: String, body: String, suffix: String) {
+        let range = offset.flatMap { Range(NSRange(location: $0, length: matched.utf16.count), in: sentence) }
+            ?? sentence.range(of: matched)
+        guard let range else { return (sentence, "", "") }
+        return (String(sentence[..<range.lowerBound]), String(sentence[range]), String(sentence[range.upperBound...]))
     }
     
     private static func saveWords(_ words: Set<String>) throws {

@@ -342,7 +342,8 @@ struct ReaderView: View {
                                         dx: (geometry.size.width - scrollViewSize.width) / 2,
                                         dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
                                     ),
-                                    normalizedOffset: $0.normalizedOffset
+                                    normalizedOffset: $0.normalizedOffset,
+                                    clozeOffset: $0.clozeOffset
                                 )
                                 return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },

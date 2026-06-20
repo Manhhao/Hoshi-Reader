@@ -457,7 +457,8 @@ struct PopupWebView: UIViewRepresentable {
                     width: w,
                     height: h
                 )
-                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect)
+                let clozeOffset = body["clozeOffset"] as? Int
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, clozeOffset: clozeOffset)
                 
                 if let highlightCount = parent.onTextSelected?(selectionData) {
                     message.webView?.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(highlightCount))")

@@ -80,6 +80,7 @@ struct AnkiConnectConfig: Codable {
 
 struct MiningContext {
     let sentence: String
+    var clozeOffset: Int? = nil
     let documentTitle: String?
     let coverURL: URL?
     var sasayakiAudioData: Data? = nil
@@ -111,6 +112,9 @@ enum Handlebars: String, CaseIterable {
     case selectedGlossaryNoDictionary = "{selected-glossary-no-dictionary}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
+    case clozePrefix = "{cloze-prefix}"
+    case clozeBody = "{cloze-body}"
+    case clozeSuffix = "{cloze-suffix}"
     case frequencies = "{frequencies}"
     case frequencyHarmonicRank = "{frequency-harmonic-rank}"
     case pitchPositions = "{pitch-accent-positions}"
@@ -131,7 +135,10 @@ enum Handlebars: String, CaseIterable {
         .monolingualDefinitionFallback,
         .bilingualDefinitionFallback,
         .selectedGlossaryBrief,
-        .selectedGlossaryNoDictionary
+        .selectedGlossaryNoDictionary,
+        .clozePrefix,
+        .clozeBody,
+        .clozeSuffix
     ]
 }
 
@@ -175,7 +182,7 @@ struct AnkiFieldTemplate {
         AnkiFieldTemplate(noteType: "Senren", mappings: [
             "word": Handlebars.expression.rawValue,
             "reading": Handlebars.reading.rawValue,
-            "sentence": Handlebars.sentence.rawValue,
+            "sentence": "<span class=\"group\">\(Handlebars.clozePrefix.rawValue)<span class=\"highlight\">\(Handlebars.clozeBody.rawValue)</span>\(Handlebars.clozeSuffix.rawValue)</span>",
             "selectionText": Handlebars.popupSelectionText.rawValue,
             "definition": Handlebars.glossaryFirst.rawValue,
             "wordAudio": Handlebars.audio.rawValue,

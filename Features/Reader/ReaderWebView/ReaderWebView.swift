@@ -20,6 +20,7 @@ struct SelectionData {
     let sentence: String
     let rect: CGRect
     var normalizedOffset: Int?
+    var clozeOffset: Int?
 }
 
 struct HighlightData {
@@ -324,7 +325,8 @@ struct ReaderWebView: UIViewRepresentable {
                 let rect = CGRect(x: x, y: y, width: w, height: h)
                     .offsetBy(dx: 0, dy: -scrollBounds.origin.y)
                 let normalizedOffset = body["normalizedOffset"] as? Int
-                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
+                let clozeOffset = body["clozeOffset"] as? Int
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset, clozeOffset: clozeOffset)
                 
                 if let highlightCount = parent.onTextSelected(selectionData) {
                     highlightSelection(count: highlightCount)

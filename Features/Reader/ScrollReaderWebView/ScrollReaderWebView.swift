@@ -234,7 +234,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 let rect = CGRect(x: x, y: y, width: w, height: h)
                     .offsetBy(dx: 0, dy: parent.userConfig.verticalWriting ? -scrollBounds.origin.y : 0)
                 let normalizedOffset = body["normalizedOffset"] as? Int
-                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
+                let clozeOffset = body["clozeOffset"] as? Int
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset, clozeOffset: clozeOffset)
                 
                 if let highlightCount = parent.onTextSelected(selectionData) {
                     highlightSelection(count: highlightCount)
