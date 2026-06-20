@@ -643,6 +643,10 @@ class AnkiManager {
                 return content["pitchPositions"] ?? ""
             case .pitchCategories:
                 return content["pitchCategories"] ?? ""
+            case .pitchAccentGraphs:
+                return content["pitchAccentGraphs"] ?? ""
+            case .pitchAccentGraphsFirst:
+                return Self.firstPitchAccentGraph(content["pitchAccentGraphs"] ?? "")
             case .sentence:
                 let parts = Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset)
                 return "\(parts.prefix)<b>\(parts.body)</b>\(parts.suffix)"
@@ -765,9 +769,13 @@ class AnkiManager {
         }
     }
     
+    private static func firstPitchAccentGraph(_ html: String) -> String {
+        guard let match = html.firstMatch(of: #/<svg\b.*?</svg>/#) else { return "" }
+        return String(match.output)
+    }
+    
     private static func clozeParts(sentence: String, matched: String, offset: Int?) -> (prefix: String, body: String, suffix: String) {
-        let range = offset.flatMap { Range(NSRange(location: $0, length: matched.utf16.count), in: sentence) }
-            ?? sentence.range(of: matched)
+        let range = offset.flatMap { Range(NSRange(location: $0, length: matched.utf16.count), in: sentence) } ?? sentence.range(of: matched)
         guard let range else { return (sentence, "", "") }
         return (String(sentence[..<range.lowerBound]), String(sentence[range]), String(sentence[range.upperBound...]))
     }

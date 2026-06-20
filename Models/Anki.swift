@@ -119,6 +119,8 @@ enum Handlebars: String, CaseIterable {
     case frequencyHarmonicRank = "{frequency-harmonic-rank}"
     case pitchPositions = "{pitch-accent-positions}"
     case pitchCategories = "{pitch-accent-categories}"
+    case pitchAccentGraphs = "{pitch-accent-graphs}"
+    case pitchAccentGraphsFirst = "{pitch-accent-graphs-first}"
     case documentTitle = "{document-title}"
     case bookCover = "{book-cover}"
     case sasayakiAudio = "{sasayaki-audio}"
@@ -138,7 +140,8 @@ enum Handlebars: String, CaseIterable {
         .selectedGlossaryNoDictionary,
         .clozePrefix,
         .clozeBody,
-        .clozeSuffix
+        .clozeSuffix,
+        .pitchAccentGraphsFirst
     ]
 }
 

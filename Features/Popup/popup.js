@@ -558,6 +558,35 @@ function constructPitchCategories(pitches, reading, rules) {
     return categories.join(',');
 }
 
+function constructPitchAccentGraphsHtml(pitches, reading) {
+    if (!pitches?.length) {
+        return '';
+    }
+    
+    const morae = getKanaMorae(reading);
+    const seen = new Set();
+    const graphs = [];
+    pitches.forEach(pitchGroup => {
+        pitchGroup.pitchPositions.forEach(pos => {
+            if (window.deduplicatePitchAccents) {
+                if (seen.has(pos)) {
+                    return;
+                }
+                seen.add(pos);
+            }
+            graphs.push(createPronunciationGraph(morae, pos).outerHTML);
+        });
+    });
+    
+    if (graphs.length === 0) {
+        return '';
+    }
+    if (graphs.length === 1) {
+        return graphs[0];
+    }
+    return `<ol>${graphs.map(g => `<li>${g}</li>`).join('')}</ol>`;
+}
+
 // https://github.com/yomidevs/yomitan/blob/d810b2f0842536d24ab82b6cd75d00841710e57b/ext/js/display/structured-content-generator.js#L64
 function createDefinitionImage(data, dictionary, exporting = false) {
     const {
@@ -805,6 +834,7 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
     currentDictionaryMedia = null;
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
+    const pitchAccentGraphs = constructPitchAccentGraphsHtml(pitches, reading);
     
     if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);
@@ -823,6 +853,7 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         singleGlossaries: JSON.stringify(singleGlossaries),
         pitchPositions,
         pitchCategories,
+        pitchAccentGraphs,
         popupSelectionText,
         audio,
         slotIndex: String(slotIndex),
@@ -1084,6 +1115,95 @@ function createPitchHtml(reading, pitchValue) {
     }
     
     return container;
+}
+
+// https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L115
+// https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/css/display-pronunciation.css#L101
+function createPronunciationGraph(morae, pitchPositions) {
+    const ii = morae.length;
+    
+    const svgns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('xmlns', svgns);
+    //
+    svg.setAttribute('style', 'display:inline-block;vertical-align:middle;height:1.5em;');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('viewBox', `0 0 ${50 * (ii + 1)} 100`);
+    
+    if (ii <= 0) { return svg; }
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L317
+    const createGraphCircle = (style, x, y, radius) => {
+        const node = document.createElementNS(svgns, 'circle');
+        node.setAttribute('style', style);
+        node.setAttribute('cx', `${x}`);
+        node.setAttribute('cy', `${y}`);
+        node.setAttribute('r', radius);
+        return node;
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L290
+    const addGraphDot = (x, y) => {
+        // pronunciation-graph-dot
+        svg.appendChild(createGraphCircle('stroke-width:5;fill:currentColor;stroke:currentColor;', x, y, '15'));
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L290
+    const addGraphDotDownstep = (x, y) => {
+        // pronunciation-graph-dot-downstep1
+        svg.appendChild(createGraphCircle('fill:none;stroke-width:5;stroke:currentColor;', x, y, '15'));
+        // pronunciation-graph-dot-downstep2
+        svg.appendChild(createGraphCircle('fill:currentColor;', x, y, '5'));
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L301
+    const addGraphTriangle = (x, y) => {
+        const node = document.createElementNS(svgns, 'path');
+        // pronunciation-graph-triangle
+        node.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;');
+        node.setAttribute('d', 'M0 13 L15 -13 L-15 -13 Z');
+        node.setAttribute('transform', `translate(${x},${y})`);
+        svg.appendChild(node);
+    };
+    
+    const path1 = document.createElementNS(svgns, 'path');
+    svg.appendChild(path1);
+    
+    const path2 = document.createElementNS(svgns, 'path');
+    svg.appendChild(path2);
+    
+    const pathPoints = [];
+    for (let i = 0; i < ii; ++i) {
+        const highPitch = isMoraPitchHigh(i, pitchPositions);
+        const highPitchNext = isMoraPitchHigh(i + 1, pitchPositions);
+        const x = i * 50 + 25;
+        const y = highPitch ? 25 : 75;
+        if (highPitch && !highPitchNext) {
+            addGraphDotDownstep(x, y);
+        } else {
+            addGraphDot(x, y);
+        }
+        pathPoints.push(`${x} ${y}`);
+    }
+    
+    // pronunciation-graph-line
+    path1.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;');
+    path1.setAttribute('d', `M${pathPoints.join(' L')}`);
+    
+    pathPoints.splice(0, ii - 1);
+    {
+        const highPitch = isMoraPitchHigh(ii, pitchPositions);
+        const x = ii * 50 + 25;
+        const y = highPitch ? 25 : 75;
+        addGraphTriangle(x, y);
+        pathPoints.push(`${x} ${y}`);
+    }
+    
+    // pronunciation-graph-line-tail
+    path2.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;stroke-dasharray:5 5;');
+    path2.setAttribute('d', `M${pathPoints.join(' L')}`);
+    
+    return svg;
 }
 
 function createPitchGroup(pitchData, reading) {
