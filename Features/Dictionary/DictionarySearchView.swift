@@ -347,6 +347,8 @@ struct DictionarySearchView: View {
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
+            window.validFormatFlags = \(AnkiManager.shared.validFormatFlags);
+            window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.embedMedia = \(AnkiManager.shared.embedMedia);

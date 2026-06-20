@@ -1404,6 +1404,14 @@ async function checkDuplicates(entryIndex) {
         return;
     }
     
+    if (window.useAnkiConnect && !window.isAnkiConnectReachable) {
+        getButtonSlots('mine', entryIndex).forEach(slot => {
+            updateButtonSlot(slot, { state: 'default', enabled: false });
+            updateButtonSlot(getButtonSlot('note', entryIndex, Number(slot.dataset.slotIndex)), { hidden: true });
+        });
+        return;
+    }
+    
     const results = await webkit.messageHandlers.duplicateCheck.postMessage({
         '{expression}': entry.expression,
         '{reading}': entry.reading
@@ -1411,9 +1419,10 @@ async function checkDuplicates(entryIndex) {
     getButtonSlots('mine', entryIndex).forEach(slot => {
         const i = Number(slot.dataset.slotIndex);
         const isDuplicate = results?.[i] === true;
+        const isValidFormat = window.validFormatFlags[i];
         updateButtonSlot(slot, {
             state: isDuplicate ? 'duplicate' : 'default',
-            enabled: !(isDuplicate && !window.allowDupes)
+            enabled: isValidFormat && !(isDuplicate && !window.allowDupes)
         });
         updateButtonSlot(getButtonSlot('note', entryIndex, i), {
             hidden: !isDuplicate || window.disableShowNotes

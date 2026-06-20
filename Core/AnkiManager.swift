@@ -50,6 +50,17 @@ class AnkiManager {
         cardFormats.contains { $0.fieldMappings.values.contains(Handlebars.sasayakiAudio.rawValue) }
     }
     
+    var validFormatFlags: [Bool] {
+        cardFormats.map { format in
+            guard let noteTypeName = format.selectedNoteType,
+                  let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+                  let firstField = noteType.fields.first else {
+                return false
+            }
+            return format.fieldMappings[firstField] != nil
+        }
+    }
+    
     var useAnkiConnect: Bool = false
     var ankiConnectConfig: AnkiConnectConfig? = AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     var isAnkiConnectReachable = false

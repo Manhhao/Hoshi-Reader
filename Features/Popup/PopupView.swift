@@ -485,6 +485,8 @@ struct PopupView: View {
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
+            window.validFormatFlags = \(AnkiManager.shared.validFormatFlags);
+            window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
