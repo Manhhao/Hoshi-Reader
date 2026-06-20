@@ -104,9 +104,17 @@ enum Handlebars: String, CaseIterable {
     case glossaryFirstBrief = "{glossary-first-brief}"
     case glossaryFirstNoDictionary = "{glossary-first-no-dictionary}"
     case monolingualDefinition = "{monolingual-definition}"
+    case monolingualDefinitionBrief = "{monolingual-definition-brief}"
+    case monolingualDefinitionNoDictionary = "{monolingual-definition-no-dictionary}"
     case bilingualDefinition = "{bilingual-definition}"
+    case bilingualDefinitionBrief = "{bilingual-definition-brief}"
+    case bilingualDefinitionNoDictionary = "{bilingual-definition-no-dictionary}"
     case monolingualDefinitionFallback = "{monolingual-definition-fallback}"
+    case monolingualDefinitionFallbackBrief = "{monolingual-definition-fallback-brief}"
+    case monolingualDefinitionFallbackNoDictionary = "{monolingual-definition-fallback-no-dictionary}"
     case bilingualDefinitionFallback = "{bilingual-definition-fallback}"
+    case bilingualDefinitionFallbackBrief = "{bilingual-definition-fallback-brief}"
+    case bilingualDefinitionFallbackNoDictionary = "{bilingual-definition-fallback-no-dictionary}"
     case selectedGlossary = "{selected-glossary}"
     case selectedGlossaryBrief = "{selected-glossary-brief}"
     case selectedGlossaryNoDictionary = "{selected-glossary-no-dictionary}"
@@ -133,9 +141,17 @@ enum Handlebars: String, CaseIterable {
         .glossaryFirstBrief,
         .glossaryFirstNoDictionary,
         .monolingualDefinition,
+        .monolingualDefinitionBrief,
+        .monolingualDefinitionNoDictionary,
         .bilingualDefinition,
+        .bilingualDefinitionBrief,
+        .bilingualDefinitionNoDictionary,
         .monolingualDefinitionFallback,
+        .monolingualDefinitionFallbackBrief,
+        .monolingualDefinitionFallbackNoDictionary,
         .bilingualDefinitionFallback,
+        .bilingualDefinitionFallbackBrief,
+        .bilingualDefinitionFallbackNoDictionary,
         .selectedGlossaryBrief,
         .selectedGlossaryNoDictionary,
         .clozePrefix,

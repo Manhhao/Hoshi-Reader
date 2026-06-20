@@ -627,14 +627,34 @@ class AnkiManager {
                 return Self.stripDictionaryName(selected)
             case .monolingualDefinition:
                 return firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+            case .monolingualDefinitionBrief:
+                return Self.stripGlossaryHeaders(firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries))
+            case .monolingualDefinitionNoDictionary:
+                return Self.stripDictionaryName(firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries))
             case .bilingualDefinition:
                 return firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+            case .bilingualDefinitionBrief:
+                return Self.stripGlossaryHeaders(firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries))
+            case .bilingualDefinitionNoDictionary:
+                return Self.stripDictionaryName(firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries))
             case .monolingualDefinitionFallback:
                 let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
                 return primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary
+            case .monolingualDefinitionFallbackBrief:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return Self.stripGlossaryHeaders(primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary)
+            case .monolingualDefinitionFallbackNoDictionary:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return Self.stripDictionaryName(primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary)
             case .bilingualDefinitionFallback:
                 let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
                 return primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary
+            case .bilingualDefinitionFallbackBrief:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return Self.stripGlossaryHeaders(primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary)
+            case .bilingualDefinitionFallbackNoDictionary:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return Self.stripDictionaryName(primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary)
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:
