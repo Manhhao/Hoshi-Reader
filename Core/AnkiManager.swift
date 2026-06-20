@@ -577,7 +577,7 @@ class AnkiManager {
     
     private func firstGlossary(ofCategory category: DictionaryCategory? = nil, singleGlossaries: [String: String]) -> String {
         for dict in DictionaryManager.shared.termDictionaries {
-            guard category == nil || dict.category == category, let glossary = singleGlossaries[dict.index.title] else {
+            guard dict.category != .exclude, category == nil || dict.category == category, let glossary = singleGlossaries[dict.index.title] else {
                 continue
             }
             return glossary

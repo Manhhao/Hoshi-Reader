@@ -9,7 +9,7 @@
 import Foundation
 
 enum DictionaryCategory: String, Codable, CaseIterable, Identifiable {
-    case none, monolingual, bilingual
+    case none, monolingual, bilingual, exclude
     
     var id: String { self.rawValue }
     var label: String {
@@ -17,6 +17,7 @@ enum DictionaryCategory: String, Codable, CaseIterable, Identifiable {
         case .none: return "None"
         case .monolingual: return "Monolingual"
         case .bilingual: return "Bilingual"
+        case .exclude: return "Exclude"
         }
     }
 }

@@ -465,6 +465,8 @@ struct PopupView: View {
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let excludedDictionaries = (try? JSONEncoder().encode(DictionaryManager.shared.excludedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
         let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
@@ -487,6 +489,7 @@ struct PopupView: View {
             window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
             window.validFormatFlags = \(AnkiManager.shared.validFormatFlags);
             window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable);
+            window.excludedDictionaries = \(excludedDictionaries);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);

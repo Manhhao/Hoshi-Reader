@@ -33,6 +33,10 @@ class DictionaryManager {
     var errorMessage = ""
     var currentImport = ""
     
+    var excludedDictionaries: [String] {
+        termDictionaries.filter { $0.category == .exclude }.map { $0.index.title }
+    }
+    
     private static let configFileName = "config.json"
     private static let collapsedConfig = "collapsed.json"
     

@@ -454,6 +454,9 @@ function constructGlossaryHtml(entryIndex) {
     
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
+        if (window.excludedDictionaries.includes(dictName)) {
+            return;
+        }
         
         const tempDiv = document.createElement('div');
         try {
