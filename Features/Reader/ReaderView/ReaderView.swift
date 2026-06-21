@@ -78,21 +78,9 @@ struct ReaderView: View {
     @State private var focusMode = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
+    @State private var topSafeArea: CGFloat
+    @State private var bottomSafeArea: CGFloat
     private let webViewPadding: CGFloat = 4
-    
-    private var topSafeArea: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            return 35
-        }
-        return UIApplication.topSafeArea
-    }
-    
-    private var bottomSafeArea: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            return 20
-        }
-        return UIApplication.bottomSafeArea
-    }
     
     private var readerBottomPadding: CGFloat {
         bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
@@ -185,6 +173,8 @@ struct ReaderView: View {
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
         ))
+        _topSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea)
+        _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
     }
     
     private var progressString: String {
