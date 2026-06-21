@@ -70,7 +70,9 @@ struct HoshiReaderApp: App {
                 switch phase {
                 case .active:
                     LocalFileServer.shared.endBackgroundTask()
-                    LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                    Task { @MainActor in
+                        LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                    }
                     if userConfig.autoUpdateDictionaries {
                         DictionaryManager.shared.autoUpdateDictionaries()
                     }
