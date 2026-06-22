@@ -65,6 +65,7 @@ const JAPANESE_RANGES = [
 
 window.hoshiSelection = {
     selection: null,
+    highlight: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
     trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
@@ -416,11 +417,16 @@ window.hoshiSelection = {
     },
     
     highlightSelection(charCount) {
+        if (!this.highlight) {
+            this.highlight = new Highlight();
+            CSS.highlights.set('hoshi-selection', this.highlight);
+        }
+        this.highlight.clear();
+        
         if (!this.selection?.ranges.length) {
             return;
         }
         
-        const highlights = [];
         let remaining = charCount;
         
         for (const r of this.selection.ranges) {
@@ -435,13 +441,11 @@ window.hoshiSelection = {
                 const range = document.createRange();
                 range.setStart(r.node, offset);
                 range.setEnd(r.node, end);
-                highlights.push(range);
+                this.highlight.add(range);
                 offset = end;
                 remaining--;
             }
         }
-        
-        CSS.highlights?.set('hoshi-selection', new Highlight(...highlights));
     },
     
     getNormalizedOffset(targetNode, offset) {
@@ -459,7 +463,7 @@ window.hoshiSelection = {
     
     clearSelection() {
         window.getSelection()?.removeAllRanges();
-        CSS.highlights?.get('hoshi-selection')?.clear();
+        this.highlight?.clear();
         this.selection = null;
     }
 };
