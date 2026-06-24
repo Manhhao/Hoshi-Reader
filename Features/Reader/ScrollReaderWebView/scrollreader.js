@@ -173,6 +173,8 @@ window.hoshiReader = {
                     }
                 } else if (segment) {
                     segment.end = next;
+                } else if (cursor > start && cursor < end) {
+                    segment = { id: current.id, start: i, end: next };
                 }
                 i = next;
             }
