@@ -24,11 +24,6 @@ body {
     --line-height: 1.4;
     --list-padding1: 1.4em;
     --list-padding2: var(--list-padding1);
-    --text-color-light1: #555555;
-    --text-color-light2: #666666;
-    --text-color-light3: #777777;
-    --text-color-light4: #888888;
-    --background-color-dark1: #eeeeee;
     color: var(--text-color);
     background-color: transparent;
     font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif !important;
@@ -454,6 +449,19 @@ a {
         --background-color: #fff;
         --background-color-light: #fff;
         --text-color: #000;
+        --text-color-light1: #555555;
+        --text-color-light2: #666666;
+        --text-color-light3: #777777;
+        --text-color-light4: #888888;
+        --background-color-dark1: #eeeeee;
+        --danger-color: #c83c28;
+        --danger-color-light: #dd6755;
+        --danger-color-lighter: #e68d7f;
+        --danger-color-lightest: #eeb3aa;
+        --danger-color-transparent0: rgba(200, 60, 40, 0);
+        --danger-color-transparent5: rgba(200, 60, 40, 0.05);
+        --danger-color-transparent25: rgba(200, 60, 40, 0.25);
+        --success-color: #51ab30;
     }
 }
 
@@ -469,6 +477,14 @@ a {
         --text-color-light3: #888888;
         --text-color-light4: #777777;
         --background-color-dark1: #333333;
+        --danger-color: #dd6755;
+        --danger-color-light: #c83c28;
+        --danger-color-lighter: #9e301f;
+        --danger-color-lightest: #732317;
+        --danger-color-transparent0: rgba(221, 103, 85, 0);
+        --danger-color-transparent5: rgba(221, 103, 85, 0.05);
+        --danger-color-transparent25: rgba(221, 103, 85, 0.25);
+        --success-color: #75cf54;
     }
     
     .overlay {
