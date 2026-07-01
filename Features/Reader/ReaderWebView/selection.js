@@ -68,7 +68,7 @@ window.hoshiSelection = {
     highlight: null,
     scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
-    trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
+    trailingSentenceChars: '。、！？」』）)】〉》〕｝}］]',
     brackets: {'「':'」', '『': '』', '（':'）', '(':')', '【':'】', '〈':'〉', '《':'》', '〔':'〕', '｛':'｝', '{':'}', '［':'］', '[':']'},
     
     isVertical() {
