@@ -719,8 +719,12 @@ struct ReaderWebView: UIViewRepresentable {
                             }
                             resolve();
                         }
-                        if (img.complete && img.naturalWidth > 0) {
-                            processImg();
+                        if (img.complete) {
+                            if (img.naturalWidth > 0) {
+                                processImg();
+                            } else {
+                                resolve();
+                            }
                         } else {
                             img.onload = processImg;
                             img.onerror = () => resolve();
