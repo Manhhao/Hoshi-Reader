@@ -251,6 +251,7 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.removeWordAddedObserver()
         Task {
             await WordAudioPlayer.shared.stop(id: coordinator.id)
         }
@@ -278,10 +279,28 @@ struct PopupWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         private var buttons: [String: UIButton] = [:]
         private var buttonActions: [UIButton: (kind: String, entryIndex: Int, slotIndex: Int)] = [:]
+        private var wordAddedObserver: NSObjectProtocol?
         let id = UUID()
         
         init(parent: PopupWebView) {
             self.parent = parent
+            super.init()
+            wordAddedObserver = NotificationCenter.default.addObserver(
+                forName: AnkiManager.wordAddedNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.webView?.evaluateJavaScript("recheckDuplicates()")
+                }
+            }
+        }
+        
+        func removeWordAddedObserver() {
+            if let wordAddedObserver {
+                NotificationCenter.default.removeObserver(wordAddedObserver)
+                self.wordAddedObserver = nil
+            }
         }
         
         private func updateButtons(_ rects: [[String: Any]], in webView: WKWebView) {

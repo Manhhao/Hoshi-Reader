@@ -1433,6 +1433,14 @@ async function checkDuplicates(entryIndex) {
     });
 }
 
+function recheckDuplicates() {
+    const indices = new Set(
+        [...document.querySelectorAll('.button-slot[data-kind="mine"]')]
+            .map(slot => Number(slot.dataset.entryIndex))
+    );
+    indices.forEach(checkDuplicates);
+}
+
 async function mineEntryAtIndex(entryIndex, slotIndex) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
@@ -1441,12 +1449,8 @@ async function mineEntryAtIndex(entryIndex, slotIndex) {
     lastSelection = window.getSelection()?.toString() || '';
     getButtonSlots('mine', entryIndex).forEach(slot => updateButtonSlot(slot, { enabled: false }));
     
-    const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection, slotIndex);
-    if (isAnkiConnect) {
-        await checkDuplicates(entryIndex);
-    } else {
-        setTimeout(() => checkDuplicates(entryIndex), 1000);
-    }
+    await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection, slotIndex);
+    await checkDuplicates(entryIndex);
 }
 
 function showNotesAtIndex(entryIndex, slotIndex) {

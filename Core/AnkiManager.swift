@@ -65,6 +65,8 @@ class AnkiManager {
     var ankiConnectConfig: AnkiConnectConfig? = AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     var isAnkiConnectReachable = false
     
+    static let wordAddedNotification = Notification.Name("hoshiWordAdded")
+    
     private static let scheme = "hoshi://"
     private static let fetchCallback = scheme + "ankiFetch"
     private static let successCallback = scheme + "ankiSuccess"
@@ -782,6 +784,7 @@ class AnkiManager {
     func addWord(_ word: String) {
         savedWords.insert(word)
         try? Self.saveWords(savedWords)
+        NotificationCenter.default.post(name: Self.wordAddedNotification, object: nil)
     }
     
     private static func stripGlossaryHeaders(_ html: String) -> String {
