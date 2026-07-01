@@ -201,7 +201,12 @@ class LocalFileServer {
             sql = """
                 SELECT source, file FROM entries
                 WHERE (expression = ? OR reading = ?) AND file LIKE '%.mp3'
-                ORDER BY CASE WHEN reading = ? THEN 0 ELSE 1 END, \(sortOrder)
+                ORDER BY CASE
+                    WHEN expression = ? AND reading = ? THEN 0
+                    WHEN reading = ? THEN 1
+                    WHEN expression = ? THEN 2
+                    ELSE 3
+                END, \(sortOrder)
                 LIMIT 1;
                 """
         }
@@ -219,8 +224,11 @@ class LocalFileServer {
         var bindIndex = 2
         if !reading.isEmpty {
             sqlite3_bind_text(stmt, 2, reading, -1, Self.sqliteTransient)
-            sqlite3_bind_text(stmt, 3, reading, -1, Self.sqliteTransient)
-            bindIndex = 4
+            sqlite3_bind_text(stmt, 3, term, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, 4, reading, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, 5, reading, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, 6, term, -1, Self.sqliteTransient)
+            bindIndex = 7
         }
         for (i, source) in Self.defaultSources.enumerated() {
             sqlite3_bind_text(stmt, Int32(i + bindIndex), source, -1, Self.sqliteTransient)
