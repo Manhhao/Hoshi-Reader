@@ -8,6 +8,7 @@
 
 import AVFoundation
 import MediaPlayer
+import SwiftLAME
 import SwiftUI
 
 struct CueTimeline {
@@ -317,7 +318,9 @@ class SasayakiPlayer {
         
         let range = expandCue(cue, sentence: sentence)
         let asset = AVURLAsset(url: url)
-        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.mp3")
+        try? FileManager.default.removeItem(at: temp)
         try? FileManager.default.removeItem(at: output)
         guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
             return nil
@@ -329,7 +332,16 @@ class SasayakiPlayer {
             start: CMTime(seconds: start, preferredTimescale: 600),
             end: CMTime(seconds: end, preferredTimescale: 600)
         )
-        try? await session.export(to: output, as: .m4a)
+        try? await session.export(to: temp, as: .m4a)
+        
+        let encoder = try? SwiftLameEncoder(
+            sourceUrl: temp,
+            configuration: .init(sampleRate: .default, bitrateMode: .constant(128), quality: .nearBest),
+            destinationUrl: output
+        )
+        guard let encoder, (try? await encoder.encode()) != nil else {
+            return nil
+        }
         return try? Data(contentsOf: output)
     }
     

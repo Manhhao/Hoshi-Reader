@@ -13,6 +13,7 @@
 		48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */ = {isa = PBXBuildFile; productRef = 48568CD22F1EC9A400F9C126 /* EPUBKit */; };
 		48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */ = {isa = PBXBuildFile; productRef = 48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */; };
 		48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */; };
+		48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */ = {isa = PBXBuildFile; productRef = 48F0AF172FF5750F004B75F8 /* SwiftLAME */; };
 		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */; };
 		90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */; };
@@ -159,6 +160,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */,
+				48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */,
 				482B74F22F4664CB00398222 /* SwiftUIIntrospect in Frameworks */,
 				48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */,
 			);
@@ -190,7 +192,15 @@
 				48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */,
 				48FE8D462F76AB88002C2C49 /* ShareExtension.appex */,
 				48FE8D472F76AB88002C2C49 /* ShareExtension */,
+				48F0AF162FF5750F004B75F8 /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		48F0AF162FF5750F004B75F8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -218,6 +228,7 @@
 				48568CD22F1EC9A400F9C126 /* EPUBKit */,
 				482B74F12F4664CB00398222 /* SwiftUIIntrospect */,
 				48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */,
+				48F0AF172FF5750F004B75F8 /* SwiftLAME */,
 			);
 			productName = "Hoshi Reader";
 			productReference = 48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */;
@@ -277,6 +288,7 @@
 				48568CD12F1EC9A400F9C126 /* XCLocalSwiftPackageReference "Libraries/EPUBKit" */,
 				48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
 				48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */,
+				48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 48107AAE2F114021009E12D1;
@@ -663,6 +675,14 @@
 				kind = branch;
 			};
 		};
+		48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hidden-spectrum/SwiftLAME.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -679,6 +699,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */;
 			productName = CHoshiDicts;
+		};
+		48F0AF172FF5750F004B75F8 /* SwiftLAME */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */;
+			productName = SwiftLAME;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

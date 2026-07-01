@@ -288,7 +288,7 @@ class AnkiManager {
         if !sasayakiAudioFields.isEmpty, let audioData = context.sasayakiAudioData {
             audio.append([
                 "data": audioData.base64EncodedString(),
-                "filename": "hoshi_sasayaki_\(audioData.sha1).m4a",
+                "filename": "hoshi_sasayaki_\(audioData.sha1).mp3",
                 "fields": sasayakiAudioFields
             ])
         }
@@ -703,7 +703,7 @@ class AnkiManager {
             case .sasayakiAudio:
                 guard let data = context.sasayakiAudioData else { return "" }
                 LocalFileServer.shared.setSasayakiAudio(data)
-                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.m4a"
+                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.mp3"
             }
         }
         return ""

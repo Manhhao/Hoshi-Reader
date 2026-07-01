@@ -158,7 +158,7 @@ class LocalFileServer {
         
         if path.hasPrefix("/cover/cover.") {
             getCover(to: connection)
-        } else if path == "/sasayaki/audio.m4a" {
+        } else if path == "/sasayaki/audio.mp3" {
             getSasayakiAudio(to: connection)
         } else if path == "/localaudio/get/" {
             getAudioSources(request, to: connection)
@@ -303,7 +303,7 @@ class LocalFileServer {
             return
         }
         
-        send(sasayakiAudioData, status: "200 OK", contentType: "audio/x-m4a", to: connection)
+        send(sasayakiAudioData, status: "200 OK", contentType: "audio/mpeg", to: connection)
     }
     
     private func parseRequest(from requestData: Data) -> Request {
