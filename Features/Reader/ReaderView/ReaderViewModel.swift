@@ -183,9 +183,9 @@ class ReaderViewModel {
         sasayakiPlayer = SasayakiPlayer(
             rootURL: rootURL,
             bridge: bridge,
-            loadChapter: { [weak self] chapterIndex, progress in
+            loadChapter: { [weak self] chapterIndex in
                 self?.flushStats()
-                self?.loadChapter(index: chapterIndex, progress: progress)
+                self?.loadChapter(index: chapterIndex, progress: self?.sasayakiCueProgress(for: chapterIndex) ?? 0)
                 self?.resetTrackingBaseline()
             },
             getCurrentIndex: { [weak self] in
@@ -245,6 +245,16 @@ class ReaderViewModel {
             return nil
         }
         return (info.currentTotal, info.currentTotal + info.chapterCount)
+    }
+    
+    private func sasayakiCueProgress(for chapterIndex: Int) -> Double? {
+        guard let cue = sasayakiPlayer.pendingCue, cue.chapterIndex == chapterIndex,
+              document.spine.items.indices.contains(chapterIndex),
+              let manifestItem = document.manifest.items[document.spine.items[chapterIndex].idref],
+              let info = bookInfo.chapterInfo[manifestItem.path] else {
+            return nil
+        }
+        return Double(cue.start) / Double(info.chapterCount)
     }
     
     func handleRestoreCompleted() {

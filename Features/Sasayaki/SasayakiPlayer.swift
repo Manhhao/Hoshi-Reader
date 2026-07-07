@@ -115,11 +115,11 @@ class SasayakiPlayer {
     let bookMetadata: BookMetadata?
     let rootURL: URL
     let bridge: WebViewBridge
-    let loadChapter: (Int, Double) -> Void
+    let loadChapter: (Int) -> Void
     let getCurrentIndex: () -> Int
     let onPlayback: () -> Void
     
-    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int, Double) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void) {
+    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void) {
         self.rootURL = rootURL
         self.bridge = bridge
         self.loadChapter = loadChapter
@@ -516,7 +516,7 @@ class SasayakiPlayer {
         } else if autoScroll, hasPlayedOnce {
             currentCue = cue
             pendingCue = cue
-            loadChapter(cue.chapterIndex, 0)
+            loadChapter(cue.chapterIndex)
         } else {
             clearDisplayedCue()
         }
