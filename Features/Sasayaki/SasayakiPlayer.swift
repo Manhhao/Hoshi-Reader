@@ -93,7 +93,7 @@ class SasayakiPlayer {
             }
         }
     }
-    var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
+    var autoScroll: Bool { UserConfig.shared.sasayakiAutoScroll }
     
     var currentCue: SasayakiMatch?
     var pendingCue: SasayakiMatch?
@@ -561,7 +561,7 @@ class SasayakiPlayer {
             Task { @MainActor in self?.togglePlayback() }
             return .success
         }
-        if UserDefaults.standard.bool(forKey: "sasayakiSkipControls") {
+        if UserConfig.shared.sasayakiSkipControls {
             center.skipBackwardCommand.preferredIntervals = [NSNumber(value: skipInterval)]
             center.skipBackwardCommand.addTarget { [weak self] _ in
                 Task { @MainActor in self?.skip(forward: false) }
