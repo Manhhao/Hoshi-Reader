@@ -328,13 +328,9 @@ class ReaderViewModel {
     
     func handleCloudKitSync(event: CloudKitSyncManager.Event, dismiss: DismissAction) {
         switch event {
-        case .sent(let uuid, let success):
+        case .sent(let uuid, _):
             guard uuid == book.id else { return }
-            if success {
-                isPaused = false
-            } else {
-                fallthrough
-            }
+            isPaused = false
         case .fetched(let uuid):
             guard uuid == book.id else { return }
             highlights = BookStorage.loadHighlights(root: rootURL) ?? []

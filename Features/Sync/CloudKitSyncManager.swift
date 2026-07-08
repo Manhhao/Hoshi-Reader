@@ -52,7 +52,7 @@ actor CloudKitSyncManager {
             self.cloudKitData = cloudKitData ?? CloudKitData()
         } catch {
             self.cloudKitData = CloudKitData()
-            logger.error("Failed to load CloudKit state from stroage: \(error)")
+            logger.error("Failed to load CloudKit state from storage: \(error)")
         }
     }
     
@@ -186,11 +186,14 @@ private extension CloudKitSyncManager {
                 continue
             }
             do {
-                if fileType == .metadata,
-                   let metadata = try cloudKitData.books[uuid]?[fileType]?.decode(to: BookMetadata.self) {
-                    try deleteLocal(books: [metadata])
+                if fileType == .metadata {
+                    if let metadata = try cloudKitData.books[uuid]?[fileType]?.decode(to: BookMetadata.self) {
+                        try deleteLocal(books: [metadata])
+                    }
+                    cloudKitData.books[uuid] = nil
+                } else {
+                    cloudKitData.books[uuid]?[fileType] = nil
                 }
-                cloudKitData.books[uuid]?[fileType] = nil
                 fire(event: .delete(.book(uuid: uuid)))
             } catch {
                 logger.error("Failed to delete local file of uuid \(uuid, privacy: .public) and type \(fileType, privacy: .public) when fetching deletion: \(error, privacy: .public)")

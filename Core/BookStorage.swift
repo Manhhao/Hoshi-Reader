@@ -269,7 +269,7 @@ struct BookStorage {
         let folderName = url.deletingLastPathComponent().lastPathComponent
         let fileName = url.lastPathComponent
         guard let fileType = CloudKitFileType(fileName: fileName) else {
-            CloudKitSyncManager.logger.error("Tried to upload an known file type in \(folderName, privacy: .public)/\(fileName, privacy: .public)")
+            CloudKitSyncManager.logger.error("Tried to upload an unknown file type in \(folderName, privacy: .public)/\(fileName, privacy: .public)")
             return
         }
         Task {
