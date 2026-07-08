@@ -135,7 +135,7 @@ struct HoshiReaderApp: App {
     }
     
     private func observeCloudKitEvents() async {
-        let onError: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
+        for await event in await CloudKitSyncManager.shared.events() {
             if case let .account(accountEvent) = event {
                 switch accountEvent {
                 case .signOut:
@@ -154,7 +154,6 @@ struct HoshiReaderApp: App {
                 }
             }
         }
-        await CloudKitSyncManager.shared.observeEvents(onError)
     }
 }
 

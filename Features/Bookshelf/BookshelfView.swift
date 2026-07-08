@@ -89,11 +89,9 @@ struct BookshelfView: View {
                     .task(id: userConfig.enableCloudKitSync) {
                         guard userConfig.enableCloudKitSync else { return }
 
-                        let refreshBooks: @MainActor (CloudKitSyncManager.Event) -> Void = { [weak viewModel] _ in
-                            guard let viewModel else { return }
+                        for await _ in await CloudKitSyncManager.shared.events() {
                             viewModel.loadBooks()
                         }
-                        await CloudKitSyncManager.shared.observeEvents(refreshBooks)
                     }
                     .fileImporter(
                         isPresented: $viewModel.isImporting,

@@ -47,13 +47,12 @@ struct BookCell: View {
             refreshEpubState(book: book)
             guard userConfig.enableCloudKitSync else { return }
 
-            let refresh: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
+            for await event in await CloudKitSyncManager.shared.events() {
                 if case let .epubDownloaded(uuid: uuid) = event,
                    uuid == book.id {
-                    self.refreshEpubState(book: book)
+                    refreshEpubState(book: book)
                 }
             }
-            await CloudKitSyncManager.shared.observeEvents(refresh)
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {

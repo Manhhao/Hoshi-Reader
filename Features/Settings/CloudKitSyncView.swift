@@ -62,14 +62,10 @@ struct CloudKitSyncView: View {
         }
         .task {
             await iCloudStatusRefresh()
-            let onChanged: @MainActor (CloudKitSyncManager.Event) -> Void = { event in
-                guard case .account = event else { return }
-
-                Task {
-                    await self.iCloudStatusRefresh()
-                }
+            for await event in await CloudKitSyncManager.shared.events() {
+                guard case .account = event else { continue }
+                await iCloudStatusRefresh()
             }
-            await CloudKitSyncManager.shared.observeEvents(onChanged)
         }
         .navigationTitle("iCloud Syncing")
     }

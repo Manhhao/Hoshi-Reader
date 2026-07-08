@@ -25,7 +25,7 @@ actor CloudKitSyncManager {
     
     nonisolated private var logger: Logger { Self.logger }
     
-    private var eventHandlers: [UUID: @MainActor (CloudKitSyncManager.Event) -> Void] = [:]
+    private var eventContinuations: [UUID: AsyncStream<Event>.Continuation] = [:]
     
     private var cloudKitData: CloudKitData {
         didSet {
@@ -788,7 +788,7 @@ extension CloudKitSyncManager {
 
 // MARK: - callbacks
 extension CloudKitSyncManager {
-    nonisolated enum Event {
+    nonisolated enum Event: Sendable {
         enum AccountEvent {
             case signIn
             case signOut
@@ -812,21 +812,23 @@ extension CloudKitSyncManager {
         case error(SyncError)
     }
     
-    func observeEvents(_ eventHandler: @escaping @MainActor (CloudKitSyncManager.Event) -> Void) async {
+    func events() -> AsyncStream<Event> {
+        let (stream, continuation) = AsyncStream.makeStream(of: Event.self)
         let id = UUID()
-        eventHandlers[id] = eventHandler
-        defer { eventHandlers[id] = nil }
-        try? await Task.sleep(for: .seconds(Int32.max))
+        eventContinuations[id] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { await self?.removeContinuation(id) }
+        }
+        return stream
+    }
+    
+    private func removeContinuation(_ id: UUID) {
+        eventContinuations[id] = nil
     }
     
     private func fire(event: CloudKitSyncManager.Event) {
-        Task {
-            let allCallbacks = Array(self.eventHandlers.values)
-            await MainActor.run {
-                for callBack in allCallbacks {
-                    callBack(event)
-                }
-            }
+        for continuation in eventContinuations.values {
+            continuation.yield(event)
         }
     }
 }
