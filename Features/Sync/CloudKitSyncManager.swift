@@ -624,6 +624,22 @@ extension CloudKitSyncManager {
                 }
             }
         }
+        
+        if !collisions.isEmpty, var shelves = BookStorage.loadShelves() {
+            for (metadata, newUUID) in collisions {
+                for i in shelves.indices {
+                    if let index = shelves[i].bookIds.firstIndex(of: metadata.id) {
+                        shelves[i].bookIds[index] = newUUID
+                    }
+                }
+            }
+            do {
+                let shelvesURL = try BookStorage.getBooksDirectory().appending(path: FileNames.shelves)
+                try BookStorage.saveLocal(shelves, url: shelvesURL)
+            } catch {
+                Self.logger.error("Failed to update uuids in shelves: \(error, privacy: .public)")
+            }
+        }
     }
     
     func saveCloudEpub(_ epub: CloudKitBookEpub) async {
