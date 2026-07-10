@@ -22,6 +22,11 @@ nonisolated enum FileNames: Sendable {
     static let highlights = "highlights.json"
 }
 
+nonisolated enum CloudKitSyncTarget {
+    case book(UUID)
+    case shelves
+}
+
 struct BookStorage {
     nonisolated static let migratedDocumentsKey = "migratedToAppSupport"
     nonisolated static let migratedBooksKey = "migratedBooks"
@@ -223,12 +228,30 @@ struct BookStorage {
         try FileManager.default.removeItem(at: url)
     }
     
-    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String) throws {
+    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String, sync: CloudKitSyncTarget? = nil) throws {
         let targetURL = directory.appendingPathComponent(fileName)
         
         try saveLocal(object, url: targetURL)
         
-        saveCloudKitFile(object, url: targetURL)
+        guard UserConfig.shared.enableCloudKitSync, let sync else { return }
+        switch sync {
+        case .shelves:
+            Task {
+                await CloudKitSyncManager.shared.saveCloudShelves()
+            }
+        case .book(let uuid):
+            guard let fileType = CloudKitFileType(fileName: fileName) else {
+                return
+            }
+            Task {
+                await CloudKitSyncManager.shared.saveCloudFile(
+                    uuid: uuid,
+                    fileType: fileType,
+                    fileName: fileName,
+                    folderName: directory.lastPathComponent,
+                )
+            }
+        }
     }
     
     nonisolated static func saveLocal<T: Encodable>(_ object: T, url: URL) throws {
@@ -237,49 +260,6 @@ struct BookStorage {
         let data = try encoder.encode(object)
         
         try data.write(to: url, options: .atomic)
-    }
-    
-    static func saveCloudKitFile<T: Encodable>(_ object: T, url: URL) {
-        guard UserConfig.shared.enableCloudKitSync else { return }
-        
-        if T.self == [BookShelf].self {
-            Task {
-                await CloudKitSyncManager.shared.saveCloudShelves()
-            }
-            return
-        }
-        
-        if T.self == BookMetadata.self {
-            guard let metadata = object as? BookMetadata else { fatalError() }
-            Task {
-                await CloudKitSyncManager.shared.saveCloudFile(
-                    uuid: metadata.id,
-                    fileType: .metadata,
-                    fileName: FileNames.metadata,
-                    folderName: url.deletingLastPathComponent().lastPathComponent,
-                )
-            }
-            return
-        }
-        
-        guard let metadata = Self.loadMetadata(root: url.deletingLastPathComponent()) else {
-            CloudKitSyncManager.logger.error("Failed to load BookMetadata in url \(url)")
-            return
-        }
-        let folderName = url.deletingLastPathComponent().lastPathComponent
-        let fileName = url.lastPathComponent
-        guard let fileType = CloudKitFileType(fileName: fileName) else {
-            CloudKitSyncManager.logger.error("Tried to upload an unknown file type in \(folderName, privacy: .public)/\(fileName, privacy: .public)")
-            return
-        }
-        Task {
-            await CloudKitSyncManager.shared.saveCloudFile(
-                uuid: metadata.id,
-                fileType: fileType,
-                fileName: fileName,
-                folderName: folderName,
-            )
-        }
     }
     
     nonisolated static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {

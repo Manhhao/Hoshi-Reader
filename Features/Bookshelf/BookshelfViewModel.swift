@@ -44,7 +44,7 @@ class BookshelfViewModel {
     
     func saveShelves() {
         guard let directory = try? BookStorage.getBooksDirectory() else { return }
-        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves)
+        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves, sync: .shelves)
     }
     
     func createShelf(name: String) {
@@ -190,7 +190,7 @@ class BookshelfViewModel {
         
         let bookURL = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
         books[index].renamedTitle = title.isEmpty ? nil : title
-        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata)
+        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata, sync: .book(book.id))
     }
     
     func importBook(result: Result<URL, Error>) {
@@ -413,7 +413,7 @@ class BookshelfViewModel {
             lastModified: Date()
         )
         
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark, sync: .book(book.id))
         loadBookProgress()
     }
     
@@ -532,8 +532,8 @@ class BookshelfViewModel {
             
             let bookinfo = BookProcessor.process(document: document)
             
-            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
-            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
+            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata, sync: .book(metadata.id))
+            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo, sync: .book(metadata.id))
             
             if UserConfig.shared.enableCloudKitSync {
                 Task.detached {

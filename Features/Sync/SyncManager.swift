@@ -114,15 +114,15 @@ class SyncManager {
         switch syncDirection {
         case .importFromTtu:
             guard let ttuProgress else { return .skipped }
-            importProgress(ttuProgress: ttuProgress, to: url)
+            importProgress(ttuProgress: ttuProgress, to: url, bookId: book.id)
             if syncStats {
                 let mergedStats = Merger.mergeStatistics(localStatistics: localStats ?? [], externalStatistics: ttuStats ?? [], syncMode: statsSyncMode)
                 if !mergedStats.isEmpty {
-                    try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics)
+                    try? BookStorage.save(mergedStats, inside: url, as: FileNames.statistics, sync: .book(book.id))
                 }
             }
             if syncAudioBook, let ttuAudioBook {
-                importAudioBook(ttuAudioBook: ttuAudioBook, to: url)
+                importAudioBook(ttuAudioBook: ttuAudioBook, to: url, bookId: book.id)
             }
             return .imported(title: book.displayTitle, characterCount: ttuProgress.exploredCharCount)
         case .exportToTtu:
@@ -134,7 +134,8 @@ class SyncManager {
                 ttuProgress: ttuProgress,
                 folderId: driveFolderId,
                 fileId: progressFileId,
-                url: url
+                url: url,
+                bookId: book.id
             )
             async let exportedStats: Void = exportStats(
                 stats: statsToExport,
@@ -181,14 +182,15 @@ class SyncManager {
         
         let booksDir = try BookStorage.getBooksDirectory()
         let bookFolder = try TtuConverter.convertFromTtu(bookData: tempURL, to: booksDir)
+        let bookId = BookStorage.loadMetadata(root: bookFolder)?.id
         if let progress = try await ttuProgress {
-            importProgress(ttuProgress: progress, to: bookFolder)
+            importProgress(ttuProgress: progress, to: bookFolder, bookId: bookId)
         }
         if let stats = try await ttuStats, !stats.isEmpty {
-            try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics)
+            try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics, sync: bookId.map { .book($0) })
         }
         if let audioBook = try await ttuAudioBook {
-            importAudioBook(ttuAudioBook: audioBook, to: bookFolder)
+            importAudioBook(ttuAudioBook: audioBook, to: bookFolder, bookId: bookId)
         }
         return bookFolder
     }
@@ -218,7 +220,7 @@ class SyncManager {
         return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
     }
     
-    private func importProgress(ttuProgress: TtuProgress, to url: URL) {
+    private func importProgress(ttuProgress: TtuProgress, to url: URL, bookId: UUID?) {
         guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
         
         let resolved = bookInfo.resolveCharacterPosition(ttuProgress.exploredCharCount)
@@ -230,7 +232,7 @@ class SyncManager {
             lastModified: ttuProgress.lastBookmarkModified
         )
         
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark, sync: bookId.map { .book($0) })
     }
     
     private func fetchProgress(fileId: String?) async throws -> TtuProgress? {
@@ -261,7 +263,7 @@ class SyncManager {
         )
     }
     
-    private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL) async throws {
+    private func exportProgress(localBookmark: Bookmark, ttuProgress: TtuProgress?, folderId: String, fileId: String?, url: URL, bookId: UUID?) async throws {
         guard let bookInfo = BookStorage.loadBookInfo(root: url),
               let lastModified = localBookmark.lastModified else { return }
         
@@ -287,7 +289,7 @@ class SyncManager {
             characterCount: localBookmark.characterCount,
             lastModified: roundedDate
         )
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark, sync: bookId.map { .book($0) })
     }
     
     private func exportStats(stats: [Statistics]?, folderId: String, fileId: String?) async throws {
@@ -295,10 +297,10 @@ class SyncManager {
         try await GoogleDriveHandler.shared.updateStatsFile(folderId: folderId, fileId: fileId, stats: stats)
     }
     
-    private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {
+    private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL, bookId: UUID?) {
         var playback = BookStorage.loadSasayakiPlayback(root: url) ?? SasayakiPlaybackData(lastPosition: 0)
         playback.lastPosition = ttuAudioBook.playbackPosition
-        try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback)
+        try? BookStorage.save(playback, inside: url, as: FileNames.sasayakiPlayback, sync: bookId.map { .book($0) })
     }
     
     private func exportAudioBook(title: String, playbackData: SasayakiPlaybackData?, folderId: String, fileId: String?) async throws {

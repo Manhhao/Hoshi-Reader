@@ -193,11 +193,12 @@ struct BackupView: View {
                     guard let bookdataZip = files.first(where: { $0.lastPathComponent.hasPrefix("bookdata_") && $0.pathExtension == "zip" }) else { continue }
                     
                     let bookFolder = try TtuConverter.convertFromTtu(bookData: bookdataZip, to: booksDirectory)
+                    let bookId = BookStorage.loadMetadata(root: bookFolder)?.id
                     
                     if let statsFile = files.first(where: { $0.lastPathComponent.hasPrefix("statistics_") }) {
                         let statsData = try Data(contentsOf: statsFile)
                         let stats = try JSONDecoder().decode([Statistics].self, from: statsData)
-                        try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics)
+                        try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics, sync: bookId.map { .book($0) })
                     }
                     
                     if let progressFile = files.first(where: { $0.lastPathComponent.hasPrefix("progress_") }) {
@@ -213,7 +214,7 @@ struct BackupView: View {
                                 characterCount: progress.exploredCharCount,
                                 lastModified: progress.lastBookmarkModified
                             )
-                            try BookStorage.save(bookmark, inside: bookFolder, as: FileNames.bookmark)
+                            try BookStorage.save(bookmark, inside: bookFolder, as: FileNames.bookmark, sync: bookId.map { .book($0) })
                         }
                     }
                 }
