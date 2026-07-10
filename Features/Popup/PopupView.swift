@@ -479,7 +479,6 @@ struct PopupView: View {
             window.twoColumnLayout = \(userConfig.twoColumnLayout);
             window.compactGlossaries = \(userConfig.compactGlossaries);
             window.showExpressionTags = \(userConfig.showExpressionTags);
-            window.disableShowNotes = \(userConfig.disableShowNotes);
             window.harmonicFrequency = \(userConfig.harmonicFrequency);
             window.deduplicatePitchAccents = \(userConfig.deduplicatePitchAccents);
             window.compactPitchAccents = \(userConfig.compactPitchAccents);
@@ -492,6 +491,7 @@ struct PopupView: View {
             window.excludedDictionaries = \(excludedDictionaries);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.disableShowNotes = \(AnkiManager.shared.disableShowNotes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);

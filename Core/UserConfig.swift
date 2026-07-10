@@ -120,10 +120,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(showExpressionTags, forKey: "showExpressionTags") }
     }
     
-    var disableShowNotes: Bool {
-        didSet { UserDefaults.standard.set(disableShowNotes, forKey: "disableShowNotes") }
-    }
-    
     var harmonicFrequency: Bool {
         didSet { UserDefaults.standard.set(harmonicFrequency, forKey: "harmonicFrequency") }
     }
@@ -436,7 +432,6 @@ class UserConfig {
         self.twoColumnLayout = defaults.object(forKey: "twoColumnLayout") as? Bool ?? false
         self.compactGlossaries = defaults.object(forKey: "compactGlossaries") as? Bool ?? true
         self.showExpressionTags = defaults.object(forKey: "showExpressionTags") as? Bool ?? false
-        self.disableShowNotes = defaults.object(forKey: "disableShowNotes") as? Bool ?? false
         self.harmonicFrequency = defaults.object(forKey: "harmonicFrequency") as? Bool ?? false
         self.deduplicatePitchAccents = defaults.object(forKey: "deduplicatePitchAccents") as? Bool ?? false
         self.compactPitchAccents = defaults.object(forKey: "compactPitchAccents") as? Bool ?? true

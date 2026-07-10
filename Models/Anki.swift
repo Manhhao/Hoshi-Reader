@@ -46,6 +46,7 @@ struct AnkiCardFormat: Codable, Identifiable {
 struct AnkiConfig: Codable {
     var cardFormats: [AnkiCardFormat]?
     let allowDupes: Bool
+    let disableShowNotes: Bool?
     let compactGlossaries: Bool?
     let embedMedia: Bool?
     let availableDecks: [String]

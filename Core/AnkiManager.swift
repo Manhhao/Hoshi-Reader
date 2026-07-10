@@ -23,6 +23,7 @@ class AnkiManager {
     var availableNoteTypes: [AnkiNoteType] = []
     
     var allowDupes: Bool = false
+    var disableShowNotes: Bool = false
     var compactGlossaries: Bool = false
     var embedMedia: Bool = false
     
@@ -470,6 +471,7 @@ class AnkiManager {
         let data = AnkiConfig(
             cardFormats: cardFormats,
             allowDupes: allowDupes,
+            disableShowNotes: disableShowNotes,
             compactGlossaries: compactGlossaries,
             embedMedia: embedMedia,
             availableDecks: availableDecks,
@@ -724,6 +726,7 @@ class AnkiManager {
         }
         
         allowDupes = config.allowDupes
+        disableShowNotes = config.disableShowNotes ?? (UserDefaults.standard.object(forKey: "disableShowNotes") as? Bool ?? false)
         compactGlossaries = config.compactGlossaries ?? false
         embedMedia = config.embedMedia ?? false
         availableDecks = config.availableDecks

@@ -106,6 +106,11 @@ struct AnkiView: View {
                     }
                     .onChange(of: ankiManager.allowDupes) { _, _ in ankiManager.save() }
                     
+                    Toggle(isOn: $ankiManager.disableShowNotes) {
+                        Text("Disable Show Notes Button", tableName: "Dictionaries")
+                    }
+                    .onChange(of: ankiManager.disableShowNotes) { _, _ in ankiManager.save() }
+                    
                     Toggle(isOn: $ankiManager.compactGlossaries) {
                         Text("Compact Glossaries", tableName: "Dictionaries")
                     }
