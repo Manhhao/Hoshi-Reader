@@ -56,7 +56,7 @@ struct CustomSearchField: UIViewRepresentable {
         searchField.text = searchText
         searchField.targetLanguage = "ja"
         searchField.autocapitalizationType = .none
-        searchField.autocorrectionType = .no
+        searchField.autocorrectionType = .default
         searchField.returnKeyType = .search
         searchField.setContentHuggingPriority(.defaultHigh, for: .vertical)
         searchField.delegate = context.coordinator
