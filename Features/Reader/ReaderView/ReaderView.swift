@@ -625,6 +625,12 @@ struct ReaderView: View {
                         Label("Highlights", systemImage: "highlighter")
                     }
                     
+                    Button {
+                        viewModel.activeSheet = .gallery
+                    } label: {
+                        Label("Gallery", systemImage: "photo.on.rectangle")
+                    }
+                    
                     if userConfig.enableStatistics {
                         Button {
                             viewModel.activeSheet = .statistics
@@ -710,6 +716,12 @@ struct ReaderView: View {
                     }
                 )
                 .presentationDetents([.medium, .large])
+            case .gallery:
+                GalleryView(images: viewModel.imageURLs) { url in
+                    viewModel.activeSheet = nil
+                    imageURL = url
+                }
+                .preferredColorScheme(readerTheme)
             case .statistics:
                 StatisticsView(viewModel: viewModel)
                     .presentationDetents([.medium, .large])

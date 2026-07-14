@@ -1079,6 +1079,9 @@
         }
       }
     },
+    "Gallery" : {
+
+    },
     "GitHub" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
       "localizations" : {
@@ -1600,6 +1603,9 @@
           }
         }
       }
+    },
+    "No Images" : {
+
     },
     "None" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",

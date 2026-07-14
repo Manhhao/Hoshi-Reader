@@ -17,6 +17,7 @@ enum ActiveSheet: Identifiable {
     case highlights
     case statistics
     case sasayaki
+    case gallery
     var id: Self { self }
 }
 
@@ -63,6 +64,10 @@ class ReaderLoaderViewModel {
         
         guard let doc = try? BookStorage.loadEpub(root.appendingPathComponent(epub)) else {
             return
+        }
+        
+        if let info = BookStorage.loadBookInfo(root: root), info.images == nil {
+            try? BookStorage.save(BookProcessor.process(document: doc), inside: root, as: FileNames.bookinfo)
         }
         
         CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
@@ -165,7 +170,7 @@ class ReaderViewModel {
         if let b = BookStorage.loadBookInfo(root: rootURL) {
             bookInfo = b
         } else {
-            bookInfo = BookInfo(characterCount: 0, chapterInfo: [:])
+            bookInfo = BookInfo(characterCount: 0, chapterInfo: [:], images: nil)
         }
         
         sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
@@ -224,6 +229,10 @@ class ReaderViewModel {
             return book.coverURL
         }
         return nil
+    }
+    
+    var imageURLs: [URL] {
+        (bookInfo.images ?? []).map { document.contentDirectory.appendingPathComponent($0) }
     }
     
     private var currentChapterURL: URL? {

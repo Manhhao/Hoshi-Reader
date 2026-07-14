@@ -51,6 +51,7 @@ struct Bookmark: Codable {
 struct BookInfo: Codable {
     let characterCount: Int
     let chapterInfo: [String: ChapterInfo]
+    let images: [String]?
     
     struct ChapterInfo: Codable {
         let spineIndex: Int?
