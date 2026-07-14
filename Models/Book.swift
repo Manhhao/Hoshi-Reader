@@ -57,6 +57,7 @@ struct BookInfo: Codable {
         let spineIndex: Int?
         let currentTotal: Int
         let chapterCount: Int
+        var fragmentOffsets: [String: Int]?
     }
     
     func resolveCharacterPosition(_ characterCount: Int) -> (spineIndex: Int, progress: Double)? {

@@ -13,7 +13,6 @@ struct ChapterListView: View {
     let displayTitle: String
     let document: EPUBDocument
     let bookInfo: BookInfo
-    let currentIndex: Int
     let currentCharacter: Int
     let coverURL: URL?
     let onJumpToChapter: (Int, String?) -> Void
@@ -67,7 +66,7 @@ struct ChapterListView: View {
                     viewModel = ChapterListViewModel(
                         document: document,
                         bookInfo: bookInfo,
-                        currentIndex: currentIndex
+                        currentCharacter: currentCharacter
                     )
                 }
             }

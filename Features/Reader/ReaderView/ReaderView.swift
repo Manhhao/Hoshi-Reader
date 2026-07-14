@@ -689,7 +689,7 @@ struct ReaderView: View {
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
             case .chapters:
-                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
+                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
                     viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
                     viewModel.activeSheet = nil
                     viewModel.clearSelection()
