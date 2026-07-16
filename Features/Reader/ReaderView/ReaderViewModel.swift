@@ -91,6 +91,7 @@ class ReaderViewModel {
     var activeSheet: ActiveSheet?
     var isLoading = true
     var bookInfo: BookInfo
+    private let chapterStarts: [Int]
     let bridge = WebViewBridge()
     
     // lookups
@@ -167,11 +168,9 @@ class ReaderViewModel {
             currentProgress = 0.0
         }
         
-        if let b = BookStorage.loadBookInfo(root: rootURL) {
-            bookInfo = b
-        } else {
-            bookInfo = BookInfo(characterCount: 0, chapterInfo: [:], images: nil)
-        }
+        let info = BookStorage.loadBookInfo(root: rootURL) ?? BookInfo(characterCount: 0, chapterInfo: [:], images: nil)
+        bookInfo = info
+        chapterStarts = Self.chapterStarts(document: document, bookInfo: info)
         
         sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
@@ -205,6 +204,7 @@ class ReaderViewModel {
         highlights = BookStorage.loadHighlights(root: rootURL) ?? []
     }
     
+    // todo: name is misleading after fragment changes. this is technically the character count of the xhtml file, not necessarily the count of a toc chapter. fix during refactor
     var currentChapterCount: Int {
         guard document.spine.items.indices.contains(index),
               let manifestItem = document.manifest.items[document.spine.items[index].idref],
@@ -212,6 +212,16 @@ class ReaderViewModel {
             return 0
         }
         return chapterInfo.currentTotal + chapterInfo.chapterCount
+    }
+    
+    // "true" chapter range
+    var currentChapterRange: (character: Int, total: Int, progress: Double) {
+        let position = currentCharacter
+        let xhtmlEnd = currentChapterCount
+        let range = chapterBounds(at: xhtmlEnd > 0 ? min(position, xhtmlEnd - 1) : position)
+        let character = position - range.start
+        let progress = range.count > 0 ? Double(character) / Double(range.count) : 0
+        return (character, range.count, progress)
     }
     
     var currentCharacter: Int {
@@ -235,6 +245,7 @@ class ReaderViewModel {
         (bookInfo.images ?? []).map { document.contentDirectory.appendingPathComponent($0) }
     }
     
+    // todo: fix naming
     private var currentChapterURL: URL? {
         guard document.spine.items.indices.contains(index) else {
             return nil
@@ -247,6 +258,7 @@ class ReaderViewModel {
         return document.contentDirectory.appendingPathComponent(manifestItem.path)
     }
     
+    // todo: fix naming
     private var chapterRange: (start: Int, end: Int)? {
         guard document.spine.items.indices.contains(index),
               let manifestItem = document.manifest.items[document.spine.items[index].idref],
@@ -341,6 +353,7 @@ class ReaderViewModel {
         navigate(to: Position(index: result.spineIndex, progress: result.progress))
     }
     
+    // todo: fix naming
     func jumpToChapter(index: Int, fragment: String? = nil) {
         recordPosition()
         navigate(to: Position(index: index, progress: 0), fragment: fragment)
@@ -375,6 +388,7 @@ class ReaderViewModel {
         resetTrackingBaseline()
     }
     
+    // todo: fix naming
     func nextChapter() -> Bool {
         guard index < document.spine.items.count - 1 else { return false }
         loadChapter(index: index + 1, progress: 0)
@@ -382,6 +396,7 @@ class ReaderViewModel {
         return true
     }
     
+    // todo: fix naming
     func previousChapter() -> Bool {
         guard index > 0 else { return false }
         loadChapter(index: index - 1, progress: 1)
@@ -564,6 +579,13 @@ class ReaderViewModel {
         }
     }
     
+    private func chapterBounds(at characterCount: Int) -> (start: Int, count: Int) {
+        let next = chapterStarts.firstIndex { $0 > characterCount } ?? chapterStarts.count
+        let start = chapterStarts[next - 1]
+        let end = next < chapterStarts.count ? chapterStarts[next] : bookInfo.characterCount
+        return (start, end - start)
+    }
+    
     private func navigate(to position: Position, fragment: String? = nil) {
         flushStats()
         if position.index == index && fragment == nil {
@@ -588,6 +610,7 @@ class ReaderViewModel {
         scheduleAutoExport()
     }
     
+    // todo: fix naming
     private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
         isLoading = true
         sasayakiPlayer.prepareTransition()
@@ -764,6 +787,22 @@ class ReaderViewModel {
         let manifestItem = document.manifest.items[spineItem.idref]!
         let chapterInfo = bookInfo.chapterInfo[manifestItem.path]!
         return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * position.progress)
+    }
+    
+    private static func chapterStarts(document: EPUBDocument, bookInfo: BookInfo) -> [Int] {
+        var starts: Set<Int> = [0]
+        func walk(_ node: EPUBTableOfContents) {
+            if let item = node.item {
+                let parts = item.components(separatedBy: "#")
+                if let chapter = bookInfo.chapterInfo[parts[0]] {
+                    let offset = parts.count > 1 ? chapter.fragmentOffsets?[parts[1]] ?? 0 : 0
+                    starts.insert(chapter.currentTotal + offset)
+                }
+            }
+            node.subTable?.forEach(walk)
+        }
+        walk(document.tableOfContents)
+        return starts.sorted()
     }
     
     private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {

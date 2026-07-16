@@ -87,9 +87,7 @@ class ChapterListViewModel {
         
         for (index, spineItem) in document.spine.items.enumerated() {
             if let manifestItem = document.manifest.items[spineItem.idref] {
-                if manifestItem.path == basePath ||
-                    manifestItem.path.hasSuffix(basePath) ||
-                    basePath.hasSuffix(manifestItem.path) {
+                if manifestItem.path == basePath {
                     return index
                 }
             }

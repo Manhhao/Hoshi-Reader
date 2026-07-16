@@ -454,7 +454,7 @@ struct TtuConverter {
     
     private static func tocLabel(for path: String, in toc: EPUBTableOfContents) -> String? {
         if let item = toc.item?.components(separatedBy: "#").first {
-            if item == path || item.hasSuffix(path) || path.hasSuffix(item) {
+            if item == path {
                 return toc.label
             }
         }

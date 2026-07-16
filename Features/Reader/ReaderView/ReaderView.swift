@@ -181,15 +181,34 @@ struct ReaderView: View {
     }
     
     private var progressString: String {
-        var result: [String] = []
+        var lines: [String] = []
+        if userConfig.readerShowProgress {
+            let line = progressLine(current: viewModel.currentCharacter, total: viewModel.bookInfo.characterCount)
+            if !line.isEmpty {
+                lines.append(line)
+            }
+        }
+        
+        if userConfig.readerShowChapterProgress {
+            let chapter = viewModel.currentChapterRange
+            let line = progressLine(current: chapter.character, total: chapter.total)
+            if !line.isEmpty {
+                lines.append("(\(line))")
+            }
+        }
+        return lines.joined(separator: userConfig.readerAlwaysShowProgress || userConfig.readerShowProgressTop ? " " : "\n")
+    }
+    
+    private func progressLine(current: Int, total: Int) -> String {
+        var parts: [String] = []
         if userConfig.readerShowCharacters {
-            result.append("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+            parts.append("\(current) / \(total)")
         }
         if userConfig.readerShowPercentage {
-            let percent = viewModel.bookInfo.characterCount > 0 ? (Double(viewModel.currentCharacter) / Double(viewModel.bookInfo.characterCount) * 100) : 0
-            result.append("\(String(format: "%.2f%%", percent))")
+            let percent = total > 0 ? Double(current) / Double(total) * 100 : 0
+            parts.append(String(format: "%.2f%%", percent))
         }
-        return result.joined(separator: " ")
+        return parts.joined(separator: " ")
     }
     
     private var statisticsString: String {
@@ -555,9 +574,9 @@ struct ReaderView: View {
                 }
                 .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7)
                 .conditionalGlassEffect()
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 30)
                 .padding(.top, topSafeArea)
                 .opacity(focusMode ? 0 : 1)
             }
@@ -596,11 +615,12 @@ struct ReaderView: View {
                                 .font(.caption)
                                 .monospacedDigit()
                                 .tracking(-0.4)
+                                .multilineTextAlignment(.center)
                         }
                     }
                     .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
                     .conditionalGlassEffect()
                 }
                 

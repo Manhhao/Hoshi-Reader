@@ -247,12 +247,14 @@ struct AppearanceView: View {
                     }
                 }
                 
-                Section("Display") {
-                    Toggle("Show Title", isOn: $userConfig.readerShowTitle)
-                    Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
-                    Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
+                Section("Progress") {
+                    Toggle("Show Progress", isOn: $userConfig.readerShowProgress)
+                    Toggle("Show Chapter Progress", isOn: $userConfig.readerShowChapterProgress)
                     
-                    if userConfig.readerShowCharacters || userConfig.readerShowPercentage {
+                    if userConfig.readerShowProgress || userConfig.readerShowChapterProgress {
+                        Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
+                        Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
+                        
                         VStack {
                             Toggle("Always Show Progress", isOn: $userConfig.readerAlwaysShowProgress)
                             Text("Shows progress at the bottom even when the UI is hidden.")
@@ -272,6 +274,10 @@ struct AppearanceView: View {
                         }
                         .disabled(userConfig.readerAlwaysShowProgress)
                     }
+                }
+                
+                Section("Display") {
+                    Toggle("Show Title", isOn: $userConfig.readerShowTitle)
                     
                     if userConfig.enableStatistics {
                         Toggle("Show Statistics Toggle", isOn: $userConfig.readerShowStatisticsToggle)

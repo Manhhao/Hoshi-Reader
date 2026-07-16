@@ -11,6 +11,12 @@ import EPUBKit
 
 struct StatisticsView: View {
     let viewModel: ReaderViewModel
+    
+    private var chapterCharactersRemaining: Int {
+        let range = viewModel.currentChapterRange
+        return range.total - range.character
+    }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -38,7 +44,7 @@ struct StatisticsView: View {
                     HStack {
                         Text("Time to finish Chapter:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.currentChapterCount - viewModel.currentCharacter) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(chapterCharactersRemaining) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
                     }
                 } header: {
                     HStack {

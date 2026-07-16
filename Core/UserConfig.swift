@@ -244,6 +244,14 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
     }
     
+    var readerShowProgress: Bool {
+        didSet { UserDefaults.standard.set(readerShowProgress, forKey: "readerShowProgress") }
+    }
+    
+    var readerShowChapterProgress: Bool {
+        didSet { UserDefaults.standard.set(readerShowChapterProgress, forKey: "readerShowChapterProgress") }
+    }
+    
     var readerShowCharacters: Bool {
         didSet { UserDefaults.standard.set(readerShowCharacters, forKey: "readerShowCharacters") }
     }
@@ -472,6 +480,8 @@ class UserConfig {
         self.paragraphSpacing = defaults.object(forKey: "paragraphSpacing") as? Double ?? 0
         
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
+        self.readerShowProgress = defaults.object(forKey: "readerShowProgress") as? Bool ?? true
+        self.readerShowChapterProgress = defaults.object(forKey: "readerShowChapterProgress") as? Bool ?? false
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
         self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
