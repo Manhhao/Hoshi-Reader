@@ -36,7 +36,7 @@ struct SasayakiMatchData: Codable {
     let unmatched: Int
 }
 
-struct SasayakiPlaybackData: Codable {
+nonisolated struct SasayakiPlaybackData: Codable {
     var lastPosition: Double
     var delay: Double = 0
     var rate: Float = 1

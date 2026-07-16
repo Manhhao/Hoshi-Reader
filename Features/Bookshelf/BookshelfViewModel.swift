@@ -44,7 +44,7 @@ class BookshelfViewModel {
     
     func saveShelves() {
         guard let directory = try? BookStorage.getBooksDirectory() else { return }
-        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves)
+        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves, sync: .shelves)
     }
     
     func createShelf(name: String) {
@@ -169,9 +169,17 @@ class BookshelfViewModel {
             for i in shelves.indices {
                 shelves[i].bookIds.removeAll { $0 == book.id }
             }
+            deleteCloudBook(book)
             saveShelves()
         } catch {
             showError(message: error.localizedDescription)
+        }
+    }
+    
+    func deleteCloudBook(_ book: BookMetadata) {
+        guard UserConfig.shared.enableCloudKitSync else { return }
+        Task {
+            await CloudKitSyncManager.shared.deleteCloudBook(book)
         }
     }
     
@@ -182,7 +190,7 @@ class BookshelfViewModel {
         
         let bookURL = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
         books[index].renamedTitle = title.isEmpty ? nil : title
-        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata)
+        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata, sync: .book(book.id))
     }
     
     func importBook(result: Result<URL, Error>) {
@@ -305,7 +313,7 @@ class BookshelfViewModel {
                             }
                         }
                         let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
-                        let book = await BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                        let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
                         return (book, files)
                     }
                 }
@@ -405,7 +413,7 @@ class BookshelfViewModel {
             lastModified: Date()
         )
         
-        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark, sync: .book(book.id))
         loadBookProgress()
     }
     
@@ -524,8 +532,25 @@ class BookshelfViewModel {
             
             let bookinfo = BookProcessor.process(document: document)
             
-            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
-            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
+            try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata, sync: .book(metadata.id))
+            try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo, sync: .book(metadata.id))
+            
+            if UserConfig.shared.enableCloudKitSync {
+                Task.detached {
+                    let folderName = bookFolder.lastPathComponent
+                    if let coverURL {
+                        await CloudKitSyncManager.shared.saveCloudFile(
+                            uuid: metadata.id,
+                            fileType: .cover,
+                            fileName: (coverURL as NSString).lastPathComponent,
+                            folderName: folderName,
+                        )
+                    }
+                    if let cloudKitEpub = CloudKitBookEpub(from: metadata) {
+                        await CloudKitSyncManager.shared.saveCloudEpub(cloudKitEpub)
+                    }
+                }
+            }
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)

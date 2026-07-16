@@ -473,9 +473,7 @@ class DictionaryManager {
             return
         }
         
-        let interval = UserDefaults.standard.string(forKey: "dictionaryUpdateInterval")
-            .flatMap(DictionaryUpdateInterval.init)?
-            .timeInterval ?? DictionaryUpdateInterval.weekly.timeInterval
+        let interval = UserConfig.shared.dictionaryUpdateInterval.timeInterval
         let lastUpdate = UserDefaults.standard.object(forKey: "lastDictionaryUpdate") as? Date ?? .distantPast
         guard Date().timeIntervalSince(lastUpdate) >= interval else {
             return

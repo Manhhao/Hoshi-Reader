@@ -13,6 +13,7 @@ struct BookCell: View {
     @State private var markReadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var downloaded = true
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -40,7 +41,18 @@ struct BookCell: View {
                 onSelect()
             }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book), isSelected: isSelecting && isSelected)
+            BookView(book: book, progress: viewModel.progress(for: book), downloaded: downloaded, isSelected: isSelecting && isSelected)
+        }
+        .task(id: userConfig.enableCloudKitSync) {
+            refreshEpubState(book: book)
+            guard userConfig.enableCloudKitSync else { return }
+
+            for await event in await CloudKitSyncManager.shared.events() {
+                if case let .epubDownloaded(uuid: uuid) = event,
+                   uuid == book.id {
+                    refreshEpubState(book: book)
+                }
+            }
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
@@ -62,6 +74,17 @@ struct BookCell: View {
                     }
                 } label: {
                     Label("Move", systemImage: "folder")
+                }
+            }
+            
+            if userConfig.enableCloudKitSync && !downloaded {
+                Button {
+                    Task {
+                        guard let cloudEpub = CloudKitBookEpub(from: book) else { return }
+                        await CloudKitSyncManager.shared.downloadCloudEpub(cloudEpub)
+                    }
+                } label: {
+                    Label("Download from iCloud", systemImage: "icloud")
                 }
             }
             
@@ -168,6 +191,20 @@ struct BookCell: View {
         ) {
             Button("Confirm") {
                 viewModel.markRead(book: book)
+            }
+        }
+    }
+    
+    func refreshEpubState(book: BookMetadata) {
+        Task.detached {
+            guard let fileName = book.epub,
+                  let booksDir = try? BookStorage.getBooksDirectory() else {
+                return
+            }
+            let epubURL = booksDir.appending(path: book.folder).appending(path: fileName)
+            let downloaded = FileManager.default.fileExists(atPath: epubURL.path(percentEncoded: false))
+            await MainActor.run {
+                self.downloaded = downloaded
             }
         }
     }

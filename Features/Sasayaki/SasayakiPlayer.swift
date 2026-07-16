@@ -93,7 +93,7 @@ class SasayakiPlayer {
             }
         }
     }
-    var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
+    var autoScroll: Bool { UserConfig.shared.sasayakiAutoScroll }
     
     var currentCue: SasayakiMatch?
     var pendingCue: SasayakiMatch?
@@ -494,7 +494,7 @@ class SasayakiPlayer {
     private func savePlayback() {
         playback.delay = delay
         playback.rate = rate
-        try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback)
+        try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback, sync: bookMetadata.map { .book($0.id) })
     }
     
     private func updateCue(for time: Double) {
@@ -561,7 +561,7 @@ class SasayakiPlayer {
             Task { @MainActor in self?.togglePlayback() }
             return .success
         }
-        if UserDefaults.standard.bool(forKey: "sasayakiSkipControls") {
+        if UserConfig.shared.sasayakiSkipControls {
             center.skipBackwardCommand.preferredIntervals = [NSNumber(value: skipInterval)]
             center.skipBackwardCommand.addTarget { [weak self] _ in
                 Task { @MainActor in self?.skip(forward: false) }

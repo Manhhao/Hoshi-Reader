@@ -14,7 +14,8 @@ import WebKit
 struct HoshiReaderApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
-    @State private var userConfig = UserConfig()
+    @AppStorage("cloudKitStatus") private var cloudKitStatus = CloudKitStatus.none
+    @State private var userConfig = UserConfig.shared
     @State private var pendingImportURL: URL?
     @State private var pendingRemoteImportURL: URL?
     @State private var pendingLookup: String?
@@ -45,6 +46,11 @@ struct HoshiReaderApp: App {
         _ = DictionaryManager.shared
         _ = GoogleDriveHandler.shared
         WebViewPreloader.shared.warmup()
+        if userConfig.enableCloudKitSync {
+            Task {
+                await CloudKitSyncManager.shared.initialize()
+            }
+        }
     }
     
     var body: some Scene {
@@ -99,6 +105,9 @@ struct HoshiReaderApp: App {
                 }
                 shortcutHandler.pendingType = nil
             }
+            .task {
+                await observeCloudKitEvents()
+            }
         }
     }
     
@@ -122,6 +131,28 @@ struct HoshiReaderApp: App {
             }
         } else if url.isFileURL {
             pendingImportURL = url
+        }
+    }
+    
+    private func observeCloudKitEvents() async {
+        for await event in await CloudKitSyncManager.shared.events() {
+            if case let .account(accountEvent) = event {
+                switch accountEvent {
+                case .signOut:
+                    userConfig.enableCloudKitSync = false
+                    cloudKitStatus = .signOut
+                case .signIn:
+                    fallthrough
+                case .accountChanged:
+                    cloudKitStatus = .none
+                }
+            } else if case let .error(syncError) = event {
+                switch syncError {
+                case .quotaExceeded:
+                    userConfig.enableCloudKitSync = false
+                    cloudKitStatus = .quotaExceeded
+                }
+            }
         }
     }
 }

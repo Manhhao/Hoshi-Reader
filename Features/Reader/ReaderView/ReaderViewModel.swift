@@ -74,7 +74,7 @@ class ReaderLoaderViewModel {
         
         var bookCopy = self.book
         bookCopy.lastAccess = Date()
-        try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)
+        try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata, sync: .book(book.id))
         
         self.document = doc
     }
@@ -347,6 +347,32 @@ class ReaderViewModel {
         flushStats()
     }
     
+    func handleCloudKitSync(event: CloudKitSyncManager.Event, dismiss: DismissAction) {
+        switch event {
+        case .sent(let uuid, _):
+            guard uuid == book.id else { return }
+            isPaused = false
+        case .fetched(let uuid):
+            guard uuid == book.id else { return }
+            highlights = BookStorage.loadHighlights(root: rootURL) ?? []
+            syncHighlights()
+            reloadAfterImport()
+            loadCurrentChapter()
+            resetTrackingBaseline()
+            isPaused = true
+        case .delete(let deleteEvent):
+            switch deleteEvent {
+            case .book(uuid: let uuid):
+                guard uuid == book.id else { return }
+                dismiss()
+            case .zones:
+                break
+            }
+        case .account, .error, .epubDownloaded:
+            break
+        }
+    }
+    
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
         recordPosition()
@@ -606,7 +632,7 @@ class ReaderViewModel {
             characterCount: currentCharacter,
             lastModified: Date()
         )
-        try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+        try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark, sync: .book(book.id))
         scheduleAutoExport()
     }
     
@@ -740,7 +766,7 @@ class ReaderViewModel {
         }
         
         stats = Self.deduplicateStatistics(stats)
-        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics, sync: .book(book.id))
         scheduleAutoExport()
     }
     
@@ -770,7 +796,7 @@ class ReaderViewModel {
     }
     
     private func saveHighlights() {
-        try? BookStorage.save(highlights, inside: rootURL, as: FileNames.highlights)
+        try? BookStorage.save(highlights, inside: rootURL, as: FileNames.highlights, sync: .book(book.id))
     }
     
     private func syncHighlights() {

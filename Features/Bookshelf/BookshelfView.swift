@@ -86,6 +86,13 @@ struct BookshelfView: View {
                             }
                         }
                     }
+                    .task(id: userConfig.enableCloudKitSync) {
+                        guard userConfig.enableCloudKitSync else { return }
+
+                        for await _ in await CloudKitSyncManager.shared.events() {
+                            viewModel.loadBooks()
+                        }
+                    }
                     .fileImporter(
                         isPresented: $viewModel.isImporting,
                         allowedContentTypes: [.epub],

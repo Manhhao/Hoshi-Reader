@@ -128,8 +128,8 @@ struct TtuConverter {
             lastAccess: Date()
         )
         let bookInfo = BookProcessor.process(document: document)
-        try BookStorage.save(metadata, inside: destinationFolder, as: FileNames.metadata)
-        try BookStorage.save(bookInfo, inside: destinationFolder, as: FileNames.bookinfo)
+        try BookStorage.save(metadata, inside: destinationFolder, as: FileNames.metadata, sync: .book(metadata.id))
+        try BookStorage.save(bookInfo, inside: destinationFolder, as: FileNames.bookinfo, sync: .book(metadata.id))
         return destinationFolder
     }
     

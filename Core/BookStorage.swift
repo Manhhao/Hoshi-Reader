@@ -9,6 +9,7 @@
 import EPUBKit
 import Foundation
 import ZIPFoundation
+import OSLog
 
 nonisolated enum FileNames: Sendable {
     static let metadata = "metadata.json"
@@ -19,6 +20,11 @@ nonisolated enum FileNames: Sendable {
     static let sasayakiMatch = "sasayaki_match.json"
     static let sasayakiPlayback = "sasayaki_playback.json"
     static let highlights = "highlights.json"
+}
+
+nonisolated enum CloudKitSyncTarget {
+    case book(UUID)
+    case shelves
 }
 
 struct BookStorage {
@@ -169,6 +175,10 @@ struct BookStorage {
         try getAppDirectory().appendingPathComponent("Books")
     }
     
+    nonisolated static func getCloudKitSyncDirectory() throws -> URL {
+        try getAppDirectory().appendingPathComponent("CloudKitSync")
+    }
+    
     @discardableResult
     static func copySecurityScopedFile(from fileURL: URL, to destinationPath: String? = nil) throws -> URL {
         guard fileURL.startAccessingSecurityScopedResource() else {
@@ -211,24 +221,48 @@ struct BookStorage {
         try FileManager.default.copyItem(at: source, to: destination)
     }
     
-    static func delete(at url: URL) throws {
+    nonisolated static func delete(at url: URL) throws {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             return
         }
         try FileManager.default.removeItem(at: url)
     }
     
-    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String) throws {
+    static func save<T: Encodable>(_ object: T, inside directory: URL, as fileName: String, sync: CloudKitSyncTarget? = nil) throws {
         let targetURL = directory.appendingPathComponent(fileName)
         
+        try saveLocal(object, url: targetURL)
+        
+        guard UserConfig.shared.enableCloudKitSync, let sync else { return }
+        switch sync {
+        case .shelves:
+            Task {
+                await CloudKitSyncManager.shared.saveCloudShelves()
+            }
+        case .book(let uuid):
+            guard let fileType = CloudKitFileType(fileName: fileName) else {
+                return
+            }
+            Task {
+                await CloudKitSyncManager.shared.saveCloudFile(
+                    uuid: uuid,
+                    fileType: fileType,
+                    fileName: fileName,
+                    folderName: directory.lastPathComponent,
+                )
+            }
+        }
+    }
+    
+    nonisolated static func saveLocal<T: Encodable>(_ object: T, url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(object)
         
-        try data.write(to: targetURL, options: .atomic)
+        try data.write(to: url, options: .atomic)
     }
     
-    static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
+    nonisolated static func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let data = try? Data(contentsOf: url) else {
             return nil
@@ -276,12 +310,12 @@ struct BookStorage {
         load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
     }
     
-    static func loadShelves() -> [BookShelf]? {
+    nonisolated static func loadShelves() -> [BookShelf]? {
         guard let booksDirectory = try? getBooksDirectory() else { return nil }
         return load([BookShelf].self, from: booksDirectory.appendingPathComponent(FileNames.shelves))
     }
     
-    static func loadAllBooks() throws -> [BookMetadata] {
+    nonisolated static func loadAllBooks() throws -> [BookMetadata] {
         let booksDirectory = try getBooksDirectory()
         
         if !FileManager.default.fileExists(atPath: booksDirectory.path(percentEncoded: false)) {
