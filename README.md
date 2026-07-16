@@ -48,25 +48,26 @@ If you'd like to try out features early consider joining the TestFlight Beta
 
 ## Contributing
 
-If you're planning on contributing a feature or significant change, please open an issue or message me on Discord first. I can't guarantee I'll accept every PR or feature, as I try to keep the project aligned with my own ideas.
+If you're planning on contributing a feature or significant change, please open an issue or message me on Discord first.
 
 ## Libraries
 
 | Name | License |
 | :--- | :--- |
-| [hoshidicts](https://github.com/Manhhao/hoshidicts) | GPLv3 |
+| [hoshidicts](https://github.com/Manhhao/hoshidicts) | GPL-3.0 |
 | [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | MIT |
 | [SwiftUI Introspect](https://github.com/siteline/swiftui-introspect) | MIT |
+| [SwiftLAME](https://github.com/hidden-spectrum/SwiftLAME) | LGPL-2.1 |
 
 ## Attribution
 
 | Name | Description | License |
 | :--- | :--- | :--- |
-| [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPLv3 |
-| [Yomitan](https://github.com/yomidevs/yomitan) | Various code from pop-up dictionary | GPLv3 |
+| [Ankiconnect Android](https://github.com/KamWithK/AnkiconnectAndroid) | Local Audio implementation | GPL-3.0 |
+| [Yomitan](https://github.com/yomidevs/yomitan) | Various code from pop-up dictionary | GPL-3.0 |
 | [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader) | Statistics | BSD-3 |
 | [JMdict for Yomitan](https://github.com/yomidevs/jmdict-yomitan) | Recommended term dictionary | CC-BY-SA-4.0 |
-| [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | Apache-2.0 |
+| [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | CC BY-SA 4.0 |
 | [Kanji alive](https://github.com/kanjialive/kanji-data-media) | Default audio source | CC-BY-4.0 |
 | [Tofugu/WaniKani Audio](https://github.com/tofugu/japanese-vocabulary-pronunciation-audio) | Default audio source | CC-BY-SA-4.0 |
 
