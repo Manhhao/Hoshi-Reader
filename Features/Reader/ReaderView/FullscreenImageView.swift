@@ -60,6 +60,7 @@ private final class ImageScrollView: UIScrollView, UIScrollViewDelegate {
         delegate = self
         minimumZoomScale = 1
         maximumZoomScale = 5
+        contentInsetAdjustmentBehavior = .never
         showsHorizontalScrollIndicator = false
         showsVerticalScrollIndicator = false
         backgroundColor = .clear
@@ -79,6 +80,7 @@ private final class ImageScrollView: UIScrollView, UIScrollViewDelegate {
             let fitted = CGSize(width: size.width * scale, height: size.height * scale)
             imageView.frame = CGRect(origin: .zero, size: fitted)
             contentSize = fitted
+            contentOffset = .zero
         }
         centerImage()
     }
