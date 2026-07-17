@@ -56,21 +56,22 @@ actor CloudKitSyncManager {
         }
     }
     
-    private func initializeSyncEngineWithoutCheck() {
-        let configuration = CKSyncEngine.Configuration(
+    private func initializeSyncEngineWithoutCheck(autoSync: Bool = true) {
+        var configuration = CKSyncEngine.Configuration(
             database: Self.container.privateCloudDatabase,
             stateSerialization: cloudKitData.stateSerialization,
             delegate: self
         )
+        configuration.automaticallySync = autoSync
         _syncEngine = CKSyncEngine(configuration)
         logger.debug("CKSyncEngine initialized")
     }
     
-    func initialize() async {
+    func initialize(autoSync: Bool = true) async {
         do {
             let allMetadata = try BookStorage.loadAllBooks()
             try await resolveUUIDConflicts(books: allMetadata)
-            initializeSyncEngineWithoutCheck()
+            initializeSyncEngineWithoutCheck(autoSync: autoSync)
             try await uploadLocalOnlyData()
         } catch {
             logger.error("Failed to initialize sync manager: \(error)")
