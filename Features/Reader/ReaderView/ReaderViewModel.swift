@@ -714,8 +714,10 @@ class ReaderViewModel {
     }
     
     private func flushStats() {
-        guard isTracking, !isPaused else { return }
-        updateStats()
+        guard isTracking else { return }
+        if !isPaused {
+            updateStats()
+        }
         saveStats()
     }
     

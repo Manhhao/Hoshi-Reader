@@ -755,7 +755,7 @@ struct ReaderView: View {
             }
         }
         .task(id: viewModel.isTracking) {
-            guard viewModel.isTracking, !viewModel.isPaused else {
+            guard viewModel.isTracking else {
                 return
             }
             while !Task.isCancelled {
@@ -767,6 +767,22 @@ struct ReaderView: View {
         }
         .task {
             await viewModel.syncOnOpen()
+        }
+        .onChange(of: viewModel.activeSheet) { _, sheet in
+            if sheet == nil {
+                viewModel.resetTrackingBaseline()
+                viewModel.isPaused = false
+            } else {
+                viewModel.isPaused = true
+            }
+        }
+        .onChange(of: imageURL) { _, url in
+            if url == nil {
+                viewModel.resetTrackingBaseline()
+                viewModel.isPaused = false
+            } else {
+                viewModel.isPaused = true
+            }
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }
@@ -780,7 +796,7 @@ struct ReaderView: View {
                     await viewModel.syncAfterForeground()
                 }
             }
-            guard viewModel.isTracking else {
+            guard viewModel.isTracking, viewModel.activeSheet == nil, imageURL == nil else {
                 return
             }
             viewModel.resetTrackingBaseline()
