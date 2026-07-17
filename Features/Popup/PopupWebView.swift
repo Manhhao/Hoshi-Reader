@@ -183,7 +183,7 @@ struct PopupWebView: UIViewRepresentable {
             var dy = e.changedTouches[0].clientY - startY;
             var hasSelection = window.getSelection().toString();
             
-            if (Math.abs(dx) > window.swipeThreshold && Math.abs(dy) < 20 && !hasSelection) {
+            if (Math.abs(dx) > window.swipeThreshold && Math.abs(dy) < 30 && !hasSelection) {
                 webkit.messageHandlers.swipeDismiss.postMessage(null);
             }
         });
