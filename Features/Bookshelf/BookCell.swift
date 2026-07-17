@@ -135,7 +135,7 @@ struct BookCell: View {
             if let epub = book.epub,
                let booksDir = try? BookStorage.getBooksDirectory() {
                 ShareLink(item: booksDir.appendingPathComponent(book.folder).appendingPathComponent(epub)) {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    Label("Share", systemImage: "square.and.arrow.up")
                 }
             }
             
