@@ -3142,7 +3142,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "組み方向"
+            "value" : "書字方向"
           }
         },
         "zh-Hans" : {
@@ -3248,7 +3248,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "トグル"
+            "value" : "切り替え"
           }
         }
       }
