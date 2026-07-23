@@ -130,7 +130,7 @@ class DictionaryManager {
                 return nil
             }
             let result = DictionaryInfo(index: index, path: $0)
-            if index.isUpdatable && !index.indexUrl.isEmpty && !index.downloadUrl.isEmpty {
+            if index.isUpdatable == true, !(index.indexUrl ?? "").isEmpty, !(index.downloadUrl ?? "").isEmpty {
                 updatableDictionaries.append((result, type))
             }
             return result
@@ -265,7 +265,7 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl!)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
@@ -330,13 +330,14 @@ class DictionaryManager {
                     let temp = FileManager.default.temporaryDirectory
                         .appendingPathComponent(String(title))
                     defer { try? FileManager.default.removeItem(at: temp) }
-                    if importResult.term_count > 0 {
+                    let counts = importResult.summary.counts
+                    if counts.terms.total > 0 {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.term.rawValue)/\(title)")
                     }
-                    if importResult.freq_count > 0 {
+                    if counts.termMeta.contains(std.string("freq")) {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.frequency.rawValue)/\(title)")
                     }
-                    if importResult.pitch_count > 0 {
+                    if counts.termMeta.contains(std.string("pitch")) || counts.termMeta.contains(std.string("ipa")) {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.pitch.rawValue)/\(title)")
                     }
                     imported.append(current)
@@ -381,7 +382,7 @@ class DictionaryManager {
                 }
                 
                 do {
-                    let (data, _) = try await session.data(from: URL(string: index.indexUrl)!)
+                    let (data, _) = try await session.data(from: URL(string: index.indexUrl!)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
                     if index.revision == remoteIndex.revision {
@@ -392,7 +393,7 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl!)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {

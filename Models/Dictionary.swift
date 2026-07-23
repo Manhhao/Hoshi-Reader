@@ -55,11 +55,10 @@ struct DictionaryConfig: Codable {
 
 nonisolated struct DictionaryIndex: Codable {
     let title: String
-    let format: Int
     let revision: String
-    let isUpdatable: Bool
-    let indexUrl: String
-    let downloadUrl: String
+    let isUpdatable: Bool?
+    let indexUrl: String?
+    let downloadUrl: String?
 }
 
 struct AudioSource: Codable, Identifiable {
