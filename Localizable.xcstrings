@@ -695,6 +695,9 @@
         }
       }
     },
+    "Control Bar Side" : {
+
+    },
     "Could not access .epub file" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1334,6 +1337,9 @@
         }
       }
     },
+    "Left" : {
+
+    },
     "Light" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1881,6 +1887,9 @@
         }
       }
     },
+    "Right" : {
+
+    },
     "Sasayaki" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -2025,6 +2034,9 @@
           }
         }
       }
+    },
+    "Show Control Bar" : {
+
     },
     "Show Percentage" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",

@@ -66,6 +66,11 @@ enum Themes: String, CaseIterable, Codable {
     }
 }
 
+enum SasayakiControlBarSide: String, CaseIterable, Codable {
+    case left = "Left"
+    case right = "Right"
+}
+
 @Observable
 class UserConfig {
     var bookshelfSortOption: SortOption {
@@ -400,6 +405,14 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiSkipControls, forKey: "sasayakiSkipControls") }
     }
     
+    var sasayakiShowControlBar: Bool {
+        didSet { UserDefaults.standard.set(sasayakiShowControlBar, forKey: "sasayakiShowControlBar") }
+    }
+    
+    var sasayakiControlBarSide: SasayakiControlBarSide {
+        didSet { UserDefaults.standard.set(sasayakiControlBarSide.rawValue, forKey: "sasayakiControlBarSide") }
+    }
+    
     var sasayakiEnableSync: Bool {
         didSet { UserDefaults.standard.set(sasayakiEnableSync, forKey: "sasayakiEnableSync") }
     }
@@ -524,6 +537,9 @@ class UserConfig {
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
         self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false
+        self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
+        self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")
+            .flatMap(SasayakiControlBarSide.init) ?? .right
         self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
         self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         self.sasayakiBackgroundColor = UserConfig.loadColor(key: "sasayakiBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)

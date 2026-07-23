@@ -24,13 +24,13 @@ struct SasayakiSheet: View {
                     if player.hasAudio {
                         HStack(spacing: 20) {
                             Button {
-                                player.skip(forward: false)
+                                userConfig.verticalWriting ? player.skip(forward: true) : player.skip(forward: false)
                             } label: {
                                 Image(systemName: "15.arrow.trianglehead.counterclockwise")
                             }
                             
                             Button {
-                                player.prevCue()
+                                userConfig.verticalWriting ? player.nextCue() : player.prevCue()
                             } label: {
                                 Image(systemName: "backward.fill")
                             }
@@ -43,13 +43,13 @@ struct SasayakiSheet: View {
                             }
                             
                             Button {
-                                player.nextCue()
+                                userConfig.verticalWriting ? player.prevCue() : player.nextCue()
                             } label: {
                                 Image(systemName: "forward.fill")
                             }
                             
                             Button {
-                                player.skip(forward: true)
+                                userConfig.verticalWriting ? player.skip(forward: false) : player.skip(forward: true)
                             } label: {
                                 Image(systemName: "15.arrow.trianglehead.clockwise")
                             }
@@ -102,6 +102,19 @@ struct SasayakiSheet: View {
                     Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
+                    Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
+                    if userConfig.sasayakiShowControlBar {
+                        HStack {
+                            Text("Control Bar Side")
+                            Spacer()
+                            Picker("", selection: Bindable(userConfig).sasayakiControlBarSide) {
+                                Text("Left").tag(SasayakiControlBarSide.left)
+                                Text("Right").tag(SasayakiControlBarSide.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 140)
+                        }
+                    }
                 }
                 
                 Section("Light Theme") {

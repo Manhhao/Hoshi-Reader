@@ -77,6 +77,7 @@ struct ReaderView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var focusMode = false
+    @State private var sasayakiControlsExpanded = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
     @State private var topSafeArea: CGFloat
@@ -147,6 +148,23 @@ struct ReaderView: View {
             await viewModel.flushAutoSync()
             UIApplication.shared.endBackgroundTask(task)
             task = .invalid
+        }
+    }
+    
+    private func handleTapOutside(clearSelection: Bool = false) {
+        if clearSelection {
+            viewModel.clearSelection()
+        }
+        if sasayakiControlsExpanded {
+            sasayakiControlsExpanded = false
+            return
+        }
+        if viewModel.popups.isEmpty {
+            withAnimation(.default.speed(2)) {
+                focusMode.toggle()
+            }
+        } else {
+            viewModel.closePopups()
         }
     }
     
@@ -316,13 +334,7 @@ struct ReaderView: View {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             }
                         
                         ScrollReaderWebView(
@@ -338,6 +350,7 @@ struct ReaderView: View {
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
+                                sasayakiControlsExpanded = false
                                 viewModel.closePopups()
                                 if !focusMode {
                                     withAnimation(.default.speed(2)) {
@@ -357,13 +370,7 @@ struct ReaderView: View {
                                 return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             },
                             onScroll: {
                                 viewModel.closePopups()
@@ -417,6 +424,7 @@ struct ReaderView: View {
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
+                                sasayakiControlsExpanded = false
                                 viewModel.closePopups()
                                 if !focusMode {
                                     withAnimation(.default.speed(2)) {
@@ -426,13 +434,7 @@ struct ReaderView: View {
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             },
                             onPageTurn: {
                                 viewModel.clearForwardHistory()
@@ -532,14 +534,7 @@ struct ReaderView: View {
                 .frame(height: readerBottomPadding)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    viewModel.clearSelection()
-                    if viewModel.popups.isEmpty {
-                        withAnimation(.default.speed(2)) {
-                            focusMode.toggle()
-                        }
-                    } else {
-                        viewModel.closePopups()
-                    }
+                    handleTapOutside(clearSelection: true)
                 }
                 .overlay(alignment: .center) {
                     if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
@@ -681,6 +676,11 @@ struct ReaderView: View {
             .padding(.bottom, bottomSafeArea > 0 ? bottomSafeArea : 8)
             .opacity(focusMode ? 0 : 1)
             .allowsHitTesting(!focusMode)
+        }
+        .overlay {
+            if userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && viewModel.sasayakiPlayer.hasAudio {
+                SasayakiControlBar(player: viewModel.sasayakiPlayer, verticalWriting: userConfig.verticalWriting, left: userConfig.sasayakiControlBarSide == .left, expanded: $sasayakiControlsExpanded)
+            }
         }
         .overlay {
             if viewModel.isSyncing {

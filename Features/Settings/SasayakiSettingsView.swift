@@ -34,6 +34,19 @@ struct SasayakiSettingsView: View {
                     Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)
+                    Toggle("Show Control Bar", isOn: $userConfig.sasayakiShowControlBar)
+                    if userConfig.sasayakiShowControlBar {
+                        HStack {
+                            Text("Control Bar Side")
+                            Spacer()
+                            Picker("", selection: Bindable(userConfig).sasayakiControlBarSide) {
+                                Text("Left").tag(SasayakiControlBarSide.left)
+                                Text("Right").tag(SasayakiControlBarSide.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 140)
+                        }
+                    }
                 }
                 
                 Section {
