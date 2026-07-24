@@ -632,21 +632,9 @@ struct ReaderView: View {
                     }
                     
                     Button {
-                        viewModel.activeSheet = .chapters
+                        viewModel.activeSheet = .contents
                     } label: {
-                        Label("Chapters", systemImage: "list.bullet")
-                    }
-                    
-                    Button {
-                        viewModel.activeSheet = .highlights
-                    } label: {
-                        Label("Highlights", systemImage: "highlighter")
-                    }
-                    
-                    Button {
-                        viewModel.activeSheet = .gallery
-                    } label: {
-                        Label("Gallery", systemImage: "photo.on.rectangle")
+                        Label("Contents", systemImage: "list.bullet")
                     }
                     
                     if userConfig.enableStatistics {
@@ -711,40 +699,11 @@ struct ReaderView: View {
                 AppearanceView(userConfig: userConfig, showDismiss: true)
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
-            case .chapters:
-                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
-                    viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
-                    viewModel.activeSheet = nil
-                    viewModel.clearSelection()
-                    viewModel.closePopups()
-                } onJumpToCharacter: { count in
-                    viewModel.jumpToCharacter(count)
-                    viewModel.activeSheet = nil
-                    viewModel.clearSelection()
-                    viewModel.closePopups()
-                }
-            case .highlights:
-                HighlightListView(
-                    document: viewModel.document,
-                    bookInfo: viewModel.bookInfo,
-                    highlights: viewModel.highlights,
-                    onJump: { highlight in
-                        viewModel.jumpToCharacter(highlight.character)
-                        viewModel.activeSheet = nil
-                        viewModel.clearSelection()
-                        viewModel.closePopups()
-                    },
-                    onDelete: { highlight in
-                        viewModel.removeHighlight(highlight)
-                    }
-                )
-                .presentationDetents([.medium, .large])
-            case .gallery:
-                GalleryView(images: viewModel.imageURLs) { url in
+            case .contents:
+                ContentsView(viewModel: viewModel, readerTheme: readerTheme) { url in
                     viewModel.activeSheet = nil
                     imageURL = url
                 }
-                .preferredColorScheme(readerTheme)
             case .statistics:
                 StatisticsView(viewModel: viewModel)
                     .presentationDetents([.medium, .large])

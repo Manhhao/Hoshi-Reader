@@ -13,11 +13,9 @@ import CHoshiDicts
 
 enum ActiveSheet: Identifiable {
     case appearance
-    case chapters
-    case highlights
+    case contents
     case statistics
     case sasayaki
-    case gallery
     var id: Self { self }
 }
 
@@ -89,6 +87,7 @@ class ReaderViewModel {
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
+    var contentsTab: ContentsTab = .chapters
     var isLoading = true
     var bookInfo: BookInfo
     private let chapterStarts: [Int]

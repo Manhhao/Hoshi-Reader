@@ -10,131 +10,34 @@ import SwiftUI
 import EPUBKit
 
 struct ChapterListView: View {
-    let displayTitle: String
     let document: EPUBDocument
     let bookInfo: BookInfo
     let currentCharacter: Int
-    let coverURL: URL?
     let onJumpToChapter: (Int, String?) -> Void
-    let onJumpToCharacter: (Int) -> Void
-    
-    @Environment(\.dismiss) var dismiss
     
     @State private var viewModel: ChapterListViewModel?
-    @State private var showJumpToAlert = false
-    @State private var showInvalidInputAlert = false
-    @State private var jumpToInput = ""
-    @State private var detent: PresentationDetent = .medium
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                HeaderView(
-                    title: displayTitle,
-                    currentCharacterCount: currentCharacter,
-                    totalCharacterCount: bookInfo.characterCount,
-                    coverURL: coverURL,
-                    onJumpTo: {
-                        detent = .large
-                        jumpToInput = ""
-                        showJumpToAlert = true
+        List {
+            if let vm = viewModel {
+                ForEach(vm.rows) { row in
+                    ChapterView(row: row) {
+                        onJumpToChapter(row.spineIndex, row.fragment)
                     }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .onAppear {
+            if viewModel == nil {
+                viewModel = ChapterListViewModel(
+                    document: document,
+                    bookInfo: bookInfo,
+                    currentCharacter: currentCharacter
                 )
-                
-                List {
-                    if let vm = viewModel {
-                        ForEach(vm.rows) { row in
-                            ChapterView(row: row) {
-                                onJumpToChapter(row.spineIndex, row.fragment)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.plain)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                }
-            }
-            .onAppear {
-                if viewModel == nil {
-                    viewModel = ChapterListViewModel(
-                        document: document,
-                        bookInfo: bookInfo,
-                        currentCharacter: currentCharacter
-                    )
-                }
-            }
-            .navigationTitle("Chapters")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .alert("Jump to", isPresented: $showJumpToAlert) {
-                TextField("Character count", text: $jumpToInput)
-                    .keyboardType(.numberPad)
-                Button("Cancel", role: .cancel) {}
-                Button("Go") {
-                    if let count = Int(jumpToInput), count >= 0 {
-                        onJumpToCharacter(count)
-                        dismiss()
-                    } else {
-                        showInvalidInputAlert = true
-                    }
-                }
-            } message: {
-                Text("Current: \(currentCharacter) / \(bookInfo.characterCount)")
-            }
-            .alert("Invalid input", isPresented: $showInvalidInputAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Please enter a valid character count")
-            }
-            .presentationDetents([.medium, .large], selection: $detent)
         }
-    }
-}
-
-struct HeaderView: View {
-    let title: String
-    let currentCharacterCount: Int
-    let totalCharacterCount: Int
-    let coverURL: URL?
-    let onJumpTo: () -> Void
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            CoverImage(url: coverURL, maxPixelSize: 256) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle().fill(Color.secondary.opacity(0.2))
-            }
-            .frame(width: 50, height: 75)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(2)
-                
-                let percent = totalCharacterCount > 0 ? (Double(currentCharacterCount) / Double(totalCharacterCount) * 100) : 0
-                HStack {
-                    Text("\(currentCharacterCount) / \(totalCharacterCount) (\(String(format: "%.1f%%", percent)))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button {
-                        onJumpTo()
-                    } label: {
-                        Image(systemName: "arrow.right.to.line")
-                    }
-                    .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-        }
-        .padding()
     }
 }
 
@@ -146,20 +49,30 @@ struct ChapterView: View {
         Button {
             action()
         } label: {
-            HStack {
+            HStack(spacing: 12) {
                 Text(row.label)
-                    .font(row.indentLevel > 0 ? .subheadline : .body)
-                Spacer()
+                    .font(row.indentLevel > 0 ? .subheadline : .subheadline.weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
                 if let count = row.characterCount {
                     Text("\(count)")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .padding(.leading, CGFloat(row.indentLevel) * 16)
+            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(row.isCurrent ? Color(uiColor: .systemGray5) : nil)
+        .listRowBackground(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(row.isCurrent ? Color(uiColor: .systemGray5) : Color.clear)
+                .padding(.horizontal, 12)
+        )
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .alignmentGuide(.listRowSeparatorLeading) { dimensions in
+            row.indentLevel > 0 ? dimensions[.leading] + 16 : dimensions[.leading]
+        }
     }
 }

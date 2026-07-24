@@ -22,8 +22,6 @@ struct HighlightListView: View {
     let onJump: (Highlight) -> Void
     let onDelete: (Highlight) -> Void
     
-    @Environment(\.dismiss) private var dismiss
-    
     private var sections: [HighlightSection] {
         let labels = chapterLabels()
         let grouped = Dictionary(grouping: highlights) {
@@ -39,60 +37,56 @@ struct HighlightListView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(sections) { section in
-                    Section(section.label) {
-                        ForEach(section.highlights) { highlight in
-                            Button {
-                                onJump(highlight)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(highlight.text.trimmingCharacters(in: .whitespacesAndNewlines))
-                                        .font(.body)
-                                        .lineLimit(5)
-                                    Text("\(highlight.createdAt.formatted(date: .abbreviated, time: .shortened)) (\(highlight.character))")
-                                        .font(.caption)
+        List {
+            ForEach(sections) { section in
+                Section(section.label) {
+                    ForEach(section.highlights) { highlight in
+                        Button {
+                            onJump(highlight)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(markedText(highlight))
+                                    .font(.body)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                HStack(spacing: 8) {
+                                    Text(dateLabel(highlight.createdAt))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Spacer(minLength: 8)
+                                    Text("\(highlight.character)")
+                                        .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
-                                .padding(.leading, 16)
-                                .padding(.vertical, 4)
-                                .overlay(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(highlight.color.swatch)
-                                        .frame(width: 4)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
                         }
-                        .onDelete { indexSet in
-                            indexSet.forEach { onDelete(section.highlights[$0]) }
-                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.clear)
                     }
-                }
-            }
-            .listStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .overlay {
-                if highlights.isEmpty {
-                    ContentUnavailableView("No Highlights", systemImage: "highlighter")
-                }
-            }
-            .navigationTitle("Highlights")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
+                    .onDelete { indexSet in
+                        indexSet.forEach { onDelete(section.highlights[$0]) }
                     }
                 }
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .overlay {
+            if highlights.isEmpty {
+                ContentUnavailableView("No Highlights", systemImage: "highlighter")
+            }
+        }
+    }
+    
+    private func markedText(_ highlight: Highlight) -> AttributedString {
+        var attributed = AttributedString(highlight.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        attributed.backgroundColor = highlight.color.swatch.opacity(highlight.color.rgba.a)
+        return attributed
+    }
+    
+    private func dateLabel(_ date: Date) -> String {
+        let relative = date.formatted(.relative(presentation: .named))
+        return relative.prefix(1).uppercased() + relative.dropFirst()
     }
     
     private func chapterLabels() -> [Int: String] {

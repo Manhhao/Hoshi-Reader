@@ -88,6 +88,7 @@
     },
     "%@ (%lld)" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -133,6 +134,7 @@
     },
     "%lld / %lld (%@)" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -690,6 +692,9 @@
         }
       }
     },
+    "Contents" : {
+
+    },
     "Continuous" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -743,6 +748,7 @@
     },
     "Current: %lld / %lld" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
