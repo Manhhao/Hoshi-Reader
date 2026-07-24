@@ -177,8 +177,17 @@ class SasayakiPlayer {
     func togglePlayback() {
         if pausedOnImage {
             cancelImagePause()
+            startPlayback()
+            return
         }
-        isPlaying ? pausePlayback() : startPlayback()
+        if isPlaying {
+            pausePlayback()
+        } else {
+            startPlayback()
+            if autoScroll, let currentCue {
+                displayCue(currentCue, reveal: true)
+            }
+        }
     }
     
     func updateIdleTimerDisabled() {
