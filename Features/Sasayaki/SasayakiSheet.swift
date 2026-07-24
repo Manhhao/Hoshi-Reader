@@ -113,8 +113,12 @@ struct SasayakiSheet: View {
                                 .labelsHidden()
                         }
                     }
+                }
+                
+                Section("Control Bar") {
                     Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {
+                        Toggle("Always Show Control Bar", isOn: Bindable(userConfig).sasayakiAlwaysShowControlBar)
                         HStack {
                             Text("Control Bar Side")
                             Spacer()

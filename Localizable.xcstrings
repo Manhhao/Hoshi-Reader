@@ -272,6 +272,9 @@
         }
       }
     },
+    "Always Show Control Bar" : {
+
+    },
     "Always Show Progress" : {
       "localizations" : {
         "zh-Hans" : {
@@ -697,6 +700,9 @@
           }
         }
       }
+    },
+    "Control Bar" : {
+
     },
     "Control Bar Side" : {
 

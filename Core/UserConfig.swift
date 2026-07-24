@@ -413,6 +413,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiShowControlBar, forKey: "sasayakiShowControlBar") }
     }
     
+    var sasayakiAlwaysShowControlBar: Bool {
+        didSet { UserDefaults.standard.set(sasayakiAlwaysShowControlBar, forKey: "sasayakiAlwaysShowControlBar") }
+    }
+    
     var sasayakiControlBarSide: SasayakiControlBarSide {
         didSet { UserDefaults.standard.set(sasayakiControlBarSide.rawValue, forKey: "sasayakiControlBarSide") }
     }
@@ -547,6 +551,7 @@ class UserConfig {
         self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
         self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
         self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
+        self.sasayakiAlwaysShowControlBar = defaults.object(forKey: "sasayakiAlwaysShowControlBar") as? Bool ?? false
         self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")
             .flatMap(SasayakiControlBarSide.init) ?? .right
         self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false

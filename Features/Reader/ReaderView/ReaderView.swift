@@ -475,6 +475,7 @@ struct ReaderView: View {
                     
                     ForEach($viewModel.popups) { $popup in
                         let popupId = popup.id
+                        let controlBarInset: CGFloat = userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && userConfig.sasayakiAlwaysShowControlBar && viewModel.sasayakiPlayer.hasAudio ? 56 : 0
                         PopupView(
                             userConfig: userConfig,
                             isVisible: $popup.showPopup,
@@ -484,6 +485,8 @@ struct ReaderView: View {
                             screenSize: geometry.size,
                             isVertical: popup.isVertical,
                             isFullWidth: popup.isFullWidth,
+                            leftInset: userConfig.sasayakiControlBarSide == .left ? controlBarInset : 0,
+                            rightInset: userConfig.sasayakiControlBarSide == .right ? controlBarInset : 0,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
                             clearSelection: popup.clearSelection,
@@ -679,7 +682,7 @@ struct ReaderView: View {
         }
         .overlay {
             if userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && viewModel.sasayakiPlayer.hasAudio {
-                SasayakiControlBar(player: viewModel.sasayakiPlayer, verticalWriting: userConfig.verticalWriting, left: userConfig.sasayakiControlBarSide == .left, expanded: $sasayakiControlsExpanded)
+                SasayakiControlBar(player: viewModel.sasayakiPlayer, verticalWriting: userConfig.verticalWriting, left: userConfig.sasayakiControlBarSide == .left, expanded: userConfig.sasayakiAlwaysShowControlBar ? .constant(true) : $sasayakiControlsExpanded)
             }
         }
         .overlay {
