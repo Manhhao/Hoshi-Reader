@@ -29,11 +29,8 @@ struct StatisticsSettingsView: View {
                 }
                 
                 Section {
-                    Picker("Reset Time", selection: $userConfig.statisticsResetTime) {
-                        ForEach(0..<24, id: \.self) { hour in
-                            Text(formattedTime(hour)).tag(hour)
-                        }
-                    }
+                    DatePicker("Reset Time", selection: resetTimeBinding, displayedComponents: .hourAndMinute)
+                        .datePickerStyle(.compact)
                 }
                 
                 if userConfig.enableSync {
@@ -66,12 +63,13 @@ struct StatisticsSettingsView: View {
         }
     }
     
-    private func formattedTime(_ hour: Int) -> String {
-        var components = DateComponents()
-        components.hour = hour
-        components.minute = 0
-        let date = Calendar.current.date(from: components) ?? Date()
-        return date.formatted(date: .omitted, time: .shortened)
+    private var resetTimeBinding: Binding<Date> {
+        Binding {
+            Calendar.current.date(from: DateComponents(hour: userConfig.statisticsResetTime / 60, minute: userConfig.statisticsResetTime % 60)) ?? Date()
+        } set: { newValue in
+            let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+            userConfig.statisticsResetTime = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+        }
     }
     
     private func textOfAutoSyncMode(_ mode: StatisticsSyncMode) -> some View {

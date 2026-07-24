@@ -826,7 +826,7 @@ class ReaderViewModel {
     }
     
     private static func formattedDate(date: Date, resetTime: Int = 0) -> String {
-        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 3600)
+        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 60)
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone.current
         formatter.formatOptions = [.withFullDate]

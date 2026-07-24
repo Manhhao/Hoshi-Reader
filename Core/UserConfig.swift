@@ -543,7 +543,14 @@ class UserConfig {
             .flatMap(StatisticsSyncMode.init) ?? .merge
         self.statisticsAutostartMode = defaults.string(forKey: "statisticsAutostartMode")
             .flatMap(StatisticsAutostartMode.init) ?? .off
-        self.statisticsResetTime = defaults.object(forKey: "statisticsResetTime") as? Int ?? 0
+        let storedResetTime = defaults.object(forKey: "statisticsResetTime") as? Int ?? 0
+        if defaults.bool(forKey: "statisticsResetTimeMigratedToMinutes") {
+            self.statisticsResetTime = storedResetTime
+        } else {
+            self.statisticsResetTime = storedResetTime * 60
+            defaults.set(storedResetTime * 60, forKey: "statisticsResetTime")
+            defaults.set(true, forKey: "statisticsResetTimeMigratedToMinutes")
+        }
         
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
