@@ -219,12 +219,16 @@ class SasayakiPlayer {
         }
         
         let cue: SasayakiMatch?
+        let reveal: Bool
         if let pendingCue, pendingCue.chapterIndex == currentIndex {
             cue = pendingCue
+            reveal = autoScroll && hasPlayedOnce
         } else if let active = timeline.cue(at: currentTime - delay), active.chapterIndex == currentIndex {
             cue = active
+            reveal = shouldResume && autoScroll
         } else {
             cue = nil
+            reveal = false
         }
         
         let resume = shouldResume
@@ -233,7 +237,7 @@ class SasayakiPlayer {
         pendingCue = nil
         
         if let cue {
-            displayCue(cue, reveal: autoScroll && hasPlayedOnce)
+            displayCue(cue, reveal: reveal)
         } else {
             clearDisplayedCue()
         }
