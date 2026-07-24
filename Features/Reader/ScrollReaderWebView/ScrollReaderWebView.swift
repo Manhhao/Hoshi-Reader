@@ -146,6 +146,16 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     }
                 case .clearSasayakiCue:
                     webView.evaluateJavaScript("window.hoshiReader.clearSasayakiCue()") { _, _ in }
+                case .scrollToSasayakiImage(let index, let completion):
+                    webView.evaluateJavaScript("window.hoshiReader.scrollToSasayakiImage(\(index))") { result, _ in
+                        let body = result as? [String: Any]
+                        let progress = body?["progress"] as? Double
+                        if let progress {
+                            onScroll()
+                            onSaveBookmark(progress)
+                        }
+                        completion?(body != nil)
+                    }
                 case .removeHighlight(let id):
                     let literal = context.coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }

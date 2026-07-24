@@ -31,6 +31,13 @@ extension String {
         )
         return text
     }
+    
+    func body() -> String {
+        guard let bodyRange = range(of: "(?s)<body.*?</body>", options: .regularExpression) else {
+            return self
+        }
+        return String(self[bodyRange])
+    }
 }
 
 extension BookMetadata {

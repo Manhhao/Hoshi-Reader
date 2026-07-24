@@ -40,6 +40,7 @@ enum WebViewCommand {
     case applySasayakiCues(String, completion: (() -> Void)? = nil)
     case highlightSasayakiCue(id: String, reveal: Bool)
     case clearSasayakiCue
+    case scrollToSasayakiImage(index: Int, completion: ((Bool) -> Void)? = nil)
     case removeHighlight(String)
 }
 
@@ -246,6 +247,16 @@ struct ReaderWebView: UIViewRepresentable {
                     }
                 case .clearSasayakiCue:
                     webView.evaluateJavaScript("window.hoshiReader.clearSasayakiCue()") { _, _ in }
+                case .scrollToSasayakiImage(let index, let completion):
+                    webView.evaluateJavaScript("window.hoshiReader.scrollToSasayakiImage(\(index))") { result, _ in
+                        let body = result as? [String: Any]
+                        let progress = body?["progress"] as? Double
+                        if let progress {
+                            onPageTurn()
+                            onSaveBookmark(progress)
+                        }
+                        completion?(body != nil)
+                    }
                 case .removeHighlight(let id):
                     let literal = context.coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }

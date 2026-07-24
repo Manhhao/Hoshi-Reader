@@ -246,6 +246,16 @@ window.hoshiReader = {
         this.activeCueId = null;
     },
     
+    scrollToSasayakiImage(index) {
+        const el = document.querySelectorAll('img, image')[index];
+        if (!el || !(el.classList.contains('block-img') || el.namespaceURI === 'http://www.w3.org/2000/svg')) {
+            return null;
+        }
+        
+        const scrolled = this.scrollToTarget(el);
+        return { progress: scrolled ? this.calculateProgress() : null };
+    },
+    
     resetSasayakiCues() {
         this.cueWrappers.forEach(wrappers => this.unwrap(wrappers));
         this.cueWrappers.clear();

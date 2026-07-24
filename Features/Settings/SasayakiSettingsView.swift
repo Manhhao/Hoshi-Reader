@@ -34,6 +34,17 @@ struct SasayakiSettingsView: View {
                     Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)
+                    Toggle("Pause on Images", isOn: $userConfig.sasayakiImagePause)
+                    if userConfig.sasayakiImagePause {
+                        HStack {
+                            Text("Pause Duration")
+                            Spacer()
+                            Text("\(Int(userConfig.sasayakiImagePauseDuration))s")
+                                .fontWeight(.semibold)
+                            Stepper("", value: $userConfig.sasayakiImagePauseDuration, in: 1...30, step: 1)
+                                .labelsHidden()
+                        }
+                    }
                     Toggle("Show Control Bar", isOn: $userConfig.sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {
                         HStack {
@@ -44,7 +55,7 @@ struct SasayakiSettingsView: View {
                                 Text("Right").tag(SasayakiControlBarSide.right)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 140)
+                            .frame(width: 120)
                         }
                     }
                 }

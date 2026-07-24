@@ -31,9 +31,29 @@ struct SasayakiCueRange: Encodable {
     let length: Int
 }
 
+struct SasayakiImage: Codable {
+    let chapterIndex: Int
+    let imageIndex: Int
+    let offset: Int
+}
+
 struct SasayakiMatchData: Codable {
     let matches: [SasayakiMatch]
     let unmatched: Int
+    let images: [SasayakiImage]
+    
+    init(matches: [SasayakiMatch], unmatched: Int, images: [SasayakiImage] = []) {
+        self.matches = matches
+        self.unmatched = unmatched
+        self.images = images
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        matches = try container.decode([SasayakiMatch].self, forKey: .matches)
+        unmatched = try container.decode(Int.self, forKey: .unmatched)
+        images = try container.decodeIfPresent([SasayakiImage].self, forKey: .images) ?? []
+    }
 }
 
 struct SasayakiPlaybackData: Codable {

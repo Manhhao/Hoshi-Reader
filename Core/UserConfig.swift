@@ -401,8 +401,12 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiAutoPause, forKey: "sasayakiAutoPause") }
     }
     
-    var sasayakiSkipControls: Bool {
-        didSet { UserDefaults.standard.set(sasayakiSkipControls, forKey: "sasayakiSkipControls") }
+    var sasayakiImagePause: Bool {
+        didSet { UserDefaults.standard.set(sasayakiImagePause, forKey: "sasayakiImagePause") }
+    }
+    
+    var sasayakiImagePauseDuration: Double {
+        didSet { UserDefaults.standard.set(sasayakiImagePauseDuration, forKey: "sasayakiImagePauseDuration") }
     }
     
     var sasayakiShowControlBar: Bool {
@@ -411,6 +415,10 @@ class UserConfig {
     
     var sasayakiControlBarSide: SasayakiControlBarSide {
         didSet { UserDefaults.standard.set(sasayakiControlBarSide.rawValue, forKey: "sasayakiControlBarSide") }
+    }
+    
+    var sasayakiSkipControls: Bool {
+        didSet { UserDefaults.standard.set(sasayakiSkipControls, forKey: "sasayakiSkipControls") }
     }
     
     var sasayakiEnableSync: Bool {
@@ -536,10 +544,12 @@ class UserConfig {
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
-        self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false
+        self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
+        self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
         self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
         self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")
             .flatMap(SasayakiControlBarSide.init) ?? .right
+        self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false
         self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
         self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)
         self.sasayakiBackgroundColor = UserConfig.loadColor(key: "sasayakiBackgroundColor") ?? Color(.sRGB, red: 0.53, green: 0.81, blue: 0.98, opacity: 0.4)

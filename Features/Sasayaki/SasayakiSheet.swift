@@ -102,6 +102,17 @@ struct SasayakiSheet: View {
                     Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
+                    Toggle("Pause on Images", isOn: Bindable(userConfig).sasayakiImagePause)
+                    if userConfig.sasayakiImagePause {
+                        HStack {
+                            Text("Pause Duration")
+                            Spacer()
+                            Text("\(Int(userConfig.sasayakiImagePauseDuration))s")
+                                .fontWeight(.semibold)
+                            Stepper("", value: Bindable(userConfig).sasayakiImagePauseDuration, in: 1...30, step: 1)
+                                .labelsHidden()
+                        }
+                    }
                     Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {
                         HStack {
@@ -112,7 +123,7 @@ struct SasayakiSheet: View {
                                 Text("Right").tag(SasayakiControlBarSide.right)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 140)
+                            .frame(width: 120)
                         }
                     }
                 }

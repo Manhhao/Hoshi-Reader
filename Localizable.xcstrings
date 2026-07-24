@@ -159,6 +159,9 @@
         }
       }
     },
+    "%llds" : {
+
+    },
     "1. After the initial setup, create another **OAuth client ID** in the same project." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1717,6 +1720,12 @@
           }
         }
       }
+    },
+    "Pause Duration" : {
+
+    },
+    "Pause on Images" : {
+
     },
     "Playback" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
