@@ -131,8 +131,8 @@ class ReaderViewModel {
     private var backHistory: [Position] = []
     private var forwardHistory: [Position] = []
     private var currentPosition: Position { Position(index: index, progress: currentProgress) }
-    var backTarget: Int? { backHistory.last.map { calculateCharacterProgress(for: $0) } }
-    var forwardTarget: Int? { forwardHistory.last.map { calculateCharacterProgress(for: $0) } }
+    var backTarget: Int? { backHistory.last.flatMap { calculateCharacterProgress(for: $0) } }
+    var forwardTarget: Int? { forwardHistory.last.flatMap { calculateCharacterProgress(for: $0) } }
     
     init(
         book: BookMetadata,
@@ -783,10 +783,11 @@ class ReaderViewModel {
         forwardHistory.removeAll()
     }
     
-    private func calculateCharacterProgress(for position: Position) -> Int {
+    private func calculateCharacterProgress(for position: Position) -> Int? {
+        guard document.spine.items.indices.contains(position.index) else { return nil }
         let spineItem = document.spine.items[position.index]
-        let manifestItem = document.manifest.items[spineItem.idref]!
-        let chapterInfo = bookInfo.chapterInfo[manifestItem.path]!
+        guard let manifestItem = document.manifest.items[spineItem.idref],
+              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else { return nil }
         return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * position.progress)
     }
     
