@@ -20,7 +20,6 @@ struct DictionarySearchView: View {
     @State private var dictionaryStyles: [String: String] = [:]
     @State private var lookupEntries: [[String: Any]] = []
     @State private var hasSearched = false
-    @State private var searchFocused = false
     @State private var didInitialQuery = false
     @State private var popups: [PopupItem] = []
     @State private var clearSelection: Bool = false
@@ -33,6 +32,8 @@ struct DictionarySearchView: View {
     @State private var isResettingTextField: Bool = false
     @State private var scrollViewInitialContentOffset: CGFloat! = nil
     @State private var scrollViewContentOffset: CGFloat! = nil
+    @State private var topHeight: CGFloat = 0
+    @FocusState private var searchFocused: Bool
     var initialQuery: String = ""
     var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
@@ -43,6 +44,10 @@ struct DictionarySearchView: View {
     
     private var searchBarInset: CGFloat {
         usesTopTabBarLayout ? 100 : 50
+    }
+    
+    private var topInset: CGFloat {
+        topHeight > 0 ? topHeight : UIApplication.topSafeArea + searchBarInset
     }
     
     private var tabBarInset: CGFloat {
@@ -139,7 +144,7 @@ struct DictionarySearchView: View {
                         screenSize: geometry.size,
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
-                        topInset: UIApplication.topSafeArea + searchBarInset,
+                        topInset: topInset,
                         bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
                         coverURL: nil,
                         documentTitle: nil,
@@ -174,27 +179,40 @@ struct DictionarySearchView: View {
             }
         }
         .ignoresSafeArea()
-        .overlay(alignment: .top) {
-            LinearGradient(colors: [Color(.systemBackground), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: UIApplication.topSafeArea + 50)
-                .ignoresSafeArea(edges: .top)
-        }
         .safeAreaInset(edge: .top) {
-            VStack {
-                DictionarySearchBar(text: $query, isFocused: $searchFocused) {
-                    runLookup()
-                }
-                
-                if let scrollViewInitialContentOffset {
-                    SearchResetInset(
-                        scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
-                        threshold: Self.resetTextFieldScrollThreshold,
-                        isQueryEmpty: query.isEmpty,
-                        isRefreshing: isRefreshing,
-                        isDragging: isDragging,
-                        isResettingTextField: isResettingTextField
-                    )
-                }
+            if let scrollViewInitialContentOffset {
+                SearchResetInset(
+                    scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
+                    threshold: Self.resetTextFieldScrollThreshold,
+                    isQueryEmpty: query.isEmpty,
+                    isRefreshing: isRefreshing,
+                    isDragging: isDragging,
+                    isResettingTextField: isResettingTextField
+                )
+            }
+        }
+        .navigationTitle("Dictionary")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text(verbatim: ""))
+        .searchFocused($searchFocused)
+        .textInputAutocapitalization(.never)
+        .onSubmit(of: .search) {
+            searchFocused = false
+            runLookup()
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onChange(of: proxy.safeAreaInsets.top, initial: true) { _, inset in
+                        topHeight = inset
+                    }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
+            guard let field = notification.object as? UITextField, field === UISearchBar.currentSearchTextField else { return }
+            field.setPreferredInputLanguage("ja")
+            Task { @MainActor in
+                field.selectAll(nil)
             }
         }
         .onChange(of: shouldFocus) {
@@ -358,7 +376,6 @@ struct DictionarySearchView: View {
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
         </script>
-        <div style="height: 50px;"></div>
         <div id="entries-container" style="min-height: 100vh;"></div>
         """
     }
@@ -438,75 +455,6 @@ struct DictionarySearchView: View {
             ])
         }
         return entries
-    }
-}
-
-struct DictionarySearchBar: Equatable, View {
-    
-    static func == (lhs: DictionarySearchBar, rhs: DictionarySearchBar) -> Bool {
-        lhs.text == rhs.text && lhs.isFocused == rhs.isFocused
-    }
-    
-    @Binding var text: String
-    @Binding var isFocused: Bool
-    let onSubmit: () -> Void
-    
-    var body: some View {
-        if #available(iOS 26, *) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                
-                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                        isFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 12)
-            .glassEffect(.regular.interactive())
-            .contentShape(Capsule())
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-        }
-        else {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                
-                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                        isFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.primary.opacity(0.2), lineWidth: 1))
-            .contentShape(Capsule())
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-        }
     }
 }
 

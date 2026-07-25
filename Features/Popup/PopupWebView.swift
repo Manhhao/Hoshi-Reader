@@ -384,7 +384,7 @@ struct PopupWebView: UIViewRepresentable {
         }
         
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            parent.onScrollViewOffsetChanged?(scrollView.contentOffset.y)
+            parent.onScrollViewOffsetChanged?(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
             guard scrollView.contentOffset.x != 0 else { return }
             scrollView.contentOffset.x = 0
         }
