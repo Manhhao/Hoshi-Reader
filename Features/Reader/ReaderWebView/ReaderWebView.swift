@@ -565,6 +565,12 @@ struct ReaderWebView: UIViewRepresentable {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;
             }
+            .hoshi-fragment {
+                display: block !important;
+            }
+            .hoshi-fragment + .hoshi-fragment {
+                text-indent: 0 !important;
+            }
             \(HighlightColor.css)
             \(pageBreakCss)
             \(paragraphSpacingCss)
@@ -744,8 +750,9 @@ struct ReaderWebView: UIViewRepresentable {
                 });
                 
                 Promise.all(imagePromises).then(() => {
-                    return new Promise(resolve => setTimeout(resolve, 50));
+                    return document.fonts.ready;
                 }).then(() => {
+                    window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
                     \(sasayakiSetupScript)
                     \(highlightsSetupScript)

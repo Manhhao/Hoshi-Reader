@@ -52,6 +52,95 @@ window.hoshiReader = {
         return rect || target.getBoundingClientRect();
     },
     
+    splitPoints(paragraph, pageSize, currentScroll, vertical) {
+        const rect = paragraph.getBoundingClientRect();
+        const start = (vertical ? rect.top : rect.left) + currentScroll;
+        const first = Math.floor(start / pageSize);
+        const last = Math.floor((start + (vertical ? rect.height : rect.width) - 1) / pageSize);
+        const points = [];
+        if (last === first) {
+            return points;
+        }
+        
+        const walker = this.createWalker(paragraph);
+        const positions = [];
+        let node;
+        
+        while (node = walker.nextNode()) {
+            for (let i = 0; i < node.textContent.length; i++) {
+                positions.push({ node, offset: i });
+            }
+        }
+        
+        const range = document.createRange();
+        for (let column = first + 1; column <= last; column++) {
+            const limit = column * pageSize;
+            let low = 0;
+            let high = positions.length - 1;
+            let hit = -1;
+            
+            while (low <= high) {
+                const mid = (low + high) >> 1;
+                range.setStart(positions[mid].node, positions[mid].offset);
+                range.setEnd(positions[mid].node, positions[mid].offset + 1);
+                const charRect = range.getClientRects()[0];
+                if (charRect && (vertical ? charRect.top : charRect.left) + currentScroll >= limit) {
+                    hit = mid;
+                    high = mid - 1;
+                } else {
+                    low = mid + 1;
+                }
+            }
+            
+            if (hit > 0) {
+                points.push(positions[hit]);
+            }
+        }
+        
+        return points;
+    },
+    
+    fragmentBlocks() {
+        const vertical = this.isVertical();
+        const pageSize = vertical ? this.pageHeight : this.pageWidth;
+        const currentScroll = vertical ? document.body.scrollTop : document.body.scrollLeft;
+        const targets = [];
+        
+        for (const paragraph of document.body.querySelectorAll('p')) {
+            const points = this.splitPoints(paragraph, pageSize, currentScroll, vertical);
+            if (points.length) {
+                const justified = window.getComputedStyle(paragraph).textAlign === 'justify';
+                targets.push({ paragraph, points, justified });
+            }
+        }
+        
+        const range = document.createRange();
+        for (const { paragraph, points, justified } of targets) {
+            const firstFragment = document.createElement('span');
+            firstFragment.className = 'hoshi-fragment';
+            while (paragraph.firstChild) {
+                firstFragment.appendChild(paragraph.firstChild);
+            }
+            paragraph.appendChild(firstFragment);
+            
+            const fragments = [firstFragment];
+            for (let i = points.length - 1; i >= 0; i--) {
+                range.setStart(points[i].node, points[i].offset);
+                range.setEnd(firstFragment, firstFragment.childNodes.length);
+                
+                const fragment = document.createElement('span');
+                fragment.className = 'hoshi-fragment';
+                fragment.appendChild(range.extractContents());
+                firstFragment.after(fragment);
+                fragments.splice(1, 0, fragment);
+            }
+            
+            if (justified) {
+                fragments.slice(0, -1).forEach(f => f.style.setProperty('text-align-last', 'justify', 'important'));
+            }
+        }
+    },
+    
     buildNodeOffsets() {
         const offsets = new WeakMap();
         const rawOffsets = new WeakMap();

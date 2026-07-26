@@ -584,8 +584,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 });
                 
                 Promise.all(imagePromises).then(() => {
-                    return new Promise(resolve => setTimeout(resolve, 50));
-                }).then(() => {
                     window.hoshiReader.buildNodeOffsets();
                     \(sasayakiSetupScript)
                     \(highlightsSetupScript)
