@@ -19,9 +19,25 @@ struct ShelfManagementView: View {
         NavigationStack {
             List {
                 Section {
-                    Toggle("Reading Shelf", isOn: $userConfig.bookshelfShowReading)
-                } footer: {
-                    Text("Shows books you've started but not finished.")
+                    HStack {
+                        Text("Covers")
+                        Spacer()
+                        Picker("", selection: $userConfig.bookshelfCoverMode) {
+                            ForEach(CoverMode.allCases, id: \.self) { mode in
+                                coverModeText(mode).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 180)
+                    }
+                    
+                    VStack {
+                        Toggle("Reading Shelf", isOn: $userConfig.bookshelfShowReading)
+                        Text("Shows books you've started but not finished.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 
                 Section("Shelves") {
@@ -65,6 +81,17 @@ struct ShelfManagementView: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+    
+    private func coverModeText(_ mode: CoverMode) -> Text {
+        switch mode {
+        case .show:
+            Text("Show")
+        case .blur:
+            Text("Blur")
+        case .hide:
+            Text("Hide")
         }
     }
 }

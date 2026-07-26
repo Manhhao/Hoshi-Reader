@@ -71,6 +71,12 @@ enum SasayakiControlBarSide: String, CaseIterable, Codable {
     case right = "Right"
 }
 
+enum CoverMode: String, CaseIterable, Codable {
+    case show = "Show"
+    case blur = "Blur"
+    case hide = "Hide"
+}
+
 @Observable
 class UserConfig {
     var bookshelfSortOption: SortOption {
@@ -79,6 +85,10 @@ class UserConfig {
     
     var bookshelfShowReading: Bool {
         didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
+    }
+    
+    var bookshelfCoverMode: CoverMode {
+        didSet { UserDefaults.standard.set(bookshelfCoverMode.rawValue, forKey: "bookshelfCoverMode") }
     }
     
     var autoUpdateDictionaries: Bool {
@@ -451,6 +461,8 @@ class UserConfig {
         self.bookshelfSortOption = defaults.string(forKey: "bookshelfSortOption")
             .flatMap(SortOption.init) ?? .recent
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
+        self.bookshelfCoverMode = defaults.string(forKey: "bookshelfCoverMode")
+            .flatMap(CoverMode.init) ?? .show
         
         self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
         self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")

@@ -31,6 +31,7 @@ struct BookView: View {
 }
 
 struct BookCover: View {
+    @Environment(UserConfig.self) private var userConfig
     let book: BookMetadata
     var progress: Double? = nil
     var isSelected: Bool = false
@@ -58,10 +59,11 @@ struct BookCover: View {
     
     private var cover: some View {
         VStack(spacing: progress == nil ? 0 : 3) {
-            CoverImage(url: book.coverURL, maxPixelSize: 768) { image in
+            CoverImage(url: userConfig.bookshelfCoverMode == .hide ? nil : book.coverURL, maxPixelSize: 768) { image in
                 image
                     .resizable()
                     .aspectRatio(coverAspectRatio, contentMode: .fit)
+                    .coverBlur(userConfig.bookshelfCoverMode == .blur)
                     .clipShape(RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous))
             } placeholder: {
                 CoverFallback(
@@ -79,7 +81,7 @@ struct BookCover: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 if !isSelected, let progress, progress >= 0.999 {
-                    checkmark(color: .gray)
+                    checkmark(color: Color(white: 0.6))
                         .padding(6)
                 }
             }
@@ -104,5 +106,18 @@ struct BookCover: View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 22))
             .foregroundStyle(.white, color)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func coverBlur(_ enabled: Bool) -> some View {
+        if enabled {
+            visualEffect { content, proxy in
+                content.blur(radius: proxy.size.width * 0.05, opaque: true)
+            }
+        } else {
+            self
+        }
     }
 }
