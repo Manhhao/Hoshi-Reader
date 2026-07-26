@@ -64,9 +64,12 @@ struct BookCover: View {
                     .aspectRatio(coverAspectRatio, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous))
             } placeholder: {
-                RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous)
-                    .fill(Color.gray.opacity(0.3))
-                    .aspectRatio(coverAspectRatio, contentMode: .fit)
+                CoverFallback(
+                    title: book.displayTitle,
+                    author: book.author,
+                    aspectRatio: coverAspectRatio,
+                    cornerRadius: innerCornerRadius
+                )
             }
             .overlay(alignment: .topTrailing) {
                 if isSelected {

@@ -516,6 +516,7 @@ class BookshelfViewModel {
             
             let metadata = BookMetadata(
                 title: title,
+                author: document.author?.trimmingCharacters(in: .whitespacesAndNewlines),
                 epub: localURL.lastPathComponent,
                 cover: coverURL,
                 folder: bookFolder.lastPathComponent,
@@ -548,14 +549,11 @@ class BookshelfViewModel {
             return coverItem.path
         }
         
-        // fallbacks in case the epub doesn't conform to any standards
+        // fallback in case the epub doesn't conform to any standards
         let imageTypes: [EPUBMediaType] = [.jpeg, .png, .gif, .svg]
         if let coverItem = document.manifest.items.values.first(where: { $0.id.lowercased().contains("cover") }),
            imageTypes.contains(coverItem.mediaType) {
             return coverItem.path
-        }
-        if let firstImage = document.manifest.items.values.first(where: { imageTypes.contains($0.mediaType) }) {
-            return firstImage.path
         }
         
         return nil
