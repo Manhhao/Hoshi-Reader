@@ -11,24 +11,6 @@ import UIKit
 
 private let inputLanguageClassPrefix = "HoshiInputLanguage_"
 
-extension UISearchBar {
-    static var currentSearchTextField: UITextField? {
-        let windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-        for window in windows {
-            var pending: [UIView] = [window]
-            while let view = pending.popLast() {
-                if let searchBar = view as? UISearchBar {
-                    return searchBar.searchTextField
-                }
-                pending.append(contentsOf: view.subviews)
-            }
-        }
-        return nil
-    }
-}
-
 extension UITextField {
     func setPreferredInputLanguage(_ language: String) {
         let currentClass: AnyClass = object_getClass(self)!

@@ -118,7 +118,6 @@ struct BookshelfView: View {
                 NavigationStack {
                     DictionarySearchView(
                         initialQuery: dictionaryRoute.query,
-                        initialAutofocus: dictionaryRoute.autofocus,
                         shouldFocus: focusDictionarySearch
                     )
                     .id(dictionaryRoute.id)
@@ -192,10 +191,7 @@ struct BookshelfView: View {
         .onChange(of: pendingLookup) { _, text in
             if let text {
                 selectedTab = 1
-                dictionaryRoute = DictionaryRoute(
-                    query: text,
-                    autofocus: text.isEmpty
-                )
+                dictionaryRoute = DictionaryRoute(query: text)
                 pendingLookup = nil
             }
         }
@@ -370,11 +366,5 @@ private enum SettingsRoute: Hashable {
 
 private struct DictionaryRoute {
     let id = UUID()
-    let query: String
-    let autofocus: Bool
-    
-    init(query: String = "", autofocus: Bool = true) {
-        self.query = query
-        self.autofocus = autofocus
-    }
+    var query: String = ""
 }

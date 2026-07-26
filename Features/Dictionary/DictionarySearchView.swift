@@ -19,8 +19,7 @@ struct DictionarySearchView: View {
     @State private var content: String = ""
     @State private var dictionaryStyles: [String: String] = [:]
     @State private var lookupEntries: [[String: Any]] = []
-    @State private var hasSearched = false
-    @State private var didInitialQuery = false
+    @State private var hasAppeared = false
     @State private var popups: [PopupItem] = []
     @State private var clearSelection: Bool = false
     @State private var backCount: Int = 0
@@ -35,19 +34,10 @@ struct DictionarySearchView: View {
     @State private var topHeight: CGFloat = 0
     @FocusState private var searchFocused: Bool
     var initialQuery: String = ""
-    var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
     
     private var usesTopTabBarLayout: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
-    }
-    
-    private var searchBarInset: CGFloat {
-        usesTopTabBarLayout ? 100 : 50
-    }
-    
-    private var topInset: CGFloat {
-        topHeight > 0 ? topHeight : UIApplication.topSafeArea + searchBarInset
     }
     
     private var tabBarInset: CGFloat {
@@ -144,7 +134,7 @@ struct DictionarySearchView: View {
                         screenSize: geometry.size,
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
-                        topInset: topInset,
+                        topInset: topHeight,
                         bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
                         coverURL: nil,
                         documentTitle: nil,
@@ -209,7 +199,7 @@ struct DictionarySearchView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
-            guard let field = notification.object as? UITextField, field === UISearchBar.currentSearchTextField else { return }
+            guard let field = notification.object as? UISearchTextField else { return }
             field.setPreferredInputLanguage("ja")
             Task { @MainActor in
                 field.selectAll(nil)
@@ -225,18 +215,20 @@ struct DictionarySearchView: View {
             }
         })
         .onAppear {
-            if !didInitialQuery && !initialQuery.isEmpty {
-                query = initialQuery
-                runLookup()
-            }
-            if initialAutofocus || didInitialQuery {
-                searchFocused = false
-                Task { @MainActor in
-                    searchFocused = true
+            if !hasAppeared {
+                hasAppeared = true
+                
+                if !initialQuery.isEmpty {
+                    query = initialQuery
+                    runLookup()
+                    return
                 }
-            } else {
-                searchFocused = false
-                didInitialQuery = true
+            }
+            
+            searchFocused = false
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(20))
+                searchFocused = true
             }
         }
     }
@@ -247,7 +239,6 @@ struct DictionarySearchView: View {
         forwardCount = 0
         
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        hasSearched = true
         lastQuery = trimmed
         
         guard !trimmed.isEmpty else {
