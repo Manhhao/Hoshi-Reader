@@ -52,6 +52,14 @@ window.hoshiReader = {
         return rect || target.getBoundingClientRect();
     },
     
+    async awaitFonts() {
+        const style = window.getComputedStyle(document.body);
+        try {
+            await document.fonts.load(`${style.fontSize} ${style.fontFamily}`, 'あ');
+        } catch {}
+        await document.fonts.ready;
+    },
+    
     splitPoints(paragraph, pageSize, currentScroll, vertical) {
         const rect = paragraph.getBoundingClientRect();
         const start = (vertical ? rect.top : rect.left) + currentScroll;
@@ -488,7 +496,7 @@ window.hoshiReader = {
     },
     
     async restoreProgress(progress) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         var context = this.getScrollContext();
         
         if (context.pageSize <= 0) {
@@ -566,7 +574,7 @@ window.hoshiReader = {
     },
     
     async jumpToFragment(fragment) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         var context = this.getScrollContext();
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);

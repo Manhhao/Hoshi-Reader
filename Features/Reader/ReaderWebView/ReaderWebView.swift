@@ -750,7 +750,7 @@ struct ReaderWebView: UIViewRepresentable {
                 });
                 
                 Promise.all(imagePromises).then(() => {
-                    return document.fonts.ready;
+                    return window.hoshiReader.awaitFonts();
                 }).then(() => {
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
