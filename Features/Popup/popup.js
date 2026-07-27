@@ -39,6 +39,18 @@ function el(tag, props = {}, children = []) {
     return element;
 }
 
+function wrapKanji(text) {
+    const nodes = [];
+    for (const ch of text) {
+        if (KANJI_PATTERN.test(ch)) {
+            nodes.push(el('span', { className: 'kanji-char', textContent: ch }));
+        } else {
+            nodes.push(document.createTextNode(ch));
+        }
+    }
+    return nodes;
+}
+
 function toHiragana(text) {
     return text.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 }
@@ -204,11 +216,11 @@ function buildFuriganaEl(parent, expression, reading) {
     const segments = segmentFurigana(expression, reading);
     for (const [text, furigana] of segments) {
         if (furigana) {
-            const ruby = el('ruby', {}, [text]);
+            const ruby = el('ruby', {}, wrapKanji(text));
             ruby.appendChild(el('rt', { textContent: furigana }));
             parent.appendChild(ruby);
         } else {
-            parent.appendChild(document.createTextNode(text));
+            parent.append(...wrapKanji(text));
         }
     }
     return segments.length === 1 && segments[0][1];
@@ -1472,7 +1484,7 @@ function createEntryHeader(entry, idx) {
     if (reading && reading !== expression) {
         needsScroll = buildFuriganaEl(expressionSpan, expression, reading);
     } else {
-        expressionSpan.textContent = expression;
+        expressionSpan.append(...wrapKanji(expression));
     }
     
     // empty placeholder to reserve space even when no ruby is present
@@ -1622,6 +1634,67 @@ function redirect(count) {
     document.getElementById('entries-container').innerHTML = '';
     reportButtonRects();
     window.renderPopup();
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = 0;
+        requestAnimationFrame(() => {
+            document.scrollingElement.scrollTop = 0;
+        });
+    });
+}
+
+function buildKanjiEntry(data) {
+    const entry = el('div', { className: 'entry kanji-entry' });
+    
+    const header = el('div', { className: 'entry-header' });
+    header.appendChild(el('span', { className: 'kanji', textContent: data.character }));
+    entry.appendChild(header);
+    
+    data.entries.forEach(e => {
+        const details = el('details', { className: 'glossary-group', open: true });
+        
+        const summary = el('summary', { className: 'dict-label' });
+        summary.appendChild(el('span', { className: 'dict-name', textContent: e.dictName }));
+        details.appendChild(summary);
+        
+        const dictWrapper = el('div', { 'data-dictionary': e.dictName });
+        const content = el('div', { className: 'glossary-content' });
+        if (e.onyomi) {
+            content.appendChild(el('div', {}, [
+                el('span', { className: 'kanji-reading-label', textContent: '音' }),
+                document.createTextNode(e.onyomi)
+            ]));
+        }
+        if (e.kunyomi) {
+            content.appendChild(el('div', {}, [
+                el('span', { className: 'kanji-reading-label', textContent: '訓' }),
+                document.createTextNode(e.kunyomi)
+            ]));
+        }
+        if (e.meanings.length) {
+            if (e.onyomi || e.kunyomi) {
+                content.appendChild(el('hr', { className: 'kanji-separator' }));
+            }
+            content.appendChild(el('ul', {}, e.meanings.map(m => el('li', { textContent: m }))));
+        }
+        dictWrapper.appendChild(content);
+        details.appendChild(dictWrapper);
+        entry.appendChild(details);
+    });
+    
+    return entry;
+}
+
+function redirectKanji(data) {
+    backStack.push(snapshot());
+    forwardStack.length = 0;
+    window.lookupEntries = undefined;
+    window.entryCount = 0;
+    audioUrls = {};
+    selectedDictionaries = {};
+    const container = document.getElementById('entries-container');
+    container.innerHTML = '';
+    container.appendChild(buildKanjiEntry(data));
+    reportButtonRects();
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = 0;
         requestAnimationFrame(() => {
@@ -1868,6 +1941,15 @@ window.renderPopup = function() {
     container.clickAttached = true;
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+        const kanjiTarget = target?.closest('.kanji-char');
+        if (kanjiTarget) {
+            webkit.messageHandlers.kanjiRedirect.postMessage(kanjiTarget.textContent).then(data => {
+                if (data) {
+                    redirectKanji(data);
+                }
+            });
+            return;
+        }
         if (target?.closest('summary')) {
             return;
         }

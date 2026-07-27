@@ -23,6 +23,7 @@ struct DictionaryView: View {
         case .term: return dictionaryManager.termDictionaries
         case .frequency: return dictionaryManager.frequencyDictionaries
         case .pitch: return dictionaryManager.pitchDictionaries
+        case .kanji: return dictionaryManager.kanjiDictionaries
         }
     }
     
@@ -149,6 +150,7 @@ struct DictionaryView: View {
                     Text("Term", tableName: "Dictionaries").tag(DictionaryType.term)
                     Text("Frequency", tableName: "Dictionaries").tag(DictionaryType.frequency)
                     Text("Pitch", tableName: "Dictionaries").tag(DictionaryType.pitch)
+                    Text("Kanji", tableName: "Dictionaries").tag(DictionaryType.kanji)
                 } label: {
                     Text("Type", tableName: "Dictionaries")
                 }

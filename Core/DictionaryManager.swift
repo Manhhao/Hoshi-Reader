@@ -15,6 +15,7 @@ enum DictionaryType: String {
     case term = "Term"
     case frequency = "Frequency"
     case pitch = "Pitch"
+    case kanji = "Kanji"
 }
 
 @Observable
@@ -25,6 +26,7 @@ class DictionaryManager {
     private(set) var termDictionaries: [DictionaryInfo] = []
     private(set) var frequencyDictionaries: [DictionaryInfo] = []
     private(set) var pitchDictionaries: [DictionaryInfo] = []
+    private(set) var kanjiDictionaries: [DictionaryInfo] = []
     private(set) var updatableDictionaries: [(DictionaryInfo, DictionaryType)] = []
     private(set) var collapsedDictionaries: Set<String> = []
     private(set) var isImporting = false
@@ -51,15 +53,18 @@ class DictionaryManager {
         let storedTermDicts = (try? getDictionariesFromStorage(type: .term)) ?? []
         let storedFreqDicts = (try? getDictionariesFromStorage(type: .frequency)) ?? []
         let storedPitchDicts = (try? getDictionariesFromStorage(type: .pitch)) ?? []
+        let storedKanjiDicts = (try? getDictionariesFromStorage(type: .kanji)) ?? []
         
         if let config = try? loadDictionaryConfig() {
             termDictionaries = collectDictionaries(storedDicts: storedTermDicts, configDicts: config.termDictionaries)
             frequencyDictionaries = collectDictionaries(storedDicts: storedFreqDicts, configDicts: config.frequencyDictionaries)
             pitchDictionaries = collectDictionaries(storedDicts: storedPitchDicts, configDicts: config.pitchDictionaries)
+            kanjiDictionaries = collectDictionaries(storedDicts: storedKanjiDicts, configDicts: config.kanjiDictionaries ?? [])
         } else {
             termDictionaries = storedTermDicts
             frequencyDictionaries = storedFreqDicts
             pitchDictionaries = storedPitchDicts
+            kanjiDictionaries = storedKanjiDicts
         }
     }
     
@@ -76,7 +81,11 @@ class DictionaryManager {
             .filter { $0.isEnabled }
             .map { $0.path }
         
-        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+        let enabledKanjiPaths = kanjiDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths, kanjiPaths: enabledKanjiPaths)
     }
     
     func collectDictionaries(storedDicts: [DictionaryInfo], configDicts: [DictionaryConfig.DictionaryEntry]) -> [DictionaryInfo] {
@@ -183,6 +192,14 @@ class DictionaryManager {
                 )
             },
             pitchDictionaries: pitchDictionaries.map {
+                DictionaryConfig.DictionaryEntry(
+                    fileName: $0.path.lastPathComponent,
+                    isEnabled: $0.isEnabled,
+                    order: $0.order,
+                    category: $0.category
+                )
+            },
+            kanjiDictionaries: kanjiDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
@@ -339,6 +356,9 @@ class DictionaryManager {
                     }
                     if counts.termMeta.contains(std.string("pitch")) || counts.termMeta.contains(std.string("ipa")) {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.pitch.rawValue)/\(title)")
+                    }
+                    if counts.kanji.total > 0 {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.kanji.rawValue)/\(title)")
                     }
                     imported.append(current)
                 } else {
@@ -499,6 +519,9 @@ class DictionaryManager {
         case .pitch:
             guard let index = pitchDictionaries.firstIndex(where: { $0.id == id }) else { return }
             pitchDictionaries[index].isEnabled = enabled
+        case .kanji:
+            guard let index = kanjiDictionaries.firstIndex(where: { $0.id == id }) else { return }
+            kanjiDictionaries[index].isEnabled = enabled
         }
         saveDictionaryConfig()
         rebuildLookupQuery()
@@ -518,6 +541,8 @@ class DictionaryManager {
             frequencyDictionaries.move(fromOffsets: from, toOffset: to)
         case .pitch:
             pitchDictionaries.move(fromOffsets: from, toOffset: to)
+        case .kanji:
+            kanjiDictionaries.move(fromOffsets: from, toOffset: to)
         }
         updateOrder(type: type)
         saveDictionaryConfig()
@@ -538,6 +563,10 @@ class DictionaryManager {
             for index in pitchDictionaries.indices {
                 pitchDictionaries[index].order = index
             }
+        case .kanji:
+            for index in kanjiDictionaries.indices {
+                kanjiDictionaries[index].order = index
+            }
         }
     }
     
@@ -557,7 +586,6 @@ class DictionaryManager {
                 try? BookStorage.delete(at: dictionary.path)
                 frequencyDictionaries.remove(at: index)
                 updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
-                collapsedDictionaries.remove(dictionary.index.title)
             }
         case .pitch:
             for index in indexSet {
@@ -565,7 +593,13 @@ class DictionaryManager {
                 try? BookStorage.delete(at: dictionary.path)
                 pitchDictionaries.remove(at: index)
                 updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
-                collapsedDictionaries.remove(dictionary.index.title)
+            }
+        case .kanji:
+            for index in indexSet {
+                let dictionary = kanjiDictionaries[index]
+                try? BookStorage.delete(at: dictionary.path)
+                kanjiDictionaries.remove(at: index)
+                updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
             }
         }
         updateOrder(type: type)
@@ -591,6 +625,8 @@ class DictionaryManager {
             frequencyDictionaries[index].isEnabled
         case .pitch:
             pitchDictionaries[index].isEnabled
+        case .kanji:
+            kanjiDictionaries[index].isEnabled
         }
     }
     
@@ -602,6 +638,8 @@ class DictionaryManager {
             frequencyDictionaries[index].isEnabled = enabled
         case .pitch:
             pitchDictionaries[index].isEnabled = enabled
+        case .kanji:
+            kanjiDictionaries[index].isEnabled = enabled
         }
     }
     
@@ -613,6 +651,8 @@ class DictionaryManager {
             frequencyDictionaries.firstIndex { $0.index.title == title }
         case .pitch:
             pitchDictionaries.firstIndex { $0.index.title == title }
+        case .kanji:
+            kanjiDictionaries.firstIndex { $0.index.title == title }
         }
     }
     

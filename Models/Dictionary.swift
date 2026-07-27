@@ -44,6 +44,7 @@ struct DictionaryConfig: Codable {
     var termDictionaries: [DictionaryEntry]
     var frequencyDictionaries: [DictionaryEntry]
     var pitchDictionaries: [DictionaryEntry]
+    var kanjiDictionaries: [DictionaryEntry]?
     
     struct DictionaryEntry: Codable {
         let fileName: String

@@ -76,6 +76,14 @@ struct DictionarySearchView: View {
                         }
                         return entries
                     },
+                    onKanjiRedirect: { kanji in
+                        let data = LookupEngine.shared.queryKanji(kanji)
+                        if data != nil {
+                            backCount += 1
+                            forwardCount = 0
+                        }
+                        return data
+                    },
                     scrollViewBounces: true,
                     onScrollViewOffsetChanged: { newOffset in
                         if scrollViewInitialContentOffset == nil {

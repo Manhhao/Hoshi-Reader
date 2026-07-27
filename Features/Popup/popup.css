@@ -71,6 +71,25 @@ body {
     visibility: hidden;
 }
 
+.kanji-char {
+    cursor: pointer;
+}
+
+.kanji {
+    font-size: calc(120px * var(--popup-scale));
+    line-height: 1;
+    font-family: 'KanjiStrokeOrders_v4.005', 'YuKyo-Medium', "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+.kanji-separator {
+    margin: calc(6px * var(--popup-scale)) 0;
+}
+
+.kanji-reading-label {
+    opacity: 0.6;
+    margin-right: calc(6px * var(--popup-scale));
+}
+
 .header-buttons {
     float: right;
     display: flex;

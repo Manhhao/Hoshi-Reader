@@ -341,6 +341,14 @@ struct PopupView: View {
                         forwardCount = 0
                     }
                     return entries
+                },
+                onKanjiRedirect: { kanji in
+                    let data = LookupEngine.shared.queryKanji(kanji)
+                    if data != nil {
+                        backCount += 1
+                        forwardCount = 0
+                    }
+                    return data
                 }
             )
         }

@@ -536,6 +536,9 @@
         }
       }
     },
+    "Kanji" : {
+
+    },
     "Last Update" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
       "localizations" : {

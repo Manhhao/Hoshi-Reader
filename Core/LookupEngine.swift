@@ -17,7 +17,7 @@ class LookupEngine {
         var deinflector = Deinflector()
         var lookup: Lookup!
         
-        init(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL]) {
+        init(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL], kanjiPaths: [URL]) {
             for path in termPaths {
                 dictQuery.add_term_dict(std.string(path.path(percentEncoded: false)))
             }
@@ -26,6 +26,9 @@ class LookupEngine {
             }
             for path in pitchPaths {
                 dictQuery.add_pitch_dict(std.string(path.path(percentEncoded: false)))
+            }
+            for path in kanjiPaths {
+                dictQuery.add_kanji_dict(std.string(path.path(percentEncoded: false)))
             }
             lookup = Lookup(&dictQuery, &deinflector)
         }
@@ -36,11 +39,11 @@ class LookupEngine {
     
     private init() {}
     
-    func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL]) {
+    func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL], kanjiPaths: [URL]) {
         generation += 1
         let token = generation
         Task.detached(priority: .userInitiated) {
-            let newBundle = Bundle(termPaths: termPaths, freqPaths: freqPaths, pitchPaths: pitchPaths)
+            let newBundle = Bundle(termPaths: termPaths, freqPaths: freqPaths, pitchPaths: pitchPaths, kanjiPaths: kanjiPaths)
             await MainActor.run {
                 guard token == self.generation else { return }
                 self.bundle = newBundle
@@ -53,6 +56,29 @@ class LookupEngine {
         return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength))
     }
     
+    func queryKanji(_ kanji: String) -> [String: Any]? {
+        guard let bundle else { return nil }
+        let result = bundle.dictQuery.query_kanji(std.string(kanji))
+        var entries: [[String: Any]] = []
+        for entry in result.entries {
+            var meanings: [String] = []
+            for definition in entry.definitions {
+                meanings.append(String(definition))
+            }
+            entries.append([
+                "dictName": String(entry.dict_name),
+                "onyomi": String(entry.onyomi),
+                "kunyomi": String(entry.kunyomi),
+                "meanings": meanings,
+            ])
+        }
+        guard !entries.isEmpty else { return nil }
+        return [
+            "character": String(result.character),
+            "entries": entries,
+        ]
+    }
+
     func getStyles() -> [DictionaryStyle] {
         guard let bundle else { return [] }
         return Array(bundle.dictQuery.get_styles())

@@ -162,6 +162,7 @@ struct PopupWebView: UIViewRepresentable {
     var onTapOutside: (() -> Void)? = nil
     var onSwipeDismiss: (() -> Void)? = nil
     var onRedirect: ((String) -> [[String: Any]])? = nil
+    var onKanjiRedirect: ((String) -> [String: Any]?)? = nil
     var scrollViewBounces: Bool = false
     var onScrollViewOffsetChanged: ((CGFloat) -> Void)? = nil
     var onScrollViewWillBeginDragging: (() -> Void)? = nil
@@ -207,6 +208,7 @@ struct PopupWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "kanjiRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.setURLSchemeHandler(DocumentResourceHandler(), forURLScheme: "local-resources")
@@ -266,6 +268,7 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "duplicateCheck", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "getEntries", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "kanjiRedirect", contentWorld: .page)
     }
     
     class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate, UIScrollViewDelegate {
@@ -438,6 +441,9 @@ struct PopupWebView: UIViewRepresentable {
             if message.name == "lookupRedirect", let query = message.body as? String {
                 entries = parent.onRedirect?(query) ?? []
                 return (entries.count, nil)
+            }
+            if message.name == "kanjiRedirect", let kanji = message.body as? String {
+                return (parent.onKanjiRedirect?(kanji) ?? nil, nil)
             }
             return (nil, nil)
         }
