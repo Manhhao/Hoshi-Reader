@@ -79,7 +79,7 @@ struct SasayakiMatchView: View {
             }
             .fileImporter(
                 isPresented: $isImporting,
-                allowedContentTypes: [UTType(filenameExtension: "srt")!]
+                allowedContentTypes: ["srt", "txt"].compactMap { UTType(filenameExtension: $0) }
             ) { result in
                 if case .success(let url) = result {
                     fileURL = url

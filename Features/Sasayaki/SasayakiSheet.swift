@@ -155,7 +155,7 @@ struct SasayakiSheet: View {
             }
             .fileImporter(
                 isPresented: $isImportingAudio,
-                allowedContentTypes: ["mp3", "m4b"].compactMap { UTType(filenameExtension: $0) }
+                allowedContentTypes: ["mp3", "m4b", "mp4"].compactMap { UTType(filenameExtension: $0) }
             ) { result in
                 guard case .success(let url) = result else { return }
                 do {
