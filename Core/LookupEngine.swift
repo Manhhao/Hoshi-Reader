@@ -36,13 +36,17 @@ class LookupEngine {
     
     private var bundle: Bundle?
     private var generation = 0
+    private var buildTask: Task<Void, Never>?
     
     private init() {}
     
     func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL], kanjiPaths: [URL]) {
         generation += 1
         let token = generation
-        Task.detached(priority: .userInitiated) {
+        let previous = buildTask
+        buildTask = Task.detached(priority: .userInitiated) {
+            await previous?.value
+            guard await MainActor.run(body: { token == self.generation }) else { return }
             let newBundle = Bundle(termPaths: termPaths, freqPaths: freqPaths, pitchPaths: pitchPaths, kanjiPaths: kanjiPaths)
             await MainActor.run {
                 guard token == self.generation else { return }
