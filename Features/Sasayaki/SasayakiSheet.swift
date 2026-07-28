@@ -84,7 +84,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).delay, in: -2...2, step: 0.05)
+                        Slider(value: Bindable(player).delay, in: -4...4, step: 0.05)
                     }
                     VStack {
                         HStack {
@@ -94,7 +94,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).rate, in: 0.5...1.5, step: 0.05)
+                        Slider(value: Bindable(player).rate, in: 0.5...3, step: 0.05)
                     }
                 }
                 
