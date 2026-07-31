@@ -60,6 +60,17 @@ window.hoshiReader = {
         await document.fonts.ready;
     },
     
+    positionRects(range, position, vertical) {
+        if (position.node.nodeType !== Node.TEXT_NODE) {
+            range.selectNode(position.node);
+        } else {
+            range.setStart(position.node, position.offset);
+            range.setEnd(position.node, position.offset + 1);
+        }
+        
+        return [...range.getClientRects()].filter(rect => vertical ? rect.height : rect.width);
+    },
+    
     splitPoints(paragraph, pageSize, currentScroll, vertical) {
         const rect = paragraph.getBoundingClientRect();
         const start = (vertical ? rect.top : rect.left) + currentScroll;
@@ -70,11 +81,19 @@ window.hoshiReader = {
             return points;
         }
         
-        const walker = this.createWalker(paragraph);
+        const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+            acceptNode: (n) => n.parentElement.closest('ruby') ? NodeFilter.FILTER_REJECT
+            : n.nodeType === Node.TEXT_NODE || !n.firstChild || n.tagName === 'RUBY' ? NodeFilter.FILTER_ACCEPT
+            : NodeFilter.FILTER_SKIP
+        });
         const positions = [];
         let node;
         
         while (node = walker.nextNode()) {
+            if (node.nodeType !== Node.TEXT_NODE) {
+                positions.push({ node });
+                continue;
+            }
             for (let i = 0; i < node.textContent.length; i++) {
                 positions.push({ node, offset: i });
             }
@@ -88,11 +107,14 @@ window.hoshiReader = {
             let hit = -1;
             
             while (low <= high) {
-                const mid = (low + high) >> 1;
-                range.setStart(positions[mid].node, positions[mid].offset);
-                range.setEnd(positions[mid].node, positions[mid].offset + 1);
-                const charRect = range.getClientRects()[0];
-                if (charRect && (vertical ? charRect.top : charRect.left) + currentScroll >= limit) {
+                let mid = (low + high) >> 1;
+                let rects = this.positionRects(range, positions[mid], vertical);
+                while (!rects.length && ++mid <= high) {
+                    rects = this.positionRects(range, positions[mid], vertical);
+                }
+                
+                const end = Math.max(...rects.map(rect => vertical ? rect.bottom : rect.right));
+                if (end + currentScroll > limit) {
                     hit = mid;
                     high = mid - 1;
                 } else {
@@ -101,7 +123,10 @@ window.hoshiReader = {
             }
             
             if (hit > 0) {
-                points.push(positions[hit]);
+                const rect = this.positionRects(range, positions[hit], vertical)[0];
+                if ((vertical ? rect.top : rect.left) + currentScroll >= limit) {
+                    points.push(positions[hit]);
+                }
             }
         }
         
@@ -133,7 +158,15 @@ window.hoshiReader = {
             
             const fragments = [firstFragment];
             for (let i = points.length - 1; i >= 0; i--) {
-                range.setStart(points[i].node, points[i].offset);
+                if (points[i].offset > 0) {
+                    range.setStart(points[i].node, points[i].offset);
+                } else {
+                    let start = points[i].node;
+                    while (start.parentNode !== firstFragment && start.parentNode.firstChild === start) {
+                        start = start.parentNode;
+                    }
+                    range.setStartBefore(start);
+                }
                 range.setEnd(firstFragment, firstFragment.childNodes.length);
                 
                 const fragment = document.createElement('span');
