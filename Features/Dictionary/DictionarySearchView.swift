@@ -12,6 +12,39 @@ import CHoshiDicts
 struct DictionarySearchView: View {
     private static let resetTextFieldScrollThreshold: CGFloat = 80
     
+    private static let searchTextJs = """
+    (function() {
+        const container = document.getElementById('search-text');
+        const chars = [...window.searchText];
+        
+        container.append(...chars.map((char, index) => {
+            const span = document.createElement('span');
+            span.textContent = char;
+            span.dataset.index = index;
+            return span;
+        }));
+        container.classList.add('visible');
+        
+        container.addEventListener('click', async (e) => {
+            const index = e.target.dataset.index;
+            if (index === undefined) {
+                return;
+            }
+            const start = Number(index);
+            const count = await webkit.messageHandlers.lookupRedirect.postMessage(chars.slice(start).join(''));
+            if (!count) {
+                return;
+            }
+            const [entry] = await webkit.messageHandlers.getEntries.postMessage({ start: 0, count: 1 });
+            redirect(count);
+            const length = [...entry.matched].length;
+            [...container.children].forEach((span, i) => {
+                span.classList.toggle('matched', i >= start && i < start + length);
+            });
+        });
+    })();
+    """
+    
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query: String = ""
@@ -22,6 +55,7 @@ struct DictionarySearchView: View {
     @State private var hasAppeared = false
     @State private var popups: [PopupItem] = []
     @State private var clearSelection: Bool = false
+    @State private var clozeOffset: Int? = nil
     @State private var backCount: Int = 0
     @State private var forwardCount: Int = 0
     @State private var backTrigger: Bool = false
@@ -59,7 +93,7 @@ struct DictionarySearchView: View {
                     backTrigger: backTrigger,
                     forwardTrigger: forwardTrigger,
                     onMine: { minedContent, formatId in
-                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil), formatId: formatId)
+                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, clozeOffset: clozeOffset, documentTitle: nil, coverURL: nil), formatId: formatId)
                     },
                     onTextSelected: {
                         closePopups()
@@ -73,6 +107,7 @@ struct DictionarySearchView: View {
                         if !entries.isEmpty {
                             backCount += 1
                             forwardCount = 0
+                            clozeOffset = lastQuery.hasSuffix(query) ? lastQuery.utf16.count - query.utf16.count : nil
                         }
                         return entries
                     },
@@ -243,6 +278,7 @@ struct DictionarySearchView: View {
     
     private func runLookup() {
         closePopups()
+        clozeOffset = nil
         backCount = 0
         forwardCount = 0
         
@@ -347,9 +383,26 @@ struct DictionarySearchView: View {
         let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
         let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
+        let searchText = (try? JSONSerialization.data(withJSONObject: lastQuery, options: .fragmentsAllowed))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         content = """
-        <style>.overlay { padding-bottom: 90px; }</style>
+        <style>
+            .overlay { padding-bottom: 90px; }
+            #search-text {
+                display: none;
+                padding: calc(8px * var(--popup-scale)) 0 calc(7px * var(--popup-scale));
+                border-bottom: calc(1px * var(--popup-scale)) solid rgba(128, 128, 128, 0.4);
+                font-size: calc(22px * var(--popup-scale));
+                line-height: 1.6;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                -webkit-user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            #search-text.visible { display: block; }
+            #search-text > span.matched { background-color: rgba(160, 160, 160, 0.4); }
+        </style>
         <script>
             window.collapseMode = "\(userConfig.collapseMode.rawValue)";
             window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
@@ -374,7 +427,10 @@ struct DictionarySearchView: View {
             window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
+            window.searchText = \(searchText);
         </script>
+        <div id="search-text"></div>
+        <script>\(Self.searchTextJs)</script>
         <div id="entries-container" style="min-height: 100vh;"></div>
         """
     }
