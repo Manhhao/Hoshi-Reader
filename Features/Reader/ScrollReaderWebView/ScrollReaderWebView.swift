@@ -27,6 +27,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
     var onScroll: (() -> Void)
     var onProgressChanged: ((Double) -> Void)
     var onRestoreCompleted: (() -> Void)
+    var onProcessTerminated: (() -> Void)
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     var onImageTapped: (URL) -> Void
     let maxSelectionLength: Int = 16
@@ -595,6 +596,21 @@ struct ScrollReaderWebView: UIViewRepresentable {
             webView.evaluateJavaScript(script, completionHandler: nil)
         }
         
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard let currentURL, let appDirectory = try? BookStorage.getAppDirectory() else { return }
+            
+            pendingFragment = nil
+            pendingSasayakiCues = parent.bridge.sasayakiCues
+            pendingHighlights = parent.bridge.highlights
+            shouldSyncProgressAfterRestore = false
+            isRestoring = true
+            webView.scrollView.delegate = nil
+            (webView as? HoshiWKWebView)?.hasSelection = false
+            webView.alpha = 0
+            parent.onProcessTerminated()
+            webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
+        }
+        
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             guard let webView = webView, !webView.scrollView.isDecelerating else {
                 return
@@ -619,6 +635,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         func saveBookmark() {
             fetchCurrentProgress { [weak self] progress in
                 guard let self else { return }
+                self.pendingProgress = progress
                 self.parent.onSaveBookmark(progress)
             }
         }
@@ -736,7 +753,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
             guard now - lastProgressUpdate >= 0.05 else { return }
             lastProgressUpdate = now
             fetchCurrentProgress { [weak self] progress in
-                self?.parent.onProgressChanged(progress)
+                guard let self, !self.isRestoring else { return }
+                self.pendingProgress = progress
+                self.parent.onProgressChanged(progress)
             }
         }
         

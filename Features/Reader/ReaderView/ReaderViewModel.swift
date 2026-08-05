@@ -285,6 +285,11 @@ class ReaderViewModel {
         sasayakiPlayer.handleRestoreCompleted(currentIndex: index)
     }
     
+    func handleProcessTerminated() {
+        isLoading = true
+        sasayakiPlayer.prepareTransition()
+    }
+    
     func importSasayakiAudio(from url: URL) throws {
         try sasayakiPlayer.importAudio(from: url)
     }

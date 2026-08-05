@@ -390,6 +390,9 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
+                            onProcessTerminated: {
+                                viewModel.handleProcessTerminated()
+                            },
                             onHighlightCreated: viewModel.addHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
@@ -450,6 +453,9 @@ struct ReaderView: View {
                             },
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
+                            },
+                            onProcessTerminated: {
+                                viewModel.handleProcessTerminated()
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onImageTapped: { imageURL = $0 }

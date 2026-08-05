@@ -134,6 +134,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onTapOutside: (() -> Void)
     var onPageTurn: (() -> Void)
     var onRestoreCompleted: (() -> Void)
+    var onProcessTerminated: (() -> Void)
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     var onImageTapped: (URL) -> Void
     let maxSelectionLength: Int = 16
@@ -764,6 +765,19 @@ struct ReaderWebView: UIViewRepresentable {
             webView.evaluateJavaScript(script, completionHandler: nil)
         }
         
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard let currentURL, let appDirectory = try? BookStorage.getAppDirectory() else { return }
+            
+            pendingFragment = nil
+            pendingSasayakiCues = parent.bridge.sasayakiCues
+            pendingHighlights = parent.bridge.highlights
+            shouldSyncProgressAfterRestore = false
+            (webView as? HoshiWKWebView)?.hasSelection = false
+            webView.alpha = 0
+            parent.onProcessTerminated()
+            webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
+        }
+        
         private func navigate(_ direction: NavigationDirection) {
             guard let webView = webView else { return }
             
@@ -827,6 +841,7 @@ struct ReaderWebView: UIViewRepresentable {
         func saveBookmark() {
             fetchCurrentProgress { [weak self] progress in
                 guard let self else { return }
+                self.pendingProgress = progress
                 self.parent.onSaveBookmark(progress)
             }
         }
