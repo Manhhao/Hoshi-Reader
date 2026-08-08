@@ -22,19 +22,6 @@ struct HoshiReaderApp: App {
     @State private var didFinishLaunch = BookStorage.migrationsComplete
     private var shortcutHandler = ShortcutHandler.shared
     
-    init() {
-        configureTabBarAppearance()
-    }
-    
-    private func configureTabBarAppearance() {
-        let tab = UITabBarAppearance()
-        tab.configureWithDefaultBackground()
-        tab.stackedLayoutAppearance.selected.iconColor = .label
-        tab.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.label]
-        UITabBar.appearance().standardAppearance = tab
-        UITabBar.appearance().scrollEdgeAppearance = tab
-    }
-    
     private func startup() async {
         TokenStorage.clearOldKeys()
         await Task.detached(priority: .userInitiated) {
