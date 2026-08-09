@@ -20,13 +20,6 @@ struct AdvancedView: View {
                 .foregroundStyle(.primary)
                 
                 NavigationLink {
-                    StatisticsSettingsView()
-                } label: {
-                    Label("Statistics", systemImage: "chart.xyaxis.line")
-                }
-                .foregroundStyle(.primary)
-                
-                NavigationLink {
                     SasayakiSettingsView()
                 } label: {
                     Label("Sasayaki (Audiobooks)", systemImage: "waveform")

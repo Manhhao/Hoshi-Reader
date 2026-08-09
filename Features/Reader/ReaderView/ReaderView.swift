@@ -41,7 +41,6 @@ struct ReaderLoader: View {
                 book: viewModel.book,
                 document: doc,
                 rootURL: root,
-                enableStatistics: userConfig.enableStatistics,
                 autostartStatistics: userConfig.statisticsAutostartMode == .on,
                 statisticsResetTime: userConfig.statisticsResetTime,
                 autoSyncEnabled: userConfig.enableSync && userConfig.enableAutoSync,
@@ -172,7 +171,6 @@ struct ReaderView: View {
         book: BookMetadata,
         document: EPUBDocument,
         rootURL: URL,
-        enableStatistics: Bool,
         autostartStatistics: Bool,
         statisticsResetTime: Int,
         autoSyncEnabled: Bool,
@@ -185,7 +183,6 @@ struct ReaderView: View {
             book: book,
             document: document,
             rootURL: rootURL,
-            enableStatistics: enableStatistics,
             autostartStatistics: autostartStatistics,
             statisticsResetTime: statisticsResetTime,
             autoSyncEnabled: autoSyncEnabled,
@@ -250,7 +247,7 @@ struct ReaderView: View {
                 .overlay(alignment: .bottom) {
                     HStack {
                         HStack(spacing: 2) {
-                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
+                            if userConfig.readerShowStatisticsToggle {
                                 Button {
                                     if viewModel.isTracking {
                                         viewModel.stopTracking()
@@ -258,7 +255,7 @@ struct ReaderView: View {
                                         viewModel.startTracking()
                                     }
                                 } label: {
-                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
+                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.bar.xaxis")
                                         .font(.system(size: 16))
                                         .frame(width: 26, height: 20)
                                         .contentShape(Rectangle())
@@ -605,7 +602,7 @@ struct ReaderView: View {
                 Spacer()
                 
                 let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
-                let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
+                let showStats = !statisticsString.isEmpty
                 if showBottomProgress || showStats {
                     VStack(spacing: 2) {
                         if showStats {
@@ -643,12 +640,10 @@ struct ReaderView: View {
                         Label("Contents", systemImage: "list.bullet")
                     }
                     
-                    if userConfig.enableStatistics {
-                        Button {
-                            viewModel.activeSheet = .statistics
-                        } label: {
-                            Label("Statistics", systemImage: "chart.xyaxis.line")
-                        }
+                    Button {
+                        viewModel.activeSheet = .statistics
+                    } label: {
+                        Label("Statistics", systemImage: "chart.bar.xaxis")
                     }
                     
                     if userConfig.enableSasayaki && viewModel.sasayakiPlayer.hasMatch {
@@ -706,12 +701,12 @@ struct ReaderView: View {
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
             case .contents:
-                ContentsView(viewModel: viewModel, readerTheme: readerTheme) { url in
+                ContentsSheet(viewModel: viewModel, readerTheme: readerTheme) { url in
                     viewModel.activeSheet = nil
                     imageURL = url
                 }
             case .statistics:
-                StatisticsView(viewModel: viewModel)
+                StatisticsSheet(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
             case .sasayaki:
                 SasayakiSheet(player: viewModel.sasayakiPlayer, onImportAudio: { url in

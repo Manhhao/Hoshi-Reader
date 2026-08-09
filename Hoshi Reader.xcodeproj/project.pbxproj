@@ -70,6 +70,7 @@
 				FontManager.swift,
 				LocalFileServer.swift,
 				LookupEngine.swift,
+				StatisticsStorage.swift,
 				UserConfig.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;

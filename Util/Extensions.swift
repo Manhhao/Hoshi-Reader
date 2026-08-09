@@ -51,6 +51,12 @@ extension BookMetadata {
     }
 }
 
+extension Double {
+    var formattedDuration: String {
+        Duration.seconds(self).formatted(.units(allowed: [.hours, .minutes], width: .narrow))
+    }
+}
+
 extension Data {
     var sha1: String {
         Insecure.SHA1.hash(data: self).map { String(format: "%02x", $0) }.joined()

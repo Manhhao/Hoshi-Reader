@@ -379,10 +379,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(customCSS, forKey: "customCSS") }
     }
     
-    var enableStatistics: Bool {
-        didSet { UserDefaults.standard.set(enableStatistics, forKey: "enableStatistics") }
-    }
-    
     var statisticsEnableSync: Bool {
         didSet { UserDefaults.standard.set(statisticsEnableSync, forKey: "statisticsEnableSync") }
     }
@@ -397,6 +393,18 @@ class UserConfig {
     
     var statisticsResetTime: Int {
         didSet { UserDefaults.standard.set(statisticsResetTime, forKey: "statisticsResetTime") }
+    }
+    
+    var statisticsGoalMetric: StatisticsGoalMetric {
+        didSet { UserDefaults.standard.set(statisticsGoalMetric.rawValue, forKey: "statisticsGoalMetric") }
+    }
+    
+    var statisticsDailyTimeGoal: Int {
+        didSet { UserDefaults.standard.set(statisticsDailyTimeGoal, forKey: "statisticsDailyTimeGoal") }
+    }
+    
+    var statisticsDailyCharacterGoal: Int {
+        didSet { UserDefaults.standard.set(statisticsDailyCharacterGoal, forKey: "statisticsDailyCharacterGoal") }
     }
     
     var enableSasayaki: Bool {
@@ -549,7 +557,6 @@ class UserConfig {
             .flatMap(AudioPlaybackMode.init) ?? .interrupt
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
         
-        self.enableStatistics = defaults.object(forKey: "enableStatistics") as? Bool ?? false
         self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? false
         self.statisticsSyncMode = defaults.string(forKey: "statisticsSyncMode")
             .flatMap(StatisticsSyncMode.init) ?? .merge
@@ -563,6 +570,10 @@ class UserConfig {
             defaults.set(storedResetTime * 60, forKey: "statisticsResetTime")
             defaults.set(true, forKey: "statisticsResetTimeMigratedToMinutes")
         }
+        self.statisticsGoalMetric = defaults.string(forKey: "statisticsGoalMetric")
+            .flatMap(StatisticsGoalMetric.init) ?? .time
+        self.statisticsDailyTimeGoal = defaults.object(forKey: "statisticsDailyTimeGoal") as? Int ?? 20
+        self.statisticsDailyCharacterGoal = defaults.object(forKey: "statisticsDailyCharacterGoal") as? Int ?? 5000
         
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true

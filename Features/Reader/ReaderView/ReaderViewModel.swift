@@ -105,7 +105,6 @@ class ReaderViewModel {
     var sessionStatistics: Statistics
     var todaysStatistics: Statistics
     var allTimeStatistics: Statistics
-    let enableStatistics: Bool
     let autostartStatistics: Bool
     let statisticsResetTime: Int
     
@@ -138,7 +137,6 @@ class ReaderViewModel {
         book: BookMetadata,
         document: EPUBDocument,
         rootURL: URL,
-        enableStatistics: Bool,
         autostartStatistics: Bool,
         statisticsResetTime: Int,
         autoSyncEnabled: Bool,
@@ -150,7 +148,6 @@ class ReaderViewModel {
         self.book = book
         self.document = document
         self.rootURL = rootURL
-        self.enableStatistics = enableStatistics
         self.autostartStatistics = autostartStatistics
         self.statisticsResetTime = statisticsResetTime
         self.autoSyncEnabled = autoSyncEnabled
@@ -175,9 +172,7 @@ class ReaderViewModel {
         todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         
-        if enableStatistics {
-            loadStatistics()
-        }
+        loadStatistics()
         
         if autostartStatistics {
             startTracking()
@@ -642,9 +637,7 @@ class ReaderViewModel {
             index = bookmark.chapterIndex
             currentProgress = bookmark.progress
         }
-        if enableStatistics {
-            loadStatistics()
-        }
+        loadStatistics()
         if syncAudioBook {
             sasayakiPlayer.reloadPlayback()
         }
@@ -729,7 +722,7 @@ class ReaderViewModel {
     private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
         to.readingTime += timeDiff
         to.charactersRead = max(to.charactersRead + characterDiff, 0)
-        to.lastReadingSpeed = to.readingTime > 0 ? Int((Double(to.charactersRead) / to.readingTime) * 3600.0) : 0
+        to.lastReadingSpeed = to.readingSpeed
         to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
         to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
         if characterDiff != 0 {
@@ -745,21 +738,20 @@ class ReaderViewModel {
             stats.append(todaysStatistics)
         }
         
-        stats = Self.deduplicateStatistics(stats)
+        stats = Statistics.merged(stats).filter(\.hasActivity)
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
         scheduleAutoExport()
     }
     
     private func loadStatistics() {
-        stats = Self.deduplicateStatistics(BookStorage.loadStatistics(root: rootURL) ?? [])
+        stats = Statistics.merged(BookStorage.loadStatistics(root: rootURL) ?? [])
         todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now, resetTime: statisticsResetTime) }) ?? Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         
-        for stat in stats {
-            allTimeStatistics.readingTime += stat.readingTime
-            allTimeStatistics.charactersRead += stat.charactersRead
-            allTimeStatistics.lastReadingSpeed = allTimeStatistics.readingTime > 0 ? Int((Double(allTimeStatistics.charactersRead) / allTimeStatistics.readingTime) * 3600.0) : 0
-        }
+        let allTime = stats.reduce(into: ReadingDay(date: .now)) { $0.add($1) }
+        allTimeStatistics.charactersRead = allTime.charactersRead
+        allTimeStatistics.readingTime = allTime.readingTime
+        allTimeStatistics.lastReadingSpeed = allTime.readingSpeed
     }
     
     private func chapterHighlights() -> String? {
@@ -814,20 +806,6 @@ class ReaderViewModel {
     
     private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {
         return Statistics(title: title, dateKey: Self.formattedDate(date: .now, resetTime: resetTime), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
-    }
-    
-    private static func deduplicateStatistics(_ statistics: [Statistics]) -> [Statistics] {
-        var grouped: [String: Statistics] = [:]
-        for statistic in statistics {
-            if let existing = grouped[statistic.dateKey] {
-                if statistic.lastStatisticModified > existing.lastStatisticModified {
-                    grouped[statistic.dateKey] = statistic
-                }
-            } else {
-                grouped[statistic.dateKey] = statistic
-            }
-        }
-        return Array(grouped.values)
     }
     
     private static func formattedDate(date: Date, resetTime: Int = 0) -> String {

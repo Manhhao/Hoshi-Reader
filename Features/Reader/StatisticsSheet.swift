@@ -1,5 +1,5 @@
 //
-//  StatisticsView.swift
+//  StatisticsSheet.swift
 //  Hoshi Reader
 //
 //  Copyright © 2026 Manhhao.
@@ -9,7 +9,7 @@
 import SwiftUI
 import EPUBKit
 
-struct StatisticsView: View {
+struct StatisticsSheet: View {
     let viewModel: ReaderViewModel
     
     private var chapterCharactersRemaining: Int {
@@ -24,12 +24,12 @@ struct StatisticsView: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.sessionStatistics.charactersRead.formatted(.number.grouping(.never)))**")
+                        Text("**\(viewModel.sessionStatistics.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
+                        Text("**\(viewModel.sessionStatistics.lastReadingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
@@ -39,12 +39,12 @@ struct StatisticsView: View {
                     HStack {
                         Text("Time to finish Book:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(viewModel.bookInfo.characterCount - viewModel.currentCharacter) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.timeToRead(viewModel.bookInfo.characterCount - viewModel.currentCharacter)).formatted())**")
                     }
                     HStack {
                         Text("Time to finish Chapter:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.lastReadingSpeed > 0 ? Double(chapterCharactersRemaining) / (Double(viewModel.sessionStatistics.lastReadingSpeed) / 3600.0) : 0).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.sessionStatistics.timeToRead(chapterCharactersRemaining)).formatted())**")
                     }
                 } header: {
                     HStack {
@@ -71,12 +71,12 @@ struct StatisticsView: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.todaysStatistics.charactersRead.formatted(.number.grouping(.never)))**")
+                        Text("**\(viewModel.todaysStatistics.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.todaysStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
+                        Text("**\(viewModel.todaysStatistics.lastReadingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
@@ -91,12 +91,12 @@ struct StatisticsView: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.allTimeStatistics.charactersRead.formatted(.number.grouping(.never)))**")
+                        Text("**\(viewModel.allTimeStatistics.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.allTimeStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h**")
+                        Text("**\(viewModel.allTimeStatistics.lastReadingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")

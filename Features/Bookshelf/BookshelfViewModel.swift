@@ -164,6 +164,7 @@ class BookshelfViewModel {
     func deleteBook(_ book: BookMetadata) {
         do {
             let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+            StatisticsStorage.archive(book)
             try BookStorage.delete(at: bookURL)
             books.removeAll { $0.id == book.id }
             for i in shelves.indices {
@@ -305,7 +306,7 @@ class BookshelfViewModel {
                             }
                         }
                         let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
-                        let book = await BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                        let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
                         return (book, files)
                     }
                 }
@@ -502,6 +503,7 @@ class BookshelfViewModel {
         
         let document = try BookStorage.loadEpub(localURL)
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
+        StatisticsStorage.restore(folder: safeTitle)
     }
     
     private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {

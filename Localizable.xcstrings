@@ -34,6 +34,7 @@
     },
     "**%@ / h**" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -53,6 +54,18 @@
           }
         }
       }
+    },
+    "**%lld / h**" : {
+
+    },
+    "**%lld**" : {
+
+    },
+    "/ %@ character goal" : {
+
+    },
+    "/ %lld minute goal" : {
+
     },
     "%.1fem" : {
       "localizations" : {
@@ -86,20 +99,12 @@
         }
       }
     },
-    "%@ (%lld)" : {
-      "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
-      "extractionState" : "stale",
+    "%@ – %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ (%2$lld)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@（%2$lld）"
+            "value" : "%1$@ – %2$@"
           }
         }
       }
@@ -121,6 +126,12 @@
         }
       }
     },
+    "%@ / h" : {
+
+    },
+    "%@ Average" : {
+
+    },
     "%lld" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -132,20 +143,68 @@
         }
       }
     },
-    "%lld / %lld (%@)" : {
-      "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
-      "extractionState" : "stale",
+    "%lld books" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld / %2$lld (%3$@)"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld book"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld books"
+                }
+              }
+            }
           }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld / %2$lld（%3$@）"
+        }
+      }
+    },
+    "%lld characters" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld character"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld characters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld days"
+                }
+              }
+            }
           }
         }
       }
@@ -161,7 +220,25 @@
         }
       }
     },
+    "%lld%% from previous month" : {
+
+    },
+    "%lld%% from previous week" : {
+
+    },
+    "%lld%% from previous year" : {
+
+    },
+    "%lldh" : {
+
+    },
+    "%lldm" : {
+
+    },
     "%llds" : {
+
+    },
+    "0" : {
 
     },
     "1. After the initial setup, create another **OAuth client ID** in the same project." : {
@@ -263,6 +340,9 @@
         }
       }
     },
+    "All" : {
+
+    },
     "All Time" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -340,6 +420,9 @@
           }
         }
       }
+    },
+    "Archive" : {
+
     },
     "Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens." : {
 
@@ -441,6 +524,12 @@
         }
       }
     },
+    "Average" : {
+
+    },
+    "avg" : {
+
+    },
     "Avoid Page Break" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -494,6 +583,9 @@
           }
         }
       }
+    },
+    "Best Day" : {
+
     },
     "Blur" : {
 
@@ -585,6 +677,12 @@
         }
       }
     },
+    "Characters" : {
+
+    },
+    "Characters Read" : {
+
+    },
     "Characters Read:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
       "localizations" : {
@@ -595,6 +693,9 @@
           }
         }
       }
+    },
+    "characters/day" : {
+
     },
     "Choose the **.srt** and press **Match**. Matching only has to be done once." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -616,6 +717,12 @@
           }
         }
       }
+    },
+    "Clear Archive" : {
+
+    },
+    "Clear Archive?" : {
+
     },
     "Clear Cache" : {
       "localizations" : {
@@ -752,23 +859,8 @@
         }
       }
     },
-    "Current: %lld / %lld" : {
-      "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Current: %1$lld / %2$lld"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当前位置：%1$lld / %2$lld"
-          }
-        }
-      }
+    "Current Streak" : {
+
     },
     "Custom" : {
       "localizations" : {
@@ -779,6 +871,12 @@
           }
         }
       }
+    },
+    "Daily Goal" : {
+
+    },
+    "Daily Reading Goal" : {
+
     },
     "Dark" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -811,6 +909,15 @@
           }
         }
       }
+    },
+    "Date" : {
+
+    },
+    "Days" : {
+
+    },
+    "Days Met" : {
+
     },
     "Default" : {
       "extractionState" : "manual",
@@ -876,6 +983,12 @@
           }
         }
       }
+    },
+    "Delete All Statistics" : {
+
+    },
+    "Delete All Statistics?" : {
+
     },
     "Delete android.db (%@)" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
@@ -1128,6 +1241,12 @@
         }
       }
     },
+    "Goal" : {
+
+    },
+    "Goal met" : {
+
+    },
     "Height" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1177,6 +1296,9 @@
           }
         }
       }
+    },
+    "Hours" : {
+
     },
     "Import" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -1452,6 +1574,9 @@
         }
       }
     },
+    "Longest Streak" : {
+
+    },
     "Lower Volume" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
       "localizations" : {
@@ -1549,6 +1674,12 @@
         }
       }
     },
+    "min/day" : {
+
+    },
+    "Minutes" : {
+
+    },
     "Mode" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1559,6 +1690,12 @@
           }
         }
       }
+    },
+    "Month" : {
+
+    },
+    "Most Read" : {
+
     },
     "Move" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -1672,6 +1809,28 @@
         }
       }
     },
+    "of %lld days read" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "of %lld day read"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "of %lld days read"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Off" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1751,6 +1910,9 @@
     "Pause on Images" : {
 
     },
+    "Period" : {
+
+    },
     "Playback" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1809,6 +1971,9 @@
         }
       }
     },
+    "Read" : {
+
+    },
     "Reading" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1830,6 +1995,9 @@
         }
       }
     },
+    "Reading Speed" : {
+
+    },
     "Reading Speed:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
       "localizations" : {
@@ -1840,6 +2008,9 @@
           }
         }
       }
+    },
+    "Reading Time" : {
+
     },
     "Reading Time:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -2074,6 +2245,9 @@
     "Show Control Bar" : {
 
     },
+    "Show More" : {
+
+    },
     "Show Percentage" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -2204,6 +2378,9 @@
           }
         }
       }
+    },
+    "since %@" : {
+
     },
     "Skip Controls will replace Next/Previous Cue controls as media controls." : {
       "localizations" : {
@@ -2485,6 +2662,34 @@
         }
       }
     },
+    "This will delete all recorded statistics for this book." : {
+
+    },
+    "This will delete the statistics of %lld deleted books." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "This will delete the statistics of %lld deleted books."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "This will delete the statistics of %lld deleted book."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Time" : {
+
+    },
     "Time to finish Book:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
       "localizations" : {
@@ -2552,6 +2757,9 @@
           }
         }
       }
+    },
+    "Total Time" : {
+
     },
     "Unshelved" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -2628,6 +2836,9 @@
         }
       }
     },
+    "Week" : {
+
+    },
     "Width" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -2638,6 +2849,9 @@
           }
         }
       }
+    },
+    "Year" : {
+
     },
     "Yomitan JSON audio sources are supported" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",

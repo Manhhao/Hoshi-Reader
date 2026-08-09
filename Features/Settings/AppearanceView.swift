@@ -279,11 +279,9 @@ struct AppearanceView: View {
                 Section("Display") {
                     Toggle("Show Title", isOn: $userConfig.readerShowTitle)
                     
-                    if userConfig.enableStatistics {
-                        Toggle("Show Statistics Toggle", isOn: $userConfig.readerShowStatisticsToggle)
-                        Toggle("Show Reading Speed", isOn: $userConfig.readerShowReadingSpeed)
-                        Toggle("Show Reading Time", isOn: $userConfig.readerShowReadingTime)
-                    }
+                    Toggle("Show Statistics Toggle", isOn: $userConfig.readerShowStatisticsToggle)
+                    Toggle("Show Reading Speed", isOn: $userConfig.readerShowReadingSpeed)
+                    Toggle("Show Reading Time", isOn: $userConfig.readerShowReadingTime)
                     
                     if userConfig.enableSasayaki {
                         Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)

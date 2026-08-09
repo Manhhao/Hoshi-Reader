@@ -23,7 +23,7 @@ enum ContentsTab: CaseIterable, Identifiable {
     }
 }
 
-struct ContentsView: View {
+struct ContentsSheet: View {
     @Bindable var viewModel: ReaderViewModel
     let readerTheme: ColorScheme
     let onImageSelected: (URL) -> Void

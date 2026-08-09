@@ -124,7 +124,11 @@ struct BookshelfView: View {
                 }
             }
             
-            Tab("Settings", systemImage: "gearshape", value: 2) {
+            Tab("Statistics", systemImage: "chart.bar.xaxis", value: 2) {
+                StatisticsView()
+            }
+            
+            Tab("Settings", systemImage: "gearshape", value: 3) {
                 NavigationStack {
                     List {
                         Button {
