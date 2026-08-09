@@ -26,6 +26,18 @@ class LocalFileServer {
     private var sasayakiAudioData: Data?
     private var localAudioEnabled = false
     
+    private static let sourceDisplayNames = [
+        "nhk16": "NHK16 %@",
+        "daijisen": "Daijisen %@",
+        "shinmeikai8": "SMK8 %@",
+        "jpod": "JPod101",
+        "jpod_alternate": "JPod101 Alt",
+        "taas": "TAAS",
+        "ozk5": "OZK5 %@",
+        "forvo": "Forvo (%@)",
+        "forvo_ext": "Forvo Ext",
+        "forvo_ext2": "Forvo Ext2"
+    ]
     private static let defaultSources = ["nhk16", "daijisen", "shinmeikai8", "jpod", "jpod_alternate", "taas", "ozk5", "forvo", "forvo_ext", "forvo_ext2"]
     private static let emptyAudioResponse = Data(#"{"type":"audioSourceList","audioSources":[]}"#.utf8)
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -173,6 +185,11 @@ class LocalFileServer {
         send(Self.emptyAudioResponse, status: "200 OK", contentType: "application/json", to: connection)
     }
     
+    private func displayName(source: String, display: String) -> String {
+        let template = Self.sourceDisplayNames[source] ?? "\(source) %@"
+        return template.replacingOccurrences(of: "%@", with: display).trimmingCharacters(in: .whitespaces)
+    }
+    
     // https://github.com/KamWithK/AnkiconnectAndroid/blob/d79d7543df63894cac726f255780369cd0e6b177/app/src/main/java/com/kamwithk/ankiconnectandroid/routing/LocalAudioAPIRouting.java#L102
     private func getAudioSources(_ request: Request, to connection: NWConnection) {
         let term = request.query["term"] ?? ""
@@ -186,28 +203,23 @@ class LocalFileServer {
             sqlite3_close(db)
         }
         
-        // Technically Ankiconnect Android and the original Local Audio plugin return multiple entries
-        // sort by matching reading first for more accurate results
         let sortOrder = "CASE source " + Self.defaultSources.indices.map { "WHEN ? THEN \($0) " }.joined() + "ELSE 999 END"
         let sql: String
         if reading.isEmpty {
             sql = """
-                SELECT source, file FROM entries
+                SELECT source, display, file, expression, reading, 0 AS rank FROM entries
                 WHERE expression = ? AND file LIKE '%.mp3'
-                ORDER BY \(sortOrder)
-                LIMIT 1;
+                ORDER BY \(sortOrder), reading;
                 """
         } else {
             sql = """
-                SELECT source, file FROM entries
-                WHERE (expression = ? OR reading = ?) AND file LIKE '%.mp3'
-                ORDER BY CASE
-                    WHEN expression = ? AND reading = ? THEN 0
+                SELECT source, display, file, expression, reading, CASE
+                    WHEN expression = ? AND (reading IS NULL OR reading = ?) THEN 0
                     WHEN reading = ? THEN 1
-                    WHEN expression = ? THEN 2
-                    ELSE 3
-                END, \(sortOrder)
-                LIMIT 1;
+                    ELSE 2
+                END AS rank FROM entries
+                WHERE (expression = ? OR reading = ?) AND file LIKE '%.mp3'
+                ORDER BY rank, \(sortOrder), reading;
                 """
         }
         
@@ -220,34 +232,48 @@ class LocalFileServer {
             sqlite3_finalize(stmt)
         }
         
-        sqlite3_bind_text(stmt, 1, term, -1, Self.sqliteTransient)
-        var bindIndex = 2
-        if !reading.isEmpty {
-            sqlite3_bind_text(stmt, 2, reading, -1, Self.sqliteTransient)
-            sqlite3_bind_text(stmt, 3, term, -1, Self.sqliteTransient)
-            sqlite3_bind_text(stmt, 4, reading, -1, Self.sqliteTransient)
-            sqlite3_bind_text(stmt, 5, reading, -1, Self.sqliteTransient)
-            sqlite3_bind_text(stmt, 6, term, -1, Self.sqliteTransient)
-            bindIndex = 7
+        let matchBindings = reading.isEmpty ? [term] : [term, reading, reading, term, reading]
+        for (i, value) in matchBindings.enumerated() {
+            sqlite3_bind_text(stmt, Int32(i + 1), value, -1, Self.sqliteTransient)
         }
         for (i, source) in Self.defaultSources.enumerated() {
-            sqlite3_bind_text(stmt, Int32(i + bindIndex), source, -1, Self.sqliteTransient)
+            sqlite3_bind_text(stmt, Int32(matchBindings.count + i + 1), source, -1, Self.sqliteTransient)
         }
         
-        if sqlite3_step(stmt) == SQLITE_ROW {
+        var sources: [[String: String]] = []
+        var seen = Set<String>()
+        while sqlite3_step(stmt) == SQLITE_ROW {
             let source = String(cString: sqlite3_column_text(stmt, 0))
-            let file = String(cString: sqlite3_column_text(stmt, 1))
+            let display = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? ""
+            let file = String(cString: sqlite3_column_text(stmt, 2))
+            let expression = String(cString: sqlite3_column_text(stmt, 3))
+            let rowReading = sqlite3_column_text(stmt, 4).map { String(cString: $0) } ?? ""
+            let rank = sqlite3_column_int(stmt, 5)
             
             let encodedFile = file.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? file
             let url = "http://localhost:\(Self.port)/localaudio/\(source)/\(encodedFile)"
             
-            let response: [String: Any] = ["type": "audioSourceList", "audioSources": [["name": source, "url": url]]]
-            let data = try! JSONSerialization.data(withJSONObject: response)
-            send(data, status: "200 OK", contentType: "application/json", to: connection)
+            guard seen.insert(url).inserted else {
+                continue
+            }
+            
+            let matched = switch rank {
+            case 1: " (\(expression))"
+            case 2: " (\(rowReading))"
+            default: ""
+            }
+            
+            sources.append(["name": displayName(source: source, display: display) + matched, "url": url])
+        }
+        
+        guard !sources.isEmpty else {
+            sendEmpty(to: connection)
             return
         }
         
-        sendEmpty(to: connection)
+        let response: [String: Any] = ["type": "audioSourceList", "audioSources": sources]
+        let data = try! JSONSerialization.data(withJSONObject: response)
+        send(data, status: "200 OK", contentType: "application/json", to: connection)
     }
     
     // https://github.com/KamWithK/AnkiconnectAndroid/blob/d79d7543df63894cac726f255780369cd0e6b177/app/src/main/java/com/kamwithk/ankiconnectandroid/routing/LocalAudioAPIRouting.java#L238

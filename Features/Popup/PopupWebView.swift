@@ -335,6 +335,14 @@ struct PopupWebView: UIViewRepresentable {
                     button = UIButton(type: .system)
                     button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
                     button.tintColor = .secondaryLabel
+                    if kind == "audio" {
+                        button.showsMenuAsPrimaryAction = false
+                        button.menu = UIMenu(children: [UIDeferredMenuElement.uncached { [weak self] completion in
+                            Task { @MainActor in
+                                completion(await self?.audioMenuElements(entryIndex: entryIndex) ?? [])
+                            }
+                        }])
+                    }
                     buttons[key] = button
                     webView.scrollView.addSubview(button)
                 }
@@ -372,6 +380,28 @@ struct PopupWebView: UIViewRepresentable {
             let name = state == "duplicate" ? (AnkiCardFormat.duplicateIcons[icon] ?? icon) : icon
             let iconConfig = isSmall ? UIImage.SymbolConfiguration(pointSize: 10 * parent.scale, weight: .medium) : config
             return UIImage(systemName: name, withConfiguration: iconConfig)
+        }
+        
+        private func audioMenuElements(entryIndex: Int) async -> [UIMenuElement] {
+            let result = try? await webView?.callAsyncJavaScript(
+                "return await getAudioMenu(entryIndex);",
+                arguments: ["entryIndex": entryIndex],
+                in: nil,
+                contentWorld: .page
+            )
+            let menu = result as? [String: Any]
+            let names = menu?["names"] as? [String] ?? []
+            let selected = menu?["selected"] as? Int ?? -1
+            
+            guard !names.isEmpty else {
+                return [UIAction(title: String(localized: "No audio found"), attributes: .disabled) { _ in }]
+            }
+            
+            return names.enumerated().map { index, name in
+                UIAction(title: name, state: index == selected ? .on : .off) { [weak self] _ in
+                    self?.webView?.evaluateJavaScript("playEntryAudio(\(entryIndex), \(index))")
+                }
+            }
         }
         
         @objc private func buttonTapped(_ sender: UIButton) {

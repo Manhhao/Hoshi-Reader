@@ -18,6 +18,7 @@ const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
 let audioUrls = {};
+let audioLists = {};
 let lastSelection = '';
 let currentDictionaryMedia = null;
 let selectedDictionaries = {};
@@ -1399,23 +1400,71 @@ function createTags(entry) {
     return container;
 }
 
+async function fetchAudioSources(template, expression, reading) {
+    const url = template
+    .replace('{term}', encodeURIComponent(expression))
+    .replace('{reading}', encodeURIComponent(reading));
+    try {
+        const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        if (data.type !== 'audioSourceList') {
+            return [];
+        }
+        
+        return (data.audioSources || []).filter(source => source.url);
+    } catch {
+        return [];
+    }
+}
+
 async function fetchAudioUrl(expression, reading) {
-    const templates = window.audioSources;
-    if (!templates?.length) return null;
+    const sources = window.audioSources;
+    if (!sources?.length) {
+        return null;
+    }
     
-    for (const template of templates) {
-        const url = template
-        .replace('{term}', encodeURIComponent(expression))
-        .replace('{reading}', encodeURIComponent(reading));
-        try {
-            const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
-            if (data.type === 'audioSourceList' && data.audioSources?.[0]?.url) {
-                return data.audioSources[0].url;
-            }
-        } catch {}
+    for (const source of sources) {
+        const entries = await fetchAudioSources(source.url, expression, reading);
+        if (entries.length) {
+            return entries[0].url;
+        }
     }
     return null;
+}
+
+async function fetchAudioList(entryIndex) {
+    if (audioLists[entryIndex]) {
+        return audioLists[entryIndex];
+    }
+    const entry = window.lookupEntries?.[entryIndex];
+    const sources = window.audioSources;
+    if (!entry || !sources?.length) {
+        return [];
+    }
+    
+    const list = [];
+    for (const source of sources) {
+        const entries = await fetchAudioSources(source.url, entry.expression, entry.reading);
+        const sourceName = source.name || 'Audio';
+        entries.forEach(item => list.push({
+            name: item.name ? `${sourceName}: ${item.name}` : sourceName,
+            url: item.url
+        }));
+    }
+    audioLists[entryIndex] = list;
+    return list;
+}
+
+async function getAudioMenu(entryIndex) {
+    const list = await fetchAudioList(entryIndex);
+    const counts = {};
+    return {
+        names: list.map(item => {
+            counts[item.name] = (counts[item.name] || 0) + 1;
+            return counts[item.name] > 1 ? `${item.name} ${counts[item.name]}` : item.name;
+        }),
+        selected: list.findIndex(item => item.url === audioUrls[entryIndex])
+    };
 }
 
 function playWordAudio(audioUrl) {
@@ -1480,12 +1529,14 @@ function updateButtonSlot(slot, changes) {
     requestAnimationFrame(reportButtonRects);
 }
 
-async function playEntryAudio(entryIndex) {
+async function playEntryAudio(entryIndex, sourceIndex = null) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
     const audioSlot = getButtonSlots('audio', entryIndex)[0];
     
-    if (!audioUrls[entryIndex]) {
+    if (sourceIndex !== null) {
+        audioUrls[entryIndex] = (await fetchAudioList(entryIndex))[sourceIndex]?.url || null;
+    } else if (!audioUrls[entryIndex]) {
         audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
     }
     if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex])) {
@@ -1711,6 +1762,7 @@ function redirect(count) {
     window.lookupEntries = undefined;
     window.entryCount = count;
     audioUrls = {};
+    audioLists = {};
     selectedDictionaries = {};
     document.getElementById('entries-container').innerHTML = '';
     reportButtonRects();
@@ -1771,6 +1823,7 @@ function redirectKanji(data) {
     window.lookupEntries = undefined;
     window.entryCount = 0;
     audioUrls = {};
+    audioLists = {};
     selectedDictionaries = {};
     const container = document.getElementById('entries-container');
     container.innerHTML = '';
@@ -1800,6 +1853,7 @@ function restore(s) {
     window.lookupEntries = s.lookupEntries;
     window.entryCount = s.entryCount;
     audioUrls = {};
+    audioLists = {};
     selectedDictionaries = {};
     requestAnimationFrame(reportButtonRects);
     requestAnimationFrame(() => {

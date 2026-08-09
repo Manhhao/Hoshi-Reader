@@ -358,8 +358,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(audioPlaybackMode.rawValue, forKey: "audioPlaybackMode") }
     }
     
-    var enabledAudioSources: [String] {
-        audioSources.filter { $0.isEnabled }.map { $0.url }
+    var enabledAudioSources: [AudioSource] {
+        audioSources.filter { $0.isEnabled }
     }
     
     static let localAudioSource = AudioSource(
