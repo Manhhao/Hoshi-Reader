@@ -126,18 +126,20 @@ private struct BookStatisticsRow: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
                 HStack(spacing: 6) {
                     Capsule()
                         .fill(Color(.tertiaryLabel))
-                        .frame(width: availableWidth * 0.7 * barFraction, height: 5)
+                        .frame(height: 5)
+                        .frame(maxWidth: availableWidth * 0.7 * barFraction, alignment: .leading)
                     Text(book.readingTime.formattedDuration)
                         .font(.footnote)
                         .foregroundStyle(Color(.tertiaryLabel))
                         .monospacedDigit()
                         .fixedSize()
-                    Spacer(minLength: 0)
                 }
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
