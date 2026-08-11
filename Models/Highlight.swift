@@ -50,6 +50,7 @@ struct Highlight: Codable, Identifiable, Hashable {
     let character: Int
     let offset: Int
     let text: String
+    let textFurigana: String?
     let color: HighlightColor
     let createdAt: Date
 }

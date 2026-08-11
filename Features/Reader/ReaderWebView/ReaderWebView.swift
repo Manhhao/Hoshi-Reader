@@ -28,6 +28,7 @@ struct HighlightData {
     let start: Int
     let offset: Int
     let text: String
+    let textFurigana: String?
 }
 
 enum WebViewCommand {
@@ -112,7 +113,8 @@ final class HoshiWKWebView: WKWebView {
                 id: id,
                 start: start,
                 offset: offset,
-                text: text
+                text: text,
+                textFurigana: body["textFurigana"] as? String
             ))
         }
     }

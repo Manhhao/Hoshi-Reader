@@ -79,7 +79,7 @@ struct HighlightListView: View {
     }
     
     private func markedText(_ highlight: Highlight) -> AttributedString {
-        var attributed = AttributedString(highlight.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        var attributed = AttributedString((highlight.textFurigana ?? highlight.text).trimmingCharacters(in: .whitespacesAndNewlines))
         attributed.backgroundColor = highlight.color.swatch.opacity(highlight.color.rgba.a)
         return attributed
     }

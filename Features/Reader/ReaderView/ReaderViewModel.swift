@@ -541,6 +541,7 @@ class ReaderViewModel {
             character: range.start + creation.start,
             offset: creation.offset,
             text: creation.text,
+            textFurigana: creation.textFurigana,
             color: color,
             createdAt: Date()
         )

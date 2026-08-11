@@ -27,6 +27,15 @@ window.hoshiHighlights = {
         fragment.querySelectorAll('rt, rp').forEach(el => el.remove());
         const text = fragment.textContent;
         
+        const textFurigana = this.collectSegments(rawStart, Array.from(text).length).map(segment => {
+            const t = segment.node.textContent.slice(segment.start, segment.end);
+            let rt = segment.node.parentElement.nextElementSibling;
+            while (rt?.matches('rp')) {
+                rt = rt.nextElementSibling;
+            }
+            return rt?.matches('rt') && rt.textContent ? `${t}(${rt.textContent})` : t;
+        }).join('');
+        
         selection.removeAllRanges();
         
         this.wrapHighlight({ id, color, offset: rawStart, text });
@@ -39,7 +48,7 @@ window.hoshiHighlights = {
             });
         });
         
-        return { start, offset: rawStart, text };
+        return { start, offset: rawStart, text, textFurigana: textFurigana !== text ? textFurigana : null };
     },
     
     collectSegments(offset, length) {
