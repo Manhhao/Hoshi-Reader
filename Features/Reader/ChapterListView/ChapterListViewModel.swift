@@ -23,6 +23,9 @@ struct ChapterRow: Identifiable {
 @MainActor
 class ChapterListViewModel {
     var rows: [ChapterRow] = []
+    var currentRow: ChapterRow.ID? {
+        rows.first(where: { $0.isCurrent })?.id
+    }
     
     private let document: EPUBDocument
     private let bookInfo: BookInfo

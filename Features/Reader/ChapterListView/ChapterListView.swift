@@ -18,24 +18,31 @@ struct ChapterListView: View {
     @State private var viewModel: ChapterListViewModel?
     
     var body: some View {
-        List {
-            if let vm = viewModel {
-                ForEach(vm.rows) { row in
-                    ChapterView(row: row) {
-                        onJumpToChapter(row.spineIndex, row.fragment)
+        ScrollViewReader { proxy in
+            List {
+                if let vm = viewModel {
+                    ForEach(vm.rows) { row in
+                        ChapterView(row: row) {
+                            onJumpToChapter(row.spineIndex, row.fragment)
+                        }
                     }
                 }
             }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .onAppear {
-            if viewModel == nil {
-                viewModel = ChapterListViewModel(
-                    document: document,
-                    bookInfo: bookInfo,
-                    currentCharacter: currentCharacter
-                )
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .onAppear {
+                if viewModel == nil {
+                    viewModel = ChapterListViewModel(
+                        document: document,
+                        bookInfo: bookInfo,
+                        currentCharacter: currentCharacter
+                    )
+                }
+                if let current = viewModel?.currentRow {
+                    Task {
+                        proxy.scrollTo(current, anchor: .center)
+                    }
+                }
             }
         }
     }
