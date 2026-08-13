@@ -23,7 +23,7 @@ struct HighlightListView: View {
     let onDelete: (Highlight) -> Void
     
     private var sections: [HighlightSection] {
-        let labels = chapterLabels()
+        let labels = document.chapterLabels
         let grouped = Dictionary(grouping: highlights) {
             var spine = bookInfo.resolveCharacterPosition($0.character)?.spineIndex ?? -1
             while spine > 0 && labels[spine] == nil { spine -= 1 }
@@ -87,30 +87,5 @@ struct HighlightListView: View {
     private func dateLabel(_ date: Date) -> String {
         let relative = date.formatted(.relative(presentation: .named))
         return relative.prefix(1).uppercased() + relative.dropFirst()
-    }
-    
-    private func chapterLabels() -> [Int: String] {
-        var pathToSpine: [String: Int] = [:]
-        for (i, item) in document.spine.items.enumerated() {
-            if let manifest = document.manifest.items[item.idref] {
-                pathToSpine[manifest.path] = i
-            }
-        }
-        
-        var labels: [Int: String] = [:]
-        func walk(_ items: [EPUBTableOfContents], topLabel: String?) {
-            for item in items {
-                let label = topLabel ?? item.label
-                if let raw = item.item {
-                    let path = raw.components(separatedBy: "#").first ?? raw
-                    if let index = pathToSpine[path], labels[index] == nil {
-                        labels[index] = label
-                    }
-                }
-                walk(item.subTable ?? [], topLabel: label)
-            }
-        }
-        walk(document.tableOfContents.subTable ?? [], topLabel: nil)
-        return labels
     }
 }

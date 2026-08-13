@@ -123,6 +123,8 @@ class ReaderViewModel {
     private var debounceTask: Task<Void, Never>?
     private var exportTask: Task<Void, Never>?
     
+    private var pendingSearchHighlight: (offset: Int, length: Int)?
+    
     // highlights
     var highlights: [Highlight] = []
     
@@ -278,6 +280,10 @@ class ReaderViewModel {
         }
         isLoading = false
         sasayakiPlayer.handleRestoreCompleted(currentIndex: index)
+        if let highlight = pendingSearchHighlight {
+            pendingSearchHighlight = nil
+            bridge.send(.showSearchHighlight(offset: highlight.offset, length: highlight.length))
+        }
     }
     
     func handleProcessTerminated() {
@@ -348,6 +354,14 @@ class ReaderViewModel {
     
     func jumpToCharacter(_ characterCount: Int) {
         guard let result = bookInfo.resolveCharacterPosition(characterCount) else { return }
+        recordPosition()
+        navigate(to: Position(index: result.spineIndex, progress: result.progress))
+    }
+    
+    func jumpToSearchResult(character: Int, length: Int) {
+        guard let result = bookInfo.resolveCharacterPosition(character) else { return }
+        let chapterStart = bookInfo.chapterInfo.values.first { $0.spineIndex == result.spineIndex }?.currentTotal ?? 0
+        pendingSearchHighlight = (character - chapterStart, length)
         recordPosition()
         navigate(to: Position(index: result.spineIndex, progress: result.progress))
     }

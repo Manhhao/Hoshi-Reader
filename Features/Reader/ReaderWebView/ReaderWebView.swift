@@ -43,6 +43,7 @@ enum WebViewCommand {
     case clearSasayakiCue
     case scrollToSasayakiImage(index: Int, completion: ((Bool) -> Void)? = nil)
     case removeHighlight(String)
+    case showSearchHighlight(offset: Int, length: Int)
 }
 
 @Observable
@@ -273,6 +274,8 @@ struct ReaderWebView: UIViewRepresentable {
                 case .removeHighlight(let id):
                     let literal = context.coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
+                case .showSearchHighlight(let offset, let length):
+                    webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
                 }
             }
             return
@@ -558,6 +561,10 @@ struct ReaderWebView: UIViewRepresentable {
                 background-color: rgba(160, 160, 160, 0.4) !important;
                 color: inherit;
             }
+            ::highlight(hoshi-search) {
+                background-color: rgba(100, 160, 255, 0.4) !important;
+                color: inherit;
+            }
             a {
                 color: rgba(66, 108, 245, 1) !important;
             }
@@ -794,6 +801,7 @@ struct ReaderWebView: UIViewRepresentable {
             guard let webView = webView else { return }
             
             clearSelection()
+            clearSearchHighlight()
             parent.onPageTurn()
             
             let script = paginationScript(direction: direction)
@@ -925,6 +933,13 @@ struct ReaderWebView: UIViewRepresentable {
                 return
             }
             webView.evaluateJavaScript("window.hoshiSelection.clearSelection()") { _, _ in }
+        }
+        
+        func clearSearchHighlight() {
+            guard let webView = webView else {
+                return
+            }
+            webView.evaluateJavaScript("window.hoshiHighlights.clearSearchHighlight()") { _, _ in }
         }
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {

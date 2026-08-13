@@ -34,6 +34,10 @@ struct ContentsSheet: View {
     @State private var showInvalidInputAlert = false
     @State private var jumpToInput = ""
     @State private var detent: PresentationDetent = .medium
+    @State private var searchText = ""
+    @State private var searchQuery = ""
+    @State private var searchResults: [SearchResult]?
+    @State private var isSearchPresented = false
     
     private var progressText: String {
         progressLabel(viewModel.currentCharacter, viewModel.bookInfo.characterCount)
@@ -51,46 +55,44 @@ struct ContentsSheet: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                VStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text(progressText)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Button {
-                                detent = .large
-                                jumpToInput = ""
-                                showJumpToAlert = true
-                            } label: {
-                                Image(systemName: "arrow.right.to.line")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.secondary)
-                        }
-                        Text(chapterProgressText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Picker("", selection: $viewModel.contentsTab) {
-                        ForEach(ContentsTab.allCases) { tab in
-                            Text(tab.title).tag(tab)
+            Group {
+                if isSearchPresented {
+                    SearchResultsView(results: searchResults, query: searchQuery) { result in
+                        jump {
+                            viewModel.jumpToSearchResult(
+                                character: result.character,
+                                length: result.match.filtered().count
+                            )
                         }
                     }
-                    .pickerStyle(.segmented)
+                } else {
+                    contents
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 12)
-                
-                content
-                    .frame(maxHeight: .infinity)
-                    .contentMargins(.top, 0, for: .scrollContent)
+            }
+            .searchable(
+                text: $searchText,
+                isPresented: $isSearchPresented,
+                placement: .toolbar,
+                prompt: "Search book"
+            )
+            .onSubmit(of: .search) {
+                detent = .large
+                searchQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .onChange(of: isSearchPresented) { _, presented in
+                if !presented {
+                    searchQuery = ""
+                }
+            }
+            .task(id: searchQuery) {
+                await search()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
+                guard let field = notification.object as? UISearchTextField else { return }
+                field.setPreferredInputLanguage("ja")
             }
             .navigationTitle(viewModel.book.displayTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -122,8 +124,48 @@ struct ContentsSheet: View {
         }
     }
     
+    private var contents: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(progressText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            detent = .large
+                            jumpToInput = ""
+                            showJumpToAlert = true
+                        } label: {
+                            Image(systemName: "arrow.right.to.line")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    }
+                    Text(chapterProgressText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Picker("", selection: $viewModel.contentsTab) {
+                    ForEach(ContentsTab.allCases) { tab in
+                        Text(tab.title).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 12)
+            
+            tabContent
+                .frame(maxHeight: .infinity)
+                .contentMargins(.top, 0, for: .scrollContent)
+        }
+    }
+    
     @ViewBuilder
-    private var content: some View {
+    private var tabContent: some View {
         switch viewModel.contentsTab {
         case .chapters:
             ChapterListView(
@@ -157,5 +199,21 @@ struct ContentsSheet: View {
         viewModel.activeSheet = nil
         viewModel.clearSelection()
         viewModel.closePopups()
+    }
+    
+    private func search() async {
+        guard !searchQuery.isEmpty else {
+            searchResults = nil
+            return
+        }
+        
+        searchResults = nil
+        let query = searchQuery
+        let chapters = BookSearch.chapters(document: viewModel.document, bookInfo: viewModel.bookInfo)
+        let results = await Task.detached(priority: .userInitiated) {
+            BookSearch.search(chapters: chapters, query: query)
+        }.value
+        guard !Task.isCancelled else { return }
+        searchResults = results
     }
 }

@@ -164,6 +164,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 case .removeHighlight(let id):
                     let literal = context.coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
+                case .showSearchHighlight(let offset, let length):
+                    webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
                 }
             }
             return
@@ -427,6 +429,10 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
             ::highlight(hoshi-selection) {
                 background-color: rgba(160, 160, 160, 0.4) !important;
+                color: inherit;
+            }
+            ::highlight(hoshi-search) {
+                background-color: rgba(100, 160, 255, 0.4) !important;
                 color: inherit;
             }
             a {

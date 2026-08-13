@@ -8,6 +8,7 @@
 
 window.hoshiHighlights = {
     highlights: new Map(),
+    searchHighlight: null,
     
     createHighlight(color, id) {
         const selection = window.getSelection();
@@ -79,7 +80,7 @@ window.hoshiHighlights = {
         return { id };
     },
     
-    collectSegments(offset, length) {
+    collectSegments(offset, length, filtered) {
         const end = offset + length;
         const segments = [];
         let cursor = 0;
@@ -102,8 +103,10 @@ window.hoshiHighlights = {
             while (i < text.length && cursor < end) {
                 const char = String.fromCodePoint(text.codePointAt(i));
                 const next = i + char.length;
+                const matchable = !filtered || window.hoshiReader.isMatchableChar(char);
+                const inside = matchable ? cursor >= offset : cursor > offset;
                 
-                if (cursor >= offset) {
+                if (inside) {
                     if (!segment || segment.node !== node) {
                         flushSegment();
                         segment = { node, start: i, end: next };
@@ -111,7 +114,10 @@ window.hoshiHighlights = {
                         segment.end = next;
                     }
                 }
-                cursor += 1;
+                
+                if (matchable) {
+                    cursor += 1;
+                }
                 i = next;
             }
             flushSegment();
@@ -169,5 +175,24 @@ window.hoshiHighlights = {
                 document.body.style.transform = '';
             });
         });
+    },
+    
+    showSearchHighlight(offset, length) {
+        if (!this.searchHighlight) {
+            this.searchHighlight = new Highlight();
+            CSS.highlights.set('hoshi-search', this.searchHighlight);
+        }
+        this.searchHighlight.clear();
+        
+        for (const segment of this.collectSegments(offset, length, true)) {
+            const range = document.createRange();
+            range.setStart(segment.node, segment.start);
+            range.setEnd(segment.node, segment.end);
+            this.searchHighlight.add(range);
+        }
+    },
+    
+    clearSearchHighlight() {
+        this.searchHighlight?.clear();
     }
 };
