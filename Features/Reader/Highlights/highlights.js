@@ -7,7 +7,7 @@
 //
 
 window.hoshiHighlights = {
-    wrappers: new Map(),
+    highlights: new Map(),
     
     createHighlight(color, id) {
         const selection = window.getSelection();
@@ -21,6 +21,12 @@ window.hoshiHighlights = {
         const rawEnd = window.hoshiReader.nodeStartRawOffsets.get(range.endContainer) + window.hoshiReader.countRawChars(endPrefix);
         if (rawEnd <= rawStart) {
             return null;
+        }
+        
+        const existing = this.findHighlight(rawStart, rawEnd - rawStart);
+        if (existing) {
+            selection.removeAllRanges();
+            return this.updateHighlight(existing, color);
         }
         
         const fragment = range.cloneContents();
@@ -49,6 +55,28 @@ window.hoshiHighlights = {
         });
         
         return { start, offset: rawStart, text, textFurigana: textFurigana !== text ? textFurigana : null };
+    },
+    
+    findHighlight(offset, length) {
+        for (const [id, entry] of this.highlights) {
+            if (entry.offset === offset && entry.length === length) {
+                return id;
+            }
+        }
+        return null;
+    },
+    
+    updateHighlight(id, color) {
+        const entry = this.highlights.get(id);
+        if (entry.color === color) {
+            this.removeHighlight(id);
+        } else {
+            entry.color = color;
+            entry.wrappers.forEach(wrapper => {
+                wrapper.className = `hoshi-highlight hoshi-highlight-${color}`;
+            });
+        }
+        return { id };
     },
     
     collectSegments(offset, length) {
@@ -94,7 +122,8 @@ window.hoshiHighlights = {
     
     wrapHighlight(highlight) {
         const { id, color, offset, text } = highlight;
-        const segments = this.collectSegments(offset, Array.from(text).length);
+        const length = window.hoshiReader.countRawChars(text);
+        const segments = this.collectSegments(offset, length);
         if (!segments.length) {
             return;
         }
@@ -114,7 +143,7 @@ window.hoshiHighlights = {
             wrappers.push(wrapper);
         }
         wrappers.reverse();
-        this.wrappers.set(id, wrappers);
+        this.highlights.set(id, { color, offset, length, wrappers });
     },
     
     applyHighlights(highlights) {
@@ -125,13 +154,13 @@ window.hoshiHighlights = {
     },
     
     removeHighlight(id) {
-        const wrappers = this.wrappers.get(id);
-        if (!wrappers) {
+        const entry = this.highlights.get(id);
+        if (!entry) {
             return;
         }
         
-        window.hoshiReader.unwrap(wrappers);
-        this.wrappers.delete(id);
+        window.hoshiReader.unwrap(entry.wrappers);
+        this.highlights.delete(id);
         window.hoshiReader.buildNodeOffsets();
         
         requestAnimationFrame(() => {

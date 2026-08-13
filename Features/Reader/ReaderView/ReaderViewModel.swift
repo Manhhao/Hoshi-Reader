@@ -550,6 +550,17 @@ class ReaderViewModel {
         syncHighlights()
     }
     
+    func updateHighlight(_ color: HighlightColor, _ id: UUID) {
+        guard let index = highlights.firstIndex(where: { $0.id == id }) else { return }
+        if highlights[index].color == color {
+            highlights.remove(at: index)
+        } else {
+            highlights[index].color = color
+        }
+        saveHighlights()
+        syncHighlights()
+    }
+    
     func removeHighlight(_ highlight: Highlight) {
         highlights.removeAll { $0.id == highlight.id }
         saveHighlights()

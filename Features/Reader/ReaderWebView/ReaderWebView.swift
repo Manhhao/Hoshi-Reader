@@ -76,6 +76,7 @@ class WebViewBridge {
 
 final class HoshiWKWebView: WKWebView {
     var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
+    var onHighlightUpdated: ((HighlightColor, UUID) -> Void)?
     var hasSelection: Bool = false
     
     // https://stackoverflow.com/a/78488754
@@ -103,8 +104,13 @@ final class HoshiWKWebView: WKWebView {
         let id = UUID()
         let script = "window.hoshiHighlights.createHighlight('\(color.rawValue)', '\(id.uuidString)')"
         evaluateJavaScript(script) { [weak self] result, _ in
-            guard let body = result as? [String: Any],
-                  let start = body["start"] as? Int,
+            guard let body = result as? [String: Any] else { return }
+            if let existing = (body["id"] as? String).flatMap({ UUID(uuidString: $0) }) {
+                self?.onHighlightUpdated?(color, existing)
+                return
+            }
+            
+            guard let start = body["start"] as? Int,
                   let offset = body["offset"] as? Int,
                   let text = body["text"] as? String else {
                 return
@@ -138,6 +144,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onRestoreCompleted: (() -> Void)
     var onProcessTerminated: (() -> Void)
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
+    var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
     let maxSelectionLength: Int = 16
     
@@ -166,6 +173,9 @@ struct ReaderWebView: UIViewRepresentable {
         let coordinator = context.coordinator
         webView.onHighlightCreated = { [weak coordinator] color, creation in
             coordinator?.parent.onHighlightCreated(color, creation)
+        }
+        webView.onHighlightUpdated = { [weak coordinator] color, id in
+            coordinator?.parent.onHighlightUpdated(color, id)
         }
         
         let swipeLeft = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeLeft(_:)))

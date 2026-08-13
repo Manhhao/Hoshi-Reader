@@ -391,6 +391,7 @@ struct ReaderView: View {
                                 viewModel.handleProcessTerminated()
                             },
                             onHighlightCreated: viewModel.addHighlight,
+                            onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
@@ -455,6 +456,7 @@ struct ReaderView: View {
                                 viewModel.handleProcessTerminated()
                             },
                             onHighlightCreated: viewModel.addHighlight,
+                            onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(

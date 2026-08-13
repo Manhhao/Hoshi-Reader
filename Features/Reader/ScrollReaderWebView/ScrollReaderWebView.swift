@@ -29,6 +29,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
     var onRestoreCompleted: (() -> Void)
     var onProcessTerminated: (() -> Void)
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
+    var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
     let maxSelectionLength: Int = 16
     
@@ -75,6 +76,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
         let coordinator = context.coordinator
         webView.onHighlightCreated = { [weak coordinator] color, creation in
             coordinator?.parent.onHighlightCreated(color, creation)
+        }
+        webView.onHighlightUpdated = { [weak coordinator] color, id in
+            coordinator?.parent.onHighlightUpdated(color, id)
         }
         
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
