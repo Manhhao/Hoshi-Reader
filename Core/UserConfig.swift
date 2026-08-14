@@ -115,6 +115,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(scanLength, forKey: "scanLength") }
     }
     
+    var searchTextSize: Int {
+        didSet { UserDefaults.standard.set(searchTextSize, forKey: "searchTextSize") }
+    }
+    
     var collapseMode: CollapseMode {
         didSet { UserDefaults.standard.set(collapseMode.rawValue, forKey: "collapseMode") }
     }
@@ -479,6 +483,7 @@ class UserConfig {
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
+        self.searchTextSize = defaults.object(forKey: "searchTextSize") as? Int ?? 22
         self.collapseMode = defaults.string(forKey: "collapseMode")
             .flatMap(CollapseMode.init) ?? .expandAll
         self.expandFirstDictionary = defaults.object(forKey: "expandFirstDictionary") as? Bool ?? false

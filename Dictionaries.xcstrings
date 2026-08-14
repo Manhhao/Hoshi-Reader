@@ -332,6 +332,9 @@
         }
       }
     },
+    "Disable Show Notes Button" : {
+
+    },
     "Download" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -707,6 +710,9 @@
         }
       }
     },
+    "Search Text" : {
+
+    },
     "Settings" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -731,9 +737,6 @@
           }
         }
       }
-    },
-    "Disable Show Notes Button" : {
-
     },
     "Square" : {
 
@@ -773,6 +776,9 @@
           }
         }
       }
+    },
+    "Text Size" : {
+
     },
     "This will check for and install updates for these dictionaries:\n%@" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",

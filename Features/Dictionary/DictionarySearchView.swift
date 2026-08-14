@@ -36,7 +36,7 @@ struct DictionarySearchView: View {
                 return;
             }
             const [entry] = await webkit.messageHandlers.getEntries.postMessage({ start: 0, count: 1 });
-            redirect(count);
+            redirect(count, document.scrollingElement.scrollTop);
             const length = [...entry.matched].length;
             [...container.children].forEach((span, i) => {
                 span.classList.toggle('matched', i >= start && i < start + length);
@@ -393,7 +393,7 @@ struct DictionarySearchView: View {
                 display: none;
                 padding: calc(8px * var(--popup-scale)) 0 calc(7px * var(--popup-scale));
                 border-bottom: calc(1px * var(--popup-scale)) solid rgba(128, 128, 128, 0.4);
-                font-size: calc(22px * var(--popup-scale));
+                font-size: calc(\(userConfig.searchTextSize)px * var(--popup-scale));
                 line-height: 1.6;
                 white-space: pre-wrap;
                 overflow-wrap: anywhere;

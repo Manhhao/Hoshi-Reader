@@ -1756,7 +1756,7 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
 const backStack = [];
 const forwardStack = [];
 
-function redirect(count) {
+function redirect(count, scrollTop = 0) {
     backStack.push(snapshot());
     forwardStack.length = 0;
     window.lookupEntries = undefined;
@@ -1768,9 +1768,9 @@ function redirect(count) {
     reportButtonRects();
     window.renderPopup();
     requestAnimationFrame(() => {
-        document.scrollingElement.scrollTop = 0;
+        document.scrollingElement.scrollTop = scrollTop;
         requestAnimationFrame(() => {
-            document.scrollingElement.scrollTop = 0;
+            document.scrollingElement.scrollTop = scrollTop;
         });
     });
 }

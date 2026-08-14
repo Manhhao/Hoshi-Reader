@@ -246,6 +246,21 @@ struct DictionarySettingsView: View {
             }
             
             Section {
+                HStack {
+                    Text("Text Size", tableName: "Dictionaries")
+                    Spacer()
+                    Text(verbatim: "\(userConfig.searchTextSize)")
+                        .fontWeight(.semibold)
+                    Stepper(value: Bindable(userConfig).searchTextSize, in: 12...48) {
+                        Text("Text Size", tableName: "Dictionaries")
+                    }
+                    .labelsHidden()
+                }
+            } header: {
+                Text("Search Text", tableName: "Dictionaries")
+            }
+            
+            Section {
                 Picker(selection: Bindable(userConfig).collapseMode) {
                     ForEach(CollapseMode.allCases, id: \.self) { m in
                         collapseModeText(m).tag(m)
