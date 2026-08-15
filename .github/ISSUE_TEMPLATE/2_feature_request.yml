@@ -17,7 +17,5 @@ body:
             an already open or closed issue.
           required: true
         - label: >-
-            This change is NOT Android-specific. Android-specific changes should
-            be requested in the Android repository; iOS-specific changes belong
-            here.
+            I am aware that I'm requesting a feature for the iOS version.
           required: true
