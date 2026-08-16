@@ -215,6 +215,10 @@ struct DictionaryView: View {
 struct DictionarySettingsView: View {
     @Environment(UserConfig.self) private var userConfig
     
+    private var enabledFrequencyDictionaries: [DictionaryInfo] {
+        DictionaryManager.shared.frequencyDictionaries.filter(\.isEnabled)
+    }
+    
     var body: some View {
         List {
             Section {
@@ -240,6 +244,22 @@ struct DictionarySettingsView: View {
                         Text("Scan Length", tableName: "Dictionaries")
                     }
                     .labelsHidden()
+                }
+                Picker(selection: Bindable(userConfig).frequencySortOrder) {
+                    ForEach(FrequencySortOrder.allCases, id: \.self) { order in
+                        frequencySortOrderText(order).tag(order)
+                    }
+                } label: {
+                    Text("Sort Order", tableName: "Dictionaries")
+                }
+                if userConfig.frequencySortOrder.usesDictionary && !enabledFrequencyDictionaries.isEmpty {
+                    Picker(selection: Bindable(userConfig).frequencySortDictionary) {
+                        ForEach(enabledFrequencyDictionaries) { dictionary in
+                            Text(verbatim: dictionary.index.title).tag(dictionary.index.title)
+                        }
+                    } label: {
+                        Text("Frequency Dictionary", tableName: "Dictionaries")
+                    }
                 }
             } header: {
                 Text("Lookup", tableName: "Dictionaries")
@@ -315,6 +335,21 @@ struct DictionarySettingsView: View {
         }
         .navigationTitle(String(localized: "Settings", table: "Dictionaries"))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: userConfig.frequencySortOrder) {
+            if userConfig.frequencySortOrder.usesDictionary,
+               !enabledFrequencyDictionaries.contains(where: { $0.index.title == userConfig.frequencySortDictionary }) {
+                userConfig.frequencySortDictionary = enabledFrequencyDictionaries.first?.index.title ?? ""
+            }
+        }
+    }
+    
+    private func frequencySortOrderText(_ order: FrequencySortOrder) -> Text {
+        switch order {
+        case .automatic: Text("Automatic", tableName: "Dictionaries")
+        case .ascending: Text("Ascending", tableName: "Dictionaries")
+        case .descending: Text("Descending", tableName: "Dictionaries")
+        case .disabled: Text("Disabled", tableName: "Dictionaries")
+        }
     }
     
     private func collapseModeText(_ mode: CollapseMode) -> Text {

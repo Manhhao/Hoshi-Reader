@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftUI
+import CHoshiDicts
 
 enum DictionaryUpdateInterval: String, CaseIterable, Codable {
     case daily = "Daily"
@@ -22,6 +23,26 @@ enum DictionaryUpdateInterval: String, CaseIterable, Codable {
             7 * 24 * 60 * 60
         case .monthly:
             30 * 24 * 60 * 60
+        }
+    }
+}
+
+enum FrequencySortOrder: String, CaseIterable, Codable {
+    case automatic = "Automatic"
+    case ascending = "Ascending"
+    case descending = "Descending"
+    case disabled = "Disabled"
+    
+    var usesDictionary: Bool {
+        self == .ascending || self == .descending
+    }
+    
+    var lookupFrequencyOrder: LookupFrequencyOrder {
+        switch self {
+        case .automatic: .Auto
+        case .ascending: .Ascending
+        case .descending: .Descending
+        case .disabled: .Disabled
         }
     }
 }
@@ -79,6 +100,8 @@ enum CoverMode: String, CaseIterable, Codable {
 
 @Observable
 class UserConfig {
+    static let shared = UserConfig()
+    
     var bookshelfSortOption: SortOption {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
@@ -113,6 +136,14 @@ class UserConfig {
     
     var scanLength: Int {
         didSet { UserDefaults.standard.set(scanLength, forKey: "scanLength") }
+    }
+    
+    var frequencySortOrder: FrequencySortOrder {
+        didSet { UserDefaults.standard.set(frequencySortOrder.rawValue, forKey: "frequencySortOrder") }
+    }
+    
+    var frequencySortDictionary: String {
+        didSet { UserDefaults.standard.set(frequencySortDictionary, forKey: "frequencySortDictionary") }
     }
     
     var searchTextSize: Int {
@@ -483,6 +514,9 @@ class UserConfig {
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
+        self.frequencySortOrder = defaults.string(forKey: "frequencySortOrder")
+            .flatMap(FrequencySortOrder.init) ?? .automatic
+        self.frequencySortDictionary = defaults.string(forKey: "frequencySortDictionary") ?? ""
         self.searchTextSize = defaults.object(forKey: "searchTextSize") as? Int ?? 22
         self.collapseMode = defaults.string(forKey: "collapseMode")
             .flatMap(CollapseMode.init) ?? .expandAll

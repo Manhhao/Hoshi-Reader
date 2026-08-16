@@ -57,7 +57,13 @@ class LookupEngine {
     
     func lookup(_ str: String, maxResults: Int = 16, scanLength: Int = 16) -> [LookupResult] {
         guard let bundle else { return [] }
-        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, LookupOptions()))
+        let config = UserConfig.shared
+        var options = LookupOptions()
+        options.frequency_order = config.frequencySortOrder.lookupFrequencyOrder
+        if config.frequencySortOrder.usesDictionary && !config.frequencySortDictionary.isEmpty {
+            options.frequency_dictionary = .init(std.string(config.frequencySortDictionary))
+        }
+        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, options))
     }
     
     func queryKanji(_ kanji: String) -> [String: Any]? {
@@ -82,7 +88,7 @@ class LookupEngine {
             "entries": entries,
         ]
     }
-
+    
     func getStyles() -> [DictionaryStyle] {
         guard let bundle else { return [] }
         return Array(bundle.dictQuery.get_styles())

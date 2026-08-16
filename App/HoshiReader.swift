@@ -14,7 +14,7 @@ import WebKit
 struct HoshiReaderApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
-    @State private var userConfig = UserConfig()
+    @State private var userConfig = UserConfig.shared
     @State private var pendingImportURL: URL?
     @State private var pendingRemoteImportURL: URL?
     @State private var pendingLookup: String?

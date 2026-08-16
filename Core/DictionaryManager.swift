@@ -462,6 +462,9 @@ class DictionaryManager {
                                 if let newId, wasCategory != .none {
                                     self.setDictionaryCategory(id: newId, category: wasCategory)
                                 }
+                                if type == .frequency, UserConfig.shared.frequencySortDictionary == old {
+                                    UserConfig.shared.frequencySortDictionary = new
+                                }
                                 AnkiManager.shared.updateHandlebar(old: old, new: new)
                                 if wasCollapsed {
                                     self.collapsedDictionaries.insert(new)

@@ -86,6 +86,12 @@
         }
       }
     },
+    "Ascending" : {
+
+    },
+    "Automatic" : {
+
+    },
     "Behaviour" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -315,6 +321,9 @@
         }
       }
     },
+    "Descending" : {
+
+    },
     "Diamond" : {
 
     },
@@ -333,6 +342,9 @@
       }
     },
     "Disable Show Notes Button" : {
+
+    },
+    "Disabled" : {
 
     },
     "Download" : {
@@ -491,6 +503,9 @@
           }
         }
       }
+    },
+    "Frequency Dictionary" : {
+
     },
     "Harmonic Frequency" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -737,6 +752,9 @@
           }
         }
       }
+    },
+    "Sort Order" : {
+
     },
     "Square" : {
 
