@@ -57,7 +57,7 @@ class LookupEngine {
     
     func lookup(_ str: String, maxResults: Int = 16, scanLength: Int = 16) -> [LookupResult] {
         guard let bundle else { return [] }
-        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength))
+        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, LookupOptions()))
     }
     
     func queryKanji(_ kanji: String) -> [String: Any]? {
