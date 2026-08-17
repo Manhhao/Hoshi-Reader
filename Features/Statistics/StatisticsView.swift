@@ -41,7 +41,7 @@ struct StatisticsView: View {
                 }
                 
                 if !viewModel.books.isEmpty {
-                    Section("Most Read") {
+                    Section("Books") {
                         ForEach(viewModel.books.prefix(viewModel.visibleBookCount)) { book in
                             NavigationLink {
                                 StatisticsEditView(book: book.metadata)

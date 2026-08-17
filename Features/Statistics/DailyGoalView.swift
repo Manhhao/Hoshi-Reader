@@ -184,15 +184,15 @@ struct DailyGoalView: View {
     
     private var goalPicker: some View {
         VStack(spacing: 6) {
-            Text("Daily Reading Goal")
+            Text("Goal")
                 .font(.headline)
             
             Group {
                 switch metric {
                 case .time:
-                    Text("min/day")
+                    Text("minutes per day")
                 case .characters:
-                    Text("characters/day")
+                    Text("characters per day")
                 }
             }
             .font(.caption)
@@ -204,8 +204,7 @@ struct DailyGoalView: View {
             }
             .pickerStyle(.segmented)
             
-            Picker(
-                "Daily Goal",
+            Picker("Daily Goal",
                 selection: metric == .time
                 ? Bindable(userConfig).statisticsDailyTimeGoal
                 : Bindable(userConfig).statisticsDailyCharacterGoal

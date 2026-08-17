@@ -28,7 +28,7 @@ enum DictionaryUpdateInterval: String, CaseIterable, Codable {
 }
 
 enum FrequencySortOrder: String, CaseIterable, Codable {
-    case automatic = "Automatic"
+    case auto = "Auto"
     case ascending = "Ascending"
     case descending = "Descending"
     case disabled = "Disabled"
@@ -39,7 +39,7 @@ enum FrequencySortOrder: String, CaseIterable, Codable {
     
     var lookupFrequencyOrder: LookupFrequencyOrder {
         switch self {
-        case .automatic: .Auto
+        case .auto: .Auto
         case .ascending: .Ascending
         case .descending: .Descending
         case .disabled: .Disabled
@@ -515,7 +515,7 @@ class UserConfig {
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
         self.frequencySortOrder = defaults.string(forKey: "frequencySortOrder")
-            .flatMap(FrequencySortOrder.init) ?? .automatic
+            .flatMap(FrequencySortOrder.init) ?? .auto
         self.frequencySortDictionary = defaults.string(forKey: "frequencySortDictionary") ?? ""
         self.searchTextSize = defaults.object(forKey: "searchTextSize") as? Int ?? 22
         self.collapseMode = defaults.string(forKey: "collapseMode")

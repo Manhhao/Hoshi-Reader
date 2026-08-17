@@ -680,6 +680,9 @@
     "Characters" : {
 
     },
+    "characters per day" : {
+
+    },
     "Characters Read" : {
 
     },
@@ -693,9 +696,6 @@
           }
         }
       }
-    },
-    "characters/day" : {
-
     },
     "Choose the **.srt** and press **Match**. Matching only has to be done once." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -873,9 +873,6 @@
       }
     },
     "Daily Goal" : {
-
-    },
-    "Daily Reading Goal" : {
 
     },
     "Dark" : {
@@ -1674,10 +1671,10 @@
         }
       }
     },
-    "min/day" : {
+    "Minutes" : {
 
     },
-    "Minutes" : {
+    "minutes per day" : {
 
     },
     "Mode" : {
@@ -1692,9 +1689,6 @@
       }
     },
     "Month" : {
-
-    },
-    "Most Read" : {
 
     },
     "Move" : {

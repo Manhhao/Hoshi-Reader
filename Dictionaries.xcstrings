@@ -89,7 +89,7 @@
     "Ascending" : {
 
     },
-    "Automatic" : {
+    "Auto" : {
 
     },
     "Behaviour" : {
@@ -507,6 +507,9 @@
     "Frequency Dictionary" : {
 
     },
+    "Frequency Sorting" : {
+
+    },
     "Harmonic Frequency" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -752,9 +755,6 @@
           }
         }
       }
-    },
-    "Sort Order" : {
-
     },
     "Square" : {
 

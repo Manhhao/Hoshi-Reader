@@ -250,7 +250,7 @@ struct DictionarySettingsView: View {
                         frequencySortOrderText(order).tag(order)
                     }
                 } label: {
-                    Text("Sort Order", tableName: "Dictionaries")
+                    Text("Frequency Sorting", tableName: "Dictionaries")
                 }
                 if userConfig.frequencySortOrder.usesDictionary && !enabledFrequencyDictionaries.isEmpty {
                     Picker(selection: Bindable(userConfig).frequencySortDictionary) {
@@ -345,7 +345,7 @@ struct DictionarySettingsView: View {
     
     private func frequencySortOrderText(_ order: FrequencySortOrder) -> Text {
         switch order {
-        case .automatic: Text("Automatic", tableName: "Dictionaries")
+        case .auto: Text("Auto", tableName: "Dictionaries")
         case .ascending: Text("Ascending", tableName: "Dictionaries")
         case .descending: Text("Descending", tableName: "Dictionaries")
         case .disabled: Text("Disabled", tableName: "Dictionaries")
