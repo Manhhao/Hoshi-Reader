@@ -217,8 +217,9 @@ class AnkiManager {
             }
         }
         
-        if !format.tags.isEmpty {
-            queryItems.append(URLQueryItem(name: "tags", value: format.tags))
+        let tags = resolveTags(format: format, context: context, content: content, singleGlossaries: singleGlossaries)
+        if !tags.isEmpty {
+            queryItems.append(URLQueryItem(name: "tags", value: tags))
         }
         
         if allowDupes {
@@ -323,7 +324,7 @@ class AnkiManager {
             note["fields"] = fields
         }
         
-        let tagList = format.tags.split(separator: " ").map(String.init)
+        let tagList = resolveTags(format: format, context: context, content: content, singleGlossaries: singleGlossaries).split(separator: " ").map(String.init)
         if !tagList.isEmpty {
             note["tags"] = tagList
         }
@@ -512,7 +513,7 @@ class AnkiManager {
             selectedDeck: availableDecks.first { $0.caseInsensitiveCompare("Default") != .orderedSame } ?? availableDecks.first,
             selectedNoteType: availableNoteTypes.first?.name,
             fieldMappings: [:],
-            tags: ""
+            tags: AnkiCardFormat.defaultTag
         )
         
         cardFormats.append(format)
@@ -556,7 +557,7 @@ class AnkiManager {
                 selectedDeck: nil,
                 selectedNoteType: nil,
                 fieldMappings: [:],
-                tags: ""
+                tags: AnkiCardFormat.defaultTag
             )]
         }
         
@@ -598,6 +599,14 @@ class AnkiManager {
     private func resolveSelectedGlossaryFallback(context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
         guard !Self.selectedGlossaryFallbackHandlebars.contains(selectedGlossaryFallback) else { return "" }
         return handlebarToValue(handlebar: selectedGlossaryFallback, context: context, content: content, singleGlossaries: singleGlossaries)
+    }
+    
+    private func resolveTags(format: AnkiCardFormat, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
+        format.tags.replacing(Self.handlebarRegex) { match in
+            handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: "_")
+        }
     }
     
     private func handlebarToValue(handlebar: String, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {

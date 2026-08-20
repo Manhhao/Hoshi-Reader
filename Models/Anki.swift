@@ -35,6 +35,7 @@ struct AnkiCardFormat: Codable, Identifiable {
     var fieldMappings: [String: String]
     var tags: String
     
+    static let defaultTag = "hoshi"
     static let icons = ["plus.square", "plus.square.small", "plus.circle", "plus.circle.small", "plus.diamond", "plus.diamond.small"]
     static let duplicateIcons: [String: String] = [
         "plus.square": "plus.square.on.square",
