@@ -151,16 +151,18 @@ struct AppearanceView: View {
                             .labelsHidden()
                     }
                     
-                    HStack {
-                        Text("Hide Furigana")
-                        Spacer()
+                    VStack {
+                        HStack {
+                            Text("Hide Furigana")
+                            Spacer()
+                        }
                         Picker("", selection: $userConfig.furiganaMode) {
                             Text("Off").tag(FuriganaMode.off)
+                            Text("Dimmed").tag(FuriganaMode.dimmed)
                             Text("Toggle").tag(FuriganaMode.toggle)
                             Text("Hidden").tag(FuriganaMode.hidden)
                         }
                         .pickerStyle(.segmented)
-                        .frame(width: 200)
                     }
                 }
                 

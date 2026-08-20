@@ -60,6 +60,7 @@ enum AudioPlaybackMode: String, CaseIterable, Codable {
 
 enum FuriganaMode: String, CaseIterable, Codable {
     case off = "Off"
+    case dimmed = "Dimmed"
     case toggle = "Toggle"
     case hidden = "Hidden"
 }

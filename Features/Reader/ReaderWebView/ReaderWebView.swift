@@ -495,6 +495,15 @@ struct ReaderWebView: UIViewRepresentable {
                 """
             }
             
+            var dimmedFuriganaCss = ""
+            if parent.userConfig.furiganaMode == .dimmed {
+                dimmedFuriganaCss = """
+                ruby > rt, ruby > rp {
+                    opacity: 0.4 !important;
+                }
+                """
+            }
+            
             let css = """
             \(fontFaceCss)
             :root {
@@ -575,6 +584,7 @@ struct ReaderWebView: UIViewRepresentable {
             ruby.furigana-hidden > rp {
                 visibility: hidden !important;
             }
+            \(dimmedFuriganaCss)
             ruby.furigana-hidden {
                 text-decoration-line: underline !important;
                 text-decoration-style: dotted !important;
@@ -623,7 +633,7 @@ struct ReaderWebView: UIViewRepresentable {
             
             let furiganaJs: String = {
                 switch parent.userConfig.furiganaMode {
-                case .off:
+                case .off, .dimmed:
                     return ""
                 case .toggle:
                     return """

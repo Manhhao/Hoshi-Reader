@@ -1052,6 +1052,9 @@
         }
       }
     },
+    "Dimmed" : {
+
+    },
     "Direction" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
