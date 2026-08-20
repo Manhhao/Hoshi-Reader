@@ -91,6 +91,21 @@ window.hoshiSelection = {
         return !!el?.closest('rt, rp');
     },
     
+    revealFurigana(ruby) {
+        const group = [ruby];
+        for (const direction of ['previousSibling', 'nextSibling']) {
+            let node = ruby[direction];
+            while (node && (node.localName === 'ruby' ||
+                            (node.nodeType === Node.TEXT_NODE && /^[\t\n\r ]*$/.test(node.nodeValue)))) {
+                if (node.localName === 'ruby') {
+                    group.push(node);
+                }
+                node = node[direction];
+            }
+        }
+        group.forEach(el => el.classList.remove('furigana-hidden'));
+    },
+    
     findParagraph(node) {
         let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
         return el?.closest('p, .glossary-content, .expr-tag') || null;
@@ -317,7 +332,7 @@ window.hoshiSelection = {
         
         const furigana = el?.closest('ruby.furigana-hidden');
         if (furigana) {
-            furigana.classList.remove('furigana-hidden');
+            this.revealFurigana(furigana);
             this.clearSelection();
             return 'furigana';
         }

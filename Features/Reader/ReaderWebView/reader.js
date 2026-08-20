@@ -83,7 +83,7 @@ window.hoshiReader = {
         
         const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
             acceptNode: (n) => n.parentElement.closest('ruby') ? NodeFilter.FILTER_REJECT
-            : n.nodeType === Node.TEXT_NODE || !n.firstChild || n.tagName === 'RUBY' ? NodeFilter.FILTER_ACCEPT
+            : n.nodeType === Node.TEXT_NODE || !n.firstChild || n.localName === 'ruby' ? NodeFilter.FILTER_ACCEPT
             : NodeFilter.FILTER_SKIP
         });
         const positions = [];
