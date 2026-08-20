@@ -369,6 +369,17 @@
         }
       }
     },
+    "Download Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载字体"
+          }
+        }
+      }
+    },
     "Download Recommended Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -376,6 +387,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下载推荐词典"
+          }
+        }
+      }
+    },
+    "Download Stroke Order Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载笔顺字体"
+          }
+        }
+      }
+    },
+    "Downloading Stroke Order Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载笔顺字体"
           }
         }
       }
@@ -442,6 +475,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "展开第一个词典"
+          }
+        }
+      }
+    },
+    "Failed to download the stroke order font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔顺字体下载失败"
           }
         }
       }
@@ -816,6 +860,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前字段配置将会重置。"
+          }
+        }
+      }
+    },
+    "This will download and automatically import the kanji stroke order font (17 MB)" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这将下载并自动导入汉字笔顺字体（17 MB）"
           }
         }
       }

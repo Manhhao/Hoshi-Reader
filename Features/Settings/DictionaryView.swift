@@ -17,6 +17,8 @@ struct DictionaryView: View {
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
     @State private var selectedType: DictionaryType = .term
+    @State private var isDownloadingKanjiFont = false
+    @State private var showFontDownloadConfirmation = false
     
     private var dictionaries: [DictionaryInfo] {
         switch selectedType {
@@ -69,6 +71,30 @@ struct DictionaryView: View {
                 }
             } footer: {
                 Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
+            }
+            
+            if !dictionaryManager.kanjiDictionaries.isEmpty {
+                Section {
+                    Button {
+                        showFontDownloadConfirmation = true
+                    } label: {
+                        Text("Download Stroke Order Font", tableName: "Dictionaries")
+                    }
+                    .disabled(isDownloadingKanjiFont || FontManager.shared.hasKanjiStrokeOrderFont)
+                    .alert(String(localized: "Download Font", table: "Dictionaries"), isPresented: $showFontDownloadConfirmation) {
+                        Button {
+                            downloadKanjiStrokeOrderFont()
+                        } label: {
+                            Text("Download", tableName: "Dictionaries")
+                        }
+                        Button(role: .cancel) {
+                        } label: {
+                            Text("Cancel", tableName: "Dictionaries")
+                        }
+                    } message: {
+                        Text("This will download and automatically import the kanji stroke order font (17 MB)", tableName: "Dictionaries")
+                    }
+                }
             }
             
             if (dictionaryManager.updatableDictionaries.count > 0) {
@@ -198,6 +224,8 @@ struct DictionaryView: View {
         .overlay {
             if dictionaryManager.isImporting || dictionaryManager.isUpdating {
                 LoadingOverlay(dictionaryManager.currentImport)
+            } else if isDownloadingKanjiFont {
+                LoadingOverlay(String(localized: "Downloading Stroke Order Font", table: "Dictionaries"))
             }
         }
         .navigationTitle(String(localized: "Dictionaries", table: "Dictionaries"))
@@ -208,6 +236,18 @@ struct DictionaryView: View {
             }
         } message: {
             Text(verbatim: dictionaryManager.errorMessage)
+        }
+    }
+    
+    private func downloadKanjiStrokeOrderFont() {
+        isDownloadingKanjiFont = true
+        Task {
+            let success = await FontManager.downloadKanjiStrokeOrderFont()
+            isDownloadingKanjiFont = false
+            if !success {
+                dictionaryManager.errorMessage = String(localized: "Failed to download the stroke order font", table: "Dictionaries")
+                dictionaryManager.shouldShowError = true
+            }
         }
     }
 }
