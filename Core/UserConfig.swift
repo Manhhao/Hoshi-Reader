@@ -576,8 +576,8 @@ class UserConfig {
         self.readerShowReadingTime = defaults.object(forKey: "readerShowReadingTime") as? Bool ?? false
         self.readerShowSasayakiToggle = defaults.object(forKey: "readerShowSasayakiToggle") as? Bool ?? false
         
-        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
-        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 350
+        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 310
         self.popupScale = defaults.object(forKey: "popupScale") as? Double ?? 1.0
         self.popupActionBar = defaults.object(forKey: "popupActionBar") as? Bool ?? false
         self.popupDisableTransparency = defaults.object(forKey: "popupDisableTransparency") as? Bool ?? false
@@ -597,7 +597,7 @@ class UserConfig {
             .flatMap(AudioPlaybackMode.init) ?? .interrupt
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
         
-        self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? false
+        self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? true
         self.statisticsSyncMode = defaults.string(forKey: "statisticsSyncMode")
             .flatMap(StatisticsSyncMode.init) ?? .merge
         self.statisticsAutostartMode = defaults.string(forKey: "statisticsAutostartMode")
