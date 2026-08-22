@@ -8,6 +8,7 @@
 
 import CoreText
 import Foundation
+import os
 
 class FontManager {
     static let shared = FontManager()
@@ -135,6 +136,7 @@ class FontManager {
         }
         
         await withCheckedContinuation { continuation in
+            let resumed = OSAllocatedUnfairLock(initialState: false)
             DispatchQueue.global(qos: .userInitiated).async {
                 let descriptor = CTFontDescriptorCreateWithAttributes(
                     [kCTFontNameAttribute: postScriptName] as CFDictionary
@@ -146,6 +148,13 @@ class FontManager {
                 ) { state, _ in
                     guard state == .didFinish || state == .didFailWithError else {
                         return true
+                    }
+                    let isFirst = resumed.withLock { resumed in
+                        defer { resumed = true }
+                        return !resumed
+                    }
+                    guard isFirst else {
+                        return false
                     }
                     DispatchQueue.global(qos: .userInitiated).async {
                         continuation.resume()
