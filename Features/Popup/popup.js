@@ -1693,7 +1693,7 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
         textContent: `
-            [data-dictionary="${dictName}"] {
+            :where(div)[data-dictionary="${dictName}"] {
                 @media (prefers-color-scheme: light) { color: #000; }
                 @media (prefers-color-scheme: dark) { color: #fff; }
                 ${dictStyle}
