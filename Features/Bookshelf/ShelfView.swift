@@ -156,13 +156,16 @@ struct ShelfView: View {
         }
         .onChange(of: selectedBook) { old, new in
             if let book = new {
-                readerWindow.present(content: {
+                let presented = readerWindow.present(content: {
                     ReaderLoader(book: book)
                         .environment(userConfig)
                 }) {
                     if selectedBook?.id == book.id {
                         selectedBook = nil
                     }
+                }
+                if !presented {
+                    selectedBook = nil
                 }
             } else if old != nil {
                 viewModel.loadBooks()
