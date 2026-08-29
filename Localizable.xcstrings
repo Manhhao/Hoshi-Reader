@@ -2138,17 +2138,6 @@
     "Search book" : {
 
     },
-    "Search Window" : {
-      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "匹配搜索范围"
-          }
-        }
-      }
-    },
     "Selector" : {
       "comment" : "Context: Dictionary custom CSS editor. Surrounding UI shows a menu of dictionary CSS selectors that can be inserted into the editor.",
       "localizations" : {

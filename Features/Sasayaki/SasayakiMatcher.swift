@@ -10,6 +10,9 @@ import EPUBKit
 import Foundation
 
 struct SasayakiMatcher {
+    private static let searchWindow = 200
+    private static let maxMisses = 4
+    
     private enum MatchError: Error {
         case missingEpub
     }
@@ -21,7 +24,7 @@ struct SasayakiMatcher {
         var end: Int { start + length }
     }
     
-    static func match(rootURL: URL, cues: [SasayakiCue], searchWindow: Int) throws -> SasayakiMatchData {
+    static func match(rootURL: URL, cues: [SasayakiCue]) throws -> SasayakiMatchData {
         guard let epub = BookStorage.loadMetadata(root: rootURL)?.epub else {
             throw MatchError.missingEpub
         }
@@ -63,8 +66,7 @@ struct SasayakiMatcher {
             source.append(contentsOf: chapterText)
         }
         
-        var start = 0
-        var minStart: Int?
+        var candidates: [Int] = []
         for cue in cues.prefix(15) {
             if cue.text.hasPrefix("＊") {
                 continue
@@ -75,16 +77,24 @@ struct SasayakiMatcher {
                 continue
             }
             if let index = findText(source: source, text: text, start: 0, end: source.count) {
-                minStart = min(minStart ?? index, index)
+                candidates.append(index)
             }
         }
-        if let minStart {
-            start = minStart
+        
+        var start = 0
+        var bestVotes = 0
+        for candidate in candidates {
+            let votes = candidates.filter { $0 >= candidate && $0 <= candidate + 2000 }.count
+            if votes > bestVotes {
+                bestVotes = votes
+                start = candidate
+            }
         }
         
         var matches: [SasayakiMatch] = []
         var unmatched = 0
         var cursor = start
+        var misses = 0
         
         for cue in cues {
             let text = cue.text.filtered()
@@ -99,8 +109,13 @@ struct SasayakiMatcher {
                 continue
             }
             
-            guard let index = findText(source: source, text: chars, start: cursor, end: min(source.count, cursor + chars.count + searchWindow)) else {
+            var found = findText(source: source, text: chars, start: cursor, end: min(source.count, cursor + chars.count + searchWindow))
+            if found == nil, misses >= maxMisses, chars.count >= 10 {
+                found = findUnique(source: source, text: chars, start: cursor)
+            }
+            guard let index = found else {
                 unmatched += 1
+                misses += 1
                 continue
             }
             
@@ -108,10 +123,12 @@ struct SasayakiMatcher {
             let range = chapters.first(where: { index >= $0.start && index < $0.end })!
             guard end <= range.end else {
                 unmatched += 1
+                misses += 1
                 continue
             }
             
             cursor = end
+            misses = 0
             matches.append(
                 SasayakiMatch(
                     id: cue.id,
@@ -130,6 +147,16 @@ struct SasayakiMatcher {
             unmatched: unmatched,
             images: images
         )
+    }
+    
+    private static func findUnique(source: [Character], text: [Character], start: Int) -> Int? {
+        guard let index = findText(source: source, text: text, start: start, end: source.count) else {
+            return nil
+        }
+        guard findText(source: source, text: text, start: index + 1, end: source.count) == nil else {
+            return nil
+        }
+        return index
     }
     
     private static func findText(source: [Character], text: [Character], start: Int, end: Int) -> Int? {

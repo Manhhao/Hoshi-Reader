@@ -17,7 +17,6 @@ struct SasayakiMatchView: View {
     
     @State private var isImporting = false
     @State private var fileURL: URL?
-    @State private var searchWindow: Double = 200
     @State private var isMatching = false
     @State private var match: SasayakiMatchData?
     
@@ -35,15 +34,6 @@ struct SasayakiMatchView: View {
                 }
                 
                 Section {
-                    VStack {
-                        HStack {
-                            Text("Search Window")
-                            Spacer()
-                            Text("\(Int(searchWindow))")
-                                .fontWeight(.semibold)
-                        }
-                        Slider(value: $searchWindow, in: 50...1000, step: 50)
-                    }
                     Button {
                         matchFile()
                     } label: {
@@ -104,11 +94,7 @@ struct SasayakiMatchView: View {
         isMatching = true
         Task { @MainActor in
             defer { isMatching = false }
-            match = try? await viewModel.runSasayakiMatch(
-                book: book,
-                srtURL: fileURL,
-                searchWindow: Int(searchWindow)
-            )
+            match = try? await viewModel.runSasayakiMatch(book: book, srtURL: fileURL)
         }
     }
     
