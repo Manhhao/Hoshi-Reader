@@ -331,38 +331,53 @@ class DictionaryManager {
                 
                 let current = url.lastPathComponent
                 guard url.startAccessingSecurityScopedResource() else {
-                    failed.append(current)
+                    failed.append("\(current): could not access file")
                     continue
                 }
                 
                 defer { url.stopAccessingSecurityScopedResource() }
                 
-                let importResult = dictionary_importer.import(
-                    std.string(url.path(percentEncoded: false)),
-                    std.string(FileManager.default.temporaryDirectory.path(percentEncoded: false))
-                )
+                let tempDir = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                defer { try? FileManager.default.removeItem(at: tempDir) }
                 
-                if importResult.success {
+                do {
+                    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                    
+                    let importResult = dictionary_importer.import(
+                        std.string(url.path(percentEncoded: false)),
+                        std.string(tempDir.path(percentEncoded: false))
+                    )
+                    
+                    guard importResult.success else {
+                        failed.append("\(current): \(String(importResult.error))")
+                        continue
+                    }
+                    
                     let title = String(importResult.title)
-                    let temp = FileManager.default.temporaryDirectory
-                        .appendingPathComponent(String(title))
-                    defer { try? FileManager.default.removeItem(at: temp) }
+                    let temp = tempDir.appendingPathComponent(title)
                     let counts = importResult.summary.counts
+                    
+                    var types: [DictionaryType] = []
                     if counts.terms.total > 0 {
-                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.term.rawValue)/\(title)")
+                        types.append(.term)
                     }
                     if counts.termMeta.contains(std.string("freq")) {
-                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.frequency.rawValue)/\(title)")
+                        types.append(.frequency)
                     }
                     if counts.termMeta.contains(std.string("pitch")) || counts.termMeta.contains(std.string("ipa")) {
-                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.pitch.rawValue)/\(title)")
+                        types.append(.pitch)
                     }
                     if counts.kanji.total > 0 {
-                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.kanji.rawValue)/\(title)")
+                        types.append(.kanji)
+                    }
+                    
+                    for type in types {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(type.rawValue)/\(title)")
                     }
                     imported.append(current)
-                } else {
-                    failed.append(current)
+                } catch {
+                    failed.append("\(current): \(error.localizedDescription)")
                 }
             }
             
@@ -376,9 +391,9 @@ class DictionaryManager {
                 }
                 
                 if imported.isEmpty {
-                    self.showError("failed to import dictionary")
+                    self.showError("Failed to import dictionary:\n\(failed.joined(separator: "\n"))")
                 } else if !failed.isEmpty {
-                    self.showError("some dictionaries could not be imported:\n\(failed.joined(separator: "\n"))")
+                    self.showError("Some dictionaries could not be imported:\n\(failed.joined(separator: "\n"))")
                 }
             }
         }
