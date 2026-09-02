@@ -775,7 +775,11 @@ struct ReaderView: View {
             }
             viewModel.isPaused = true
         }
+        .onAppear {
+            ReaderIntentBridge.shared.reader = viewModel
+        }
         .onDisappear {
+            ReaderIntentBridge.shared.reader = nil
             viewModel.sasayakiPlayer.teardown()
             Task {
                 await viewModel.flushAutoSync()

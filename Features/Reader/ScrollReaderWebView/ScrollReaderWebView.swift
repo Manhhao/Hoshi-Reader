@@ -166,6 +166,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
+                case .paginate:
+                    break
                 }
             }
             return

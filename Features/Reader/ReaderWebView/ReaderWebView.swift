@@ -44,6 +44,7 @@ enum WebViewCommand {
     case scrollToSasayakiImage(index: Int, completion: ((Bool) -> Void)? = nil)
     case removeHighlight(String)
     case showSearchHighlight(offset: Int, length: Int)
+    case paginate(NavigationDirection)
 }
 
 @Observable
@@ -276,6 +277,8 @@ struct ReaderWebView: UIViewRepresentable {
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
+                case .paginate(let direction):
+                    context.coordinator.navigate(direction)
                 }
             }
             return
@@ -807,7 +810,7 @@ struct ReaderWebView: UIViewRepresentable {
             webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
         }
         
-        private func navigate(_ direction: NavigationDirection) {
+        func navigate(_ direction: NavigationDirection) {
             guard let webView = webView else { return }
             
             clearSelection()

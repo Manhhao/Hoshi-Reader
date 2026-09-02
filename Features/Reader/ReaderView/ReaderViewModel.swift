@@ -498,6 +498,10 @@ class ReaderViewModel {
         }
     }
     
+    func turnPage(_ direction: NavigationDirection) {
+        bridge.send(.paginate(direction))
+    }
+    
     func clearSelection() {
         bridge.send(.clearSelection)
     }
