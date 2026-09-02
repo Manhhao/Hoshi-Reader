@@ -41,7 +41,7 @@ class LookupEngine {
     private init() {}
     
     func buildQuery(termPaths: [URL], freqPaths: [URL], pitchPaths: [URL], kanjiPaths: [URL]) {
-        generation += 1
+        releaseQuery()
         let token = generation
         let previous = buildTask
         buildTask = Task.detached(priority: .userInitiated) {
@@ -53,6 +53,11 @@ class LookupEngine {
                 self.bundle = newBundle
             }
         }
+    }
+    
+    func releaseQuery() {
+        generation += 1
+        bundle = nil
     }
     
     func lookup(_ str: String, maxResults: Int = 16, scanLength: Int = 16) -> [LookupResult] {

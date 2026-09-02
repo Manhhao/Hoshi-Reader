@@ -260,6 +260,7 @@ class DictionaryManager {
         ]
         
         isImporting = true
+        LookupEngine.shared.releaseQuery()
         
         Task.detached {
             var tempFiles: [URL] = []
@@ -311,6 +312,7 @@ class DictionaryManager {
             } catch {
                 await MainActor.run {
                     self.isImporting = false
+                    self.rebuildLookupQuery()
                     self.showError("Failed to download dictionaries: \(error.localizedDescription)")
                 }
             }
@@ -319,6 +321,7 @@ class DictionaryManager {
     
     func importDictionary(from urls: [URL]) {
         isImporting = true
+        LookupEngine.shared.releaseQuery()
         
         Task.detached {
             var imported: [String] = []
@@ -387,8 +390,8 @@ class DictionaryManager {
                 if !imported.isEmpty {
                     self.loadDictionaries()
                     self.saveDictionaryConfig()
-                    self.rebuildLookupQuery()
                 }
+                self.rebuildLookupQuery()
                 
                 if imported.isEmpty {
                     self.showError("Failed to import dictionary:\n\(failed.joined(separator: "\n"))")
@@ -399,7 +402,7 @@ class DictionaryManager {
         }
     }
     
-    func updateDictionaries(showErrors: Bool = true, session: URLSession = .shared) {
+    func updateDictionaries(showErrors: Bool = true, lowRam: Bool = false, session: URLSession = .shared) {
         let dictionaries = updatableDictionaries
         isUpdating = true
         Task.detached {
@@ -442,7 +445,8 @@ class DictionaryManager {
                     
                     let importResult = dictionary_importer.import(
                         std.string(temp.path(percentEncoded: false)),
-                        std.string(tempDir.path(percentEncoded: false))
+                        std.string(tempDir.path(percentEncoded: false)),
+                        lowRam
                     )
                     
                     if !importResult.success {
@@ -523,7 +527,7 @@ class DictionaryManager {
         let config = URLSessionConfiguration.default
         config.allowsExpensiveNetworkAccess = false
         config.allowsConstrainedNetworkAccess = false
-        updateDictionaries(showErrors: false, session: URLSession(configuration: config))
+        updateDictionaries(showErrors: false, lowRam: true, session: URLSession(configuration: config))
     }
     
     func toggleDictionary(id: UUID, enabled: Bool, type: DictionaryType) {
