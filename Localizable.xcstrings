@@ -1716,6 +1716,9 @@
         }
       }
     },
+    "Next Page" : {
+
+    },
     "No audio found" : {
 
     },
@@ -1942,6 +1945,9 @@
           }
         }
       }
+    },
+    "Previous Page" : {
+
     },
     "Privacy Policy" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",

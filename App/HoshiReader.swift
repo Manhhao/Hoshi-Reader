@@ -25,8 +25,6 @@ struct HoshiReaderApp: App {
     private func startup() async {
         TokenStorage.clearOldKeys()
         await Task.detached(priority: .userInitiated) {
-            BookStorage.migrateFromDocuments()
-            BookStorage.migrateBooks()
         }.value
         didFinishLaunch = true
         _ = DictionaryManager.shared
