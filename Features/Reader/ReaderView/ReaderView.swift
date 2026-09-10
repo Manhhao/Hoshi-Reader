@@ -26,6 +26,16 @@ struct WebViewState: Hashable {
     var size: CGSize
 }
 
+struct VisualNovelWebViewState: Hashable {
+    var base: WebViewState
+    var screenMode: VisualNovelScreenMode
+    var sentencesPerScreen: Int
+    var preserveDialogueBubbles: Bool
+    var revealSpeed: Int
+    var clickAdvance: Bool
+    var mergeCrossScreenSasayakiCues: Bool
+}
+
 struct ReaderLoader: View {
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.dismissReader) private var dismissReader
@@ -290,7 +300,94 @@ struct ReaderView: View {
                         width: userConfig.verticalWriting ? (geometry.size.width * (1 - CGFloat(userConfig.horizontalPadding) / 100)).rounded() : viewSize.width,
                         height: userConfig.verticalWriting ? viewSize.height : (geometry.size.height * (1 - CGFloat(userConfig.verticalPadding) / 100)).rounded()
                     )
-                    if userConfig.continuousMode {
+                    if userConfig.readerViewMode == .visualNovel {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            }
+
+                        VisualNovelWebView(
+                            userConfig: userConfig,
+                            viewSize: viewSize,
+                            bridge: viewModel.bridge,
+                            textColor: readerTextColor,
+                            sasayakiTextColor: sasayakiTextColor,
+                            sasayakiBackgroundColor: sasayakiBackgroundColor,
+                            onNextChapter: viewModel.nextChapter,
+                            onPreviousChapter: viewModel.previousChapter,
+                            onSaveBookmark: viewModel.saveBookmark,
+                            onInternalLink: viewModel.jumpToLink,
+                            onInternalJump: viewModel.syncProgressAfterLinkJump,
+                            onTextSelected: {
+                                viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
+                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
+                            },
+                            onTapOutside: {
+                                if viewModel.popups.isEmpty {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode.toggle()
+                                    }
+                                } else {
+                                    viewModel.closePopups()
+                                }
+                            },
+                            hasOpenPopups: { !viewModel.popups.isEmpty },
+                            onPageTurn: {
+                                viewModel.clearForwardHistory()
+                                viewModel.closePopups()
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
+                                if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
+                                    viewModel.startTracking()
+                                }
+                            },
+                            onRestoreCompleted: {
+                                viewModel.handleRestoreCompleted()
+                            },
+                            onHighlightCreated: viewModel.addHighlight,
+                            onImageTapped: { imageURL = $0 }
+                        )
+                        .id(VisualNovelWebViewState(
+                            base: WebViewState(
+                                verticalWriting: userConfig.verticalWriting,
+                                fontSize: userConfig.fontSize,
+                                selectedFont: userConfig.selectedFont,
+                                hideFurigana: userConfig.readerHideFurigana,
+                                horizontalPadding: userConfig.horizontalPadding,
+                                verticalPadding: userConfig.verticalPadding,
+                                avoidPageBreak: userConfig.avoidPageBreak,
+                                justifyText: userConfig.justifyText,
+                                blurImages: userConfig.blurImages,
+                                layoutAdvanced: userConfig.layoutAdvanced,
+                                lineHeight: userConfig.lineHeight,
+                                characterSpacing: userConfig.characterSpacing,
+                                paragraphSpacing: userConfig.paragraphSpacing,
+                                size: viewSize,
+                            ),
+                            screenMode: userConfig.visualNovelScreenMode,
+                            sentencesPerScreen: userConfig.visualNovelSentencesPerScreen,
+                            preserveDialogueBubbles: userConfig.visualNovelPreserveDialogueBubbles,
+                            revealSpeed: userConfig.visualNovelRevealSpeed,
+                            clickAdvance: userConfig.visualNovelClickAdvance,
+                            mergeCrossScreenSasayakiCues: userConfig.visualNovelMergeCrossScreenSasayakiCues,
+                        ))
+                        .frame(width: viewSize.width, height: viewSize.height)
+                    } else if userConfig.readerViewMode == .continuous {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -636,6 +733,14 @@ struct ReaderView: View {
                             Label("Sasayaki", systemImage: "waveform")
                         }
                     }
+
+                    if userConfig.readerViewMode == .visualNovel {
+                        Button {
+                            viewModel.activeSheet = .visualNovelSettings
+                        } label: {
+                            Label("VN Settings", systemImage: "text.below.photo")
+                        }
+                    }
                 } label: {
                     Image(systemName: "slider.horizontal.3")
                         .font(.system(size: 20))
@@ -716,6 +821,16 @@ struct ReaderView: View {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium])
+            case .visualNovelSettings:
+                NavigationStack {
+                    VNModeSettingsView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { viewModel.activeSheet = nil }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
             }
         }
         .task(id: viewModel.isTracking) {

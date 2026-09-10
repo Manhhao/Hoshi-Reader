@@ -45,21 +45,35 @@ window.hoshiHighlights = {
     collectSegments(offset, length) {
         const end = offset + length;
         const segments = [];
-        let cursor = 0;
         let segment = null;
-        
+
         const flushSegment = () => {
             if (!segment) {
                 return;
             }
-            
+
             segments.push(segment);
             segment = null;
         };
-        
+
         let node;
         const walker = window.hoshiReader.createWalker();
-        while (cursor < end && (node = walker.nextNode())) {
+        // Initialize the cursor from the first walked node's own registered raw
+        // offset instead of assuming the walk always starts at chapter offset 0.
+        // For reader.js/scrollreader.js (which always walk the whole chapter) the
+        // first node's offset is 0, so this is a no-op there. For VN mode, which
+        // only ever has the current screen's content attached under document.body,
+        // the first node's offset is that screen's actual chapter-relative start,
+        // so highlight offsets (stored in whole-chapter terms) still line up
+        // correctly against a walk that only covers a fragment of the chapter.
+        let cursor = null;
+        while ((cursor === null || cursor < end) && (node = walker.nextNode())) {
+            if (cursor === null) {
+                cursor = window.hoshiReader.nodeStartRawOffsets.get(node) ?? 0;
+                if (cursor >= end) {
+                    break;
+                }
+            }
             const text = node.textContent;
             let i = 0;
             while (i < text.length && cursor < end) {
