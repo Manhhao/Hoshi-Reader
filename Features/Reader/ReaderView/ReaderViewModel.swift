@@ -89,6 +89,7 @@ class ReaderViewModel {
     var activeSheet: ActiveSheet?
     var contentsTab: ContentsTab = .chapters
     var isLoading = true
+    var focusMode = false
     var bookInfo: BookInfo
     private let chapterStarts: [Int]
     let bridge = WebViewBridge()
@@ -228,6 +229,51 @@ class ReaderViewModel {
         }
         
         return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * currentProgress)
+    }
+    
+    var progressString: String {
+        let config = UserConfig.shared
+        var lines: [String] = []
+        if config.readerShowProgress {
+            let line = progressLine(current: currentCharacter, total: bookInfo.characterCount)
+            if !line.isEmpty {
+                lines.append(line)
+            }
+        }
+        
+        if config.readerShowChapterProgress {
+            let chapter = currentChapterRange
+            let line = progressLine(current: chapter.character, total: chapter.total)
+            if !line.isEmpty {
+                lines.append("(\(line))")
+            }
+        }
+        return lines.joined(separator: config.readerAlwaysShowProgress || config.readerShowProgressTop ? " " : "\n")
+    }
+    
+    private func progressLine(current: Int, total: Int) -> String {
+        let config = UserConfig.shared
+        var parts: [String] = []
+        if config.readerShowCharacters {
+            parts.append("\(current) / \(total)")
+        }
+        if config.readerShowPercentage {
+            let percent = total > 0 ? Double(current) / Double(total) * 100 : 0
+            parts.append(String(format: "%.2f%%", percent))
+        }
+        return parts.joined(separator: " ")
+    }
+    
+    var statisticsString: String {
+        let config = UserConfig.shared
+        var result: [String] = []
+        if config.readerShowReadingSpeed {
+            result.append("\(sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
+        }
+        if config.readerShowReadingTime {
+            result.append("\(Duration.seconds(sessionStatistics.readingTime).formatted(.time(pattern: .hourMinute)))")
+        }
+        return result.joined(separator: " ")
     }
     
     var coverURL: URL? {

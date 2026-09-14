@@ -131,6 +131,8 @@ final class HoshiWKWebView: WKWebView {
 struct ReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
     let viewSize: CGSize
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
@@ -166,8 +168,10 @@ struct ReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        if #available(iOS 26.0, *) {
+            webView.scrollView.topEdgeEffect.style = .soft
+            webView.scrollView.bottomEdgeEffect.style = .soft
         }
         webView.scrollView.isScrollEnabled = false
         webView.navigationDelegate = context.coordinator
@@ -411,6 +415,8 @@ struct ReaderWebView: UIViewRepresentable {
             
             let verticalPadding = Double(parent.userConfig.verticalPadding)
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
+            let topInset = Double(parent.topInset)
+            let bottomInset = Double(parent.bottomInset)
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             let columnGapUnit = parent.userConfig.verticalWriting ? "vh" : "vw"
@@ -419,20 +425,24 @@ struct ReaderWebView: UIViewRepresentable {
             : horizontalPadding
             
             let columnGap = parent.userConfig.verticalWriting
-            ? "calc(\(columnGapValue)\(columnGapUnit) + \(bottomOverlap)px)"
+            ? "calc(\(columnGapValue)\(columnGapUnit) + \(Double(bottomOverlap) + topInset + bottomInset)px)"
             : "\(columnGapValue)\(columnGapUnit)"
             let columnWidth = parent.userConfig.verticalWriting
             ? "var(--page-height, 100vh)"
             : "var(--page-width, 100vw)"
             
-            let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
-            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
+            let bottomExtra = Double(parent.userConfig.verticalWriting ? bottomOverlap : 0) + bottomInset
+            let bottomPaddingCss = bottomExtra > 0
+            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomExtra)px) !important;"
+            : ""
+            let topPaddingCss = topInset > 0
+            ? "padding-top: calc(\(verticalPadding / 2)vh + \(topInset)px) !important;"
             : ""
             
             let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
             let imgHeight = parent.userConfig.verticalWriting
-            ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)"
-            : "\(100 - verticalPadding)vh"
+            ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100 + topInset + bottomInset)px)"
+            : "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -530,6 +540,7 @@ struct ReaderWebView: UIViewRepresentable {
                 column-width: \(columnWidth) !important;
                 column-gap: \(columnGap);
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
+                \(topPaddingCss)
                 \(bottomPaddingCss)
                 \(gridCss)
             }
