@@ -132,7 +132,9 @@ public final class EPUBParser: EPUBParserProtocol {
             }
             let tableOfContentsElement = try contentService.tableOfContents(fileName)
 
-            tableOfContents = getTableOfContents(from: tableOfContentsElement)
+            let tableOfContentsDirectory = fileName.split(separator: "/").dropLast().joined(separator: "/")
+
+            tableOfContents = getTableOfContents(from: tableOfContentsElement, relativeTo: tableOfContentsDirectory)
             delegate?.parser(self, didFinishParsing: tableOfContents)
         } catch let error {
             // CRITICAL: Always notify delegate of failures for proper error handling
@@ -228,10 +230,10 @@ extension EPUBParser: EPUBParsable {
     ///
     /// - Parameter xmlElement: The root ncx XML element from the navigation document
     /// - Returns: Hierarchical EPUBTableOfContents structure with recursive navigation points
-    public func getTableOfContents(from xmlElement: XMLElement) -> EPUBTableOfContents {
+    public func getTableOfContents(from xmlElement: XMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents {
         // Delegate to specialized TOC parser which recursively processes navPoint elements
         // to build the complete navigation hierarchy with unlimited nesting depth
-        tableOfContentsParser.parse(xmlElement)
+        tableOfContentsParser.parse(xmlElement, relativeTo: baseDirectory)
     }
 
 }

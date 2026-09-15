@@ -8,12 +8,15 @@
 
 import CoreText
 import Foundation
+import os
 
 class FontManager {
     static let shared = FontManager()
     static let defaultFonts = ["Hiragino Mincho ProN", "Hiragino Kaku Gothic ProN"]
     static let downloadableFonts = ["Klee", "Tsukushi A Round Gothic", "YuKyokasho", "YuMincho", "YuGothic"]
+    static let kanjiStrokeOrderFont = "KanjiStrokeOrders_v4.005"
     private static let yuKyokashoYoko = "YuKyokasho Yoko"
+    private static let kanjiStrokeOrderFontUrl = URL(string: "https://drive.google.com/uc?export=download&id=1TELymEhF0YMK0Ma-fQlpHNmZLg9Xw3zx")!
     private var importedFontNames: [String] { ((try? storedFonts()) ?? []).map { $0.deletingPathExtension().lastPathComponent } }
     
     var allFonts: [String] {
@@ -35,6 +38,10 @@ class FontManager {
             """
         }
         return fontFaceCss
+    }
+    
+    var hasKanjiStrokeOrderFont: Bool {
+        (try? storedFontUrl(name: Self.kanjiStrokeOrderFont)) != nil
     }
     
     func importFont(from: URL) {
@@ -102,6 +109,15 @@ class FontManager {
         return await downloadSingleFont(familyName)
     }
     
+    static func downloadKanjiStrokeOrderFont() async -> Bool {
+        guard let (temp, _) = try? await URLSession.shared.download(from: kanjiStrokeOrderFontUrl) else {
+            return false
+        }
+        defer { try? FileManager.default.removeItem(at: temp) }
+        
+        return (try? BookStorage.copyFile(from: temp, to: "Fonts/\(kanjiStrokeOrderFont).ttf")) != nil
+    }
+    
     private static func fontsDirectory() throws -> URL {
         try BookStorage.getAppDirectory().appendingPathComponent("Fonts")
     }
@@ -120,6 +136,7 @@ class FontManager {
         }
         
         await withCheckedContinuation { continuation in
+            let resumed = OSAllocatedUnfairLock(initialState: false)
             DispatchQueue.global(qos: .userInitiated).async {
                 let descriptor = CTFontDescriptorCreateWithAttributes(
                     [kCTFontNameAttribute: postScriptName] as CFDictionary
@@ -131,6 +148,13 @@ class FontManager {
                 ) { state, _ in
                     guard state == .didFinish || state == .didFailWithError else {
                         return true
+                    }
+                    let isFirst = resumed.withLock { resumed in
+                        defer { resumed = true }
+                        return !resumed
+                    }
+                    guard isFirst else {
+                        return false
                     }
                     DispatchQueue.global(qos: .userInitiated).async {
                         continuation.resume()

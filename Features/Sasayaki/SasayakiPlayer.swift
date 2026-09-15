@@ -8,6 +8,7 @@
 
 import AVFoundation
 import MediaPlayer
+import SwiftLAME
 import SwiftUI
 
 struct CueTimeline {
@@ -93,9 +94,16 @@ class SasayakiPlayer {
         }
     }
     var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
+    var imagePause: Bool { UserDefaults.standard.object(forKey: "sasayakiImagePause") as? Bool ?? true }
+    var imagePauseDuration: Double { UserDefaults.standard.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3 }
     
     var currentCue: SasayakiMatch?
+    var lastCue: SasayakiMatch?
     var pendingCue: SasayakiMatch?
+    var pendingImage: SasayakiImage?
+    var pausedOnImage = false
+    var imageResumeCue: SasayakiMatch?
+    var imagePauseTask: Task<Void, Never>?
     var chapterTransition = false
     var shouldResume = false
     var resumeAfterInterruption = false
@@ -114,11 +122,11 @@ class SasayakiPlayer {
     let bookMetadata: BookMetadata?
     let rootURL: URL
     let bridge: WebViewBridge
-    let loadChapter: (Int, Double) -> Void
+    let loadChapter: (Int) -> Void
     let getCurrentIndex: () -> Int
     let onPlayback: () -> Void
     
-    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int, Double) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void) {
+    init(rootURL: URL, bridge: WebViewBridge, loadChapter: @escaping (Int) -> Void, getCurrentIndex: @escaping () -> Int, onPlayback: @escaping () -> Void) {
         self.rootURL = rootURL
         self.bridge = bridge
         self.loadChapter = loadChapter
@@ -167,7 +175,19 @@ class SasayakiPlayer {
     }
     
     func togglePlayback() {
-        isPlaying ? pausePlayback() : startPlayback()
+        if pausedOnImage {
+            cancelImagePause()
+            startPlayback()
+            return
+        }
+        if isPlaying {
+            pausePlayback()
+        } else {
+            startPlayback()
+            if autoScroll, let currentCue {
+                displayCue(currentCue, reveal: true)
+            }
+        }
     }
     
     func updateIdleTimerDisabled() {
@@ -200,13 +220,24 @@ class SasayakiPlayer {
     func handleRestoreCompleted(currentIndex: Int) {
         guard hasMatch, chapterTransition else { return }
         
+        if let image = pendingImage, image.chapterIndex == currentIndex {
+            chapterTransition = false
+            pendingImage = nil
+            scrollAndPause(image)
+            return
+        }
+        
         let cue: SasayakiMatch?
+        let reveal: Bool
         if let pendingCue, pendingCue.chapterIndex == currentIndex {
             cue = pendingCue
+            reveal = autoScroll && hasPlayedOnce
         } else if let active = timeline.cue(at: currentTime - delay), active.chapterIndex == currentIndex {
             cue = active
+            reveal = shouldResume && autoScroll
         } else {
             cue = nil
+            reveal = false
         }
         
         let resume = shouldResume
@@ -215,7 +246,7 @@ class SasayakiPlayer {
         pendingCue = nil
         
         if let cue {
-            displayCue(cue, reveal: autoScroll && hasPlayedOnce)
+            displayCue(cue, reveal: reveal)
         } else {
             clearDisplayedCue()
         }
@@ -265,6 +296,7 @@ class SasayakiPlayer {
     }
     
     func teardown() {
+        cancelImagePause()
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         
@@ -317,7 +349,9 @@ class SasayakiPlayer {
         
         let range = expandCue(cue, sentence: sentence)
         let asset = AVURLAsset(url: url)
-        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.mp3")
+        try? FileManager.default.removeItem(at: temp)
         try? FileManager.default.removeItem(at: output)
         guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
             return nil
@@ -329,7 +363,16 @@ class SasayakiPlayer {
             start: CMTime(seconds: start, preferredTimescale: 600),
             end: CMTime(seconds: end, preferredTimescale: 600)
         )
-        try? await session.export(to: output, as: .m4a)
+        try? await session.export(to: temp, as: .m4a)
+        
+        let encoder = try? SwiftLameEncoder(
+            sourceUrl: temp,
+            configuration: .init(sampleRate: .default, bitrateMode: .constant(128), quality: .nearBest),
+            destinationUrl: output
+        )
+        guard let encoder, (try? await encoder.encode()) != nil else {
+            return nil
+        }
         return try? Data(contentsOf: output)
     }
     
@@ -392,6 +435,8 @@ class SasayakiPlayer {
     
     private func seek(seconds: Double, startPlayback: Bool = false, updateCue: Bool = true, stopPlaybackTime: Double? = nil) {
         guard let player else { return }
+        lastCue = nil
+        cancelImagePause()
         
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
@@ -486,7 +531,7 @@ class SasayakiPlayer {
     }
     
     private func updateCue(for time: Double) {
-        guard hasAudio, hasMatch, !chapterTransition else { return }
+        guard hasAudio, hasMatch, !chapterTransition, !pausedOnImage else { return }
         
         let lookupTime = time - delay
         guard let cue = timeline.cue(at: lookupTime) else {
@@ -498,13 +543,20 @@ class SasayakiPlayer {
             return
         }
         
+        if isPlaying, autoScroll, hasPlayedOnce, imagePause,
+           let prev = lastCue, (cue.chapterIndex, cue.start) > (prev.chapterIndex, prev.start),
+           let image = imageBetween(prev, cue) {
+            beginImagePause(image: image, resume: cue)
+            return
+        }
+        
         let currentIndex = getCurrentIndex()
         if cue.chapterIndex == currentIndex {
             displayCue(cue, reveal: autoScroll && hasPlayedOnce)
         } else if autoScroll, hasPlayedOnce {
             currentCue = cue
             pendingCue = cue
-            loadChapter(cue.chapterIndex, 0)
+            loadChapter(cue.chapterIndex)
         } else {
             clearDisplayedCue()
         }
@@ -512,6 +564,7 @@ class SasayakiPlayer {
     
     private func displayCue(_ cue: SasayakiMatch, reveal: Bool) {
         currentCue = cue
+        lastCue = cue
         bridge.send(.highlightSasayakiCue(id: cue.id, reveal: reveal))
     }
     
@@ -521,9 +574,83 @@ class SasayakiPlayer {
         bridge.send(.clearSasayakiCue)
     }
     
+    private func imageBetween(_ prev: SasayakiMatch, _ next: SasayakiMatch) -> SasayakiImage? {
+        matchData?.images.first { image in
+            (image.chapterIndex, image.offset) >= (prev.chapterIndex, prev.start + prev.length) &&
+            (image.chapterIndex, image.offset) <= (next.chapterIndex, next.start)
+        }
+    }
+    
+    private func beginImagePause(image: SasayakiImage, resume: SasayakiMatch) {
+        pausedOnImage = true
+        imageResumeCue = resume
+        pausePlayback()
+        if image.chapterIndex == getCurrentIndex() {
+            scrollAndPause(image)
+        } else {
+            pendingImage = image
+            loadChapter(image.chapterIndex)
+        }
+    }
+    
+    private func finishImagePause() {
+        imagePauseTask?.cancel()
+        imagePauseTask = nil
+        pendingImage = nil
+        pausedOnImage = false
+        guard let resume = imageResumeCue else {
+            startPlayback()
+            return
+        }
+        imageResumeCue = nil
+        if resume.chapterIndex == getCurrentIndex() {
+            displayCue(resume, reveal: autoScroll && hasPlayedOnce)
+            startPlayback()
+        } else {
+            currentCue = resume
+            pendingCue = resume
+            startPlayback()
+            loadChapter(resume.chapterIndex)
+        }
+    }
+    
+    private func cancelImagePause() {
+        guard pausedOnImage else { return }
+        imagePauseTask?.cancel()
+        imagePauseTask = nil
+        pausedOnImage = false
+        pendingImage = nil
+        imageResumeCue = nil
+        lastCue = nil
+    }
+    
+    private func scrollAndPause(_ image: SasayakiImage) {
+        bridge.send(.scrollToSasayakiImage(index: image.imageIndex) { [weak self] shouldPause in
+            Task { @MainActor [weak self] in
+                guard let self, self.pausedOnImage else { return }
+                guard shouldPause else {
+                    self.finishImagePause()
+                    return
+                }
+                self.imagePauseTask?.cancel()
+                self.imagePauseTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(self?.imagePauseDuration ?? 3))
+                    guard !Task.isCancelled else { return }
+                    self?.finishImagePause()
+                }
+            }
+        })
+    }
+    
     private func handleInterruption(_ type: AVAudioSession.InterruptionType, options: UInt) {
         switch type {
         case .began:
+            if pausedOnImage {
+                cancelImagePause()
+                resumeAfterInterruption = true
+            } else {
+                resumeAfterInterruption = isPlaying
+            }
             resumeAfterInterruption = isPlaying
             pausePlayback()
         case .ended:
@@ -560,14 +687,23 @@ class SasayakiPlayer {
                 Task { @MainActor in self?.skip(forward: true) }
                 return .success
             }
-        }
-        center.previousTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.prevCue() }
-            return .success
-        }
-        center.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.nextCue() }
-            return .success
+            center.previousTrackCommand.addTarget { [weak self] _ in
+                Task { @MainActor in self?.skip(forward: false) }
+                return .success
+            }
+            center.nextTrackCommand.addTarget { [weak self] _ in
+                Task { @MainActor in self?.skip(forward: true) }
+                return .success
+            }
+        } else {
+            center.previousTrackCommand.addTarget { [weak self] _ in
+                Task { @MainActor in self?.prevCue() }
+                return .success
+            }
+            center.nextTrackCommand.addTarget { [weak self] _ in
+                Task { @MainActor in self?.nextCue() }
+                return .success
+            }
         }
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }

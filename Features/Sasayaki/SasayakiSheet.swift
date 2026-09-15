@@ -24,13 +24,13 @@ struct SasayakiSheet: View {
                     if player.hasAudio {
                         HStack(spacing: 20) {
                             Button {
-                                player.skip(forward: false)
+                                userConfig.verticalWriting ? player.skip(forward: true) : player.skip(forward: false)
                             } label: {
                                 Image(systemName: "15.arrow.trianglehead.counterclockwise")
                             }
                             
                             Button {
-                                player.prevCue()
+                                userConfig.verticalWriting ? player.nextCue() : player.prevCue()
                             } label: {
                                 Image(systemName: "backward.fill")
                             }
@@ -43,13 +43,13 @@ struct SasayakiSheet: View {
                             }
                             
                             Button {
-                                player.nextCue()
+                                userConfig.verticalWriting ? player.prevCue() : player.nextCue()
                             } label: {
                                 Image(systemName: "forward.fill")
                             }
                             
                             Button {
-                                player.skip(forward: true)
+                                userConfig.verticalWriting ? player.skip(forward: false) : player.skip(forward: true)
                             } label: {
                                 Image(systemName: "15.arrow.trianglehead.clockwise")
                             }
@@ -84,7 +84,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).delay, in: -2...2, step: 0.05)
+                        Slider(value: Bindable(player).delay, in: -4...4, step: 0.05)
                     }
                     VStack {
                         HStack {
@@ -94,7 +94,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).rate, in: 0.5...1.5, step: 0.05)
+                        Slider(value: Bindable(player).rate, in: 0.5...3, step: 0.05)
                     }
                 }
                 
@@ -102,6 +102,34 @@ struct SasayakiSheet: View {
                     Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
+                    Toggle("Pause on Images", isOn: Bindable(userConfig).sasayakiImagePause)
+                    if userConfig.sasayakiImagePause {
+                        HStack {
+                            Text("Pause Duration")
+                            Spacer()
+                            Text("\(Int(userConfig.sasayakiImagePauseDuration))s")
+                                .fontWeight(.semibold)
+                            Stepper("", value: Bindable(userConfig).sasayakiImagePauseDuration, in: 1...30, step: 1)
+                                .labelsHidden()
+                        }
+                    }
+                }
+                
+                Section("Control Bar") {
+                    Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
+                    if userConfig.sasayakiShowControlBar {
+                        Toggle("Always Show Control Bar", isOn: Bindable(userConfig).sasayakiAlwaysShowControlBar)
+                        HStack {
+                            Text("Control Bar Side")
+                            Spacer()
+                            Picker("", selection: Bindable(userConfig).sasayakiControlBarSide) {
+                                Text("Left").tag(SasayakiControlBarSide.left)
+                                Text("Right").tag(SasayakiControlBarSide.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 120)
+                        }
+                    }
                 }
                 
                 Section("Light Theme") {
@@ -127,7 +155,7 @@ struct SasayakiSheet: View {
             }
             .fileImporter(
                 isPresented: $isImportingAudio,
-                allowedContentTypes: ["mp3", "m4b"].compactMap { UTType(filenameExtension: $0) }
+                allowedContentTypes: ["mp3", "m4b", "mp4"].compactMap { UTType(filenameExtension: $0) }
             ) { result in
                 guard case .success(let url) = result else { return }
                 do {

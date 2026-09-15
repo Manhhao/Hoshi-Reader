@@ -1,6 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "{selected-glossary} Fallback" : {
+
+    },
+    "Add Format" : {
+
+    },
     "Address" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -11,6 +17,9 @@
           }
         }
       }
+    },
+    "Advanced" : {
+
     },
     "Allow Duplicates" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -77,6 +86,12 @@
         }
       }
     },
+    "Ascending" : {
+
+    },
+    "Auto" : {
+
+    },
     "Behaviour" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -99,6 +114,9 @@
         }
       }
     },
+    "Categorize Dictionaries" : {
+
+    },
     "Check All Models" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
@@ -109,6 +127,12 @@
           }
         }
       }
+    },
+    "Circle" : {
+
+    },
+    "Circle Small" : {
+
     },
     "Collapse All" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -142,9 +166,6 @@
           }
         }
       }
-    },
-    "Two-Column Layout" : {
-
     },
     "Compact Glossaries" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -300,6 +321,15 @@
         }
       }
     },
+    "Descending" : {
+
+    },
+    "Diamond" : {
+
+    },
+    "Diamond Small" : {
+
+    },
     "Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -310,6 +340,12 @@
           }
         }
       }
+    },
+    "Disable Show Notes Button" : {
+
+    },
+    "Disabled" : {
+
     },
     "Download" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
@@ -333,6 +369,17 @@
         }
       }
     },
+    "Download Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载字体"
+          }
+        }
+      }
+    },
     "Download Recommended Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -340,6 +387,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下载推荐词典"
+          }
+        }
+      }
+    },
+    "Download Stroke Order Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载笔顺字体"
+          }
+        }
+      }
+    },
+    "Downloading Stroke Order Font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载笔顺字体"
           }
         }
       }
@@ -410,6 +479,17 @@
         }
       }
     },
+    "Failed to download the stroke order font" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔顺字体下载失败"
+          }
+        }
+      }
+    },
     "Fetch decks and models from Anki" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
       "localizations" : {
@@ -454,6 +534,9 @@
         }
       }
     },
+    "Formats" : {
+
+    },
     "Frequency" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -465,6 +548,12 @@
         }
       }
     },
+    "Frequency Dictionary" : {
+
+    },
+    "Frequency Sorting" : {
+
+    },
     "Harmonic Frequency" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -475,6 +564,9 @@
           }
         }
       }
+    },
+    "Icon" : {
+
     },
     "Import Anki Backup (Stored Words: %@)" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -508,6 +600,9 @@
           }
         }
       }
+    },
+    "Kanji" : {
+
     },
     "Last Update" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
@@ -574,6 +669,9 @@
           }
         }
       }
+    },
+    "Name" : {
+
     },
     "Never" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
@@ -674,6 +772,9 @@
         }
       }
     },
+    "Search Text" : {
+
+    },
     "Settings" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -685,6 +786,9 @@
         }
       }
     },
+    "Show All Handlebars" : {
+
+    },
     "Show Expression Tags" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
       "localizations" : {
@@ -695,6 +799,12 @@
           }
         }
       }
+    },
+    "Square" : {
+
+    },
+    "Square Small" : {
+
     },
     "Status: %@" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
@@ -729,6 +839,9 @@
         }
       }
     },
+    "Text Size" : {
+
+    },
     "This will check for and install updates for these dictionaries:\n%@" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
       "localizations" : {
@@ -747,6 +860,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前字段配置将会重置。"
+          }
+        }
+      }
+    },
+    "This will download and automatically import the kanji stroke order font (17 MB)" : {
+      "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这将下载并自动导入汉字笔顺字体（17 MB）"
           }
         }
       }
@@ -772,6 +896,9 @@
           }
         }
       }
+    },
+    "Two-Column Layout" : {
+
     },
     "Type" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",

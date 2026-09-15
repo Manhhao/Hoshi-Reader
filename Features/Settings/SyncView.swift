@@ -95,9 +95,7 @@ struct SyncView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     
-                    if userConfig.enableStatistics {
-                        Toggle("Sync Stats", isOn: $userConfig.statisticsEnableSync)
-                    }
+                    Toggle("Sync Stats", isOn: $userConfig.statisticsEnableSync)
                     
                     if userConfig.enableSasayaki {
                         Toggle("Sync Audiobook Progress", isOn: $userConfig.sasayakiEnableSync)

@@ -81,5 +81,5 @@ public protocol EPUBParsable {
     ///
     /// - Parameter xmlElement: The root ncx XML element
     /// - Returns: A hierarchical EPUBTableOfContents structure
-    func getTableOfContents(from xmlElement: XMLElement) -> EPUBTableOfContents
+    func getTableOfContents(from xmlElement: XMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents
 }

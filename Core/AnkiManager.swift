@@ -17,17 +17,18 @@ import ZIPFoundation
 class AnkiManager {
     static let shared = AnkiManager()
     
-    var selectedDeck: String?
-    var selectedNoteType: String?
-    var fieldMappings: [String: String] = [:]
-    var tags: String = ""
+    var cardFormats: [AnkiCardFormat] = []
     
     var availableDecks: [String] = []
     var availableNoteTypes: [AnkiNoteType] = []
     
     var allowDupes: Bool = false
+    var disableShowNotes: Bool = false
     var compactGlossaries: Bool = false
     var embedMedia: Bool = false
+    
+    var selectedGlossaryFallback: String = ""
+    var showAllHandlebars: Bool = false
     
     var errorMessage: String?
     
@@ -43,16 +44,29 @@ class AnkiManager {
     }
     
     var needsAudio: Bool {
-        fieldMappings.values.contains(Handlebars.audio.rawValue)
+        cardFormats.contains { $0.fieldMappings.values.contains(Handlebars.audio.rawValue) }
     }
     
     var needsSasayakiAudio: Bool {
-        fieldMappings.values.contains(Handlebars.sasayakiAudio.rawValue)
+        cardFormats.contains { $0.fieldMappings.values.contains(Handlebars.sasayakiAudio.rawValue) }
+    }
+    
+    var validFormatFlags: [Bool] {
+        cardFormats.map { format in
+            guard let noteTypeName = format.selectedNoteType,
+                  let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+                  let firstField = noteType.fields.first else {
+                return false
+            }
+            return format.fieldMappings[firstField] != nil
+        }
     }
     
     var useAnkiConnect: Bool = false
     var ankiConnectConfig: AnkiConnectConfig? = AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
     var isAnkiConnectReachable = false
+    
+    static let wordAddedNotification = Notification.Name("hoshiWordAdded")
     
     private static let scheme = "hoshi://"
     private static let fetchCallback = scheme + "ankiFetch"
@@ -61,6 +75,7 @@ class AnkiManager {
     private static let pasteboardType = "net.ankimobile.json"
     private static let infoCallback = "anki://x-callback-url/infoForAdding"
     private static let addNoteCallback = "anki://x-callback-url/addnote"
+    private static let searchCallback = "anki://x-callback-url/search"
     
     private static let ankiConfig = "anki_config.json"
     private static let ankiWords = "anki_words.json"
@@ -122,21 +137,7 @@ class AnkiManager {
         availableDecks = response.decks.map(\.name)
         availableNoteTypes = response.notetypes.map { AnkiNoteType(name: $0.name, fields: $0.fields.map(\.name)) }
         
-        if let deck = availableDecks.first(where: { $0.caseInsensitiveCompare("Default") != .orderedSame }) {
-            selectedDeck = deck
-        } else {
-            selectedDeck = availableDecks.first
-        }
-        
-        if let noteType = availableNoteTypes.first {
-            selectedNoteType = noteType.name
-            fieldMappings.removeAll()
-            autofillFieldMappings()
-        } else {
-            selectedNoteType = nil
-            fieldMappings.removeAll()
-        }
-        
+        resetCardFormats()
         save()
     }
     
@@ -157,35 +158,22 @@ class AnkiManager {
             availableDecks = decks
             availableNoteTypes = noteTypes
             
-            if let deck = decks.first(where: { $0.caseInsensitiveCompare("Default") != .orderedSame }) {
-                selectedDeck = deck
-            } else {
-                selectedDeck = decks.first
-            }
-            
-            if let noteType = noteTypes.first {
-                selectedNoteType = noteType.name
-                fieldMappings.removeAll()
-                autofillFieldMappings()
-            } else {
-                selectedNoteType = nil
-                fieldMappings.removeAll()
-            }
-            
+            resetCardFormats()
             save()
         } catch {
             errorMessage = error.localizedDescription
         }
     }
     
-    func addNote(content: [String: String], context: MiningContext) async -> Bool {
-        guard let deck = selectedDeck,
-              let noteType = selectedNoteType else {
+    func addNote(content: [String: String], context: MiningContext, formatId: UUID) async -> Bool {
+        guard let format = cardFormats.first(where: { $0.id == formatId }),
+              let deck = format.selectedDeck,
+              let noteType = format.selectedNoteType else {
             return false
         }
         
         if useAnkiConnect {
-            return await addNoteAnkiConnect(content: content, context: context, deck: deck, noteType: noteType)
+            return await addNoteAnkiConnect(content: content, context: context, deck: deck, noteType: noteType, format: format)
         }
         
         let singleGlossaries: [String: String]
@@ -215,7 +203,7 @@ class AnkiManager {
             }
         }
         
-        for (field, fieldContent) in fieldMappings {
+        for (field, fieldContent) in format.fieldMappings {
             var value = fieldContent.replacing(Self.handlebarRegex) { match in
                 return handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
             }
@@ -229,6 +217,7 @@ class AnkiManager {
             }
         }
         
+        let tags = resolveTags(format: format, context: context, content: content, singleGlossaries: singleGlossaries)
         if !tags.isEmpty {
             queryItems.append(URLQueryItem(name: "tags", value: tags))
         }
@@ -237,8 +226,10 @@ class AnkiManager {
             queryItems.append(URLQueryItem(name: "dupes", value: "1"))
         }
         
-        let expression = content["expression"] ?? ""
-        let successURL = Self.successCallback + "?expression=" + (expression.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? expression)
+        let word = firstFieldWord(format: format) {
+            handlebarToValue(handlebar: $0, context: context, content: content, singleGlossaries: singleGlossaries)
+        } ?? ""
+        let successURL = Self.successCallback + "?expression=" + (word.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? word)
         queryItems.append(URLQueryItem(name: "x-success", value: successURL))
         
         urlComponents?.queryItems = queryItems
@@ -250,7 +241,7 @@ class AnkiManager {
         return false
     }
     
-    private func addNoteAnkiConnect(content: [String: String], context: MiningContext, deck: String, noteType: String) async -> Bool {
+    private func addNoteAnkiConnect(content: [String: String], context: MiningContext, deck: String, noteType: String, format: AnkiCardFormat) async -> Bool {
         let singleGlossaries: [String: String]
         if let singleGlossariesJson = content["singleGlossaries"],
            let singleGlossariesData = singleGlossariesJson.data(using: .utf8),
@@ -265,7 +256,7 @@ class AnkiManager {
         var sasayakiAudioFields: [String] = []
         var pictureFields: [String] = []
         
-        for (field, fieldContent) in fieldMappings {
+        for (field, fieldContent) in format.fieldMappings {
             if fieldContent == Handlebars.audio.rawValue {
                 audioFields.append(field)
             } else if fieldContent == Handlebars.sasayakiAudio.rawValue {
@@ -279,24 +270,8 @@ class AnkiManager {
             }
         }
         
-        var options: [String: Any] = ["allowDuplicate": allowDupes]
-        if ankiConnectConfig?.duplicateScope == .collection {
-            options["duplicateScope"] = "collection"
-        } else {
-            options["duplicateScope"] = "deck"
-            if ankiConnectConfig?.duplicateScope == .deckroot {
-                let rootDeck = deck.split(separator: "::", maxSplits: 1).first.map(String.init) ?? deck
-                options["duplicateScopeOptions"] = [
-                    "deckName": rootDeck,
-                    "checkChildren": true
-                ]
-            }
-        }
-        if ankiConnectConfig?.checkAllModels == true {
-            var duplicateScopeOptions = options["duplicateScopeOptions"] as? [String: Any] ?? [:]
-            duplicateScopeOptions["checkAllModels"] = true
-            options["duplicateScopeOptions"] = duplicateScopeOptions
-        }
+        var options = duplicateOptions(deck: deck)
+        options["allowDuplicate"] = allowDupes
         var note: [String: Any] = [
             "deckName": deck,
             "modelName": noteType,
@@ -317,7 +292,7 @@ class AnkiManager {
         if !sasayakiAudioFields.isEmpty, let audioData = context.sasayakiAudioData {
             audio.append([
                 "data": audioData.base64EncodedString(),
-                "filename": "hoshi_sasayaki_\(audioData.sha1).m4a",
+                "filename": "hoshi_sasayaki_\(audioData.sha1).mp3",
                 "fields": sasayakiAudioFields
             ])
         }
@@ -349,14 +324,16 @@ class AnkiManager {
             note["fields"] = fields
         }
         
-        let tagList = tags.split(separator: " ").map(String.init)
+        let tagList = resolveTags(format: format, context: context, content: content, singleGlossaries: singleGlossaries).split(separator: " ").map(String.init)
         if !tagList.isEmpty {
             note["tags"] = tagList
         }
         
         do {
             _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
-            addWord(content["expression"] ?? "")
+            addWord(firstFieldWord(format: format) {
+                handlebarToValue(handlebar: $0, context: context, content: content, singleGlossaries: singleGlossaries)
+            } ?? "")
             LocalFileServer.shared.clearMedia()
             
             if ankiConnectConfig?.forceSync == true {
@@ -368,18 +345,188 @@ class AnkiManager {
         }
     }
     
-    func checkDuplicate(word: String) async -> Bool {
+    func checkDuplicates(fields: [String: String]) async -> [Bool] {
+        let words = cardFormats.map { format in
+            firstFieldWord(format: format) {
+                fields[$0]
+            }
+        }
+        
+        var results = words.map { word in
+            word.map { savedWords.contains($0) } ?? false
+        }
+        
         guard useAnkiConnect else {
-            return savedWords.contains(word)
+            return results
         }
         
-        guard let noteTypeName = selectedNoteType,
-              let noteType = availableNoteTypes.first(where: { $0.name == selectedNoteType }),
+        var notes: [[String: Any]] = []
+        var noteIndices: [Int] = []
+        for (index, word) in words.enumerated() {
+            guard let word, !word.isEmpty else {
+                continue
+            }
+            
+            let format = cardFormats[index]
+            guard let noteTypeName = format.selectedNoteType,
+                  let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+                  let firstField = noteType.fields.first,
+                  let deck = format.selectedDeck else {
+                continue
+            }
+            notes.append([
+                "deckName": deck,
+                "modelName": noteTypeName,
+                "fields": [firstField: word],
+                "options": duplicateOptions(deck: deck)
+            ])
+            noteIndices.append(index)
+        }
+        
+        guard !notes.isEmpty else {
+            return results
+        }
+        
+        do {
+            if let noteResults = try await ankiConnectRequest(action: "canAddNotesWithErrorDetail", params: ["notes": notes]) as? [[String: Any]] {
+                for (index, noteResult) in zip(noteIndices, noteResults) {
+                    guard let canAdd = noteResult["canAdd"] as? Bool else {
+                        continue
+                    }
+                    results[index] = !canAdd
+                    if !canAdd, let word = words[index] {
+                        savedWords.insert(word)
+                    }
+                }
+            }
+        } catch {}
+        
+        return results
+    }
+    
+    func showNotes(fields: [String: String], formatIndex: Int) async {
+        guard cardFormats.indices.contains(formatIndex) else {
+            return
+        }
+        let format = cardFormats[formatIndex]
+        guard let noteTypeName = format.selectedNoteType,
+              let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
               let firstField = noteType.fields.first,
-              let deck = selectedDeck else {
-            return savedWords.contains(word)
+              let deck = format.selectedDeck,
+              let word = firstFieldWord(format: format, resolve: { fields[$0] }),
+              !word.isEmpty else {
+            return
         }
         
+        let escapedWord = word.replacingOccurrences(of: "\"", with: "")
+        
+        if useAnkiConnect {
+            var search: [String] = []
+            search.append("\"\(firstField):\(escapedWord)\"")
+            if ankiConnectConfig?.checkAllModels != true {
+                search.append("\"note:\(noteTypeName)\"")
+            }
+            switch ankiConnectConfig?.duplicateScope ?? .collection {
+            case .collection:
+                break
+            case .deck:
+                search.append("\"deck:\(deck)\"")
+            case .deckroot:
+                let rootDeck = deck.split(separator: "::", maxSplits: 1).first.map(String.init) ?? deck
+                search.append("\"deck:\(rootDeck)\"")
+            }
+            _ = try? await ankiConnectRequest(action: "guiBrowse", params: ["query": search.joined(separator: " ")])
+        } else {
+            var urlComponents = URLComponents(string: Self.searchCallback)
+            urlComponents?.queryItems = [
+                URLQueryItem(name: "query", value: "\(firstField):\"\(escapedWord)\"")
+            ]
+            
+            if let url = urlComponents?.url {
+                await UIApplication.shared.open(url)
+            }
+        }
+    }
+    
+    func syncAnkiConnect() async  {
+        do {
+            _ = try await ankiConnectRequest(action: "sync")
+        } catch {}
+    }
+    
+    func updateHandlebar(old: String, new: String) {
+        guard old != new else { return }
+        let prefix = Handlebars.singleGlossaryPrefix
+        for index in cardFormats.indices {
+            cardFormats[index].fieldMappings = cardFormats[index].fieldMappings.mapValues {
+                $0.replacingOccurrences(of: "\(prefix)\(old)}", with: "\(prefix)\(new)}")
+                    .replacingOccurrences(of: "\(prefix)\(old)-brief}", with: "\(prefix)\(new)-brief}")
+                    .replacingOccurrences(of: "\(prefix)\(old)-no-dictionary}", with: "\(prefix)\(new)-no-dictionary}")
+            }
+        }
+        
+        save()
+    }
+    
+    func save() {
+        let data = AnkiConfig(
+            cardFormats: cardFormats,
+            allowDupes: allowDupes,
+            disableShowNotes: disableShowNotes,
+            compactGlossaries: compactGlossaries,
+            embedMedia: embedMedia,
+            availableDecks: availableDecks,
+            availableNoteTypes: availableNoteTypes,
+            useAnkiConnect: useAnkiConnect,
+            ankiConnectConfig: ankiConnectConfig,
+            selectedGlossaryFallback: selectedGlossaryFallback,
+            showAllHandlebars: showAllHandlebars
+        )
+        
+        guard let directory = try? BookStorage.getAppDirectory() else {
+            return
+        }
+        try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
+    }
+    
+    func autofillFieldMappings(formatId: UUID) {
+        guard let index = cardFormats.firstIndex(where: { $0.id == formatId }),
+              let noteTypeName = cardFormats[index].selectedNoteType,
+              let template = AnkiFieldTemplate.templates.first(where: { $0.noteType == noteTypeName }),
+              let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
+              !noteType.fields.contains(where: { cardFormats[index].fieldMappings[$0] != nil }) else {
+            return
+        }
+        for field in noteType.fields {
+            if let mapping = template.mappings[field] {
+                cardFormats[index].fieldMappings[field] = mapping
+            }
+        }
+    }
+    
+    func addCardFormat() {
+        let icon = AnkiCardFormat.icons[0]
+        let format = AnkiCardFormat(
+            id: UUID(),
+            name: "Format \(cardFormats.count + 1)",
+            icon: icon,
+            selectedDeck: availableDecks.first { $0.caseInsensitiveCompare("Default") != .orderedSame } ?? availableDecks.first,
+            selectedNoteType: availableNoteTypes.first?.name,
+            fieldMappings: [:],
+            tags: AnkiCardFormat.defaultTag
+        )
+        
+        cardFormats.append(format)
+        autofillFieldMappings(formatId: format.id)
+        save()
+    }
+    
+    func deleteCardFormat(id: UUID) {
+        cardFormats.removeAll { $0.id == id }
+        save()
+    }
+    
+    private func duplicateOptions(deck: String) -> [String: Any] {
         var options: [String: Any] = [:]
         if ankiConnectConfig?.duplicateScope == .collection {
             options["duplicateScope"] = "collection"
@@ -398,73 +545,67 @@ class AnkiManager {
             duplicateScopeOptions["checkAllModels"] = true
             options["duplicateScopeOptions"] = duplicateScopeOptions
         }
-        let note: [String: Any] = [
-            "deckName": deck,
-            "modelName": noteTypeName,
-            "fields": [firstField: word],
-            "options": options
-        ]
-        
-        do {
-            let result = try await ankiConnectRequest(action: "canAddNotesWithErrorDetail", params: ["notes": [note]])
-            if let results = result as? [[String: Any]],
-               let first = results.first,
-               let canAdd = first["canAdd"] as? Bool {
-                if !canAdd { savedWords.insert(word) }
-                return !canAdd
-            }
-        } catch {}
-        
-        return savedWords.contains(word)
+        return options
     }
     
-    func syncAnkiConnect() async  {
-        do {
-            _ = try await ankiConnectRequest(action: "sync")
-        } catch {}
-    }
-    
-    func updateHandlebar(old: String, new: String) {
-        guard old != new else { return }
-        fieldMappings = fieldMappings.mapValues {
-            $0.replacingOccurrences(of: "\(Handlebars.singleGlossaryPrefix)\(old)}", with: "\(Handlebars.singleGlossaryPrefix)\(new)}")
+    private func resetCardFormats() {
+        if cardFormats.isEmpty {
+            cardFormats = [AnkiCardFormat(
+                id: UUID(),
+                name: "Default",
+                icon: AnkiCardFormat.icons[0],
+                selectedDeck: nil,
+                selectedNoteType: nil,
+                fieldMappings: [:],
+                tags: AnkiCardFormat.defaultTag
+            )]
         }
         
-        save()
-    }
-    
-    func save() {
-        let data = AnkiConfig(
-            selectedDeck: selectedDeck,
-            selectedNoteType: selectedNoteType,
-            allowDupes: allowDupes,
-            compactGlossaries: compactGlossaries,
-            embedMedia: embedMedia,
-            fieldMappings: fieldMappings,
-            tags: tags,
-            availableDecks: availableDecks,
-            availableNoteTypes: availableNoteTypes,
-            useAnkiConnect: useAnkiConnect,
-            ankiConnectConfig: ankiConnectConfig
-        )
-        
-        guard let directory = try? BookStorage.getAppDirectory() else {
-            return
+        let deck = availableDecks.first { $0.caseInsensitiveCompare("Default") != .orderedSame } ?? availableDecks.first
+        for index in cardFormats.indices {
+            cardFormats[index].selectedDeck = deck
+            cardFormats[index].selectedNoteType = availableNoteTypes.first?.name
+            cardFormats[index].fieldMappings.removeAll()
+            autofillFieldMappings(formatId: cardFormats[index].id)
         }
-        try? BookStorage.save(data, inside: directory, as: Self.ankiConfig)
     }
     
-    func autofillFieldMappings() {
-        guard let noteTypeName = selectedNoteType,
-              let template = AnkiFieldTemplate.templates.first(where: { $0.noteType == noteTypeName }),
+    private func firstFieldWord(format: AnkiCardFormat, resolve: (String) -> String?) -> String? {
+        guard let noteTypeName = format.selectedNoteType,
               let noteType = availableNoteTypes.first(where: { $0.name == noteTypeName }),
-              !noteType.fields.contains(where: { fieldMappings[$0] != nil }) else {
-            return
+              let firstField = noteType.fields.first,
+              let handlebar = format.fieldMappings[firstField] else {
+            return nil
         }
-        for field in noteType.fields {
-            if let mapping = template.mappings[field] {
-                fieldMappings[field] = mapping
+        return resolve(handlebar)
+    }
+    
+    private func firstGlossary(ofCategory category: DictionaryCategory? = nil, singleGlossaries: [String: String]) -> String {
+        for dict in DictionaryManager.shared.termDictionaries {
+            guard dict.category != .exclude, category == nil || dict.category == category, let glossary = singleGlossaries[dict.index.title] else {
+                continue
             }
+            return glossary
+        }
+        return ""
+    }
+    
+    private static let selectedGlossaryFallbackHandlebars: Set<String> = [
+        Handlebars.selectedGlossary.rawValue,
+        Handlebars.selectedGlossaryBrief.rawValue,
+        Handlebars.selectedGlossaryNoDictionary.rawValue,
+    ]
+    
+    private func resolveSelectedGlossaryFallback(context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
+        guard !Self.selectedGlossaryFallbackHandlebars.contains(selectedGlossaryFallback) else { return "" }
+        return handlebarToValue(handlebar: selectedGlossaryFallback, context: context, content: content, singleGlossaries: singleGlossaries)
+    }
+    
+    private func resolveTags(format: AnkiCardFormat, context: MiningContext, content: [String: String], singleGlossaries: [String: String]) -> String {
+        format.tags.replacing(Self.handlebarRegex) { match in
+            handlebarToValue(handlebar: String(match.0), context: context, content: content, singleGlossaries: singleGlossaries)
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: "_")
         }
     }
     
@@ -495,25 +636,49 @@ class AnkiManager {
             case .glossaryNoDictionary:
                 return Self.stripDictionaryName(content["glossary"] ?? "")
             case .glossaryFirst:
-                return content["glossaryFirst"] ?? ""
+                return firstGlossary(singleGlossaries: singleGlossaries)
             case .glossaryFirstBrief:
-                return Self.stripGlossaryHeaders(content["glossaryFirst"] ?? "")
+                return Self.stripGlossaryHeaders(firstGlossary(singleGlossaries: singleGlossaries))
             case .glossaryFirstNoDictionary:
-                return Self.stripDictionaryName(content["glossaryFirst"] ?? "")
+                return Self.stripDictionaryName(firstGlossary(singleGlossaries: singleGlossaries))
             case .selectedGlossary:
-                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? ""
-            case .selectedGlossaryFallback:
-                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                return singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
             case .selectedGlossaryBrief:
-                return Self.stripGlossaryHeaders(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
-            case .selectedGlossaryBriefFallback:
-                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
                 return Self.stripGlossaryHeaders(selected)
             case .selectedGlossaryNoDictionary:
-                return Self.stripDictionaryName(singleGlossaries[content["selectedDictionary"] ?? ""] ?? "")
-            case .selectedGlossaryNoDictionaryFallback:
-                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? content["glossaryFirst"] ?? ""
+                let selected = singleGlossaries[content["selectedDictionary"] ?? ""] ?? resolveSelectedGlossaryFallback(context: context, content: content, singleGlossaries: singleGlossaries)
                 return Self.stripDictionaryName(selected)
+            case .monolingualDefinition:
+                return firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+            case .monolingualDefinitionBrief:
+                return Self.stripGlossaryHeaders(firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries))
+            case .monolingualDefinitionNoDictionary:
+                return Self.stripDictionaryName(firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries))
+            case .bilingualDefinition:
+                return firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+            case .bilingualDefinitionBrief:
+                return Self.stripGlossaryHeaders(firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries))
+            case .bilingualDefinitionNoDictionary:
+                return Self.stripDictionaryName(firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries))
+            case .monolingualDefinitionFallback:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary
+            case .monolingualDefinitionFallbackBrief:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return Self.stripGlossaryHeaders(primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary)
+            case .monolingualDefinitionFallbackNoDictionary:
+                let primary = firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries)
+                return Self.stripDictionaryName(primary.isEmpty ? firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries) : primary)
+            case .bilingualDefinitionFallback:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary
+            case .bilingualDefinitionFallbackBrief:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return Self.stripGlossaryHeaders(primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary)
+            case .bilingualDefinitionFallbackNoDictionary:
+                let primary = firstGlossary(ofCategory: .bilingual, singleGlossaries: singleGlossaries)
+                return Self.stripDictionaryName(primary.isEmpty ? firstGlossary(ofCategory: .monolingual, singleGlossaries: singleGlossaries) : primary)
             case .frequencies:
                 return content["frequenciesHtml"] ?? ""
             case .frequencyHarmonicRank:
@@ -522,9 +687,19 @@ class AnkiManager {
                 return content["pitchPositions"] ?? ""
             case .pitchCategories:
                 return content["pitchCategories"] ?? ""
+            case .pitchAccentGraphs:
+                return content["pitchAccentGraphs"] ?? ""
+            case .pitchAccentGraphsFirst:
+                return Self.firstPitchAccentGraph(content["pitchAccentGraphs"] ?? "")
             case .sentence:
-                guard let matched = content["matched"] else { return context.sentence }
-                return context.sentence.replacingOccurrences(of: matched, with: "<b>\(matched)</b>")
+                let parts = Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset)
+                return "\(parts.prefix)<b>\(parts.body)</b>\(parts.suffix)"
+            case .clozePrefix:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).prefix
+            case .clozeBody:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).body
+            case .clozeSuffix:
+                return Self.clozeParts(sentence: context.sentence, matched: content["matched"] ?? "", offset: context.clozeOffset).suffix
             case .documentTitle:
                 return context.documentTitle ?? ""
             case .popupSelectionText:
@@ -541,7 +716,7 @@ class AnkiManager {
             case .sasayakiAudio:
                 guard let data = context.sasayakiAudioData else { return "" }
                 LocalFileServer.shared.setSasayakiAudio(data)
-                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.m4a"
+                return "http://localhost:\(LocalFileServer.port)/sasayaki/audio.mp3"
             }
         }
         return ""
@@ -559,17 +734,29 @@ class AnkiManager {
             return
         }
         
-        selectedDeck = config.selectedDeck
-        selectedNoteType = config.selectedNoteType
         allowDupes = config.allowDupes
+        disableShowNotes = config.disableShowNotes ?? (UserDefaults.standard.object(forKey: "disableShowNotes") as? Bool ?? false)
         compactGlossaries = config.compactGlossaries ?? false
         embedMedia = config.embedMedia ?? false
-        fieldMappings = config.fieldMappings
-        tags = config.tags ?? ""
         availableDecks = config.availableDecks
         availableNoteTypes = config.availableNoteTypes
         useAnkiConnect = config.useAnkiConnect ?? false
         ankiConnectConfig = config.ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
+        selectedGlossaryFallback = config.selectedGlossaryFallback ?? ""
+        showAllHandlebars = config.showAllHandlebars ?? false
+        
+        cardFormats = config.cardFormats ?? []
+        if cardFormats.isEmpty, let legacy = try? JSONDecoder().decode(LegacyAnkiFields.self, from: data) {
+            cardFormats = [AnkiCardFormat(
+                id: UUID(),
+                name: "Default",
+                icon: AnkiCardFormat.icons[0],
+                selectedDeck: legacy.selectedDeck,
+                selectedNoteType: legacy.selectedNoteType,
+                fieldMappings: legacy.fieldMappings ?? [:],
+                tags: legacy.tags ?? ""
+            )]
+        }
     }
     
     func importAnkiBackup(from url: URL) throws {
@@ -609,6 +796,7 @@ class AnkiManager {
     func addWord(_ word: String) {
         savedWords.insert(word)
         try? Self.saveWords(savedWords)
+        NotificationCenter.default.post(name: Self.wordAddedNotification, object: nil)
     }
     
     private static func stripGlossaryHeaders(_ html: String) -> String {
@@ -625,6 +813,17 @@ class AnkiManager {
             }
             return "<li data-dictionary=\"\(dict)\"><i>\(stripped)</i> "
         }
+    }
+    
+    private static func firstPitchAccentGraph(_ html: String) -> String {
+        guard let match = html.firstMatch(of: #/<svg\b.*?</svg>/#) else { return "" }
+        return String(match.output)
+    }
+    
+    private static func clozeParts(sentence: String, matched: String, offset: Int?) -> (prefix: String, body: String, suffix: String) {
+        let range = offset.flatMap { Range(NSRange(location: $0, length: matched.utf16.count), in: sentence) } ?? sentence.range(of: matched)
+        guard let range else { return (sentence, "", "") }
+        return (String(sentence[..<range.lowerBound]), String(sentence[range]), String(sentence[range.upperBound...]))
     }
     
     private static func saveWords(_ words: Set<String>) throws {

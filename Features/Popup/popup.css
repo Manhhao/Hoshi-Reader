@@ -9,8 +9,8 @@
  */
 
 /* A big portion of the CSS was directly copied from Yomitan */
-/* https://github.com/yomidevs/yomitan/blob/d810b2f0842536d24ab82b6cd75d00841710e57b/ext/css/structured-content.css */
-
+/* https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/css/structured-content.css */
+/* https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/css/display-pronunciation.css */
 * {
     margin: 0;
     padding: 0;
@@ -24,11 +24,6 @@ body {
     --line-height: 1.4;
     --list-padding1: 1.4em;
     --list-padding2: var(--list-padding1);
-    --text-color-light1: #555555;
-    --text-color-light2: #666666;
-    --text-color-light3: #777777;
-    --text-color-light4: #888888;
-    --background-color-dark1: #eeeeee;
     color: var(--text-color);
     background-color: transparent;
     font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif !important;
@@ -38,7 +33,7 @@ body {
 
 body {
     overflow-x: hidden;
-    padding: 0 calc(5px * var(--popup-scale));
+    padding: 0 calc(8px * var(--popup-scale));
 }
 
 .entry {
@@ -46,14 +41,11 @@ body {
 }
 
 .entry-header {
-    display: flex;
-    align-items: center;
-    padding-top: calc(4px * var(--popup-scale));
+    display: flow-root;
+    padding-top: calc(6px * var(--popup-scale));
 }
 
 .expression-scroll {
-    flex: 1 1 auto;
-    min-width: 0;
     overflow-x: auto;
 }
 
@@ -75,17 +67,59 @@ body {
     -webkit-user-select: none;
 }
 
+.expression rt.hidden {
+    visibility: hidden;
+}
+
+.kanji-char {
+    cursor: pointer;
+}
+
+.kanji {
+    font-size: calc(120px * var(--popup-scale));
+    line-height: 1;
+    font-family: 'KanjiStrokeOrders_v4.005', 'YuKyo-Medium', "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+.kanji-separator {
+    margin: calc(6px * var(--popup-scale)) 0;
+}
+
+.kanji-reading-label {
+    opacity: 0.6;
+    margin-right: calc(6px * var(--popup-scale));
+}
+
 .header-buttons {
+    float: right;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
-    margin-left: auto;
     gap: calc(6px * var(--popup-scale));
+    margin-left: calc(6px * var(--popup-scale));
+    margin-top: calc(12px * var(--popup-scale));
 }
 
 .button-slot {
     width: calc(28px * var(--popup-scale));
     height: calc(28px * var(--popup-scale));
+}
+
+.button-slot[data-kind="mine"] {
+    position: relative;
+}
+
+.button-slot[data-kind="note"] {
+    width: calc(14px * var(--popup-scale));
+    margin-right: calc(-4px * var(--popup-scale));
+}
+
+.button-slot[data-kind="note"][data-placement="above"] {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% - 2px * var(--popup-scale));
+    transform: translateX(-50%);
+    width: calc(22px * var(--popup-scale));
+    height: calc(16px * var(--popup-scale));
 }
 
 .entry-tags {
@@ -398,28 +432,81 @@ a {
     padding: 0;
 }
 
-/* https://github.com/yomidevs/yomitan/blob/master/ext/css/display-pronunciation.css */
+.pronunciation-text {
+    display: inline;
+}
+
 .pronunciation-mora {
+    display: inline-block;
     position: relative;
 }
 
+.pronunciation-mora-line {
+    border-color: var(--pronunciation-annotation-color);
+}
+
 .pronunciation-mora[data-pitch="high"] > .pronunciation-mora-line {
+    display: block;
+    -webkit-user-select: none;
+    pointer-events: none;
     position: absolute;
-    top: calc(-2px * var(--popup-scale));
+    top: 0.1em;
     left: 0;
     right: 0;
-    border-top: calc(1px * var(--popup-scale)) solid currentColor;
+    height: 0;
+    border-top-width: 0.1em;
+    border-top-style: solid;
 }
 
 .pronunciation-mora[data-pitch="high"][data-pitch-next="low"] > .pronunciation-mora-line {
-    right: calc(-1px * var(--popup-scale));
+    right: -0.1em;
     height: 0.4em;
-    border-right: calc(1px * var(--popup-scale)) solid currentColor;
+    border-right-width: 0.1em;
+    border-right-style: solid;
 }
 
 .pronunciation-mora[data-pitch="high"][data-pitch-next="low"] {
-    padding-right: calc(1px * var(--popup-scale));
-    margin-right: calc(1px * var(--popup-scale));
+    padding-right: 0.1em;
+    margin-right: 0.1em;
+}
+
+.pronunciation-devoice-indicator {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.125em;
+    height: 1.125em;
+    border: calc(1.5em / var(--font-size-no-units)) dotted var(--danger-color);
+    border-radius: 50%;
+    box-sizing: border-box;
+    z-index: 1;
+    transform: translate(-50%, -50%);
+}
+
+.pronunciation-nasal-indicator {
+    display: block;
+    position: absolute;
+    right: -0.125em;
+    top: 0.125em;
+    width: 0.375em;
+    height: 0.375em;
+    border: calc(1.5em / var(--font-size-no-units)) solid var(--danger-color);
+    border-radius: 50%;
+    box-sizing: border-box;
+    z-index: 1;
+}
+
+.pronunciation-nasal-diacritic {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.pronunciation-character-group {
+    display: inline-block;
+    position: relative;
 }
 
 ::highlight(hoshi-selection) {
@@ -434,6 +521,20 @@ a {
         --background-color: #fff;
         --background-color-light: #fff;
         --text-color: #000;
+        --text-color-light1: #555555;
+        --text-color-light2: #666666;
+        --text-color-light3: #777777;
+        --text-color-light4: #888888;
+        --background-color-dark1: #eeeeee;
+        --danger-color: #c83c28;
+        --danger-color-light: #dd6755;
+        --danger-color-lighter: #e68d7f;
+        --danger-color-lightest: #eeb3aa;
+        --danger-color-transparent0: rgba(200, 60, 40, 0);
+        --danger-color-transparent5: rgba(200, 60, 40, 0.05);
+        --danger-color-transparent25: rgba(200, 60, 40, 0.25);
+        --success-color: #51ab30;
+        --pronunciation-annotation-color: #000000;
     }
 }
 
@@ -449,6 +550,15 @@ a {
         --text-color-light3: #888888;
         --text-color-light4: #777777;
         --background-color-dark1: #333333;
+        --danger-color: #dd6755;
+        --danger-color-light: #c83c28;
+        --danger-color-lighter: #9e301f;
+        --danger-color-lightest: #732317;
+        --danger-color-transparent0: rgba(221, 103, 85, 0);
+        --danger-color-transparent5: rgba(221, 103, 85, 0.05);
+        --danger-color-transparent25: rgba(221, 103, 85, 0.25);
+        --success-color: #75cf54;
+        --pronunciation-annotation-color: #ffffff;
     }
     
     .overlay {

@@ -54,6 +54,9 @@ private actor ThumbnailDecoder {
     static let shared = ThumbnailDecoder()
     
     func thumbnail(url: URL, maxPixelSize: Int) -> UIImage? {
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
+            return nil
+        }
         let sourceOptions: [CFString: Any] = [
             kCGImageSourceShouldCache: false
         ]
@@ -70,5 +73,55 @@ private actor ThumbnailDecoder {
             return nil
         }
         return UIImage(cgImage: cgImage)
+    }
+}
+
+struct CoverFallback: View {
+    let title: String
+    var author: String? = nil
+    var aspectRatio: CGFloat = 0.709
+    var cornerRadius: CGFloat = 6
+    
+    private var gradient: LinearGradient {
+        let hash = title.utf8.reduce(UInt64(0xcbf29ce484222325)) { ($0 ^ UInt64($1)) &* 0x100000001b3 }
+        let hue = Double(hash % 3600) / 3600
+        let brightness = 0.6
+        return LinearGradient(
+            colors: [
+                Color(hue: hue, saturation: 0.42, brightness: brightness),
+                Color(hue: (hue + 0.06).truncatingRemainder(dividingBy: 1), saturation: 0.58, brightness: brightness * 0.61)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    var body: some View {
+        GeometryReader { proxy in
+            let scale = proxy.size.width / 150
+            VStack(spacing: 0) {
+                Text(title)
+                    .font(.system(size: 15 * scale, weight: .semibold))
+                    .lineLimit(5)
+                
+                Spacer(minLength: 12 * scale)
+                
+                if let author, !author.isEmpty {
+                    Text(author)
+                        .font(.system(size: 12 * scale, weight: .medium))
+                        .lineLimit(2)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+            }
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.6)
+            .foregroundStyle(.white)
+            .padding([.horizontal, .bottom], 12 * scale)
+            .padding(.top, 20 * scale)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(gradient)
+        }
+        .aspectRatio(aspectRatio, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

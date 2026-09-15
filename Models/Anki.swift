@@ -26,18 +26,43 @@ struct AnkiNoteType: Codable, Hashable, Identifiable {
     let fields: [String]
 }
 
+struct AnkiCardFormat: Codable, Identifiable {
+    let id: UUID
+    var name: String
+    var icon: String
+    var selectedDeck: String?
+    var selectedNoteType: String?
+    var fieldMappings: [String: String]
+    var tags: String
+    
+    static let defaultTag = "hoshi"
+    static let icons = ["plus.square", "plus.square.small", "plus.circle", "plus.circle.small", "plus.diamond", "plus.diamond.small"]
+    static let duplicateIcons: [String: String] = [
+        "plus.square": "plus.square.on.square",
+        "plus.circle": "plus.circle.fill",
+        "plus.diamond": "plus.diamond.fill",
+    ]
+}
+
 struct AnkiConfig: Codable {
-    let selectedDeck: String?
-    let selectedNoteType: String?
+    var cardFormats: [AnkiCardFormat]?
     let allowDupes: Bool
+    let disableShowNotes: Bool?
     let compactGlossaries: Bool?
     let embedMedia: Bool?
-    let fieldMappings: [String: String]
-    var tags: String?
     let availableDecks: [String]
     let availableNoteTypes: [AnkiNoteType]
     let useAnkiConnect: Bool?
     let ankiConnectConfig: AnkiConnectConfig?
+    let selectedGlossaryFallback: String?
+    let showAllHandlebars: Bool?
+}
+
+struct LegacyAnkiFields: Decodable {
+    let selectedDeck: String?
+    let selectedNoteType: String?
+    let fieldMappings: [String: String]?
+    let tags: String?
 }
 
 enum DuplicateScope: String, Codable, CaseIterable {
@@ -57,6 +82,7 @@ struct AnkiConnectConfig: Codable {
 
 struct MiningContext {
     let sentence: String
+    var clozeOffset: Int? = nil
     let documentTitle: String?
     let coverURL: URL?
     var sasayakiAudioData: Data? = nil
@@ -79,23 +105,62 @@ enum Handlebars: String, CaseIterable {
     case glossaryFirst = "{glossary-first}"
     case glossaryFirstBrief = "{glossary-first-brief}"
     case glossaryFirstNoDictionary = "{glossary-first-no-dictionary}"
+    case monolingualDefinition = "{monolingual-definition}"
+    case monolingualDefinitionBrief = "{monolingual-definition-brief}"
+    case monolingualDefinitionNoDictionary = "{monolingual-definition-no-dictionary}"
+    case bilingualDefinition = "{bilingual-definition}"
+    case bilingualDefinitionBrief = "{bilingual-definition-brief}"
+    case bilingualDefinitionNoDictionary = "{bilingual-definition-no-dictionary}"
+    case monolingualDefinitionFallback = "{monolingual-definition-fallback}"
+    case monolingualDefinitionFallbackBrief = "{monolingual-definition-fallback-brief}"
+    case monolingualDefinitionFallbackNoDictionary = "{monolingual-definition-fallback-no-dictionary}"
+    case bilingualDefinitionFallback = "{bilingual-definition-fallback}"
+    case bilingualDefinitionFallbackBrief = "{bilingual-definition-fallback-brief}"
+    case bilingualDefinitionFallbackNoDictionary = "{bilingual-definition-fallback-no-dictionary}"
     case selectedGlossary = "{selected-glossary}"
-    case selectedGlossaryFallback = "{selected-glossary-fallback}"
     case selectedGlossaryBrief = "{selected-glossary-brief}"
-    case selectedGlossaryBriefFallback = "{selected-glossary-brief-fallback}"
     case selectedGlossaryNoDictionary = "{selected-glossary-no-dictionary}"
-    case selectedGlossaryNoDictionaryFallback = "{selected-glossary-no-dictionary-fallback}"
     case popupSelectionText = "{popup-selection-text}"
     case sentence = "{sentence}"
+    case clozePrefix = "{cloze-prefix}"
+    case clozeBody = "{cloze-body}"
+    case clozeSuffix = "{cloze-suffix}"
     case frequencies = "{frequencies}"
     case frequencyHarmonicRank = "{frequency-harmonic-rank}"
     case pitchPositions = "{pitch-accent-positions}"
     case pitchCategories = "{pitch-accent-categories}"
+    case pitchAccentGraphs = "{pitch-accent-graphs}"
+    case pitchAccentGraphsFirst = "{pitch-accent-graphs-first}"
     case documentTitle = "{document-title}"
     case bookCover = "{book-cover}"
     case sasayakiAudio = "{sasayaki-audio}"
     
     static let singleGlossaryPrefix = "{single-glossary-"
+    
+    static let advanced: Set<Handlebars> = [
+        .glossaryBrief,
+        .glossaryNoDictionary,
+        .glossaryFirstBrief,
+        .glossaryFirstNoDictionary,
+        .monolingualDefinition,
+        .monolingualDefinitionBrief,
+        .monolingualDefinitionNoDictionary,
+        .bilingualDefinition,
+        .bilingualDefinitionBrief,
+        .bilingualDefinitionNoDictionary,
+        .monolingualDefinitionFallback,
+        .monolingualDefinitionFallbackBrief,
+        .monolingualDefinitionFallbackNoDictionary,
+        .bilingualDefinitionFallback,
+        .bilingualDefinitionFallbackBrief,
+        .bilingualDefinitionFallbackNoDictionary,
+        .selectedGlossaryBrief,
+        .selectedGlossaryNoDictionary,
+        .clozePrefix,
+        .clozeBody,
+        .clozeSuffix,
+        .pitchAccentGraphsFirst
+    ]
 }
 
 struct AnkiFieldTemplate {
@@ -138,7 +203,7 @@ struct AnkiFieldTemplate {
         AnkiFieldTemplate(noteType: "Senren", mappings: [
             "word": Handlebars.expression.rawValue,
             "reading": Handlebars.reading.rawValue,
-            "sentence": Handlebars.sentence.rawValue,
+            "sentence": "<span class=\"group\">\(Handlebars.clozePrefix.rawValue)<span class=\"highlight\">\(Handlebars.clozeBody.rawValue)</span>\(Handlebars.clozeSuffix.rawValue)</span>",
             "selectionText": Handlebars.popupSelectionText.rawValue,
             "definition": Handlebars.glossaryFirst.rawValue,
             "wordAudio": Handlebars.audio.rawValue,

@@ -57,6 +57,21 @@ struct DriveSyncFiles {
     let statistics: DriveFile?
     let audioBook: DriveFile?
     
+    nonisolated var lastAccess: Date? {
+        let modified = [progress, audioBook].compactMap { file -> Int? in
+            guard let parts = file?.name.split(separator: "_"), parts.count > 4 else { return nil }
+            return Int(parts[3])
+        }
+        if let latest = modified.max() {
+            return Date(timeIntervalSince1970: TimeInterval(latest) / 1000.0)
+        }
+        if let parts = bookData.map({ $0.name.split(separator: "_") }), parts.count > 5,
+           let timestamp = Int(parts[5].dropLast(4)) {
+            return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
+        }
+        return nil
+    }
+    
     init(files: [DriveFile]) {
         bookData = files.first { $0.name.hasPrefix("bookdata_") }
         cover = files.first { $0.name.hasPrefix("cover_") }

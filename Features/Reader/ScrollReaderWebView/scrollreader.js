@@ -7,8 +7,8 @@
 //
 
 window.hoshiReader = {
-    ttuRegexNegated: /[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
-    ttuRegex: /[0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]/iu,
+    ttuRegexNegated: /[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ가-힣ㄱ-ㆎ\p{Radical}\p{Unified_Ideograph}]+/gimu,
+    ttuRegex: /[0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ가-힣ㄱ-ㆎ\p{Radical}\p{Unified_Ideograph}]/iu,
     activeCueId: null,
     cueWrappers: new Map(),
     nodeStartOffsets: new WeakMap(),
@@ -50,6 +50,14 @@ window.hoshiReader = {
     getRect(target) {
         const rect = target.getClientRects()[0];
         return rect || target.getBoundingClientRect();
+    },
+    
+    async awaitFonts() {
+        const style = window.getComputedStyle(document.body);
+        try {
+            await document.fonts.load(`${style.fontSize} ${style.fontFamily}`, 'あ');
+        } catch {}
+        await document.fonts.ready;
     },
     
     scrollToTarget(target) {
@@ -173,6 +181,8 @@ window.hoshiReader = {
                     }
                 } else if (segment) {
                     segment.end = next;
+                } else if (cursor > start && cursor < end) {
+                    segment = { id: current.id, start: i, end: next };
                 }
                 i = next;
             }
@@ -244,6 +254,16 @@ window.hoshiReader = {
         this.activeCueId = null;
     },
     
+    scrollToSasayakiImage(index) {
+        const el = document.querySelectorAll('img, image')[index];
+        if (!el || !(el.classList.contains('block-img') || el.namespaceURI === 'http://www.w3.org/2000/svg')) {
+            return null;
+        }
+        
+        const scrolled = this.scrollToTarget(el);
+        return { progress: scrolled ? this.calculateProgress() : null };
+    },
+    
     resetSasayakiCues() {
         this.cueWrappers.forEach(wrappers => this.unwrap(wrappers));
         this.cueWrappers.clear();
@@ -290,7 +310,7 @@ window.hoshiReader = {
     },
     
     async restoreProgress(progress) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         if (progress <= 0) {
             this.notifyRestoreComplete();
             return;
@@ -339,7 +359,7 @@ window.hoshiReader = {
     },
     
     async jumpToFragment(fragment) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);
         

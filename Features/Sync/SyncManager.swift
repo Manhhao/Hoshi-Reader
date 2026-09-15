@@ -190,6 +190,7 @@ class SyncManager {
         if let audioBook = try await ttuAudioBook {
             importAudioBook(ttuAudioBook: audioBook, to: bookFolder)
         }
+        StatisticsStorage.restore(folder: bookFolder.lastPathComponent)
         return bookFolder
     }
     
@@ -299,24 +300,7 @@ class SyncManager {
         if syncMode == .replace {
             return externalStatistics
         }
-        
-        var grouped: [String: Statistics] = [:]
-        
-        for stat in localStatistics {
-            grouped[stat.dateKey] = stat
-        }
-        
-        for stat in externalStatistics {
-            if let existing = grouped[stat.dateKey] {
-                if stat.lastStatisticModified > existing.lastStatisticModified {
-                    grouped[stat.dateKey] = stat
-                }
-            } else {
-                grouped[stat.dateKey] = stat
-            }
-        }
-        
-        return Array(grouped.values)
+        return Statistics.merged(localStatistics + externalStatistics)
     }
     
     private func importAudioBook(ttuAudioBook: TtuAudioBook, to url: URL) {

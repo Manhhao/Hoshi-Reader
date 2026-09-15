@@ -15,6 +15,7 @@ enum DictionaryType: String {
     case term = "Term"
     case frequency = "Frequency"
     case pitch = "Pitch"
+    case kanji = "Kanji"
 }
 
 @Observable
@@ -25,6 +26,7 @@ class DictionaryManager {
     private(set) var termDictionaries: [DictionaryInfo] = []
     private(set) var frequencyDictionaries: [DictionaryInfo] = []
     private(set) var pitchDictionaries: [DictionaryInfo] = []
+    private(set) var kanjiDictionaries: [DictionaryInfo] = []
     private(set) var updatableDictionaries: [(DictionaryInfo, DictionaryType)] = []
     private(set) var collapsedDictionaries: Set<String> = []
     private(set) var isImporting = false
@@ -32,6 +34,10 @@ class DictionaryManager {
     var shouldShowError = false
     var errorMessage = ""
     var currentImport = ""
+    
+    var excludedDictionaries: [String] {
+        termDictionaries.filter { $0.category == .exclude }.map { $0.index.title }
+    }
     
     private static let configFileName = "config.json"
     private static let collapsedConfig = "collapsed.json"
@@ -47,15 +53,18 @@ class DictionaryManager {
         let storedTermDicts = (try? getDictionariesFromStorage(type: .term)) ?? []
         let storedFreqDicts = (try? getDictionariesFromStorage(type: .frequency)) ?? []
         let storedPitchDicts = (try? getDictionariesFromStorage(type: .pitch)) ?? []
+        let storedKanjiDicts = (try? getDictionariesFromStorage(type: .kanji)) ?? []
         
         if let config = try? loadDictionaryConfig() {
             termDictionaries = collectDictionaries(storedDicts: storedTermDicts, configDicts: config.termDictionaries)
             frequencyDictionaries = collectDictionaries(storedDicts: storedFreqDicts, configDicts: config.frequencyDictionaries)
             pitchDictionaries = collectDictionaries(storedDicts: storedPitchDicts, configDicts: config.pitchDictionaries)
+            kanjiDictionaries = collectDictionaries(storedDicts: storedKanjiDicts, configDicts: config.kanjiDictionaries ?? [])
         } else {
             termDictionaries = storedTermDicts
             frequencyDictionaries = storedFreqDicts
             pitchDictionaries = storedPitchDicts
+            kanjiDictionaries = storedKanjiDicts
         }
     }
     
@@ -72,7 +81,11 @@ class DictionaryManager {
             .filter { $0.isEnabled }
             .map { $0.path }
         
-        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths)
+        let enabledKanjiPaths = kanjiDictionaries
+            .filter { $0.isEnabled }
+            .map { $0.path }
+        
+        LookupEngine.shared.buildQuery(termPaths: enabledTermPaths, freqPaths: enabledFreqPaths, pitchPaths: enabledPitchPaths, kanjiPaths: enabledKanjiPaths)
     }
     
     func collectDictionaries(storedDicts: [DictionaryInfo], configDicts: [DictionaryConfig.DictionaryEntry]) -> [DictionaryInfo] {
@@ -84,6 +97,7 @@ class DictionaryManager {
                 var dictInfo = stored
                 dictInfo.isEnabled = configDict.isEnabled
                 dictInfo.order = configDict.order
+                dictInfo.category = configDict.category ?? .none
                 result.append(dictInfo)
             }
         }
@@ -125,7 +139,7 @@ class DictionaryManager {
                 return nil
             }
             let result = DictionaryInfo(index: index, path: $0)
-            if index.isUpdatable && !index.indexUrl.isEmpty && !index.downloadUrl.isEmpty {
+            if index.isUpdatable == true, !(index.indexUrl ?? "").isEmpty, !(index.downloadUrl ?? "").isEmpty {
                 updatableDictionaries.append((result, type))
             }
             return result
@@ -165,21 +179,32 @@ class DictionaryManager {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
                 )
             },
             frequencyDictionaries: frequencyDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
                 )
             },
             pitchDictionaries: pitchDictionaries.map {
                 DictionaryConfig.DictionaryEntry(
                     fileName: $0.path.lastPathComponent,
                     isEnabled: $0.isEnabled,
-                    order: $0.order
+                    order: $0.order,
+                    category: $0.category
+                )
+            },
+            kanjiDictionaries: kanjiDictionaries.map {
+                DictionaryConfig.DictionaryEntry(
+                    fileName: $0.path.lastPathComponent,
+                    isEnabled: $0.isEnabled,
+                    order: $0.order,
+                    category: $0.category
                 )
             }
         )
@@ -257,7 +282,7 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await URLSession.shared.download(from: URL(string: remoteIndex.downloadUrl!)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
@@ -322,14 +347,18 @@ class DictionaryManager {
                     let temp = FileManager.default.temporaryDirectory
                         .appendingPathComponent(String(title))
                     defer { try? FileManager.default.removeItem(at: temp) }
-                    if importResult.term_count > 0 {
+                    let counts = importResult.summary.counts
+                    if counts.terms.total > 0 {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.term.rawValue)/\(title)")
                     }
-                    if importResult.freq_count > 0 {
+                    if counts.termMeta.contains(std.string("freq")) {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.frequency.rawValue)/\(title)")
                     }
-                    if importResult.pitch_count > 0 {
+                    if counts.termMeta.contains(std.string("pitch")) || counts.termMeta.contains(std.string("ipa")) {
                         try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.pitch.rawValue)/\(title)")
+                    }
+                    if counts.kanji.total > 0 {
+                        try await BookStorage.copyFile(from: temp, to: "Dictionaries/\(DictionaryType.kanji.rawValue)/\(title)")
                     }
                     imported.append(current)
                 } else {
@@ -373,7 +402,7 @@ class DictionaryManager {
                 }
                 
                 do {
-                    let (data, _) = try await session.data(from: URL(string: index.indexUrl)!)
+                    let (data, _) = try await session.data(from: URL(string: index.indexUrl!)!)
                     let remoteIndex = try JSONDecoder().decode(DictionaryIndex.self, from: data)
                     
                     if index.revision == remoteIndex.revision {
@@ -384,7 +413,7 @@ class DictionaryManager {
                         self.currentImport = "Downloading \(remoteIndex.title)"
                     }
                     
-                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl)!)
+                    let (temp, _) = try await session.download(from: URL(string: remoteIndex.downloadUrl!)!)
                     tempFiles.append(temp)
                     
                     await MainActor.run {
@@ -424,10 +453,18 @@ class DictionaryManager {
                             if let currentIndex = self.getDictionaryIndex(title: old, type: type) {
                                 let wasEnabled = self.isDictionaryEnabled(at: currentIndex, type: type)
                                 let wasCollapsed = self.collapsedDictionaries.contains(old)
+                                let wasCategory = type == .term ? self.termDictionaries[currentIndex].category : .none
                                 self.deleteDictionary(indexSet: IndexSet(integer: currentIndex), type: type)
                                 let importedIndex = self.getDictionaryIndex(title: new, type: type)!
                                 self.setDictionaryEnabled(index: importedIndex, enabled: wasEnabled, type: type)
+                                let newId = type == .term ? self.termDictionaries[importedIndex].id : nil
                                 self.moveDictionary(from: IndexSet(integer: importedIndex), to: currentIndex, type: type)
+                                if let newId, wasCategory != .none {
+                                    self.setDictionaryCategory(id: newId, category: wasCategory)
+                                }
+                                if type == .frequency, UserConfig.shared.frequencySortDictionary == old {
+                                    UserConfig.shared.frequencySortDictionary = new
+                                }
                                 AnkiManager.shared.updateHandlebar(old: old, new: new)
                                 if wasCollapsed {
                                     self.collapsedDictionaries.insert(new)
@@ -485,9 +522,18 @@ class DictionaryManager {
         case .pitch:
             guard let index = pitchDictionaries.firstIndex(where: { $0.id == id }) else { return }
             pitchDictionaries[index].isEnabled = enabled
+        case .kanji:
+            guard let index = kanjiDictionaries.firstIndex(where: { $0.id == id }) else { return }
+            kanjiDictionaries[index].isEnabled = enabled
         }
         saveDictionaryConfig()
         rebuildLookupQuery()
+    }
+    
+    func setDictionaryCategory(id: UUID, category: DictionaryCategory) {
+        guard let index = termDictionaries.firstIndex(where: { $0.id == id }) else { return }
+        termDictionaries[index].category = category
+        saveDictionaryConfig()
     }
     
     func moveDictionary(from: IndexSet, to: Int, type: DictionaryType) {
@@ -498,6 +544,8 @@ class DictionaryManager {
             frequencyDictionaries.move(fromOffsets: from, toOffset: to)
         case .pitch:
             pitchDictionaries.move(fromOffsets: from, toOffset: to)
+        case .kanji:
+            kanjiDictionaries.move(fromOffsets: from, toOffset: to)
         }
         updateOrder(type: type)
         saveDictionaryConfig()
@@ -518,6 +566,10 @@ class DictionaryManager {
             for index in pitchDictionaries.indices {
                 pitchDictionaries[index].order = index
             }
+        case .kanji:
+            for index in kanjiDictionaries.indices {
+                kanjiDictionaries[index].order = index
+            }
         }
     }
     
@@ -537,7 +589,6 @@ class DictionaryManager {
                 try? BookStorage.delete(at: dictionary.path)
                 frequencyDictionaries.remove(at: index)
                 updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
-                collapsedDictionaries.remove(dictionary.index.title)
             }
         case .pitch:
             for index in indexSet {
@@ -545,7 +596,13 @@ class DictionaryManager {
                 try? BookStorage.delete(at: dictionary.path)
                 pitchDictionaries.remove(at: index)
                 updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
-                collapsedDictionaries.remove(dictionary.index.title)
+            }
+        case .kanji:
+            for index in indexSet {
+                let dictionary = kanjiDictionaries[index]
+                try? BookStorage.delete(at: dictionary.path)
+                kanjiDictionaries.remove(at: index)
+                updatableDictionaries.removeAll{ $0.0.index.title == dictionary.index.title }
             }
         }
         updateOrder(type: type)
@@ -571,6 +628,8 @@ class DictionaryManager {
             frequencyDictionaries[index].isEnabled
         case .pitch:
             pitchDictionaries[index].isEnabled
+        case .kanji:
+            kanjiDictionaries[index].isEnabled
         }
     }
     
@@ -582,6 +641,8 @@ class DictionaryManager {
             frequencyDictionaries[index].isEnabled = enabled
         case .pitch:
             pitchDictionaries[index].isEnabled = enabled
+        case .kanji:
+            kanjiDictionaries[index].isEnabled = enabled
         }
     }
     
@@ -593,6 +654,8 @@ class DictionaryManager {
             frequencyDictionaries.firstIndex { $0.index.title == title }
         case .pitch:
             pitchDictionaries.firstIndex { $0.index.title == title }
+        case .kanji:
+            kanjiDictionaries.firstIndex { $0.index.title == title }
         }
     }
     

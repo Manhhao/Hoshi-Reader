@@ -32,8 +32,10 @@ struct SasayakiMatcher {
                 .filter { $0.type.lowercased() == "toc" }
                 .map { $0.href.split(separator: "#", maxSplits: 1).first.map(String.init) ?? $0.href }
         )
+        let imageTag = /<(?:img|image)\b/
         var source: [Character] = []
         var chapters: [Chapter] = []
+        var images: [SasayakiImage] = []
         for (spineIndex, item) in document.spine.items.enumerated() {
             guard item.linear, let manifestItem = document.manifest.items[item.idref] else {
                 continue
@@ -50,7 +52,13 @@ struct SasayakiMatcher {
                 continue
             }
             
-            let chapterText = Array(content.filtered())
+            let body = content.body()
+            for (imageIndex, match) in body.matches(of: imageTag).enumerated() {
+                let offset = String(body[..<match.range.lowerBound]).filtered().count
+                images.append(SasayakiImage(chapterIndex: spineIndex, imageIndex: imageIndex, offset: offset))
+            }
+            
+            let chapterText = Array(body.filtered())
             chapters.append(Chapter(chapterIndex: spineIndex, start: source.count, length: chapterText.count))
             source.append(contentsOf: chapterText)
         }
@@ -119,7 +127,8 @@ struct SasayakiMatcher {
         
         return SasayakiMatchData(
             matches: matches,
-            unmatched: unmatched
+            unmatched: unmatched,
+            images: images
         )
     }
     

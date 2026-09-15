@@ -13,7 +13,7 @@ struct WebViewState: Hashable {
     var verticalWriting: Bool
     var fontSize: Int
     var selectedFont: String
-    var hideFurigana: Bool
+    var furiganaMode: FuriganaMode
     var horizontalPadding: Int
     var verticalPadding: Int
     var avoidPageBreak: Bool
@@ -41,8 +41,8 @@ struct ReaderLoader: View {
                 book: viewModel.book,
                 document: doc,
                 rootURL: root,
-                enableStatistics: userConfig.enableStatistics,
                 autostartStatistics: userConfig.statisticsAutostartMode == .on,
+                statisticsResetTime: userConfig.statisticsResetTime,
                 autoSyncEnabled: userConfig.enableSync && userConfig.enableAutoSync,
                 syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
                 syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
@@ -76,6 +76,7 @@ struct ReaderView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: ReaderViewModel
     @State private var focusMode = false
+    @State private var sasayakiControlsExpanded = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
     @State private var topSafeArea: CGFloat
@@ -149,12 +150,29 @@ struct ReaderView: View {
         }
     }
     
+    private func handleTapOutside(clearSelection: Bool = false) {
+        if clearSelection {
+            viewModel.clearSelection()
+        }
+        if sasayakiControlsExpanded {
+            sasayakiControlsExpanded = false
+            return
+        }
+        if viewModel.popups.isEmpty {
+            withAnimation(.default.speed(2)) {
+                focusMode.toggle()
+            }
+        } else {
+            viewModel.closePopups()
+        }
+    }
+    
     init(
         book: BookMetadata,
         document: EPUBDocument,
         rootURL: URL,
-        enableStatistics: Bool,
         autostartStatistics: Bool,
+        statisticsResetTime: Int,
         autoSyncEnabled: Bool,
         syncBookData: Bool,
         syncStats: Bool,
@@ -165,8 +183,8 @@ struct ReaderView: View {
             book: book,
             document: document,
             rootURL: rootURL,
-            enableStatistics: enableStatistics,
             autostartStatistics: autostartStatistics,
+            statisticsResetTime: statisticsResetTime,
             autoSyncEnabled: autoSyncEnabled,
             syncBookData: syncBookData,
             syncStats: syncStats,
@@ -178,15 +196,34 @@ struct ReaderView: View {
     }
     
     private var progressString: String {
-        var result: [String] = []
+        var lines: [String] = []
+        if userConfig.readerShowProgress {
+            let line = progressLine(current: viewModel.currentCharacter, total: viewModel.bookInfo.characterCount)
+            if !line.isEmpty {
+                lines.append(line)
+            }
+        }
+        
+        if userConfig.readerShowChapterProgress {
+            let chapter = viewModel.currentChapterRange
+            let line = progressLine(current: chapter.character, total: chapter.total)
+            if !line.isEmpty {
+                lines.append("(\(line))")
+            }
+        }
+        return lines.joined(separator: userConfig.readerAlwaysShowProgress || userConfig.readerShowProgressTop ? " " : "\n")
+    }
+    
+    private func progressLine(current: Int, total: Int) -> String {
+        var parts: [String] = []
         if userConfig.readerShowCharacters {
-            result.append("\(viewModel.currentCharacter) / \(viewModel.bookInfo.characterCount)")
+            parts.append("\(current) / \(total)")
         }
         if userConfig.readerShowPercentage {
-            let percent = viewModel.bookInfo.characterCount > 0 ? (Double(viewModel.currentCharacter) / Double(viewModel.bookInfo.characterCount) * 100) : 0
-            result.append("\(String(format: "%.2f%%", percent))")
+            let percent = total > 0 ? Double(current) / Double(total) * 100 : 0
+            parts.append(String(format: "%.2f%%", percent))
         }
-        return result.joined(separator: " ")
+        return parts.joined(separator: " ")
     }
     
     private var statisticsString: String {
@@ -210,7 +247,7 @@ struct ReaderView: View {
                 .overlay(alignment: .bottom) {
                     HStack {
                         HStack(spacing: 2) {
-                            if userConfig.enableStatistics && userConfig.readerShowStatisticsToggle {
+                            if userConfig.readerShowStatisticsToggle {
                                 Button {
                                     if viewModel.isTracking {
                                         viewModel.stopTracking()
@@ -218,7 +255,7 @@ struct ReaderView: View {
                                         viewModel.startTracking()
                                     }
                                 } label: {
-                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.xyaxis.line")
+                                    Image(systemName: viewModel.isTracking ? "timer" : "chart.bar.xaxis")
                                         .font(.system(size: 16))
                                         .frame(width: 26, height: 20)
                                         .contentShape(Rectangle())
@@ -294,13 +331,7 @@ struct ReaderView: View {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             }
                         
                         ScrollReaderWebView(
@@ -316,6 +347,7 @@ struct ReaderView: View {
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
+                                sasayakiControlsExpanded = false
                                 viewModel.closePopups()
                                 if !focusMode {
                                     withAnimation(.default.speed(2)) {
@@ -329,18 +361,13 @@ struct ReaderView: View {
                                         dx: (geometry.size.width - scrollViewSize.width) / 2,
                                         dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
                                     ),
-                                    normalizedOffset: $0.normalizedOffset
+                                    normalizedOffset: $0.normalizedOffset,
+                                    clozeOffset: $0.clozeOffset
                                 )
                                 return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             },
                             onScroll: {
                                 viewModel.closePopups()
@@ -360,14 +387,18 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
+                            onProcessTerminated: {
+                                viewModel.handleProcessTerminated()
+                            },
                             onHighlightCreated: viewModel.addHighlight,
+                            onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
-                            hideFurigana: userConfig.readerHideFurigana,
+                            furiganaMode: userConfig.furiganaMode,
                             horizontalPadding: userConfig.horizontalPadding,
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,
@@ -394,6 +425,7 @@ struct ReaderView: View {
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
                             onTextSelected: {
+                                sasayakiControlsExpanded = false
                                 viewModel.closePopups()
                                 if !focusMode {
                                     withAnimation(.default.speed(2)) {
@@ -403,13 +435,7 @@ struct ReaderView: View {
                                 return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
                             },
                             onTapOutside: {
-                                if viewModel.popups.isEmpty {
-                                    withAnimation(.default.speed(2)) {
-                                        focusMode.toggle()
-                                    }
-                                } else {
-                                    viewModel.closePopups()
-                                }
+                                handleTapOutside()
                             },
                             onPageTurn: {
                                 viewModel.clearForwardHistory()
@@ -426,14 +452,18 @@ struct ReaderView: View {
                             onRestoreCompleted: {
                                 viewModel.handleRestoreCompleted()
                             },
+                            onProcessTerminated: {
+                                viewModel.handleProcessTerminated()
+                            },
                             onHighlightCreated: viewModel.addHighlight,
+                            onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
-                            hideFurigana: userConfig.readerHideFurigana,
+                            furiganaMode: userConfig.furiganaMode,
                             horizontalPadding: userConfig.horizontalPadding,
                             verticalPadding: userConfig.verticalPadding,
                             avoidPageBreak: userConfig.avoidPageBreak,
@@ -450,6 +480,7 @@ struct ReaderView: View {
                     
                     ForEach($viewModel.popups) { $popup in
                         let popupId = popup.id
+                        let controlBarInset: CGFloat = userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && userConfig.sasayakiAlwaysShowControlBar && viewModel.sasayakiPlayer.hasAudio ? 54 : 0
                         PopupView(
                             userConfig: userConfig,
                             isVisible: $popup.showPopup,
@@ -459,6 +490,8 @@ struct ReaderView: View {
                             screenSize: geometry.size,
                             isVertical: popup.isVertical,
                             isFullWidth: popup.isFullWidth,
+                            leftInset: userConfig.sasayakiControlBarSide == .left ? controlBarInset : 0,
+                            rightInset: userConfig.sasayakiControlBarSide == .right ? controlBarInset : 0,
                             coverURL: viewModel.coverURL,
                             documentTitle: viewModel.document.title,
                             clearSelection: popup.clearSelection,
@@ -509,14 +542,7 @@ struct ReaderView: View {
                 .frame(height: readerBottomPadding)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    viewModel.clearSelection()
-                    if viewModel.popups.isEmpty {
-                        withAnimation(.default.speed(2)) {
-                            focusMode.toggle()
-                        }
-                    } else {
-                        viewModel.closePopups()
-                    }
+                    handleTapOutside(clearSelection: true)
                 }
                 .overlay(alignment: .center) {
                     if userConfig.readerAlwaysShowProgress && !progressString.isEmpty {
@@ -551,9 +577,9 @@ struct ReaderView: View {
                 }
                 .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7)
                 .conditionalGlassEffect()
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 30)
                 .padding(.top, topSafeArea)
                 .opacity(focusMode ? 0 : 1)
             }
@@ -578,7 +604,7 @@ struct ReaderView: View {
                 Spacer()
                 
                 let showBottomProgress = !userConfig.readerShowProgressTop && !progressString.isEmpty && !userConfig.readerAlwaysShowProgress
-                let showStats = userConfig.enableStatistics && !statisticsString.isEmpty
+                let showStats = !statisticsString.isEmpty
                 if showBottomProgress || showStats {
                     VStack(spacing: 2) {
                         if showStats {
@@ -592,11 +618,12 @@ struct ReaderView: View {
                                 .font(.caption)
                                 .monospacedDigit()
                                 .tracking(-0.4)
+                                .multilineTextAlignment(.center)
                         }
                     }
                     .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
                     .conditionalGlassEffect()
                 }
                 
@@ -610,23 +637,15 @@ struct ReaderView: View {
                     }
                     
                     Button {
-                        viewModel.activeSheet = .chapters
+                        viewModel.activeSheet = .contents
                     } label: {
-                        Label("Chapters", systemImage: "list.bullet")
+                        Label("Contents", systemImage: "list.bullet")
                     }
                     
                     Button {
-                        viewModel.activeSheet = .highlights
+                        viewModel.activeSheet = .statistics
                     } label: {
-                        Label("Highlights", systemImage: "highlighter")
-                    }
-                    
-                    if userConfig.enableStatistics {
-                        Button {
-                            viewModel.activeSheet = .statistics
-                        } label: {
-                            Label("Statistics", systemImage: "chart.xyaxis.line")
-                        }
+                        Label("Statistics", systemImage: "chart.bar.xaxis")
                     }
                     
                     if userConfig.enableSasayaki && viewModel.sasayakiPlayer.hasMatch {
@@ -651,6 +670,11 @@ struct ReaderView: View {
             .padding(.bottom, bottomSafeArea > 0 ? bottomSafeArea : 8)
             .opacity(focusMode ? 0 : 1)
             .allowsHitTesting(!focusMode)
+        }
+        .overlay {
+            if userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && viewModel.sasayakiPlayer.hasAudio {
+                SasayakiControlBar(player: viewModel.sasayakiPlayer, verticalWriting: userConfig.verticalWriting, left: userConfig.sasayakiControlBarSide == .left, expanded: userConfig.sasayakiAlwaysShowControlBar ? .constant(true) : $sasayakiControlsExpanded)
+            }
         }
         .overlay {
             if viewModel.isSyncing {
@@ -678,36 +702,13 @@ struct ReaderView: View {
                 AppearanceView(userConfig: userConfig, showDismiss: true)
                     .presentationDetents([.medium])
                     .preferredColorScheme(readerTheme)
-            case .chapters:
-                ChapterListView(displayTitle: viewModel.book.displayTitle, document: viewModel.document, bookInfo: viewModel.bookInfo, currentIndex: viewModel.index, currentCharacter: viewModel.currentCharacter, coverURL: viewModel.coverURL) { spineIndex, fragment in
-                    viewModel.jumpToChapter(index: spineIndex, fragment: fragment)
+            case .contents:
+                ContentsSheet(viewModel: viewModel, readerTheme: readerTheme) { url in
                     viewModel.activeSheet = nil
-                    viewModel.clearSelection()
-                    viewModel.closePopups()
-                } onJumpToCharacter: { count in
-                    viewModel.jumpToCharacter(count)
-                    viewModel.activeSheet = nil
-                    viewModel.clearSelection()
-                    viewModel.closePopups()
+                    imageURL = url
                 }
-            case .highlights:
-                HighlightListView(
-                    document: viewModel.document,
-                    bookInfo: viewModel.bookInfo,
-                    highlights: viewModel.highlights,
-                    onJump: { highlight in
-                        viewModel.jumpToCharacter(highlight.character)
-                        viewModel.activeSheet = nil
-                        viewModel.clearSelection()
-                        viewModel.closePopups()
-                    },
-                    onDelete: { highlight in
-                        viewModel.removeHighlight(highlight)
-                    }
-                )
-                .presentationDetents([.medium, .large])
             case .statistics:
-                StatisticsView(viewModel: viewModel)
+                StatisticsSheet(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
             case .sasayaki:
                 SasayakiSheet(player: viewModel.sasayakiPlayer, onImportAudio: { url in
@@ -719,7 +720,7 @@ struct ReaderView: View {
             }
         }
         .task(id: viewModel.isTracking) {
-            guard viewModel.isTracking, !viewModel.isPaused else {
+            guard viewModel.isTracking else {
                 return
             }
             while !Task.isCancelled {
@@ -731,6 +732,22 @@ struct ReaderView: View {
         }
         .task {
             await viewModel.syncOnOpen()
+        }
+        .onChange(of: viewModel.activeSheet) { _, sheet in
+            if sheet == nil {
+                viewModel.resetTrackingBaseline()
+                viewModel.isPaused = false
+            } else {
+                viewModel.isPaused = true
+            }
+        }
+        .onChange(of: imageURL) { _, url in
+            if url == nil {
+                viewModel.resetTrackingBaseline()
+                viewModel.isPaused = false
+            } else {
+                viewModel.isPaused = true
+            }
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }
@@ -744,7 +761,7 @@ struct ReaderView: View {
                     await viewModel.syncAfterForeground()
                 }
             }
-            guard viewModel.isTracking else {
+            guard viewModel.isTracking, viewModel.activeSheet == nil, imageURL == nil else {
                 return
             }
             viewModel.resetTrackingBaseline()

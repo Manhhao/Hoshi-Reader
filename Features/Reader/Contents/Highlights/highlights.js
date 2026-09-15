@@ -7,7 +7,8 @@
 //
 
 window.hoshiHighlights = {
-    wrappers: new Map(),
+    highlights: new Map(),
+    searchHighlight: null,
     
     createHighlight(color, id) {
         const selection = window.getSelection();
@@ -23,9 +24,24 @@ window.hoshiHighlights = {
             return null;
         }
         
+        const existing = this.findHighlight(rawStart, rawEnd - rawStart);
+        if (existing) {
+            selection.removeAllRanges();
+            return this.updateHighlight(existing, color);
+        }
+        
         const fragment = range.cloneContents();
         fragment.querySelectorAll('rt, rp').forEach(el => el.remove());
         const text = fragment.textContent;
+        
+        const textFurigana = this.collectSegments(rawStart, Array.from(text).length).map(segment => {
+            const t = segment.node.textContent.slice(segment.start, segment.end);
+            let rt = segment.node.parentElement.nextElementSibling;
+            while (rt?.matches('rp')) {
+                rt = rt.nextElementSibling;
+            }
+            return rt?.matches('rt') && rt.textContent ? `${t}(${rt.textContent})` : t;
+        }).join('');
         
         selection.removeAllRanges();
         
@@ -39,10 +55,32 @@ window.hoshiHighlights = {
             });
         });
         
-        return { start, offset: rawStart, text };
+        return { start, offset: rawStart, text, textFurigana: textFurigana !== text ? textFurigana : null };
     },
     
-    collectSegments(offset, length) {
+    findHighlight(offset, length) {
+        for (const [id, entry] of this.highlights) {
+            if (entry.offset === offset && entry.length === length) {
+                return id;
+            }
+        }
+        return null;
+    },
+    
+    updateHighlight(id, color) {
+        const entry = this.highlights.get(id);
+        if (entry.color === color) {
+            this.removeHighlight(id);
+        } else {
+            entry.color = color;
+            entry.wrappers.forEach(wrapper => {
+                wrapper.className = `hoshi-highlight hoshi-highlight-${color}`;
+            });
+        }
+        return { id };
+    },
+    
+    collectSegments(offset, length, filtered) {
         const end = offset + length;
         const segments = [];
         let cursor = 0;
@@ -65,8 +103,10 @@ window.hoshiHighlights = {
             while (i < text.length && cursor < end) {
                 const char = String.fromCodePoint(text.codePointAt(i));
                 const next = i + char.length;
+                const matchable = !filtered || window.hoshiReader.isMatchableChar(char);
+                const inside = matchable ? cursor >= offset : cursor > offset;
                 
-                if (cursor >= offset) {
+                if (inside) {
                     if (!segment || segment.node !== node) {
                         flushSegment();
                         segment = { node, start: i, end: next };
@@ -74,7 +114,10 @@ window.hoshiHighlights = {
                         segment.end = next;
                     }
                 }
-                cursor += 1;
+                
+                if (matchable) {
+                    cursor += 1;
+                }
                 i = next;
             }
             flushSegment();
@@ -85,7 +128,8 @@ window.hoshiHighlights = {
     
     wrapHighlight(highlight) {
         const { id, color, offset, text } = highlight;
-        const segments = this.collectSegments(offset, Array.from(text).length);
+        const length = window.hoshiReader.countRawChars(text);
+        const segments = this.collectSegments(offset, length);
         if (!segments.length) {
             return;
         }
@@ -105,7 +149,7 @@ window.hoshiHighlights = {
             wrappers.push(wrapper);
         }
         wrappers.reverse();
-        this.wrappers.set(id, wrappers);
+        this.highlights.set(id, { color, offset, length, wrappers });
     },
     
     applyHighlights(highlights) {
@@ -116,13 +160,13 @@ window.hoshiHighlights = {
     },
     
     removeHighlight(id) {
-        const wrappers = this.wrappers.get(id);
-        if (!wrappers) {
+        const entry = this.highlights.get(id);
+        if (!entry) {
             return;
         }
         
-        window.hoshiReader.unwrap(wrappers);
-        this.wrappers.delete(id);
+        window.hoshiReader.unwrap(entry.wrappers);
+        this.highlights.delete(id);
         window.hoshiReader.buildNodeOffsets();
         
         requestAnimationFrame(() => {
@@ -131,5 +175,24 @@ window.hoshiHighlights = {
                 document.body.style.transform = '';
             });
         });
+    },
+    
+    showSearchHighlight(offset, length) {
+        if (!this.searchHighlight) {
+            this.searchHighlight = new Highlight();
+            CSS.highlights.set('hoshi-search', this.searchHighlight);
+        }
+        this.searchHighlight.clear();
+        
+        for (const segment of this.collectSegments(offset, length, true)) {
+            const range = document.createRange();
+            range.setStart(segment.node, segment.start);
+            range.setEnd(segment.node, segment.end);
+            this.searchHighlight.add(range);
+        }
+    },
+    
+    clearSearchHighlight() {
+        this.searchHighlight?.clear();
     }
 };

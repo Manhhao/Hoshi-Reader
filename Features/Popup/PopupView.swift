@@ -18,16 +18,18 @@ struct PopupLayout {
     let isFullWidth: Bool
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
+    var leftInset: CGFloat = 0
+    var rightInset: CGFloat = 0
     
     private let popupPadding: CGFloat = 4
     private let screenBorderPadding: CGFloat = 6
     
     private var spaceLeft: CGFloat {
-        selectionRect.minX - popupPadding
+        selectionRect.minX - popupPadding - leftInset
     }
     
     private var spaceRight: CGFloat {
-        screenSize.width - selectionRect.maxX - popupPadding
+        screenSize.width - selectionRect.maxX - popupPadding - rightInset
     }
     
     private var showOnRight: Bool {
@@ -48,14 +50,14 @@ struct PopupLayout {
     
     var width: CGFloat {
         if isFullWidth {
-            return screenSize.width - screenBorderPadding * 2
+            return screenSize.width - screenBorderPadding * 2 - leftInset - rightInset
         }
         
         if isVertical {
             return min(max(spaceLeft, spaceRight) - screenBorderPadding, maxWidth)
         }
         
-        return min(screenSize.width - screenBorderPadding * 2, maxWidth)
+        return min(screenSize.width - screenBorderPadding * 2 - leftInset - rightInset, maxWidth)
     }
     
     var height: CGFloat {
@@ -71,7 +73,7 @@ struct PopupLayout {
         var y: CGFloat
         
         if isFullWidth {
-            x = width / 2 + screenBorderPadding
+            x = width / 2 + screenBorderPadding + leftInset
             y = screenSize.height - height / 2 - screenBorderPadding
         } else {
             if isVertical {
@@ -80,13 +82,13 @@ struct PopupLayout {
                 } else {
                     x = selectionRect.minX - popupPadding - (width / 2)
                 }
-                x = max(width / 2, min(x, screenSize.width - width / 2))
+                x = max(width / 2 + leftInset, min(x, screenSize.width - width / 2 - rightInset))
                 
                 y = selectionRect.minY + (height / 2)
                 y = max(height / 2 + screenBorderPadding + topInset, min(y, screenSize.height - bottomInset - height / 2 - screenBorderPadding))
             } else {
                 x = selectionRect.minX + (width / 2)
-                x = max(width / 2 + screenBorderPadding, min(x, screenSize.width - width / 2 - screenBorderPadding))
+                x = max(width / 2 + screenBorderPadding + leftInset, min(x, screenSize.width - width / 2 - screenBorderPadding - rightInset))
                 
                 if showBelow {
                     y = selectionRect.maxY + popupPadding + (height / 2)
@@ -111,6 +113,8 @@ struct PopupView: View {
     let isFullWidth: Bool
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
+    var leftInset: CGFloat = 0
+    var rightInset: CGFloat = 0
     let coverURL: URL?
     let documentTitle: String?
     var clearSelection: Bool
@@ -141,6 +145,8 @@ struct PopupView: View {
         isFullWidth: Bool,
         topInset: CGFloat = 0,
         bottomInset: CGFloat = 0,
+        leftInset: CGFloat = 0,
+        rightInset: CGFloat = 0,
         coverURL: URL?,
         documentTitle: String?,
         clearSelection: Bool,
@@ -161,6 +167,8 @@ struct PopupView: View {
         self.isFullWidth = isFullWidth
         self.topInset = topInset
         self.bottomInset = bottomInset
+        self.leftInset = leftInset
+        self.rightInset = rightInset
         self.coverURL = coverURL
         self.documentTitle = documentTitle
         self.clearSelection = clearSelection
@@ -190,7 +198,9 @@ struct PopupView: View {
             isVertical: isVertical,
             isFullWidth: isFullWidth,
             topInset: topInset,
-            bottomInset: bottomInset
+            bottomInset: bottomInset,
+            leftInset: leftInset,
+            rightInset: rightInset
         )
         
         guard result.width.isFinite,
@@ -313,8 +323,8 @@ struct PopupView: View {
                 scanLength: userConfig.scanLength,
                 backTrigger: backTrigger,
                 forwardTrigger: forwardTrigger,
-                onMine: { content in
-                    await mineEntry(content: content, sentence: selectionData.sentence)
+                onMine: { content, formatId in
+                    await mineEntry(content: content, sentence: selectionData.sentence, clozeOffset: selectionData.clozeOffset, formatId: formatId)
                 },
                 onTextSelected: onTextSelected,
                 onTapOutside: onTapOutside,
@@ -331,6 +341,14 @@ struct PopupView: View {
                         forwardCount = 0
                     }
                     return entries
+                },
+                onKanjiRedirect: { kanji in
+                    let data = LookupEngine.shared.queryKanji(kanji)
+                    if data != nil {
+                        backCount += 1
+                        forwardCount = 0
+                    }
+                    return data
                 }
             )
         }
@@ -361,7 +379,7 @@ struct PopupView: View {
         }
     }
     
-    private func mineEntry(content: [String: String], sentence: String) async -> Bool {
+    private func mineEntry(content: [String: String], sentence: String, clozeOffset: Int?, formatId: UUID) async -> Bool {
         var sasayakiAudioData: Data?
         if AnkiManager.shared.needsSasayakiAudio, let cue = sasayakiCue, let player = sasayakiPlayer, player.hasAudio {
             sasayakiAudioData = await player.cueSentenceAudio(cue, sentence: sentence)
@@ -371,10 +389,12 @@ struct PopupView: View {
             content: content,
             context: MiningContext(
                 sentence: sentence,
+                clozeOffset: clozeOffset,
                 documentTitle: documentTitle,
                 coverURL: coverURL,
                 sasayakiAudioData: sasayakiAudioData
-            )
+            ),
+            formatId: formatId
         )
     }
     
@@ -418,13 +438,20 @@ struct PopupView: View {
             
             var pitches: [[String: Any]] = []
             for pitchEntry in result.term.pitches {
-                var pitchPositions: [Int] = []
+                var accents: [[String: Any]] = []
+                var seen: Set<String> = []
                 var transcriptions: [String] = []
-                for element in pitchEntry.pitch_positions {
-                    let position = Int(element)
-                    if !pitchPositions.contains(position) {
-                        pitchPositions.append(position)
-                    }
+                for element in pitchEntry.pitches {
+                    let pattern = String(element.pattern)
+                    guard seen.insert(pattern.isEmpty ? String(element.position) : pattern).inserted else { continue }
+                    let nasal = element.nasal.map { Int($0) }
+                    let devoice = element.devoice.map { Int($0) }
+                    let position: Any = pattern.isEmpty ? Int(element.position) : pattern
+                    accents.append([
+                        "position": position,
+                        "nasal": nasal,
+                        "devoice": devoice,
+                    ])
                 }
                 for element in pitchEntry.transcriptions {
                     let transcription = String(element)
@@ -434,7 +461,7 @@ struct PopupView: View {
                 }
                 pitches.append([
                     "dictionary": String(pitchEntry.dict_name),
-                    "pitchPositions": pitchPositions,
+                    "pitches": accents,
                     "transcriptions": transcriptions
                 ])
             }
@@ -463,6 +490,8 @@ struct PopupView: View {
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let excludedDictionaries = (try? JSONEncoder().encode(DictionaryManager.shared.excludedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
         let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
@@ -481,8 +510,13 @@ struct PopupView: View {
             window.audioSources = \(audioSources);
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
+            window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
+            window.validFormatFlags = \(AnkiManager.shared.validFormatFlags);
+            window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable);
+            window.excludedDictionaries = \(excludedDictionaries);
             window.needsAudio = \(AnkiManager.shared.needsAudio);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.disableShowNotes = \(AnkiManager.shared.disableShowNotes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);

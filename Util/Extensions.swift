@@ -7,28 +7,61 @@
 //
 
 import CryptoKit
+import EPUBKit
 import Foundation
 import SwiftUI
 
 extension String {
-    func filtered() -> String {
-        var text = self
-        if let bodyRange = text.range(of: "(?s)<body.*?</body>", options: .regularExpression) {
-            text = String(text[bodyRange])
-        }
-        text = text.replacingOccurrences(of: "(?s)<rt[^>]*>.*?</rt>", with: "", options: .regularExpression)
+    nonisolated func filtered() -> String {
+        var text = body()
+        text = text.replacingOccurrences(of: "(?s)<(rt|rp)[^>]*>.*?</\\1>", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?s)<(script|style)[^>]*>.*?</\\1>", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: "&#[xX]?[0-9A-Fa-f]+;", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "&nbsp;", with: " ")
         text = text.replacingOccurrences(of: "&amp;", with: "&")
         text = text.replacingOccurrences(of: "&lt;", with: "<")
         text = text.replacingOccurrences(of: "&gt;", with: ">")
         text = text.replacingOccurrences(
-            of: "[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\\p{Radical}\\p{Unified_Ideograph}]",
+            of: "[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ가-힣ㄱ-ㆎ\\p{Radical}\\p{Unified_Ideograph}]",
             with: "",
             options: .regularExpression
         )
         return text
+    }
+    
+    nonisolated func body() -> String {
+        guard let bodyRange = range(of: "(?s)<body.*?</body>", options: .regularExpression) else {
+            return self
+        }
+        return String(self[bodyRange])
+    }
+}
+
+extension EPUBDocument {
+    var chapterLabels: [Int: String] {
+        var pathToSpine: [String: Int] = [:]
+        for (i, item) in spine.items.enumerated() {
+            if let manifestItem = manifest.items[item.idref] {
+                pathToSpine[manifestItem.path] = i
+            }
+        }
+        
+        var labels: [Int: String] = [:]
+        func walk(_ items: [EPUBTableOfContents], topLabel: String?) {
+            for item in items {
+                let label = topLabel ?? item.label
+                if let raw = item.item {
+                    let path = raw.components(separatedBy: "#").first ?? raw
+                    if let index = pathToSpine[path], labels[index] == nil {
+                        labels[index] = label
+                    }
+                }
+                walk(item.subTable ?? [], topLabel: label)
+            }
+        }
+        walk(tableOfContents.subTable ?? [], topLabel: nil)
+        return labels
     }
 }
 
@@ -40,6 +73,12 @@ extension BookMetadata {
         }
         guard let appDir = try? BookStorage.getAppDirectory() else { return nil }
         return appDir.appendingPathComponent(coverPath)
+    }
+}
+
+extension Double {
+    var formattedDuration: String {
+        Duration.seconds(self).formatted(.units(allowed: [.hours, .minutes], width: .narrow))
     }
 }
 

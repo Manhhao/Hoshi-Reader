@@ -18,6 +18,7 @@ const NUMERIC_TAG = /^\d+$/;
 // this might not cover every tag
 const POS_TAGS = new Set(['n', 'adj-i', 'adj-na', 'adj-no', 'v1', 'vk', 'vs', 'vs-i', 'vs-s', 'vz', 'vi', 'vt']);
 let audioUrls = {};
+let audioLists = {};
 let lastSelection = '';
 let currentDictionaryMedia = null;
 let selectedDictionaries = {};
@@ -37,6 +38,18 @@ function el(tag, props = {}, children = []) {
     }
     
     return element;
+}
+
+function wrapKanji(text) {
+    const nodes = [];
+    for (const ch of text) {
+        if (KANJI_PATTERN.test(ch)) {
+            nodes.push(el('span', { className: 'kanji-char', textContent: ch }));
+        } else {
+            nodes.push(document.createTextNode(ch));
+        }
+    }
+    return nodes;
 }
 
 function toHiragana(text) {
@@ -204,11 +217,11 @@ function buildFuriganaEl(parent, expression, reading) {
     const segments = segmentFurigana(expression, reading);
     for (const [text, furigana] of segments) {
         if (furigana) {
-            const ruby = el('ruby', {}, [text]);
+            const ruby = el('ruby', {}, wrapKanji(text));
             ruby.appendChild(el('rt', { textContent: furigana }));
             parent.appendChild(ruby);
         } else {
-            parent.appendChild(document.createTextNode(text));
+            parent.append(...wrapKanji(text));
         }
     }
     return segments.length === 1 && segments[0][1];
@@ -454,6 +467,9 @@ function constructGlossaryHtml(entryIndex) {
     
     entry.glossaries.forEach(g => {
         const dictName = g.dictionary;
+        if (window.excludedDictionaries.includes(dictName)) {
+            return;
+        }
         
         const tempDiv = document.createElement('div');
         try {
@@ -532,8 +548,9 @@ function constructPitchPositionHtml(pitches) {
     
     let result = '<ol>';
     pitches.forEach(pitchGroup => {
-        pitchGroup.pitchPositions.forEach(pos => {
-            result += `<li><span style="display:inline;"><span>[</span><span>${pos}</span><span>]</span></span></li>`;
+        pitchGroup.pitches.forEach(accent => {
+            const downsteps = typeof accent.position === 'string' ? getDownstepPositions(accent.position) : accent.position;
+            result += `<li><span style="display:inline;"><span>[</span><span>${downsteps}</span><span>]</span></span></li>`;
         });
     });
     result += '</ol>';
@@ -548,14 +565,44 @@ function constructPitchCategories(pitches, reading, rules) {
     const verbOrAdj = isVerbOrAdjective(rules);
     const categories = [];
     pitches.forEach(pitchGroup => {
-        pitchGroup.pitchPositions.forEach(pos => {
-            const category = getPitchCategory(reading, pos, verbOrAdj);
+        pitchGroup.pitches.forEach(accent => {
+            const category = getPitchCategory(reading, accent.position, verbOrAdj);
             if (category && !categories.includes(category)) {
                 categories.push(category);
             }
         });
     });
     return categories.join(',');
+}
+
+function constructPitchAccentGraphsHtml(pitches, reading) {
+    if (!pitches?.length) {
+        return '';
+    }
+    
+    const morae = getKanaMorae(reading);
+    const seen = new Set();
+    const graphs = [];
+    pitches.forEach(pitchGroup => {
+        pitchGroup.pitches.forEach(accent => {
+            if (window.deduplicatePitchAccents) {
+                const pattern = pitchPattern(accent.position, morae.length);
+                if (seen.has(pattern)) {
+                    return;
+                }
+                seen.add(pattern);
+            }
+            graphs.push(createPronunciationGraph(morae, accent.position).outerHTML);
+        });
+    });
+    
+    if (graphs.length === 0) {
+        return '';
+    }
+    if (graphs.length === 1) {
+        return graphs[0];
+    }
+    return `<ol>${graphs.map(g => `<li>${g}</li>`).join('')}</ol>`;
 }
 
 // https://github.com/yomidevs/yomitan/blob/d810b2f0842536d24ab82b6cd75d00841710e57b/ext/js/display/structured-content-generator.js#L64
@@ -793,7 +840,7 @@ function getFrequencyHarmonicRank(frequencies) {
     return String(Math.floor(values.length / sumOfReciprocals));
 }
 
-async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText) {
+async function mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, popupSelectionText, slotIndex) {
     const idx = entryIndex || 0;
     const furiganaPlain = constructFuriganaPlain(expression, reading);
     currentDictionaryMedia = new Map();
@@ -803,9 +850,9 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
     const singleGlossaries = constructSingleGlossaryHtml(idx);
     const dictionaryMedia = currentDictionaryMedia;
     currentDictionaryMedia = null;
-    const glossaryFirst = Object.values(singleGlossaries)[0] || '';
     const pitchPositions = constructPitchPositionHtml(pitches);
     const pitchCategories = constructPitchCategories(pitches, reading, rules);
+    const pitchAccentGraphs = constructPitchAccentGraphsHtml(pitches, reading);
     
     if (!audioUrls[idx] && window.audioSources?.length && window.needsAudio) {
         audioUrls[idx] = await fetchAudioUrl(expression, reading || expression);
@@ -821,12 +868,13 @@ async function mineEntry(expression, reading, frequencies, pitches, rules, match
         frequenciesHtml,
         freqHarmonicRank,
         glossary,
-        glossaryFirst,
         singleGlossaries: JSON.stringify(singleGlossaries),
         pitchPositions,
         pitchCategories,
+        pitchAccentGraphs,
         popupSelectionText,
         audio,
+        slotIndex: String(slotIndex),
         selectedDictionary: selectedDictionaries[idx]?.name || '',
         dictionaryMedia: JSON.stringify([...dictionaryMedia.values()])
     });
@@ -1000,7 +1048,9 @@ function createDeinflectionTag(tag) {
 function createFrequencyGroup(freqGroup) {
     const values = freqGroup.frequencies.map(f => f.displayValue || f.value).join(', ');
     return el('span', { className: 'frequency-group', 'data-details': freqGroup.dictionary }, [
-        el('span', { className: 'frequency-dict-label', textContent: freqGroup.dictionary }),
+        el('span', { className: 'frequency-dict-label' }, [
+            el('span', { className: 'frequency-dict-label-text', textContent: freqGroup.dictionary })
+        ]),
         el('span', { className: 'frequency-values', textContent: values })
     ]);
 }
@@ -1008,13 +1058,18 @@ function createFrequencyGroup(freqGroup) {
 function createHarmonicFrequencyTag(frequencies) {
     const rank = getFrequencyHarmonicRank(frequencies);
     return el('span', { className: 'frequency-group harmonic-frequency' }, [
-        el('span', { className: 'frequency-dict-label', textContent: 'Average' }),
+        el('span', { className: 'frequency-dict-label' }, [
+            el('span', { className: 'frequency-dict-label-text', textContent: 'Average' })
+        ]),
         el('span', { className: 'frequency-values', textContent: rank })
     ]);
 }
 
-// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L350
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L350
 function isMoraPitchHigh(moraIndex, pitchAccentValue) {
+    if (typeof pitchAccentValue === 'string') {
+        return pitchAccentValue[moraIndex] === 'H';
+    }
     switch (pitchAccentValue) {
         case 0: return (moraIndex > 0);
         case 1: return (moraIndex < 1);
@@ -1022,7 +1077,55 @@ function isMoraPitchHigh(moraIndex, pitchAccentValue) {
     }
 }
 
-// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L406
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L388
+function getDownstepPositions(pitchString) {
+    const downsteps = [];
+    const moraCount = pitchString.length;
+    for (let i = 0; i < moraCount; i++) {
+        if (i > 0 && pitchString[i - 1] === 'H' && pitchString[i] === 'L') {
+            downsteps.push(i);
+        }
+    }
+    if (downsteps.length === 0) {
+        downsteps.push(pitchString.startsWith('L') ? 0 : -1);
+    }
+    return downsteps;
+}
+
+function pitchPattern(position, moraCount) {
+    if (typeof position === 'string') {
+        return position;
+    }
+    let pattern = '';
+    for (let i = 0; i <= moraCount; i++) {
+        pattern += isMoraPitchHigh(i, position) ? 'H' : 'L';
+    }
+    return pattern;
+}
+
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L138
+const DIACRITIC_MAPPING = (() => {
+    const kana = 'うゔ-かが-きぎ-くぐ-けげ-こご-さざ-しじ-すず-せぜ-そぞ-ただ-ちぢ-つづ-てで-とど-はばぱひびぴふぶぷへべぺほぼぽワヷ-ヰヸ-ウヴ-ヱヹ-ヲヺ-カガ-キギ-クグ-ケゲ-コゴ-サザ-シジ-スズ-セゼ-ソゾ-タダ-チヂ-ツヅ-テデ-トド-ハバパヒビピフブプヘベペホボポ';
+    const mapping = new Map();
+    for (let i = 0, ii = kana.length; i < ii; i += 3) {
+        const character = kana[i];
+        const dakuten = kana[i + 1];
+        const handakuten = kana[i + 2];
+        mapping.set(dakuten, { character, type: 'dakuten' });
+        if (handakuten !== '-') {
+            mapping.set(handakuten, { character, type: 'handakuten' });
+        }
+    }
+    return mapping;
+})();
+
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L573
+function getKanaDiacriticInfo(character) {
+    const info = DIACRITIC_MAPPING.get(character);
+    return typeof info !== 'undefined' ? { character: info.character, type: info.type } : null;
+}
+
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L406
 function getKanaMorae(text) {
     const morae = [];
     let i;
@@ -1041,27 +1144,30 @@ function isVerbOrAdjective(rules) {
     return rules?.some(tag => tag.startsWith('v') || tag.startsWith('adj-i')) ?? false;
 }
 
-// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/language/ja/japanese.js#L366
-function getPitchCategory(reading, pitchAccentValue, verbOrAdjective = false) {
-    if (pitchAccentValue === 0) {
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/language/ja/japanese.js#L367
+function getPitchCategory(text, pitchAccentValue, isVerbOrAdjective) {
+    const pitchAccentDownstepPosition = typeof pitchAccentValue === 'string' ? getDownstepPositions(pitchAccentValue)[0] : pitchAccentValue;
+    if (pitchAccentDownstepPosition === 0) {
         return 'heiban';
     }
-    if (verbOrAdjective) {
-        return pitchAccentValue > 0 ? 'kifuku' : null;
+    if (isVerbOrAdjective) {
+        return pitchAccentDownstepPosition > 0 ? 'kifuku' : null;
     }
-    if (pitchAccentValue === 1) {
+    if (pitchAccentDownstepPosition === 1) {
         return 'atamadaka';
     }
-    if (pitchAccentValue > 1) {
-        const moraCount = getKanaMorae(reading).length;
-        return pitchAccentValue >= moraCount ? 'odaka' : 'nakadaka';
+    if (pitchAccentDownstepPosition > 1) {
+        const moraCount = getKanaMorae(text).length;
+        return pitchAccentDownstepPosition >= moraCount ? 'odaka' : 'nakadaka';
     }
     return null;
 }
 
-// https://github.com/yomidevs/yomitan/blob/c24d4c9b39ceec1b5fd133df774c41972e9ebbdc/ext/js/display/pronunciation-generator.js#L38
-function createPitchHtml(reading, pitchValue) {
+// https://github.com/yomidevs/yomitan/blob/c0c3702963c22e0f39fdd2f03deef6b15558a7f5/ext/js/display/pronunciation-generator.js#L38
+function createPitchHtml(reading, pitchValue, nasalPositions = [], devoicePositions = []) {
     const morae = getKanaMorae(reading);
+    const nasalSet = new Set(nasalPositions);
+    const devoiceSet = new Set(devoicePositions);
     const container = el('span', { className: 'pronunciation-text' });
     
     for (let i = 0; i < morae.length; i++) {
@@ -1072,9 +1178,32 @@ function createPitchHtml(reading, pitchValue) {
         const moraSpan = el('span', {
             className: 'pronunciation-mora',
             'data-pitch': isHigh ? 'high' : 'low',
-            'data-pitch-next': isHighNext ? 'high' : 'low',
-            textContent: mora
+            'data-pitch-next': isHighNext ? 'high' : 'low'
         });
+        
+        if (nasalSet.has(i + 1)) {
+            moraSpan.dataset.nasal = 'true';
+            const characterInfo = getKanaDiacriticInfo(mora[0]);
+            if (characterInfo !== null) {
+                moraSpan.dataset.originalText = mora;
+            }
+            const group = el('span', { className: 'pronunciation-character-group' }, [
+                el('span', { textContent: characterInfo !== null ? characterInfo.character : mora[0] }),
+                el('span', { className: 'pronunciation-nasal-diacritic', textContent: '\u309a' }),
+                el('span', { className: 'pronunciation-nasal-indicator' })
+            ]);
+            moraSpan.appendChild(group);
+            if (mora.length > 1) {
+                moraSpan.appendChild(document.createTextNode(mora.slice(1)));
+            }
+        } else {
+            moraSpan.appendChild(document.createTextNode(mora));
+        }
+        
+        if (devoiceSet.has(i + 1)) {
+            moraSpan.dataset.devoice = 'true';
+            moraSpan.appendChild(el('span', { className: 'pronunciation-devoice-indicator' }));
+        }
         
         moraSpan.appendChild(el('span', { className: 'pronunciation-mora-line' }));
         container.appendChild(moraSpan);
@@ -1083,15 +1212,107 @@ function createPitchHtml(reading, pitchValue) {
     return container;
 }
 
+// https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L115
+// https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/css/display-pronunciation.css#L101
+function createPronunciationGraph(morae, pitchPositions) {
+    const ii = morae.length;
+    
+    const svgns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('xmlns', svgns);
+    //
+    svg.setAttribute('style', 'display:inline-block;vertical-align:middle;height:1.5em;');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('viewBox', `0 0 ${50 * (ii + 1)} 100`);
+    
+    if (ii <= 0) { return svg; }
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L317
+    const createGraphCircle = (style, x, y, radius) => {
+        const node = document.createElementNS(svgns, 'circle');
+        node.setAttribute('style', style);
+        node.setAttribute('cx', `${x}`);
+        node.setAttribute('cy', `${y}`);
+        node.setAttribute('r', radius);
+        return node;
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L290
+    const addGraphDot = (x, y) => {
+        // pronunciation-graph-dot
+        svg.appendChild(createGraphCircle('stroke-width:5;fill:currentColor;stroke:currentColor;', x, y, '15'));
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L290
+    const addGraphDotDownstep = (x, y) => {
+        // pronunciation-graph-dot-downstep1
+        svg.appendChild(createGraphCircle('fill:none;stroke-width:5;stroke:currentColor;', x, y, '15'));
+        // pronunciation-graph-dot-downstep2
+        svg.appendChild(createGraphCircle('fill:currentColor;', x, y, '5'));
+    };
+    
+    // https://github.com/yomidevs/yomitan/blob/d9c3c4d09e6ccf62f4e0fa3cd32abef17b5b4084/ext/js/display/pronunciation-generator.js#L301
+    const addGraphTriangle = (x, y) => {
+        const node = document.createElementNS(svgns, 'path');
+        // pronunciation-graph-triangle
+        node.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;');
+        node.setAttribute('d', 'M0 13 L15 -13 L-15 -13 Z');
+        node.setAttribute('transform', `translate(${x},${y})`);
+        svg.appendChild(node);
+    };
+    
+    const path1 = document.createElementNS(svgns, 'path');
+    svg.appendChild(path1);
+    
+    const path2 = document.createElementNS(svgns, 'path');
+    svg.appendChild(path2);
+    
+    const pathPoints = [];
+    for (let i = 0; i < ii; ++i) {
+        const highPitch = isMoraPitchHigh(i, pitchPositions);
+        const highPitchNext = isMoraPitchHigh(i + 1, pitchPositions);
+        const x = i * 50 + 25;
+        const y = highPitch ? 25 : 75;
+        if (highPitch && !highPitchNext) {
+            addGraphDotDownstep(x, y);
+        } else {
+            addGraphDot(x, y);
+        }
+        pathPoints.push(`${x} ${y}`);
+    }
+    
+    // pronunciation-graph-line
+    path1.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;');
+    path1.setAttribute('d', `M${pathPoints.join(' L')}`);
+    
+    pathPoints.splice(0, ii - 1);
+    {
+        const highPitch = isMoraPitchHigh(ii, pitchPositions);
+        const x = ii * 50 + 25;
+        const y = highPitch ? 25 : 75;
+        addGraphTriangle(x, y);
+        pathPoints.push(`${x} ${y}`);
+    }
+    
+    // pronunciation-graph-line-tail
+    path2.setAttribute('style', 'fill:none;stroke-width:5;stroke:currentColor;stroke-dasharray:5 5;');
+    path2.setAttribute('d', `M${pathPoints.join(' L')}`);
+    
+    return svg;
+}
+
 function createPitchGroup(pitchData, reading) {
     const container = el('div', { className: 'pitch-group', 'data-details': pitchData.dictionary });
-    container.appendChild(el('span', { className: 'pitch-dict-label', textContent: pitchData.dictionary }));
+    container.appendChild(el('span', { className: 'pitch-dict-label' }, [
+        el('span', { className: 'pitch-dict-label-text', textContent: pitchData.dictionary })
+    ]));
     
     const list = el('ul', { className: 'pitch-entries' });
-    pitchData.pitchPositions.forEach((pitch) => {
+    pitchData.pitches.forEach((accent) => {
         const li = el('li');
-        li.appendChild(createPitchHtml(reading, pitch));
-        li.appendChild(document.createTextNode(` [${pitch}]`));
+        const downsteps = typeof accent.position === 'string' ? getDownstepPositions(accent.position) : accent.position;
+        li.appendChild(createPitchHtml(reading, accent.position, accent.nasal, accent.devoice));
+        li.appendChild(document.createTextNode(` [${downsteps}]`));
         list.appendChild(li);
     });
     pitchData.transcriptions.forEach((transcription) => {
@@ -1160,13 +1381,14 @@ function createTags(entry) {
     if (hasPitches) {
         const pitchContainer = el('div', { className: 'pitch-list' });
         if (window.deduplicatePitchAccents) {
+            const moraCount = getKanaMorae(reading).length;
             const seen = new Set();
             pitches.forEach(pitch => {
-                const unique = pitch.pitchPositions.filter(pos => !seen.has(pos));
+                const unique = pitch.pitches.filter(accent => !seen.has(pitchPattern(accent.position, moraCount)));
                 const transcriptions = pitch.transcriptions;
                 if (unique.length > 0 || transcriptions.length > 0) {
-                    unique.forEach(pos => seen.add(pos));
-                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitchPositions: unique, transcriptions }, reading));
+                    unique.forEach(accent => seen.add(pitchPattern(accent.position, moraCount)));
+                    pitchContainer.appendChild(createPitchGroup({ dictionary: pitch.dictionary, pitches: unique, transcriptions }, reading));
                 }
             });
         } else {
@@ -1178,23 +1400,71 @@ function createTags(entry) {
     return container;
 }
 
+async function fetchAudioSources(template, expression, reading) {
+    const url = template
+    .replace('{term}', encodeURIComponent(expression))
+    .replace('{reading}', encodeURIComponent(reading));
+    try {
+        const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        if (data.type !== 'audioSourceList') {
+            return [];
+        }
+        
+        return (data.audioSources || []).filter(source => source.url);
+    } catch {
+        return [];
+    }
+}
+
 async function fetchAudioUrl(expression, reading) {
-    const templates = window.audioSources;
-    if (!templates?.length) return null;
+    const sources = window.audioSources;
+    if (!sources?.length) {
+        return null;
+    }
     
-    for (const template of templates) {
-        const url = template
-        .replace('{term}', encodeURIComponent(expression))
-        .replace('{reading}', encodeURIComponent(reading));
-        try {
-            const response = await fetch(`audio://?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
-            if (data.type === 'audioSourceList' && data.audioSources?.[0]?.url) {
-                return data.audioSources[0].url;
-            }
-        } catch {}
+    for (const source of sources) {
+        const entries = await fetchAudioSources(source.url, expression, reading);
+        if (entries.length) {
+            return entries[0].url;
+        }
     }
     return null;
+}
+
+async function fetchAudioList(entryIndex) {
+    if (audioLists[entryIndex]) {
+        return audioLists[entryIndex];
+    }
+    const entry = window.lookupEntries?.[entryIndex];
+    const sources = window.audioSources;
+    if (!entry || !sources?.length) {
+        return [];
+    }
+    
+    const list = [];
+    for (const source of sources) {
+        const entries = await fetchAudioSources(source.url, entry.expression, entry.reading);
+        const sourceName = source.name || 'Audio';
+        entries.forEach(item => list.push({
+            name: item.name ? `${sourceName}: ${item.name}` : sourceName,
+            url: item.url
+        }));
+    }
+    audioLists[entryIndex] = list;
+    return list;
+}
+
+async function getAudioMenu(entryIndex) {
+    const list = await fetchAudioList(entryIndex);
+    const counts = {};
+    return {
+        names: list.map(item => {
+            counts[item.name] = (counts[item.name] || 0) + 1;
+            return counts[item.name] > 1 ? `${item.name} ${counts[item.name]}` : item.name;
+        }),
+        selected: list.findIndex(item => item.url === audioUrls[entryIndex])
+    };
 }
 
 function playWordAudio(audioUrl) {
@@ -1215,11 +1485,12 @@ function playWordAudio(audioUrl) {
 }
 
 function reportButtonRects() {
-    const rects = [...document.querySelectorAll('.button-slot')].map(slot => {
+    const rects = [...document.querySelectorAll('.button-slot:not([hidden])')].map(slot => {
         const rect = slot.getBoundingClientRect();
         return {
             kind: slot.dataset.kind,
             entryIndex: Number(slot.dataset.entryIndex),
+            slotIndex: Number(slot.dataset.slotIndex),
             x: rect.left + window.scrollX,
             y: rect.top + window.scrollY,
             width: rect.width,
@@ -1231,32 +1502,41 @@ function reportButtonRects() {
     webkit.messageHandlers.buttonRects.postMessage(rects);
 }
 
-function createButtonSlot(kind, entryIndex, enabled = true) {
+function createButtonSlot(kind, entryIndex, slotIndex, enabled = true, hidden = false) {
     return el('span', {
         className: 'button-slot',
+        hidden,
         'data-kind': kind,
         'data-entry-index': entryIndex,
+        'data-slot-index': slotIndex,
         'data-enabled': String(enabled)
     });
 }
 
-function getButtonSlot(kind, entryIndex) {
-    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`);
+function getButtonSlot(kind, entryIndex, slotIndex) {
+    return document.querySelector(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"][data-slot-index="${slotIndex}"]`);
+}
+
+function getButtonSlots(kind, entryIndex) {
+    return [...document.querySelectorAll(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`)];
 }
 
 function updateButtonSlot(slot, changes) {
     if (!slot || !slot.isConnected) { return; }
     if ('state' in changes) { slot.dataset.state = changes.state; }
     if ('enabled' in changes) { slot.dataset.enabled = String(changes.enabled); }
+    if ('hidden' in changes) { slot.hidden = changes.hidden; }
     requestAnimationFrame(reportButtonRects);
 }
 
-async function playEntryAudio(entryIndex) {
+async function playEntryAudio(entryIndex, sourceIndex = null) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
-    const audioSlot = getButtonSlot('audio', entryIndex);
+    const audioSlot = getButtonSlots('audio', entryIndex)[0];
     
-    if (!audioUrls[entryIndex]) {
+    if (sourceIndex !== null) {
+        audioUrls[entryIndex] = (await fetchAudioList(entryIndex))[sourceIndex]?.url || null;
+    } else if (!audioUrls[entryIndex]) {
         audioUrls[entryIndex] = await fetchAudioUrl(entry.expression, entry.reading);
     }
     if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex])) {
@@ -1265,29 +1545,66 @@ async function playEntryAudio(entryIndex) {
     }
 }
 
-async function mineEntryAtIndex(entryIndex) {
+async function checkDuplicates(entryIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) {
+        return;
+    }
+    
+    if (window.useAnkiConnect && !window.isAnkiConnectReachable) {
+        getButtonSlots('mine', entryIndex).forEach(slot => {
+            updateButtonSlot(slot, { state: 'default', enabled: false });
+            updateButtonSlot(getButtonSlot('note', entryIndex, Number(slot.dataset.slotIndex)), { hidden: true });
+        });
+        return;
+    }
+    
+    const results = await webkit.messageHandlers.duplicateCheck.postMessage({
+        '{expression}': entry.expression,
+        '{reading}': entry.reading
+    });
+    getButtonSlots('mine', entryIndex).forEach(slot => {
+        const i = Number(slot.dataset.slotIndex);
+        const isDuplicate = results?.[i] === true;
+        const isValidFormat = window.validFormatFlags[i];
+        updateButtonSlot(slot, {
+            state: isDuplicate ? 'duplicate' : 'default',
+            enabled: isValidFormat && !(isDuplicate && !window.allowDupes)
+        });
+        updateButtonSlot(getButtonSlot('note', entryIndex, i), {
+            hidden: !isDuplicate || window.disableShowNotes
+        });
+    });
+}
+
+function recheckDuplicates() {
+    const indices = new Set(
+        [...document.querySelectorAll('.button-slot[data-kind="mine"]')]
+            .map(slot => Number(slot.dataset.entryIndex))
+    );
+    indices.forEach(checkDuplicates);
+}
+
+async function mineEntryAtIndex(entryIndex, slotIndex) {
     const entry = window.lookupEntries?.[entryIndex];
     if (!entry) { return; }
     const { expression, reading, frequencies, pitches, rules, matched } = entry;
-    const mineSlot = getButtonSlot('mine', entryIndex);
     
     lastSelection = window.getSelection()?.toString() || '';
-    updateButtonSlot(mineSlot, { enabled: false });
+    getButtonSlots('mine', entryIndex).forEach(slot => updateButtonSlot(slot, { enabled: false }));
     
-    const isAnkiConnect = await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection);
-    const checkDuplicate = async () => {
-        const wasAdded = await webkit.messageHandlers.duplicateCheck.postMessage(expression);
-        updateButtonSlot(mineSlot, {
-            state: wasAdded ? 'duplicate' : 'default',
-            enabled: !(wasAdded && !window.allowDupes)
-        });
-    };
-    
-    if (isAnkiConnect) {
-        await checkDuplicate();
-    } else {
-        setTimeout(checkDuplicate, 1000);
-    }
+    await mineEntry(expression, reading, frequencies, pitches, rules, matched, entryIndex, lastSelection, slotIndex);
+    await checkDuplicates(entryIndex);
+}
+
+function showNotesAtIndex(entryIndex, slotIndex) {
+    const entry = window.lookupEntries?.[entryIndex];
+    if (!entry) { return; }
+    webkit.messageHandlers.showNotes.postMessage({
+        '{expression}': entry.expression,
+        '{reading}': entry.reading,
+        slotIndex: String(slotIndex)
+    });
 }
 
 function createEntryHeader(entry, idx) {
@@ -1299,8 +1616,36 @@ function createEntryHeader(entry, idx) {
     if (reading && reading !== expression) {
         needsScroll = buildFuriganaEl(expressionSpan, expression, reading);
     } else {
-        expressionSpan.textContent = expression;
+        expressionSpan.append(...wrapKanji(expression));
     }
+    
+    // empty placeholder to reserve space even when no ruby is present
+    if (!expressionSpan.querySelector('rt')) {
+        const zwsp = String.fromCharCode(0x200b);
+        expressionSpan.appendChild(el('ruby', {}, [zwsp, el('rt', { className: 'hidden', textContent: zwsp })]));
+    }
+    
+    const buttonsContainer = el('div', { className: 'header-buttons' });
+    for (let slotIndex = 0; slotIndex < window.cardFormatCount; slotIndex++) {
+        const mineSlot = createButtonSlot('mine', idx, slotIndex, false);
+        const noteSlot = createButtonSlot('note', idx, slotIndex, true, true);
+        if (slotIndex === 0) {
+            buttonsContainer.appendChild(noteSlot);
+            buttonsContainer.appendChild(mineSlot);
+        } else {
+            noteSlot.dataset.placement = 'above';
+            mineSlot.appendChild(noteSlot);
+            buttonsContainer.appendChild(mineSlot);
+        }
+    }
+    checkDuplicates(idx);
+    
+    if (window.audioSources?.length) {
+        buttonsContainer.appendChild(createButtonSlot('audio', idx, null));
+    }
+    
+    header.appendChild(buttonsContainer);
+    requestAnimationFrame(reportButtonRects);
     if (needsScroll) {
         const expressionScroll = el('div', { className: 'expression-scroll' });
         expressionScroll.appendChild(expressionSpan);
@@ -1309,29 +1654,11 @@ function createEntryHeader(entry, idx) {
         header.appendChild(expressionSpan);
     }
     
-    const buttonsContainer = el('div', { className: 'header-buttons' });
-    
-    if (window.audioSources?.length) {
-        buttonsContainer.appendChild(createButtonSlot('audio', idx));
-    }
-    
-    const mineSlot = createButtonSlot('mine', idx, false);
-    buttonsContainer.appendChild(mineSlot);
-    webkit.messageHandlers.duplicateCheck.postMessage(expression).then(isDuplicate => {
-        updateButtonSlot(mineSlot, {
-            state: isDuplicate ? 'duplicate' : 'default',
-            enabled: !(isDuplicate && !window.allowDupes)
-        });
-    });
-    
-    header.appendChild(buttonsContainer);
-    requestAnimationFrame(reportButtonRects);
-    
     return header;
 }
 
 function createGlossarySection(dictName, contents, isFirst, entryIdx) {
-    const details = el('details', { className: 'glossary-group' });
+    const details = el('details', { className: 'glossary-group', 'data-dictionary': dictName });
     const collapsed = window.collapseMode === 'Collapse All'
     || (window.collapseMode === 'Custom' && window.collapsedDictionaries.includes(dictName));
     details.open = !collapsed || (window.expandFirstDictionary && isFirst);
@@ -1366,7 +1693,7 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
     const dictStyle = window.dictionaryStyles?.[dictName] ?? '';
     dictWrapper.appendChild(el('style', {
         textContent: `
-            [data-dictionary="${dictName}"] {
+            :where(div)[data-dictionary="${dictName}"] {
                 @media (prefers-color-scheme: light) { color: #000; }
                 @media (prefers-color-scheme: dark) { color: #fff; }
                 ${dictStyle}
@@ -1429,16 +1756,79 @@ function createGlossarySection(dictName, contents, isFirst, entryIdx) {
 const backStack = [];
 const forwardStack = [];
 
-function redirect(count) {
+function redirect(count, scrollTop = 0) {
     backStack.push(snapshot());
     forwardStack.length = 0;
     window.lookupEntries = undefined;
     window.entryCount = count;
     audioUrls = {};
+    audioLists = {};
     selectedDictionaries = {};
     document.getElementById('entries-container').innerHTML = '';
     reportButtonRects();
     window.renderPopup();
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = scrollTop;
+        requestAnimationFrame(() => {
+            document.scrollingElement.scrollTop = scrollTop;
+        });
+    });
+}
+
+function buildKanjiEntry(data) {
+    const entry = el('div', { className: 'entry kanji-entry' });
+    
+    const header = el('div', { className: 'entry-header' });
+    header.appendChild(el('span', { className: 'kanji', textContent: data.character }));
+    entry.appendChild(header);
+    
+    data.entries.forEach(e => {
+        const details = el('details', { className: 'glossary-group', open: true });
+        
+        const summary = el('summary', { className: 'dict-label' });
+        summary.appendChild(el('span', { className: 'dict-name', textContent: e.dictName }));
+        details.appendChild(summary);
+        
+        const dictWrapper = el('div', { 'data-dictionary': e.dictName });
+        const content = el('div', { className: 'glossary-content' });
+        if (e.onyomi) {
+            content.appendChild(el('div', {}, [
+                el('span', { className: 'kanji-reading-label', textContent: '音' }),
+                document.createTextNode(e.onyomi)
+            ]));
+        }
+        if (e.kunyomi) {
+            content.appendChild(el('div', {}, [
+                el('span', { className: 'kanji-reading-label', textContent: '訓' }),
+                document.createTextNode(e.kunyomi)
+            ]));
+        }
+        if (e.meanings.length) {
+            if (e.onyomi || e.kunyomi) {
+                content.appendChild(el('hr', { className: 'kanji-separator' }));
+            }
+            content.appendChild(el('ul', {}, e.meanings.map(m => el('li', { textContent: m }))));
+        }
+        dictWrapper.appendChild(content);
+        details.appendChild(dictWrapper);
+        entry.appendChild(details);
+    });
+    
+    return entry;
+}
+
+function redirectKanji(data) {
+    backStack.push(snapshot());
+    forwardStack.length = 0;
+    window.lookupEntries = undefined;
+    window.entryCount = 0;
+    audioUrls = {};
+    audioLists = {};
+    selectedDictionaries = {};
+    const container = document.getElementById('entries-container');
+    container.innerHTML = '';
+    container.appendChild(buildKanjiEntry(data));
+    reportButtonRects();
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = 0;
         requestAnimationFrame(() => {
@@ -1463,6 +1853,7 @@ function restore(s) {
     window.lookupEntries = s.lookupEntries;
     window.entryCount = s.entryCount;
     audioUrls = {};
+    audioLists = {};
     selectedDictionaries = {};
     requestAnimationFrame(reportButtonRects);
     requestAnimationFrame(() => {
@@ -1618,31 +2009,19 @@ window.renderPopup = function() {
     if (window.twoColumnLayout && !document.getElementById('popup-two-column-layout')) {
         const layoutStyle = document.createElement('style');
         layoutStyle.id = 'popup-two-column-layout';
-        layoutStyle.textContent = `
-            .glossary-sections {
-                ${HAS_NATIVE_MASONRY
-                ? `display: grid-lanes;
-                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-                gap: ${MASONRY_GAP}px;
-                align-items: start;`
-                : `position: relative;`}
-                margin-top: calc(8px * var(--popup-scale));
-            }
-            .glossary-sections > .glossary-group {
-                margin-top: 0;
-            }
-            ${HAS_NATIVE_MASONRY ? '' : `
-            .glossary-sections:not(.single-section) > .glossary-group {
-                position: absolute;
-                left: 0;
-                top: 0;
-                visibility: hidden;
-            }
-            `}
-            .glossary-sections.single-section {
-                display: block;
-            }
-        `;
+        layoutStyle.textContent = (HAS_NATIVE_MASONRY
+                                   ? [
+                                       `.glossary-sections { display: grid-lanes; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: ${MASONRY_GAP}px; align-items: start; margin-top: calc(8px * var(--popup-scale)); }`,
+                                       `.glossary-sections > .glossary-group { margin-top: 0; }`,
+                                       `.glossary-sections.single-section { display: block; }`,
+                                   ]
+                                   : [
+                                       `.glossary-sections { position: relative; margin-top: calc(8px * var(--popup-scale)); }`,
+                                       `.glossary-sections > .glossary-group { margin-top: 0; }`,
+                                       `.glossary-sections:not(.single-section) > .glossary-group { position: absolute; left: 0; top: 0; visibility: hidden; }`,
+                                       `.glossary-sections.single-section { display: block; }`,
+                                   ]
+                                   ).join('\n');
         document.body.appendChild(layoutStyle);
     }
     
@@ -1697,6 +2076,15 @@ window.renderPopup = function() {
     container.clickAttached = true;
     container.addEventListener('click', (e) => {
         const target = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+        const kanjiTarget = target?.closest('.kanji-char');
+        if (kanjiTarget) {
+            webkit.messageHandlers.kanjiRedirect.postMessage(kanjiTarget.textContent).then(data => {
+                if (data) {
+                    redirectKanji(data);
+                }
+            });
+            return;
+        }
         if (target?.closest('summary')) {
             return;
         }

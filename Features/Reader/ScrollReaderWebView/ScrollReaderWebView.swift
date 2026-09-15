@@ -27,7 +27,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
     var onScroll: (() -> Void)
     var onProgressChanged: ((Double) -> Void)
     var onRestoreCompleted: (() -> Void)
+    var onProcessTerminated: (() -> Void)
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
+    var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
     let maxSelectionLength: Int = 16
     
@@ -74,6 +76,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
         let coordinator = context.coordinator
         webView.onHighlightCreated = { [weak coordinator] color, creation in
             coordinator?.parent.onHighlightCreated(color, creation)
+        }
+        webView.onHighlightUpdated = { [weak coordinator] color, id in
+            coordinator?.parent.onHighlightUpdated(color, id)
         }
         
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
@@ -146,9 +151,21 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     }
                 case .clearSasayakiCue:
                     webView.evaluateJavaScript("window.hoshiReader.clearSasayakiCue()") { _, _ in }
+                case .scrollToSasayakiImage(let index, let completion):
+                    webView.evaluateJavaScript("window.hoshiReader.scrollToSasayakiImage(\(index))") { result, _ in
+                        let body = result as? [String: Any]
+                        let progress = body?["progress"] as? Double
+                        if let progress {
+                            onScroll()
+                            onSaveBookmark(progress)
+                        }
+                        completion?(body != nil)
+                    }
                 case .removeHighlight(let id):
                     let literal = context.coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
+                case .showSearchHighlight(let offset, let length):
+                    webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
                 }
             }
             return
@@ -234,7 +251,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 let rect = CGRect(x: x, y: y, width: w, height: h)
                     .offsetBy(dx: 0, dy: parent.userConfig.verticalWriting ? -scrollBounds.origin.y : 0)
                 let normalizedOffset = body["normalizedOffset"] as? Int
-                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset)
+                let clozeOffset = body["clozeOffset"] as? Int
+                let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset, clozeOffset: clozeOffset)
                 
                 if let highlightCount = parent.onTextSelected(selectionData) {
                     highlightSelection(count: highlightCount)
@@ -359,6 +377,15 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 """
             }
             
+            var dimmedFuriganaCss = ""
+            if parent.userConfig.furiganaMode == .dimmed {
+                dimmedFuriganaCss = """
+                ruby > rt, ruby > rp {
+                    opacity: 0.4 !important;
+                }
+                """
+            }
+            
             let css = """
             \(fontFaceCss)
             :root {
@@ -413,11 +440,26 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 background-color: rgba(160, 160, 160, 0.4) !important;
                 color: inherit;
             }
+            ::highlight(hoshi-search) {
+                background-color: rgba(100, 160, 255, 0.4) !important;
+                color: inherit;
+            }
             a {
                 color: rgba(66, 108, 245, 1) !important;
             }
             ruby > rt, ruby > rp {
                 -webkit-user-select: none;
+            }
+            ruby.furigana-hidden > rt,
+            ruby.furigana-hidden > rp {
+                visibility: hidden !important;
+            }
+            \(dimmedFuriganaCss)
+            ruby.furigana-hidden {
+                text-decoration-line: underline !important;
+                text-decoration-style: dotted !important;
+                text-decoration-color: rgba(160, 160, 160, 0.8) !important;
+                text-underline-offset: 0.05em !important;
             }
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
@@ -427,6 +469,23 @@ struct ScrollReaderWebView: UIViewRepresentable {
             \(paragraphSpacingCss)
             \(textColorCss)
             """
+            
+            let furiganaJs: String = {
+                switch parent.userConfig.furiganaMode {
+                case .off, .dimmed:
+                    return ""
+                case .toggle:
+                    return """
+                    document.querySelectorAll('ruby').forEach(ruby => {
+                        if (ruby.querySelector('rt')) {
+                            ruby.classList.add('furigana-hidden');
+                        }
+                    });
+                    """
+                case .hidden:
+                    return "document.querySelectorAll('rt').forEach(rt => rt.remove());"
+                }
+            }()
             
             let sasayakiSetupScript: String = {
                 if let cues = pendingSasayakiCues {
@@ -469,9 +528,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 \(highlightsJs)
                 window.hoshiReader.registerCopyText();
                 
-                if (\(parent.userConfig.readerHideFurigana)) {
-                    document.querySelectorAll('rt').forEach(rt => rt.remove());
-                }
+                \(furiganaJs)
             
                 // wrap text not in spans inside ruby elements in spans to fix highlighting
                 document.querySelectorAll('ruby').forEach(ruby => {
@@ -534,8 +591,12 @@ struct ScrollReaderWebView: UIViewRepresentable {
                             }
                             resolve();
                         }
-                        if (img.complete && img.naturalWidth > 0) {
-                            processImg();
+                        if (img.complete) {
+                            if (img.naturalWidth > 0) {
+                                processImg();
+                            } else {
+                                resolve();
+                            }
                         } else {
                             img.onload = processImg;
                             img.onerror = () => resolve();
@@ -544,8 +605,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 });
                 
                 Promise.all(imagePromises).then(() => {
-                    return new Promise(resolve => setTimeout(resolve, 50));
-                }).then(() => {
                     window.hoshiReader.buildNodeOffsets();
                     \(sasayakiSetupScript)
                     \(highlightsSetupScript)
@@ -555,6 +614,21 @@ struct ScrollReaderWebView: UIViewRepresentable {
             """
             
             webView.evaluateJavaScript(script, completionHandler: nil)
+        }
+        
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard let currentURL, let appDirectory = try? BookStorage.getAppDirectory() else { return }
+            
+            pendingFragment = nil
+            pendingSasayakiCues = parent.bridge.sasayakiCues
+            pendingHighlights = parent.bridge.highlights
+            shouldSyncProgressAfterRestore = false
+            isRestoring = true
+            webView.scrollView.delegate = nil
+            (webView as? HoshiWKWebView)?.hasSelection = false
+            webView.alpha = 0
+            parent.onProcessTerminated()
+            webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
         }
         
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
@@ -581,6 +655,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         func saveBookmark() {
             fetchCurrentProgress { [weak self] progress in
                 guard let self else { return }
+                self.pendingProgress = progress
                 self.parent.onSaveBookmark(progress)
             }
         }
@@ -698,7 +773,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
             guard now - lastProgressUpdate >= 0.05 else { return }
             lastProgressUpdate = now
             fetchCurrentProgress { [weak self] progress in
-                self?.parent.onProgressChanged(progress)
+                guard let self, !self.isRestoring else { return }
+                self.pendingProgress = progress
+                self.parent.onProgressChanged(progress)
             }
         }
         

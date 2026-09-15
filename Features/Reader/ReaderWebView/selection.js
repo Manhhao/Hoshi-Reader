@@ -65,9 +65,10 @@ const JAPANESE_RANGES = [
 
 window.hoshiSelection = {
     selection: null,
-    scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
+    highlight: null,
+    scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]：；:;，,.─\n\r',
     sentenceDelimiters: '。！？.!?\n\r',
-    trailingSentenceChars: '。、！？…‥」』）)】〉》〕｝}］]',
+    trailingSentenceChars: '。、！？」』）)】〉》〕｝}］]',
     brackets: {'「':'」', '『': '』', '（':'）', '(':')', '【':'】', '〈':'〉', '《':'》', '〔':'〕', '｛':'｝', '{':'}', '［':'］', '[':']'},
     
     isVertical() {
@@ -90,9 +91,24 @@ window.hoshiSelection = {
         return !!el?.closest('rt, rp');
     },
     
+    revealFurigana(ruby) {
+        const group = [ruby];
+        for (const direction of ['previousSibling', 'nextSibling']) {
+            let node = ruby[direction];
+            while (node && (node.localName === 'ruby' ||
+                            (node.nodeType === Node.TEXT_NODE && /^[\t\n\r ]*$/.test(node.nodeValue)))) {
+                if (node.localName === 'ruby') {
+                    group.push(node);
+                }
+                node = node[direction];
+            }
+        }
+        group.forEach(el => el.classList.remove('furigana-hidden'));
+    },
+    
     findParagraph(node) {
         let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        return el?.closest('p, .glossary-content') || null;
+        return el?.closest('p, .glossary-content, .expr-tag') || null;
     },
     
     createWalker(rootNode) {
@@ -252,7 +268,9 @@ window.hoshiSelection = {
             start = 0;
         }
         
-        let sentence = (partsBefore.reverse().join('') + partsAfter.join('')).trim();
+        const prefix = partsBefore.reverse().join('');
+        const raw = prefix + partsAfter.join('');
+        let sentence = raw.trim();
         
         const closeBrackets = new Set(Object.values(this.brackets));
         const openBrackets = new Set(Object.keys(this.brackets));
@@ -291,7 +309,16 @@ window.hoshiSelection = {
             } else if (!this.sentenceDelimiters.includes(sentence[endIdx])) break;
             endIdx--;
         }
-        return sentence.slice(startSlice, endSlice + 1).trim();
+        
+        const sliced = sentence.slice(startSlice, endSlice + 1);
+        const rawSelectionOffset = prefix.length;
+        const rawSentenceStart =
+        (raw.length - raw.trimStart().length) +
+        startSlice +
+        (sliced.length - sliced.trimStart().length);
+        const clozeOffset = rawSelectionOffset - rawSentenceStart;
+        const trimmed = sliced.trim();
+        return { sentence: trimmed, clozeOffset };
     },
     
     selectText(x, y, maxLength) {
@@ -301,6 +328,13 @@ window.hoshiSelection = {
         }
         if (el?.closest('img, image, .blur-wrapper')) {
             return 'image'
+        }
+        
+        const furigana = el?.closest('ruby.furigana-hidden');
+        if (furigana) {
+            this.revealFurigana(furigana);
+            this.clearSelection();
+            return 'furigana';
         }
         
         const hit = this.getCharacterAtPoint(x, y);
@@ -364,13 +398,14 @@ window.hoshiSelection = {
             text
         };
         
-        const sentence = this.getSentence(hit.node, hit.offset);
+        const { sentence, clozeOffset } = this.getSentence(hit.node, hit.offset);
         const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
         webkit.messageHandlers.textSelected.postMessage({
             text,
             sentence,
             rect: this.getSelectionRect(x, y),
-            normalizedOffset
+            normalizedOffset,
+            clozeOffset
         });
         
         return text;
@@ -397,11 +432,16 @@ window.hoshiSelection = {
     },
     
     highlightSelection(charCount) {
+        if (!this.highlight) {
+            this.highlight = new Highlight();
+            CSS.highlights.set('hoshi-selection', this.highlight);
+        }
+        this.highlight.clear();
+        
         if (!this.selection?.ranges.length) {
             return;
         }
         
-        const highlights = [];
         let remaining = charCount;
         
         for (const r of this.selection.ranges) {
@@ -416,13 +456,11 @@ window.hoshiSelection = {
                 const range = document.createRange();
                 range.setStart(r.node, offset);
                 range.setEnd(r.node, end);
-                highlights.push(range);
+                this.highlight.add(range);
                 offset = end;
                 remaining--;
             }
         }
-        
-        CSS.highlights?.set('hoshi-selection', new Highlight(...highlights));
     },
     
     getNormalizedOffset(targetNode, offset) {
@@ -440,7 +478,7 @@ window.hoshiSelection = {
     
     clearSelection() {
         window.getSelection()?.removeAllRanges();
-        CSS.highlights?.get('hoshi-selection')?.clear();
+        this.highlight?.clear();
         this.selection = null;
     }
 };

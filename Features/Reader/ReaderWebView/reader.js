@@ -7,8 +7,8 @@
 //
 
 window.hoshiReader = {
-    ttuRegexNegated: /[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu,
-    ttuRegex: /[0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]/iu,
+    ttuRegexNegated: /[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ가-힣ㄱ-ㆎ\p{Radical}\p{Unified_Ideograph}]+/gimu,
+    ttuRegex: /[0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ가-힣ㄱ-ㆎ\p{Radical}\p{Unified_Ideograph}]/iu,
     activeCueId: null,
     cueWrappers: new Map(),
     nodeStartOffsets: new WeakMap(),
@@ -50,6 +50,136 @@ window.hoshiReader = {
     getRect(target) {
         const rect = target.getClientRects()[0];
         return rect || target.getBoundingClientRect();
+    },
+    
+    async awaitFonts() {
+        const style = window.getComputedStyle(document.body);
+        try {
+            await document.fonts.load(`${style.fontSize} ${style.fontFamily}`, 'あ');
+        } catch {}
+        await document.fonts.ready;
+    },
+    
+    positionRects(range, position, vertical) {
+        if (position.node.nodeType !== Node.TEXT_NODE) {
+            range.selectNode(position.node);
+        } else {
+            range.setStart(position.node, position.offset);
+            range.setEnd(position.node, position.offset + 1);
+        }
+        
+        return [...range.getClientRects()].filter(rect => vertical ? rect.height : rect.width);
+    },
+    
+    splitPoints(paragraph, pageSize, currentScroll, vertical) {
+        const rect = paragraph.getBoundingClientRect();
+        const start = (vertical ? rect.top : rect.left) + currentScroll;
+        const first = Math.floor(start / pageSize);
+        const last = Math.floor((start + (vertical ? rect.height : rect.width) - 1) / pageSize);
+        const points = [];
+        if (last === first) {
+            return points;
+        }
+        
+        const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+            acceptNode: (n) => n.parentElement.closest('ruby') ? NodeFilter.FILTER_REJECT
+            : n.nodeType === Node.TEXT_NODE || !n.firstChild || n.localName === 'ruby' ? NodeFilter.FILTER_ACCEPT
+            : NodeFilter.FILTER_SKIP
+        });
+        const positions = [];
+        let node;
+        
+        while (node = walker.nextNode()) {
+            if (node.nodeType !== Node.TEXT_NODE) {
+                positions.push({ node });
+                continue;
+            }
+            for (let i = 0; i < node.textContent.length; i++) {
+                positions.push({ node, offset: i });
+            }
+        }
+        
+        const range = document.createRange();
+        for (let column = first + 1; column <= last; column++) {
+            const limit = column * pageSize;
+            let low = 0;
+            let high = positions.length - 1;
+            let hit = -1;
+            
+            while (low <= high) {
+                let mid = (low + high) >> 1;
+                let rects = this.positionRects(range, positions[mid], vertical);
+                while (!rects.length && ++mid <= high) {
+                    rects = this.positionRects(range, positions[mid], vertical);
+                }
+                
+                const end = Math.max(...rects.map(rect => vertical ? rect.bottom : rect.right));
+                if (end + currentScroll > limit) {
+                    hit = mid;
+                    high = mid - 1;
+                } else {
+                    low = mid + 1;
+                }
+            }
+            
+            if (hit > 0) {
+                const rect = this.positionRects(range, positions[hit], vertical)[0];
+                if ((vertical ? rect.top : rect.left) + currentScroll >= limit) {
+                    points.push(positions[hit]);
+                }
+            }
+        }
+        
+        return points;
+    },
+    
+    fragmentBlocks() {
+        const vertical = this.isVertical();
+        const pageSize = vertical ? this.pageHeight : this.pageWidth;
+        const currentScroll = vertical ? document.body.scrollTop : document.body.scrollLeft;
+        const targets = [];
+        
+        for (const paragraph of document.body.querySelectorAll('p')) {
+            const points = this.splitPoints(paragraph, pageSize, currentScroll, vertical);
+            if (points.length) {
+                const justified = window.getComputedStyle(paragraph).textAlign === 'justify';
+                targets.push({ paragraph, points, justified });
+            }
+        }
+        
+        const range = document.createRange();
+        for (const { paragraph, points, justified } of targets) {
+            const firstFragment = document.createElement('span');
+            firstFragment.className = 'hoshi-fragment';
+            while (paragraph.firstChild) {
+                firstFragment.appendChild(paragraph.firstChild);
+            }
+            paragraph.appendChild(firstFragment);
+            
+            const fragments = [firstFragment];
+            for (let i = points.length - 1; i >= 0; i--) {
+                if (points[i].offset > 0) {
+                    range.setStart(points[i].node, points[i].offset);
+                } else {
+                    let start = points[i].node;
+                    while (start.parentNode !== firstFragment && start.parentNode.firstChild === start) {
+                        start = start.parentNode;
+                    }
+                    range.setStartBefore(start);
+                }
+                range.setEnd(firstFragment, firstFragment.childNodes.length);
+                
+                const fragment = document.createElement('span');
+                fragment.className = 'hoshi-fragment';
+                fragment.appendChild(range.extractContents());
+                firstFragment.after(fragment);
+                fragments.splice(1, 0, fragment);
+            }
+            
+            if (justified) {
+                fragments.slice(0, -1).forEach(f => f.style.setProperty('text-align-last', 'justify', 'important'));
+            }
+        }
     },
     
     buildNodeOffsets() {
@@ -289,6 +419,8 @@ window.hoshiReader = {
                     }
                 } else if (segment) {
                     segment.end = next;
+                } else if (cursor > start && cursor < end) {
+                    segment = { id: current.id, start: i, end: next };
                 }
                 i = next;
             }
@@ -364,6 +496,18 @@ window.hoshiReader = {
         this.activeCueId = null;
     },
     
+    scrollToSasayakiImage(index) {
+        const el = document.querySelectorAll('img, image')[index];
+        if (!el || !(el.classList.contains('block-img') || el.namespaceURI === 'http://www.w3.org/2000/svg')) {
+            return null;
+        }
+        
+        const range = document.createRange();
+        range.selectNode(el);
+        const scrolled = this.scrollToRange(range);
+        return { progress: scrolled ? this.calculateProgress() : null };
+    },
+    
     resetSasayakiCues() {
         this.cueWrappers.forEach(wrappers => this.unwrap(wrappers));
         this.cueWrappers.clear();
@@ -385,7 +529,7 @@ window.hoshiReader = {
     },
     
     async restoreProgress(progress) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         var context = this.getScrollContext();
         
         if (context.pageSize <= 0) {
@@ -463,7 +607,7 @@ window.hoshiReader = {
     },
     
     async jumpToFragment(fragment) {
-        await document.fonts.ready;
+        await this.awaitFonts();
         var context = this.getScrollContext();
         var rawFragment = (fragment || '').trim();
         var target = rawFragment && (document.getElementById(rawFragment) || document.getElementsByName(rawFragment)[0]);

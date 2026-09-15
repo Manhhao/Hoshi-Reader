@@ -18,7 +18,7 @@ protocol EPUBTableOfContentsParser {
     ///
     /// - Parameter xmlElement: The root XML element of the NCX document.
     /// - Returns: An `EPUBTableOfContents` object containing the parsed navigation hierarchy.
-    func parse(_ xmlElement: AEXMLElement) -> EPUBTableOfContents
+    func parse(_ xmlElement: AEXMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents
 }
 
 /// Concrete implementation of `EPUBTableOfContentsParser` that parses NCX navigation files.
@@ -72,15 +72,15 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
     /// - Parameter xmlElement: The root XML element of the NCX document.
     /// - Returns: An `EPUBTableOfContents` object representing the complete navigation hierarchy.
     /// Note Manhhao: This was heavily restructured to support XHTML Navigation in newer .epub files
-    func parse(_ xmlElement: AEXMLElement) -> EPUBTableOfContents {
+    func parse(_ xmlElement: AEXMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents {
         if xmlElement["navMap"].error == nil {
-            return parseNCX(xmlElement)
+            return parseNCX(xmlElement, relativeTo: baseDirectory)
         } else {
-            return parseXHTMLNav(xmlElement)
+            return parseXHTMLNav(xmlElement, relativeTo: baseDirectory)
         }
     }
     
-    private func parseNCX(_ xmlElement: AEXMLElement) -> EPUBTableOfContents {
+    private func parseNCX(_ xmlElement: AEXMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents {
         // STEP 1: Extract the unique identifier from NCX head metadata
         // The dtb:uid meta element should match the dc:identifier in the package document
         // This provides a consistency check between the NCX and OPF files
@@ -104,7 +104,7 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
         // STEP 3: Recursively parse the navigation map to build the complete hierarchy
         // The navMap contains the root-level navPoints, each of which may contain
         // nested navPoints creating a tree structure for complex documents
-        tableOfContents.subTable = evaluateChildren(from: xmlElement["navMap"])
+        tableOfContents.subTable = evaluateChildren(from: xmlElement["navMap"], relativeTo: baseDirectory)
         
         return tableOfContents
 
@@ -125,7 +125,7 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
     ///   </ol>
     /// </nav>
     /// ```
-    private func parseXHTMLNav(_ xmlElement: AEXMLElement) -> EPUBTableOfContents {
+    private func parseXHTMLNav(_ xmlElement: AEXMLElement, relativeTo baseDirectory: String) -> EPUBTableOfContents {
         var tableOfContents = EPUBTableOfContents(
             label: "",
             id: "0",
@@ -134,7 +134,7 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
         )
         
         if let nav = findTocNav(in: xmlElement) {
-            tableOfContents.subTable = parseOL(nav["ol"])
+            tableOfContents.subTable = parseOL(nav["ol"], relativeTo: baseDirectory)
         }
         
         return tableOfContents
@@ -156,7 +156,7 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
         return nil
     }
     
-    private func parseOL(_ ol: AEXMLElement) -> [EPUBTableOfContents] {
+    private func parseOL(_ ol: AEXMLElement, relativeTo baseDirectory: String) -> [EPUBTableOfContents] {
         guard let items = ol["li"].all else { return [] }
         
         return items.compactMap { li -> EPUBTableOfContents? in
@@ -164,10 +164,10 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
             guard a.error == nil else { return nil }
             
             let label = a.value ?? "Unknown"
-            let href = a.attributes["href"]
+            let href = a.attributes["href"].map { resolve($0, relativeTo: baseDirectory) }
             
             let nestedOL = li["ol"]
-            let children: [EPUBTableOfContents]? = nestedOL.error == nil ? parseOL(nestedOL) : nil
+            let children: [EPUBTableOfContents]? = nestedOL.error == nil ? parseOL(nestedOL, relativeTo: baseDirectory) : nil
             
             return EPUBTableOfContents(
                 label: label,
@@ -176,6 +176,30 @@ class EPUBTableOfContentsParserImplementation: EPUBTableOfContentsParser {
                 subTable: children
             )
         }
+    }
+
+    private func resolve(_ href: String, relativeTo baseDirectory: String) -> String {
+        let hash = href.firstIndex(of: "#")
+        let path = hash.map { String(href[..<$0]) } ?? href
+        let fragment = hash.map { String(href[$0...]) } ?? ""
+        
+        guard !path.isEmpty, !path.hasPrefix("/"), URL(string: path)?.scheme == nil else {
+            return href
+        }
+        
+        var components = baseDirectory.split(separator: "/").map(String.init)
+        for component in path.split(separator: "/").map(String.init) {
+            switch component {
+            case ".":
+                continue
+            case "..":
+                if !components.isEmpty { components.removeLast() }
+            default:
+                components.append(component)
+            }
+        }
+        
+        return components.joined(separator: "/") + fragment
     }
 
 }
@@ -208,7 +232,7 @@ extension EPUBTableOfContentsParserImplementation {
     /// - Parameter xmlElement: The XML element containing navPoint children (navMap or navPoint).
     /// - Returns: An array of `EPUBTableOfContents` objects representing the navigation hierarchy.
     /// Note Manhhao: Forced unwrapping here caused crashing with XHTML
-    private func evaluateChildren(from xmlElement: AEXMLElement) -> [EPUBTableOfContents] {
+    private func evaluateChildren(from xmlElement: AEXMLElement, relativeTo baseDirectory: String) -> [EPUBTableOfContents] {
         // STEP 1: Get all navPoint elements from the current level
         // Return empty array if no navPoints exist (base case for recursion)
         guard let points = xmlElement["navPoint"].all else { return [] }
@@ -230,13 +254,13 @@ extension EPUBTableOfContentsParserImplementation {
                 // Extract the content source from the content element
                 // This href points to the actual XHTML content file, potentially with a fragment identifier
                 // The src attribute is required by NCX spec, so force unwrap is appropriate
-                item: point["content"].attributes["src"] ?? "",
+                item: point["content"].attributes["src"].map { resolve($0, relativeTo: baseDirectory) } ?? "",
                 
                 // RECURSIVE STEP: Process any nested navPoints
                 // This is the core of the recursive algorithm - each navPoint can contain
                 // child navPoints, creating unlimited nesting depth for complex documents
                 // The recursion naturally handles the tree traversal and construction
-                subTable: evaluateChildren(from: point)
+                subTable: evaluateChildren(from: point, relativeTo: baseDirectory)
             )
         }
         

@@ -164,6 +164,7 @@ class BookshelfViewModel {
     func deleteBook(_ book: BookMetadata) {
         do {
             let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+            StatisticsStorage.archive(book)
             try BookStorage.delete(at: bookURL)
             books.removeAll { $0.id == book.id }
             for i in shelves.indices {
@@ -305,7 +306,7 @@ class BookshelfViewModel {
                             }
                         }
                         let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
-                        let book = await BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: .distantPast)
+                        let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: files.lastAccess ?? .distantPast)
                         return (book, files)
                     }
                 }
@@ -502,6 +503,7 @@ class BookshelfViewModel {
         
         let document = try BookStorage.loadEpub(localURL)
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
+        StatisticsStorage.restore(folder: safeTitle)
     }
     
     private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {
@@ -516,6 +518,7 @@ class BookshelfViewModel {
             
             let metadata = BookMetadata(
                 title: title,
+                author: document.author?.trimmingCharacters(in: .whitespacesAndNewlines),
                 epub: localURL.lastPathComponent,
                 cover: coverURL,
                 folder: bookFolder.lastPathComponent,
@@ -548,14 +551,11 @@ class BookshelfViewModel {
             return coverItem.path
         }
         
-        // fallbacks in case the epub doesn't conform to any standards
+        // fallback in case the epub doesn't conform to any standards
         let imageTypes: [EPUBMediaType] = [.jpeg, .png, .gif, .svg]
         if let coverItem = document.manifest.items.values.first(where: { $0.id.lowercased().contains("cover") }),
            imageTypes.contains(coverItem.mediaType) {
             return coverItem.path
-        }
-        if let firstImage = document.manifest.items.values.first(where: { imageTypes.contains($0.mediaType) }) {
-            return firstImage.path
         }
         
         return nil

@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftUI
+import CHoshiDicts
 
 enum DictionaryUpdateInterval: String, CaseIterable, Codable {
     case daily = "Daily"
@@ -26,6 +27,26 @@ enum DictionaryUpdateInterval: String, CaseIterable, Codable {
     }
 }
 
+enum FrequencySortOrder: String, CaseIterable, Codable {
+    case auto = "Auto"
+    case ascending = "Ascending"
+    case descending = "Descending"
+    case disabled = "Disabled"
+    
+    var usesDictionary: Bool {
+        self == .ascending || self == .descending
+    }
+    
+    var lookupFrequencyOrder: LookupFrequencyOrder {
+        switch self {
+        case .auto: .Auto
+        case .ascending: .Ascending
+        case .descending: .Descending
+        case .disabled: .Disabled
+        }
+    }
+}
+
 enum SyncMode: String, CaseIterable, Codable {
     case auto = "Auto"
     case manual = "Manual"
@@ -35,6 +56,13 @@ enum AudioPlaybackMode: String, CaseIterable, Codable {
     case interrupt = "interrupt"
     case duck = "duck"
     case mix = "mix"
+}
+
+enum FuriganaMode: String, CaseIterable, Codable {
+    case off = "Off"
+    case dimmed = "Dimmed"
+    case toggle = "Toggle"
+    case hidden = "Hidden"
 }
 
 enum CollapseMode: String, CaseIterable, Codable {
@@ -60,14 +88,31 @@ enum Themes: String, CaseIterable, Codable {
     }
 }
 
+enum SasayakiControlBarSide: String, CaseIterable, Codable {
+    case left = "Left"
+    case right = "Right"
+}
+
+enum CoverMode: String, CaseIterable, Codable {
+    case show = "Show"
+    case blur = "Blur"
+    case hide = "Hide"
+}
+
 @Observable
 class UserConfig {
+    static let shared = UserConfig()
+    
     var bookshelfSortOption: SortOption {
         didSet { UserDefaults.standard.set(bookshelfSortOption.rawValue, forKey: "bookshelfSortOption") }
     }
     
     var bookshelfShowReading: Bool {
         didSet { UserDefaults.standard.set(bookshelfShowReading, forKey: "bookshelfShowReading") }
+    }
+    
+    var bookshelfCoverMode: CoverMode {
+        didSet { UserDefaults.standard.set(bookshelfCoverMode.rawValue, forKey: "bookshelfCoverMode") }
     }
     
     var autoUpdateDictionaries: Bool {
@@ -92,6 +137,18 @@ class UserConfig {
     
     var scanLength: Int {
         didSet { UserDefaults.standard.set(scanLength, forKey: "scanLength") }
+    }
+    
+    var frequencySortOrder: FrequencySortOrder {
+        didSet { UserDefaults.standard.set(frequencySortOrder.rawValue, forKey: "frequencySortOrder") }
+    }
+    
+    var frequencySortDictionary: String {
+        didSet { UserDefaults.standard.set(frequencySortDictionary, forKey: "frequencySortDictionary") }
+    }
+    
+    var searchTextSize: Int {
+        didSet { UserDefaults.standard.set(searchTextSize, forKey: "searchTextSize") }
     }
     
     var collapseMode: CollapseMode {
@@ -186,8 +243,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
     }
     
-    var readerHideFurigana: Bool {
-        didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
+    var furiganaMode: FuriganaMode {
+        didSet { UserDefaults.standard.set(furiganaMode.rawValue, forKey: "furiganaMode") }
     }
     
     var continuousMode: Bool {
@@ -236,6 +293,14 @@ class UserConfig {
     
     var readerShowTitle: Bool {
         didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
+    }
+    
+    var readerShowProgress: Bool {
+        didSet { UserDefaults.standard.set(readerShowProgress, forKey: "readerShowProgress") }
+    }
+    
+    var readerShowChapterProgress: Bool {
+        didSet { UserDefaults.standard.set(readerShowChapterProgress, forKey: "readerShowChapterProgress") }
     }
     
     var readerShowCharacters: Bool {
@@ -329,8 +394,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(audioPlaybackMode.rawValue, forKey: "audioPlaybackMode") }
     }
     
-    var enabledAudioSources: [String] {
-        audioSources.filter { $0.isEnabled }.map { $0.url }
+    var enabledAudioSources: [AudioSource] {
+        audioSources.filter { $0.isEnabled }
     }
     
     static let localAudioSource = AudioSource(
@@ -350,10 +415,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(customCSS, forKey: "customCSS") }
     }
     
-    var enableStatistics: Bool {
-        didSet { UserDefaults.standard.set(enableStatistics, forKey: "enableStatistics") }
-    }
-    
     var statisticsEnableSync: Bool {
         didSet { UserDefaults.standard.set(statisticsEnableSync, forKey: "statisticsEnableSync") }
     }
@@ -366,6 +427,22 @@ class UserConfig {
         didSet { UserDefaults.standard.set(statisticsAutostartMode.rawValue, forKey: "statisticsAutostartMode") }
     }
     
+    var statisticsResetTime: Int {
+        didSet { UserDefaults.standard.set(statisticsResetTime, forKey: "statisticsResetTime") }
+    }
+    
+    var statisticsGoalMetric: StatisticsGoalMetric {
+        didSet { UserDefaults.standard.set(statisticsGoalMetric.rawValue, forKey: "statisticsGoalMetric") }
+    }
+    
+    var statisticsDailyTimeGoal: Int {
+        didSet { UserDefaults.standard.set(statisticsDailyTimeGoal, forKey: "statisticsDailyTimeGoal") }
+    }
+    
+    var statisticsDailyCharacterGoal: Int {
+        didSet { UserDefaults.standard.set(statisticsDailyCharacterGoal, forKey: "statisticsDailyCharacterGoal") }
+    }
+    
     var enableSasayaki: Bool {
         didSet { UserDefaults.standard.set(enableSasayaki, forKey: "enableSasayaki") }
     }
@@ -376,6 +453,26 @@ class UserConfig {
     
     var sasayakiAutoPause: Bool {
         didSet { UserDefaults.standard.set(sasayakiAutoPause, forKey: "sasayakiAutoPause") }
+    }
+    
+    var sasayakiImagePause: Bool {
+        didSet { UserDefaults.standard.set(sasayakiImagePause, forKey: "sasayakiImagePause") }
+    }
+    
+    var sasayakiImagePauseDuration: Double {
+        didSet { UserDefaults.standard.set(sasayakiImagePauseDuration, forKey: "sasayakiImagePauseDuration") }
+    }
+    
+    var sasayakiShowControlBar: Bool {
+        didSet { UserDefaults.standard.set(sasayakiShowControlBar, forKey: "sasayakiShowControlBar") }
+    }
+    
+    var sasayakiAlwaysShowControlBar: Bool {
+        didSet { UserDefaults.standard.set(sasayakiAlwaysShowControlBar, forKey: "sasayakiAlwaysShowControlBar") }
+    }
+    
+    var sasayakiControlBarSide: SasayakiControlBarSide {
+        didSet { UserDefaults.standard.set(sasayakiControlBarSide.rawValue, forKey: "sasayakiControlBarSide") }
     }
     
     var sasayakiSkipControls: Bool {
@@ -408,6 +505,8 @@ class UserConfig {
         self.bookshelfSortOption = defaults.string(forKey: "bookshelfSortOption")
             .flatMap(SortOption.init) ?? .recent
         self.bookshelfShowReading = defaults.object(forKey: "bookshelfShowReading") as? Bool ?? false
+        self.bookshelfCoverMode = defaults.string(forKey: "bookshelfCoverMode")
+            .flatMap(CoverMode.init) ?? .show
         
         self.autoUpdateDictionaries = defaults.object(forKey: "autoUpdateDictionaries") as? Bool ?? true
         self.dictionaryUpdateInterval = defaults.string(forKey: "dictionaryUpdateInterval")
@@ -416,6 +515,10 @@ class UserConfig {
         self.scanNonJapaneseText = defaults.object(forKey: "scanNonJapaneseText") as? Bool ?? true
         self.maxResults = defaults.object(forKey: "maxResults") as? Int ?? 16
         self.scanLength = defaults.object(forKey: "scanLength") as? Int ?? 16
+        self.frequencySortOrder = defaults.string(forKey: "frequencySortOrder")
+            .flatMap(FrequencySortOrder.init) ?? .auto
+        self.frequencySortDictionary = defaults.string(forKey: "frequencySortDictionary") ?? ""
+        self.searchTextSize = defaults.object(forKey: "searchTextSize") as? Int ?? 22
         self.collapseMode = defaults.string(forKey: "collapseMode")
             .flatMap(CollapseMode.init) ?? .expandAll
         self.expandFirstDictionary = defaults.object(forKey: "expandFirstDictionary") as? Bool ?? false
@@ -446,7 +549,8 @@ class UserConfig {
         self.verticalWriting = defaults.object(forKey: "verticalWriting") as? Bool ?? true
         self.selectedFont = defaults.string(forKey: "selectedFont") ?? "Hiragino Mincho ProN"
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
-        self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
+        self.furiganaMode = defaults.string(forKey: "furiganaMode")
+            .flatMap(FuriganaMode.init) ?? (defaults.bool(forKey: "readerHideFurigana") ? .hidden : .off)
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
@@ -461,6 +565,8 @@ class UserConfig {
         self.paragraphSpacing = defaults.object(forKey: "paragraphSpacing") as? Double ?? 0
         
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
+        self.readerShowProgress = defaults.object(forKey: "readerShowProgress") as? Bool ?? true
+        self.readerShowChapterProgress = defaults.object(forKey: "readerShowChapterProgress") as? Bool ?? false
         self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
         self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
@@ -470,8 +576,8 @@ class UserConfig {
         self.readerShowReadingTime = defaults.object(forKey: "readerShowReadingTime") as? Bool ?? false
         self.readerShowSasayakiToggle = defaults.object(forKey: "readerShowSasayakiToggle") as? Bool ?? false
         
-        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 320
-        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 250
+        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 350
+        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 310
         self.popupScale = defaults.object(forKey: "popupScale") as? Double ?? 1.0
         self.popupActionBar = defaults.object(forKey: "popupActionBar") as? Bool ?? false
         self.popupDisableTransparency = defaults.object(forKey: "popupDisableTransparency") as? Bool ?? false
@@ -491,16 +597,33 @@ class UserConfig {
             .flatMap(AudioPlaybackMode.init) ?? .interrupt
         self.customCSS = defaults.string(forKey: "customCSS") ?? ""
         
-        self.enableStatistics = defaults.object(forKey: "enableStatistics") as? Bool ?? false
-        self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? false
+        self.statisticsEnableSync = defaults.object(forKey: "statisticsEnableSync") as? Bool ?? true
         self.statisticsSyncMode = defaults.string(forKey: "statisticsSyncMode")
             .flatMap(StatisticsSyncMode.init) ?? .merge
         self.statisticsAutostartMode = defaults.string(forKey: "statisticsAutostartMode")
             .flatMap(StatisticsAutostartMode.init) ?? .off
+        let storedResetTime = defaults.object(forKey: "statisticsResetTime") as? Int ?? 0
+        if defaults.bool(forKey: "statisticsResetTimeMigratedToMinutes") {
+            self.statisticsResetTime = storedResetTime
+        } else {
+            self.statisticsResetTime = storedResetTime * 60
+            defaults.set(storedResetTime * 60, forKey: "statisticsResetTime")
+            defaults.set(true, forKey: "statisticsResetTimeMigratedToMinutes")
+        }
+        self.statisticsGoalMetric = defaults.string(forKey: "statisticsGoalMetric")
+            .flatMap(StatisticsGoalMetric.init) ?? .time
+        self.statisticsDailyTimeGoal = defaults.object(forKey: "statisticsDailyTimeGoal") as? Int ?? 20
+        self.statisticsDailyCharacterGoal = defaults.object(forKey: "statisticsDailyCharacterGoal") as? Int ?? 5000
         
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
+        self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
+        self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
+        self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
+        self.sasayakiAlwaysShowControlBar = defaults.object(forKey: "sasayakiAlwaysShowControlBar") as? Bool ?? false
+        self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")
+            .flatMap(SasayakiControlBarSide.init) ?? .right
         self.sasayakiSkipControls = defaults.object(forKey: "sasayakiSkipControls") as? Bool ?? false
         self.sasayakiEnableSync = defaults.object(forKey: "sasayakiEnableSync") as? Bool ?? false
         self.sasayakiTextColor = UserConfig.loadColor(key: "sasayakiTextColor") ?? Color(.sRGB, red: 0, green: 0, blue: 0)

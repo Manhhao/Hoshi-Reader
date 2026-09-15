@@ -13,8 +13,7 @@ import CHoshiDicts
 
 enum ActiveSheet: Identifiable {
     case appearance
-    case chapters
-    case highlights
+    case contents
     case statistics
     case sasayaki
     var id: Self { self }
@@ -65,6 +64,10 @@ class ReaderLoaderViewModel {
             return
         }
         
+        if let info = BookStorage.loadBookInfo(root: root), info.images == nil {
+            try? BookStorage.save(BookProcessor.process(document: doc), inside: root, as: FileNames.bookinfo)
+        }
+        
         CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
         
         var bookCopy = self.book
@@ -84,8 +87,10 @@ class ReaderViewModel {
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
+    var contentsTab: ContentsTab = .chapters
     var isLoading = true
     var bookInfo: BookInfo
+    private let chapterStarts: [Int]
     let bridge = WebViewBridge()
     
     // lookups
@@ -100,8 +105,8 @@ class ReaderViewModel {
     var sessionStatistics: Statistics
     var todaysStatistics: Statistics
     var allTimeStatistics: Statistics
-    let enableStatistics: Bool
     let autostartStatistics: Bool
+    let statisticsResetTime: Int
     
     // sasayaki
     var sasayakiPlayer: SasayakiPlayer!
@@ -118,6 +123,8 @@ class ReaderViewModel {
     private var debounceTask: Task<Void, Never>?
     private var exportTask: Task<Void, Never>?
     
+    private var pendingSearchHighlight: (offset: Int, length: Int)?
+    
     // highlights
     var highlights: [Highlight] = []
     
@@ -125,15 +132,15 @@ class ReaderViewModel {
     private var backHistory: [Position] = []
     private var forwardHistory: [Position] = []
     private var currentPosition: Position { Position(index: index, progress: currentProgress) }
-    var backTarget: Int? { backHistory.last.map { calculateCharacterProgress(for: $0) } }
-    var forwardTarget: Int? { forwardHistory.last.map { calculateCharacterProgress(for: $0) } }
+    var backTarget: Int? { backHistory.last.flatMap { calculateCharacterProgress(for: $0) } }
+    var forwardTarget: Int? { forwardHistory.last.flatMap { calculateCharacterProgress(for: $0) } }
     
     init(
         book: BookMetadata,
         document: EPUBDocument,
         rootURL: URL,
-        enableStatistics: Bool,
         autostartStatistics: Bool,
+        statisticsResetTime: Int,
         autoSyncEnabled: Bool,
         syncBookData: Bool,
         syncStats: Bool,
@@ -143,8 +150,8 @@ class ReaderViewModel {
         self.book = book
         self.document = document
         self.rootURL = rootURL
-        self.enableStatistics = enableStatistics
         self.autostartStatistics = autostartStatistics
+        self.statisticsResetTime = statisticsResetTime
         self.autoSyncEnabled = autoSyncEnabled
         self.syncBookData = syncBookData
         self.syncStats = syncStats
@@ -159,19 +166,15 @@ class ReaderViewModel {
             currentProgress = 0.0
         }
         
-        if let b = BookStorage.loadBookInfo(root: rootURL) {
-            bookInfo = b
-        } else {
-            bookInfo = BookInfo(characterCount: 0, chapterInfo: [:])
-        }
+        let info = BookStorage.loadBookInfo(root: rootURL) ?? BookInfo(characterCount: 0, chapterInfo: [:], images: nil)
+        bookInfo = info
+        chapterStarts = Self.chapterStarts(document: document, bookInfo: info)
         
-        sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "")
-        todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "")
-        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
+        todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         
-        if enableStatistics {
-            loadStatistics()
-        }
+        loadStatistics()
         
         if autostartStatistics {
             startTracking()
@@ -180,9 +183,9 @@ class ReaderViewModel {
         sasayakiPlayer = SasayakiPlayer(
             rootURL: rootURL,
             bridge: bridge,
-            loadChapter: { [weak self] chapterIndex, progress in
+            loadChapter: { [weak self] chapterIndex in
                 self?.flushStats()
-                self?.loadChapter(index: chapterIndex, progress: progress)
+                self?.loadChapter(index: chapterIndex, progress: self?.sasayakiCueProgress(for: chapterIndex) ?? 0)
                 self?.resetTrackingBaseline()
             },
             getCurrentIndex: { [weak self] in
@@ -197,6 +200,7 @@ class ReaderViewModel {
         highlights = BookStorage.loadHighlights(root: rootURL) ?? []
     }
     
+    // todo: name is misleading after fragment changes. this is technically the character count of the xhtml file, not necessarily the count of a toc chapter. fix during refactor
     var currentChapterCount: Int {
         guard document.spine.items.indices.contains(index),
               let manifestItem = document.manifest.items[document.spine.items[index].idref],
@@ -204,6 +208,16 @@ class ReaderViewModel {
             return 0
         }
         return chapterInfo.currentTotal + chapterInfo.chapterCount
+    }
+    
+    // "true" chapter range
+    var currentChapterRange: (character: Int, total: Int, progress: Double) {
+        let position = currentCharacter
+        let xhtmlEnd = currentChapterCount
+        let range = chapterBounds(at: xhtmlEnd > 0 ? min(position, xhtmlEnd - 1) : position)
+        let character = position - range.start
+        let progress = range.count > 0 ? Double(character) / Double(range.count) : 0
+        return (character, range.count, progress)
     }
     
     var currentCharacter: Int {
@@ -223,6 +237,11 @@ class ReaderViewModel {
         return nil
     }
     
+    var imageURLs: [URL] {
+        (bookInfo.images ?? []).map { document.contentDirectory.appendingPathComponent($0) }
+    }
+    
+    // todo: fix naming
     private var currentChapterURL: URL? {
         guard document.spine.items.indices.contains(index) else {
             return nil
@@ -235,6 +254,7 @@ class ReaderViewModel {
         return document.contentDirectory.appendingPathComponent(manifestItem.path)
     }
     
+    // todo: fix naming
     private var chapterRange: (start: Int, end: Int)? {
         guard document.spine.items.indices.contains(index),
               let manifestItem = document.manifest.items[document.spine.items[index].idref],
@@ -244,12 +264,31 @@ class ReaderViewModel {
         return (info.currentTotal, info.currentTotal + info.chapterCount)
     }
     
+    private func sasayakiCueProgress(for chapterIndex: Int) -> Double? {
+        guard let cue = sasayakiPlayer.pendingCue, cue.chapterIndex == chapterIndex,
+              document.spine.items.indices.contains(chapterIndex),
+              let manifestItem = document.manifest.items[document.spine.items[chapterIndex].idref],
+              let info = bookInfo.chapterInfo[manifestItem.path] else {
+            return nil
+        }
+        return Double(cue.start) / Double(info.chapterCount)
+    }
+    
     func handleRestoreCompleted() {
         if !sasayakiPlayer.hasAudio {
             sasayakiPlayer.restoreAudio()
         }
         isLoading = false
         sasayakiPlayer.handleRestoreCompleted(currentIndex: index)
+        if let highlight = pendingSearchHighlight {
+            pendingSearchHighlight = nil
+            bridge.send(.showSearchHighlight(offset: highlight.offset, length: highlight.length))
+        }
+    }
+    
+    func handleProcessTerminated() {
+        isLoading = true
+        sasayakiPlayer.prepareTransition()
     }
     
     func importSasayakiAudio(from url: URL) throws {
@@ -319,6 +358,15 @@ class ReaderViewModel {
         navigate(to: Position(index: result.spineIndex, progress: result.progress))
     }
     
+    func jumpToSearchResult(character: Int, length: Int) {
+        guard let result = bookInfo.resolveCharacterPosition(character) else { return }
+        let chapterStart = bookInfo.chapterInfo.values.first { $0.spineIndex == result.spineIndex }?.currentTotal ?? 0
+        pendingSearchHighlight = (character - chapterStart, length)
+        recordPosition()
+        navigate(to: Position(index: result.spineIndex, progress: result.progress))
+    }
+    
+    // todo: fix naming
     func jumpToChapter(index: Int, fragment: String? = nil) {
         recordPosition()
         navigate(to: Position(index: index, progress: 0), fragment: fragment)
@@ -353,6 +401,7 @@ class ReaderViewModel {
         resetTrackingBaseline()
     }
     
+    // todo: fix naming
     func nextChapter() -> Bool {
         guard index < document.spine.items.count - 1 else { return false }
         loadChapter(index: index + 1, progress: 0)
@@ -360,6 +409,7 @@ class ReaderViewModel {
         return true
     }
     
+    // todo: fix naming
     func previousChapter() -> Bool {
         guard index > 0 else { return false }
         loadChapter(index: index - 1, progress: 1)
@@ -466,14 +516,14 @@ class ReaderViewModel {
     
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
     func updateStats() {
-        let currentDateKey = Self.formattedDate(date: .now)
+        let currentDateKey = Self.formattedDate(date: .now, resetTime: statisticsResetTime)
         if todaysStatistics.dateKey != currentDateKey {
             if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
                 stats[index] = todaysStatistics
             } else {
                 stats.append(todaysStatistics)
             }
-            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: document.title ?? "")
+            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         }
         
         let now: Date = .now
@@ -505,10 +555,22 @@ class ReaderViewModel {
             character: range.start + creation.start,
             offset: creation.offset,
             text: creation.text,
+            textFurigana: creation.textFurigana,
             color: color,
             createdAt: Date()
         )
         highlights.append(highlight)
+        saveHighlights()
+        syncHighlights()
+    }
+    
+    func updateHighlight(_ color: HighlightColor, _ id: UUID) {
+        guard let index = highlights.firstIndex(where: { $0.id == id }) else { return }
+        if highlights[index].color == color {
+            highlights.remove(at: index)
+        } else {
+            highlights[index].color = color
+        }
         saveHighlights()
         syncHighlights()
     }
@@ -542,6 +604,13 @@ class ReaderViewModel {
         }
     }
     
+    private func chapterBounds(at characterCount: Int) -> (start: Int, count: Int) {
+        let next = chapterStarts.firstIndex { $0 > characterCount } ?? chapterStarts.count
+        let start = chapterStarts[next - 1]
+        let end = next < chapterStarts.count ? chapterStarts[next] : bookInfo.characterCount
+        return (start, end - start)
+    }
+    
     private func navigate(to position: Position, fragment: String? = nil) {
         flushStats()
         if position.index == index && fragment == nil {
@@ -566,6 +635,7 @@ class ReaderViewModel {
         scheduleAutoExport()
     }
     
+    // todo: fix naming
     private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
         isLoading = true
         sasayakiPlayer.prepareTransition()
@@ -593,9 +663,7 @@ class ReaderViewModel {
             index = bookmark.chapterIndex
             currentProgress = bookmark.progress
         }
-        if enableStatistics {
-            loadStatistics()
-        }
+        loadStatistics()
         if syncAudioBook {
             sasayakiPlayer.reloadPlayback()
         }
@@ -669,8 +737,10 @@ class ReaderViewModel {
     }
     
     private func flushStats() {
-        guard isTracking, !isPaused else { return }
-        updateStats()
+        guard isTracking else { return }
+        if !isPaused {
+            updateStats()
+        }
         saveStats()
     }
     
@@ -678,7 +748,7 @@ class ReaderViewModel {
     private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
         to.readingTime += timeDiff
         to.charactersRead = max(to.charactersRead + characterDiff, 0)
-        to.lastReadingSpeed = to.readingTime > 0 ? Int((Double(to.charactersRead) / to.readingTime) * 3600.0) : 0
+        to.lastReadingSpeed = to.readingSpeed
         to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
         to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
         if characterDiff != 0 {
@@ -694,21 +764,20 @@ class ReaderViewModel {
             stats.append(todaysStatistics)
         }
         
-        stats = Self.deduplicateStatistics(stats)
+        stats = Statistics.merged(stats).filter(\.hasActivity)
         try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
         scheduleAutoExport()
     }
     
     private func loadStatistics() {
-        stats = Self.deduplicateStatistics(BookStorage.loadStatistics(root: rootURL) ?? [])
-        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now) }) ?? Self.getDefaultStatistic(title: document.title ?? "")
-        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "")
+        stats = Statistics.merged(BookStorage.loadStatistics(root: rootURL) ?? [])
+        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now, resetTime: statisticsResetTime) }) ?? Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
+        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
         
-        for stat in stats {
-            allTimeStatistics.readingTime += stat.readingTime
-            allTimeStatistics.charactersRead += stat.charactersRead
-            allTimeStatistics.lastReadingSpeed = allTimeStatistics.readingTime > 0 ? Int((Double(allTimeStatistics.charactersRead) / allTimeStatistics.readingTime) * 3600.0) : 0
-        }
+        let allTime = stats.reduce(into: ReadingDay(date: .now)) { $0.add($1) }
+        allTimeStatistics.charactersRead = allTime.charactersRead
+        allTimeStatistics.readingTime = allTime.readingTime
+        allTimeStatistics.lastReadingSpeed = allTime.readingSpeed
     }
     
     private func chapterHighlights() -> String? {
@@ -737,35 +806,39 @@ class ReaderViewModel {
         forwardHistory.removeAll()
     }
     
-    private func calculateCharacterProgress(for position: Position) -> Int {
+    private func calculateCharacterProgress(for position: Position) -> Int? {
+        guard document.spine.items.indices.contains(position.index) else { return nil }
         let spineItem = document.spine.items[position.index]
-        let manifestItem = document.manifest.items[spineItem.idref]!
-        let chapterInfo = bookInfo.chapterInfo[manifestItem.path]!
+        guard let manifestItem = document.manifest.items[spineItem.idref],
+              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else { return nil }
         return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * position.progress)
     }
     
-    private static func getDefaultStatistic(title: String) -> Statistics {
-        return Statistics(title: title, dateKey: Self.formattedDate(date: .now), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
-    }
-    
-    private static func deduplicateStatistics(_ statistics: [Statistics]) -> [Statistics] {
-        var grouped: [String: Statistics] = [:]
-        for statistic in statistics {
-            if let existing = grouped[statistic.dateKey] {
-                if statistic.lastStatisticModified > existing.lastStatisticModified {
-                    grouped[statistic.dateKey] = statistic
+    private static func chapterStarts(document: EPUBDocument, bookInfo: BookInfo) -> [Int] {
+        var starts: Set<Int> = [0]
+        func walk(_ node: EPUBTableOfContents) {
+            if let item = node.item {
+                let parts = item.components(separatedBy: "#")
+                if let chapter = bookInfo.chapterInfo[parts[0]] {
+                    let offset = parts.count > 1 ? chapter.fragmentOffsets?[parts[1]] ?? 0 : 0
+                    starts.insert(chapter.currentTotal + offset)
                 }
-            } else {
-                grouped[statistic.dateKey] = statistic
             }
+            node.subTable?.forEach(walk)
         }
-        return Array(grouped.values)
+        walk(document.tableOfContents)
+        return starts.sorted()
     }
     
-    private static func formattedDate(date: Date) -> String {
+    private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {
+        return Statistics(title: title, dateKey: Self.formattedDate(date: .now, resetTime: resetTime), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
+    }
+    
+    private static func formattedDate(date: Date, resetTime: Int = 0) -> String {
+        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 60)
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone.current
         formatter.formatOptions = [.withFullDate]
-        return formatter.string(from: date)
+        return formatter.string(from: adjustedDate)
     }
 }

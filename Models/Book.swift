@@ -24,6 +24,7 @@ enum SortOption: String, CaseIterable, Identifiable {
 nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
+    let author: String?
     let epub: String?
     let cover: String?
     let folder: String
@@ -31,9 +32,10 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     var renamedTitle: String?
     var displayTitle: String { renamedTitle ?? title }
     
-    init(id: UUID = UUID(), title: String, epub: String? = nil, cover: String?, folder: String, lastAccess: Date) {
+    init(id: UUID = UUID(), title: String, author: String? = nil, epub: String? = nil, cover: String?, folder: String, lastAccess: Date) {
         self.id = id
         self.title = title
+        self.author = author
         self.epub = epub
         self.cover = cover
         self.folder = folder
@@ -51,11 +53,13 @@ struct Bookmark: Codable {
 struct BookInfo: Codable {
     let characterCount: Int
     let chapterInfo: [String: ChapterInfo]
+    let images: [String]?
     
     struct ChapterInfo: Codable {
         let spineIndex: Int?
         let currentTotal: Int
         let chapterCount: Int
+        var fragmentOffsets: [String: Int]?
     }
     
     func resolveCharacterPosition(_ characterCount: Int) -> (spineIndex: Int, progress: Double)? {

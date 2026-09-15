@@ -30,17 +30,24 @@ struct BookStorage {
         return defaults.bool(forKey: migratedDocumentsKey) && defaults.bool(forKey: migratedBooksKey)
     }
     
-    nonisolated static func getAppDirectory() throws -> URL {
+    nonisolated private static let appDirectory: URL? = {
         guard let url = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first else {
-            throw BookStorageError.appDirectoryNotFound
+            return nil
         }
         if !FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
-            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
         return url
+    }()
+    
+    nonisolated static func getAppDirectory() throws -> URL {
+        guard let appDirectory else {
+            throw BookStorageError.appDirectoryNotFound
+        }
+        return appDirectory
     }
     
     nonisolated static func migrateFromDocuments() {

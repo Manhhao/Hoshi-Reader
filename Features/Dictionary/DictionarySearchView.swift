@@ -12,6 +12,39 @@ import CHoshiDicts
 struct DictionarySearchView: View {
     private static let resetTextFieldScrollThreshold: CGFloat = 80
     
+    private static let searchTextJs = """
+    (function() {
+        const container = document.getElementById('search-text');
+        const chars = [...window.searchText];
+        
+        container.append(...chars.map((char, index) => {
+            const span = document.createElement('span');
+            span.textContent = char;
+            span.dataset.index = index;
+            return span;
+        }));
+        container.classList.add('visible');
+        
+        container.addEventListener('click', async (e) => {
+            const index = e.target.dataset.index;
+            if (index === undefined) {
+                return;
+            }
+            const start = Number(index);
+            const count = await webkit.messageHandlers.lookupRedirect.postMessage(chars.slice(start).join(''));
+            if (!count) {
+                return;
+            }
+            const [entry] = await webkit.messageHandlers.getEntries.postMessage({ start: 0, count: 1 });
+            redirect(count, document.scrollingElement.scrollTop);
+            const length = [...entry.matched].length;
+            [...container.children].forEach((span, i) => {
+                span.classList.toggle('matched', i >= start && i < start + length);
+            });
+        });
+    })();
+    """
+    
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query: String = ""
@@ -19,11 +52,10 @@ struct DictionarySearchView: View {
     @State private var content: String = ""
     @State private var dictionaryStyles: [String: String] = [:]
     @State private var lookupEntries: [[String: Any]] = []
-    @State private var hasSearched = false
-    @State private var searchFocused = false
-    @State private var didInitialQuery = false
+    @State private var hasAppeared = false
     @State private var popups: [PopupItem] = []
     @State private var clearSelection: Bool = false
+    @State private var clozeOffset: Int? = nil
     @State private var backCount: Int = 0
     @State private var forwardCount: Int = 0
     @State private var backTrigger: Bool = false
@@ -33,16 +65,13 @@ struct DictionarySearchView: View {
     @State private var isResettingTextField: Bool = false
     @State private var scrollViewInitialContentOffset: CGFloat! = nil
     @State private var scrollViewContentOffset: CGFloat! = nil
+    @State private var topHeight: CGFloat = 0
+    @FocusState private var searchFocused: Bool
     var initialQuery: String = ""
-    var initialAutofocus: Bool = true
     var shouldFocus: Bool = false
     
     private var usesTopTabBarLayout: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
-    }
-    
-    private var searchBarInset: CGFloat {
-        usesTopTabBarLayout ? 100 : 50
     }
     
     private var tabBarInset: CGFloat {
@@ -63,8 +92,8 @@ struct DictionarySearchView: View {
                     scanLength: userConfig.scanLength,
                     backTrigger: backTrigger,
                     forwardTrigger: forwardTrigger,
-                    onMine: { minedContent in
-                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, documentTitle: nil, coverURL: nil))
+                    onMine: { minedContent, formatId in
+                        await AnkiManager.shared.addNote(content: minedContent, context: MiningContext(sentence: lastQuery, clozeOffset: clozeOffset, documentTitle: nil, coverURL: nil), formatId: formatId)
                     },
                     onTextSelected: {
                         closePopups()
@@ -78,8 +107,17 @@ struct DictionarySearchView: View {
                         if !entries.isEmpty {
                             backCount += 1
                             forwardCount = 0
+                            clozeOffset = lastQuery.hasSuffix(query) ? lastQuery.utf16.count - query.utf16.count : nil
                         }
                         return entries
+                    },
+                    onKanjiRedirect: { kanji in
+                        let data = LookupEngine.shared.queryKanji(kanji)
+                        if data != nil {
+                            backCount += 1
+                            forwardCount = 0
+                        }
+                        return data
                     },
                     scrollViewBounces: true,
                     onScrollViewOffsetChanged: { newOffset in
@@ -139,7 +177,7 @@ struct DictionarySearchView: View {
                         screenSize: geometry.size,
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
-                        topInset: UIApplication.topSafeArea + searchBarInset,
+                        topInset: topHeight,
                         bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
                         coverURL: nil,
                         documentTitle: nil,
@@ -174,27 +212,40 @@ struct DictionarySearchView: View {
             }
         }
         .ignoresSafeArea()
-        .overlay(alignment: .top) {
-            LinearGradient(colors: [Color(.systemBackground), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: UIApplication.topSafeArea + 50)
-                .ignoresSafeArea(edges: .top)
-        }
         .safeAreaInset(edge: .top) {
-            VStack {
-                DictionarySearchBar(text: $query, isFocused: $searchFocused) {
-                    runLookup()
-                }
-                
-                if let scrollViewInitialContentOffset {
-                    SearchResetInset(
-                        scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
-                        threshold: Self.resetTextFieldScrollThreshold,
-                        isQueryEmpty: query.isEmpty,
-                        isRefreshing: isRefreshing,
-                        isDragging: isDragging,
-                        isResettingTextField: isResettingTextField
-                    )
-                }
+            if let scrollViewInitialContentOffset {
+                SearchResetInset(
+                    scrollDistance: scrollViewInitialContentOffset - scrollViewContentOffset,
+                    threshold: Self.resetTextFieldScrollThreshold,
+                    isQueryEmpty: query.isEmpty,
+                    isRefreshing: isRefreshing,
+                    isDragging: isDragging,
+                    isResettingTextField: isResettingTextField
+                )
+            }
+        }
+        .navigationTitle("Dictionary")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text(verbatim: ""))
+        .searchFocused($searchFocused)
+        .textInputAutocapitalization(.never)
+        .onSubmit(of: .search) {
+            searchFocused = false
+            runLookup()
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onChange(of: proxy.safeAreaInsets.top, initial: true) { _, inset in
+                        topHeight = inset
+                    }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
+            guard let field = notification.object as? UISearchTextField else { return }
+            field.setPreferredInputLanguage("ja")
+            Task { @MainActor in
+                field.selectAll(nil)
             }
         }
         .onChange(of: shouldFocus) {
@@ -207,29 +258,31 @@ struct DictionarySearchView: View {
             }
         })
         .onAppear {
-            if !didInitialQuery && !initialQuery.isEmpty {
-                query = initialQuery
-                runLookup()
-            }
-            if initialAutofocus || didInitialQuery {
-                searchFocused = false
-                Task { @MainActor in
-                    searchFocused = true
+            if !hasAppeared {
+                hasAppeared = true
+                
+                if !initialQuery.isEmpty {
+                    query = initialQuery
+                    runLookup()
+                    return
                 }
-            } else {
-                searchFocused = false
-                didInitialQuery = true
+            }
+            
+            searchFocused = false
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(20))
+                searchFocused = true
             }
         }
     }
     
     private func runLookup() {
         closePopups()
+        clozeOffset = nil
         backCount = 0
         forwardCount = 0
         
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        hasSearched = true
         lastQuery = trimmed
         
         guard !trimmed.isEmpty else {
@@ -325,12 +378,31 @@ struct DictionarySearchView: View {
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]") : "[]"
         let audioSources = (try? JSONEncoder().encode(userConfig.enabledAudioSources))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let excludedDictionaries = (try? JSONEncoder().encode(DictionaryManager.shared.excludedDictionaries))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         let scaledCSS = userConfig.customCSS.replacingOccurrences(of: #"(-?(?:\d+(?:\.\d+)?|\.\d+))px"#, with: "calc($1px * var(--popup-scale))", options: .regularExpression)
         let customCSS = (try? JSONSerialization.data(withJSONObject: scaledCSS, options: .fragmentsAllowed))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
+        let searchText = (try? JSONSerialization.data(withJSONObject: lastQuery, options: .fragmentsAllowed))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
         
         content = """
-        <style>.overlay { padding-bottom: 90px; }</style>
+        <style>
+            .overlay { padding-bottom: 90px; }
+            #search-text {
+                display: none;
+                padding: calc(8px * var(--popup-scale)) 0 calc(7px * var(--popup-scale));
+                border-bottom: calc(1px * var(--popup-scale)) solid rgba(128, 128, 128, 0.4);
+                font-size: calc(\(userConfig.searchTextSize)px * var(--popup-scale));
+                line-height: 1.6;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                -webkit-user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            #search-text.visible { display: block; }
+            #search-text > span.matched { background-color: rgba(160, 160, 160, 0.4); }
+        </style>
         <script>
             window.collapseMode = "\(userConfig.collapseMode.rawValue)";
             window.expandFirstDictionary = \(userConfig.expandFirstDictionary);
@@ -345,13 +417,20 @@ struct DictionarySearchView: View {
             window.audioEnableAutoplay = \(userConfig.audioEnableAutoplay);
             window.audioPlaybackMode = "\(userConfig.audioPlaybackMode.rawValue)";
             window.needsAudio = \(AnkiManager.shared.needsAudio);
+            window.cardFormatCount = \(AnkiManager.shared.cardFormats.count);
+            window.validFormatFlags = \(AnkiManager.shared.validFormatFlags);
+            window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable);
+            window.excludedDictionaries = \(excludedDictionaries);
             window.allowDupes = \(AnkiManager.shared.allowDupes);
+            window.disableShowNotes = \(AnkiManager.shared.disableShowNotes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
             window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);
+            window.searchText = \(searchText);
         </script>
-        <div style="height: 50px;"></div>
+        <div id="search-text"></div>
+        <script>\(Self.searchTextJs)</script>
         <div id="entries-container" style="min-height: 100vh;"></div>
         """
     }
@@ -396,13 +475,20 @@ struct DictionarySearchView: View {
             
             var pitches: [[String: Any]] = []
             for pitchEntry in result.term.pitches {
-                var pitchPositions: [Int] = []
+                var accents: [[String: Any]] = []
+                var seen: Set<String> = []
                 var transcriptions: [String] = []
-                for element in pitchEntry.pitch_positions {
-                    let position = Int(element)
-                    if !pitchPositions.contains(position) {
-                        pitchPositions.append(position)
-                    }
+                for element in pitchEntry.pitches {
+                    let pattern = String(element.pattern)
+                    guard seen.insert(pattern.isEmpty ? String(element.position) : pattern).inserted else { continue }
+                    let nasal = element.nasal.map { Int($0) }
+                    let devoice = element.devoice.map { Int($0) }
+                    let position: Any = pattern.isEmpty ? Int(element.position) : pattern
+                    accents.append([
+                        "position": position,
+                        "nasal": nasal,
+                        "devoice": devoice,
+                    ])
                 }
                 for element in pitchEntry.transcriptions {
                     let transcription = String(element)
@@ -412,7 +498,7 @@ struct DictionarySearchView: View {
                 }
                 pitches.append([
                     "dictionary": String(pitchEntry.dict_name),
-                    "pitchPositions": pitchPositions,
+                    "pitches": accents,
                     "transcriptions": transcriptions,
                 ])
             }
@@ -431,75 +517,6 @@ struct DictionarySearchView: View {
             ])
         }
         return entries
-    }
-}
-
-struct DictionarySearchBar: Equatable, View {
-    
-    static func == (lhs: DictionarySearchBar, rhs: DictionarySearchBar) -> Bool {
-        lhs.text == rhs.text && lhs.isFocused == rhs.isFocused
-    }
-    
-    @Binding var text: String
-    @Binding var isFocused: Bool
-    let onSubmit: () -> Void
-    
-    var body: some View {
-        if #available(iOS 26, *) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                
-                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                        isFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 12)
-            .glassEffect(.regular.interactive())
-            .contentShape(Capsule())
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-        }
-        else {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                
-                CustomSearchField(searchText: $text, isFocused: $isFocused, onSubmit: onSubmit)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                        isFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.primary.opacity(0.2), lineWidth: 1))
-            .contentShape(Capsule())
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-        }
     }
 }
 

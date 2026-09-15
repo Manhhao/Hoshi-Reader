@@ -17,12 +17,15 @@ struct DictionaryView: View {
     @State private var showDownloadConfirmation = false
     @State private var showUpdateConfirmation = false
     @State private var selectedType: DictionaryType = .term
+    @State private var isDownloadingKanjiFont = false
+    @State private var showFontDownloadConfirmation = false
     
     private var dictionaries: [DictionaryInfo] {
         switch selectedType {
         case .term: return dictionaryManager.termDictionaries
         case .frequency: return dictionaryManager.frequencyDictionaries
         case .pitch: return dictionaryManager.pitchDictionaries
+        case .kanji: return dictionaryManager.kanjiDictionaries
         }
     }
     
@@ -68,6 +71,30 @@ struct DictionaryView: View {
                 }
             } footer: {
                 Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
+            }
+            
+            if !dictionaryManager.kanjiDictionaries.isEmpty {
+                Section {
+                    Button {
+                        showFontDownloadConfirmation = true
+                    } label: {
+                        Text("Download Stroke Order Font", tableName: "Dictionaries")
+                    }
+                    .disabled(isDownloadingKanjiFont || FontManager.shared.hasKanjiStrokeOrderFont)
+                    .alert(String(localized: "Download Font", table: "Dictionaries"), isPresented: $showFontDownloadConfirmation) {
+                        Button {
+                            downloadKanjiStrokeOrderFont()
+                        } label: {
+                            Text("Download", tableName: "Dictionaries")
+                        }
+                        Button(role: .cancel) {
+                        } label: {
+                            Text("Cancel", tableName: "Dictionaries")
+                        }
+                    } message: {
+                        Text("This will download and automatically import the kanji stroke order font (17 MB)", tableName: "Dictionaries")
+                    }
+                }
             }
             
             if (dictionaryManager.updatableDictionaries.count > 0) {
@@ -149,6 +176,7 @@ struct DictionaryView: View {
                     Text("Term", tableName: "Dictionaries").tag(DictionaryType.term)
                     Text("Frequency", tableName: "Dictionaries").tag(DictionaryType.frequency)
                     Text("Pitch", tableName: "Dictionaries").tag(DictionaryType.pitch)
+                    Text("Kanji", tableName: "Dictionaries").tag(DictionaryType.kanji)
                 } label: {
                     Text("Type", tableName: "Dictionaries")
                 }
@@ -196,6 +224,8 @@ struct DictionaryView: View {
         .overlay {
             if dictionaryManager.isImporting || dictionaryManager.isUpdating {
                 LoadingOverlay(dictionaryManager.currentImport)
+            } else if isDownloadingKanjiFont {
+                LoadingOverlay(String(localized: "Downloading Stroke Order Font", table: "Dictionaries"))
             }
         }
         .navigationTitle(String(localized: "Dictionaries", table: "Dictionaries"))
@@ -208,10 +238,26 @@ struct DictionaryView: View {
             Text(verbatim: dictionaryManager.errorMessage)
         }
     }
+    
+    private func downloadKanjiStrokeOrderFont() {
+        isDownloadingKanjiFont = true
+        Task {
+            let success = await FontManager.downloadKanjiStrokeOrderFont()
+            isDownloadingKanjiFont = false
+            if !success {
+                dictionaryManager.errorMessage = String(localized: "Failed to download the stroke order font", table: "Dictionaries")
+                dictionaryManager.shouldShowError = true
+            }
+        }
+    }
 }
 
 struct DictionarySettingsView: View {
     @Environment(UserConfig.self) private var userConfig
+    
+    private var enabledFrequencyDictionaries: [DictionaryInfo] {
+        DictionaryManager.shared.frequencyDictionaries.filter(\.isEnabled)
+    }
     
     var body: some View {
         List {
@@ -239,8 +285,39 @@ struct DictionarySettingsView: View {
                     }
                     .labelsHidden()
                 }
+                Picker(selection: Bindable(userConfig).frequencySortOrder) {
+                    ForEach(FrequencySortOrder.allCases, id: \.self) { order in
+                        frequencySortOrderText(order).tag(order)
+                    }
+                } label: {
+                    Text("Frequency Sorting", tableName: "Dictionaries")
+                }
+                if userConfig.frequencySortOrder.usesDictionary && !enabledFrequencyDictionaries.isEmpty {
+                    Picker(selection: Bindable(userConfig).frequencySortDictionary) {
+                        ForEach(enabledFrequencyDictionaries) { dictionary in
+                            Text(verbatim: dictionary.index.title).tag(dictionary.index.title)
+                        }
+                    } label: {
+                        Text("Frequency Dictionary", tableName: "Dictionaries")
+                    }
+                }
             } header: {
                 Text("Lookup", tableName: "Dictionaries")
+            }
+            
+            Section {
+                HStack {
+                    Text("Text Size", tableName: "Dictionaries")
+                    Spacer()
+                    Text(verbatim: "\(userConfig.searchTextSize)")
+                        .fontWeight(.semibold)
+                    Stepper(value: Bindable(userConfig).searchTextSize, in: 12...48) {
+                        Text("Text Size", tableName: "Dictionaries")
+                    }
+                    .labelsHidden()
+                }
+            } header: {
+                Text("Search Text", tableName: "Dictionaries")
             }
             
             Section {
@@ -298,6 +375,21 @@ struct DictionarySettingsView: View {
         }
         .navigationTitle(String(localized: "Settings", table: "Dictionaries"))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: userConfig.frequencySortOrder) {
+            if userConfig.frequencySortOrder.usesDictionary,
+               !enabledFrequencyDictionaries.contains(where: { $0.index.title == userConfig.frequencySortDictionary }) {
+                userConfig.frequencySortDictionary = enabledFrequencyDictionaries.first?.index.title ?? ""
+            }
+        }
+    }
+    
+    private func frequencySortOrderText(_ order: FrequencySortOrder) -> Text {
+        switch order {
+        case .auto: Text("Auto", tableName: "Dictionaries")
+        case .ascending: Text("Ascending", tableName: "Dictionaries")
+        case .descending: Text("Descending", tableName: "Dictionaries")
+        case .disabled: Text("Disabled", tableName: "Dictionaries")
+        }
     }
     
     private func collapseModeText(_ mode: CollapseMode) -> Text {
