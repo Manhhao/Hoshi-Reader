@@ -17,6 +17,7 @@ enum ActiveSheet: Identifiable {
     case highlights
     case statistics
     case sasayaki
+    case visualNovelSettings
     var id: Self { self }
 }
 

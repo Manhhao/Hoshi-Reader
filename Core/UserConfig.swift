@@ -43,6 +43,17 @@ enum CollapseMode: String, CaseIterable, Codable {
     case custom = "Custom"
 }
 
+enum ReaderViewMode: String, CaseIterable, Codable {
+    case paginated = "Paginated"
+    case continuous = "Continuous"
+    case visualNovel = "Visual Novel"
+}
+
+enum VisualNovelScreenMode: String, CaseIterable, Codable {
+    case block = "Block"
+    case sentences = "Sentences"
+}
+
 enum Themes: String, CaseIterable, Codable {
     case system = "System"
     case light = "Light"
@@ -190,10 +201,34 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerHideFurigana, forKey: "readerHideFurigana") }
     }
     
-    var continuousMode: Bool {
-        didSet { UserDefaults.standard.set(continuousMode, forKey: "continuousMode") }
+    var readerViewMode: ReaderViewMode {
+        didSet { UserDefaults.standard.set(readerViewMode.rawValue, forKey: "readerViewMode") }
     }
-    
+
+    var visualNovelRevealSpeed: Int {
+        didSet { UserDefaults.standard.set(visualNovelRevealSpeed, forKey: "visualNovelRevealSpeed") }
+    }
+
+    var visualNovelScreenMode: VisualNovelScreenMode {
+        didSet { UserDefaults.standard.set(visualNovelScreenMode.rawValue, forKey: "visualNovelScreenMode") }
+    }
+
+    var visualNovelSentencesPerScreen: Int {
+        didSet { UserDefaults.standard.set(visualNovelSentencesPerScreen, forKey: "visualNovelSentencesPerScreen") }
+    }
+
+    var visualNovelPreserveDialogueBubbles: Bool {
+        didSet { UserDefaults.standard.set(visualNovelPreserveDialogueBubbles, forKey: "visualNovelPreserveDialogueBubbles") }
+    }
+
+    var visualNovelClickAdvance: Bool {
+        didSet { UserDefaults.standard.set(visualNovelClickAdvance, forKey: "visualNovelClickAdvance") }
+    }
+
+    var visualNovelMergeCrossScreenSasayakiCues: Bool {
+        didSet { UserDefaults.standard.set(visualNovelMergeCrossScreenSasayakiCues, forKey: "visualNovelMergeCrossScreenSasayakiCues") }
+    }
+
     var chapterSwipeDistance: Int {
         didSet { UserDefaults.standard.set(chapterSwipeDistance, forKey: "chapterSwipeDistance") }
     }
@@ -448,7 +483,19 @@ class UserConfig {
         self.fontSize = defaults.object(forKey: "fontSize") as? Int ?? 22
         self.readerHideFurigana = defaults.object(forKey: "readerHideFurigana") as? Bool ?? false
         
-        self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
+        if let savedMode = defaults.string(forKey: "readerViewMode").flatMap(ReaderViewMode.init) {
+            self.readerViewMode = savedMode
+        } else {
+            let legacyContinuous = defaults.object(forKey: "continuousMode") as? Bool ?? false
+            self.readerViewMode = legacyContinuous ? .continuous : .paginated
+        }
+        self.visualNovelRevealSpeed = defaults.object(forKey: "visualNovelRevealSpeed") as? Int ?? 45
+        self.visualNovelScreenMode = defaults.string(forKey: "visualNovelScreenMode")
+            .flatMap(VisualNovelScreenMode.init) ?? .block
+        self.visualNovelSentencesPerScreen = defaults.object(forKey: "visualNovelSentencesPerScreen") as? Int ?? 1
+        self.visualNovelPreserveDialogueBubbles = defaults.object(forKey: "visualNovelPreserveDialogueBubbles") as? Bool ?? false
+        self.visualNovelClickAdvance = defaults.object(forKey: "visualNovelClickAdvance") as? Bool ?? false
+        self.visualNovelMergeCrossScreenSasayakiCues = defaults.object(forKey: "visualNovelMergeCrossScreenSasayakiCues") as? Bool ?? false
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0

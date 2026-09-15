@@ -155,18 +155,14 @@ struct AppearanceView: View {
                 }
                 
                 Section("Layout") {
-                    HStack {
-                        Text("Mode")
-                        Spacer()
-                        Picker("", selection: $userConfig.continuousMode) {
-                            Text("Paginated").tag(false)
-                            Text("Continuous").tag(true)
+                    Picker("Mode", selection: $userConfig.readerViewMode) {
+                        ForEach(ReaderViewMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
-                        .pickerStyle(.segmented)
-                        .frame(width: 180)
                     }
-                    
-                    if userConfig.continuousMode {
+                    .pickerStyle(.segmented)
+
+                    if userConfig.readerViewMode == .continuous {
                         VStack {
                             HStack {
                                 Text("Chapter Swipe Distance")
@@ -180,7 +176,13 @@ struct AppearanceView: View {
                             ), in: 10...60, step: 5)
                         }
                     }
-                    
+
+                    if userConfig.readerViewMode == .visualNovel {
+                        NavigationLink("Visual Novel Mode Settings") {
+                            VNModeSettingsView()
+                        }
+                    }
+
                     HStack {
                         Text("Horizontal Padding")
                         Spacer()
