@@ -2,10 +2,26 @@
   "sourceLanguage" : "en",
   "strings" : {
     "{selected-glossary} Fallback" : {
-
+      "comment" : "Context: Settings > Anki > Advanced. Fallback field value used when no dictionary glossary is selected for mining. Keep the {selected-glossary} placeholder unchanged.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{selected-glossary} 默认值"
+          }
+        }
+      }
     },
     "Add Format" : {
-
+      "comment" : "Context: Settings > Anki. Each card format stores its own icon, deck, note type, field mappings, and tags for mining.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加预设"
+          }
+        }
+      }
     },
     "Address" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
@@ -19,7 +35,15 @@
       }
     },
     "Advanced" : {
-
+      "comment" : "Context: Settings > Anki. Navigation link and title for advanced field and dictionary settings.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高级"
+          }
+        }
+      }
     },
     "Allow Duplicates" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -86,11 +110,37 @@
         }
       }
     },
+    "Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将释义分为两栏显示。建议仅在启用全宽显示或使用较大屏幕时开启。"
+          }
+        }
+      }
+    },
     "Ascending" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "升序"
+          }
+        }
+      }
     },
     "Auto" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        }
+      }
     },
     "Behaviour" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -115,7 +165,15 @@
       }
     },
     "Categorize Dictionaries" : {
-
+      "comment" : "Context: Settings > Anki > Advanced. Section assigning categories to term dictionaries for glossary field mappings.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词典分类"
+          }
+        }
+      }
     },
     "Check All Models" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
@@ -129,10 +187,26 @@
       }
     },
     "Circle" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圆形"
+          }
+        }
+      }
     },
     "Circle Small" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小圆形"
+          }
+        }
+      }
     },
     "Collapse All" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -322,13 +396,37 @@
       }
     },
     "Descending" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "降序"
+          }
+        }
+      }
     },
     "Diamond" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "菱形"
+          }
+        }
+      }
     },
     "Diamond Small" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小菱形"
+          }
+        }
+      }
     },
     "Dictionaries" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
@@ -342,10 +440,26 @@
       }
     },
     "Disable Show Notes Button" : {
-
+      "comment" : "Context: Settings > Anki. Toggle that hides the button for viewing existing Anki notes when a lookup result is a duplicate.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏“查看笔记”按钮"
+          }
+        }
+      }
     },
     "Disabled" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
     },
     "Download" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
@@ -535,7 +649,15 @@
       }
     },
     "Formats" : {
-
+      "comment" : "Context: Settings > Anki. Each card format stores its own icon, deck, note type, field mappings, and tags for mining.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制卡预设"
+          }
+        }
+      }
     },
     "Frequency" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
@@ -549,10 +671,26 @@
       }
     },
     "Frequency Dictionary" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词频词典"
+          }
+        }
+      }
     },
     "Frequency Sorting" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings > Lookup. Sort lookup results by frequency; ascending and descending use the selected frequency dictionary.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词频排序"
+          }
+        }
+      }
     },
     "Harmonic Frequency" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -566,7 +704,15 @@
       }
     },
     "Icon" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图标"
+          }
+        }
+      }
     },
     "Import Anki Backup (Stored Words: %@)" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
@@ -602,7 +748,15 @@
       }
     },
     "Kanji" : {
-
+      "comment" : "Context: Settings > Dictionaries. Dictionary type picker alongside term, frequency, and pitch dictionaries.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "汉字"
+          }
+        }
+      }
     },
     "Last Update" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
@@ -671,7 +825,15 @@
       }
     },
     "Name" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Text field for the user-defined format name.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名称"
+          }
+        }
+      }
     },
     "Never" : {
       "comment" : "Context: Settings > Dictionaries update section. Surrounding UI configures automatic dictionary updates, update interval, last update timestamp, and manual update action.",
@@ -773,7 +935,15 @@
       }
     },
     "Search Text" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings. Section and font-size control for the searched text displayed above dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查词原文"
+          }
+        }
+      }
     },
     "Settings" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -787,7 +957,15 @@
       }
     },
     "Show All Handlebars" : {
-
+      "comment" : "Context: Settings > Anki > Advanced. Shows all field placeholders, including advanced glossary variants, in the card-format field-mapping menus.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示所有Handlebar"
+          }
+        }
+      }
     },
     "Show Expression Tags" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -801,10 +979,26 @@
       }
     },
     "Square" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "方形"
+          }
+        }
+      }
     },
     "Square Small" : {
-
+      "comment" : "Context: Settings > Anki > Card Format. Shape and size of the add-card icon used for this format in dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小方形"
+          }
+        }
+      }
     },
     "Status: %@" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
@@ -840,7 +1034,15 @@
       }
     },
     "Text Size" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings. Section and font-size control for the searched text displayed above dictionary results.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字号"
+          }
+        }
+      }
     },
     "This will check for and install updates for these dictionaries:\n%@" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",
@@ -870,7 +1072,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这将下载并自动导入汉字笔顺字体（17 MB）"
+            "value" : "将下载并自动导入汉字笔顺字体（17 MB）"
           }
         }
       }
@@ -898,7 +1100,15 @@
       }
     },
     "Two-Column Layout" : {
-
+      "comment" : "Context: Settings > Dictionaries > Settings. Toggle arranging dictionary glossaries in two columns.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双栏布局"
+          }
+        }
+      }
     },
     "Type" : {
       "comment" : "Context: Settings > Dictionaries main screen. Surrounding UI includes recommended dictionary download/update alerts, a dictionary type segmented picker, and the installed dictionary list.",

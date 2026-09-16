@@ -349,7 +349,7 @@ struct DictionarySettingsView: View {
                     Toggle(isOn: Bindable(userConfig).twoColumnLayout) {
                         Text("Two-Column Layout", tableName: "Dictionaries")
                     }
-                    Text("Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens.")
+                    Text("Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens.", tableName: "Dictionaries")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
