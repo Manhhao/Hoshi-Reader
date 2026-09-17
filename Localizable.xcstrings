@@ -32,18 +32,6 @@
         }
       }
     },
-    "**%@ / h**" : {
-      "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "**%@ / 小时**"
-          }
-        }
-      }
-    },
     "**%@**" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -56,16 +44,41 @@
       }
     },
     "**%lld / h**" : {
-
+      "comment" : "Context: Reader > Statistics sheet. Bold reading-speed value in characters per hour. Preserve the integer placeholder and Markdown emphasis.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**%lld / 小时**"
+          }
+        }
+      }
     },
     "**%lld**" : {
-
+      "comment" : "Context: Reader > Statistics sheet. Bold character count beside the Characters Read label. Preserve the integer placeholder and Markdown emphasis.",
+      "shouldTranslate" : false
     },
     "/ %@ character goal" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Tappable target below today's progress gauge; opens the daily-goal picker. The leading slash separates progress from the target.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "/ 目标 %@ 字"
+          }
+        }
+      }
     },
     "/ %lld minute goal" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Tappable target below today's progress gauge; opens the daily-goal picker. The leading slash separates progress from the target.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "/ 目标 %lld 分钟"
+          }
+        }
+      }
     },
     "%.1fem" : {
       "localizations" : {
@@ -100,11 +113,18 @@
       }
     },
     "%@ – %@" : {
+      "comment" : "Context: Statistics > Daily Goal > Longest Streak. Start and end dates of a consecutive goal-achievement streak. Preserve the ordered date placeholders.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ – %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 至 %2$@"
           }
         }
       }
@@ -127,10 +147,26 @@
       }
     },
     "%@ / h" : {
-
+      "comment" : "Context: Statistics > Reading Time. Reading-speed value in characters per hour.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ /小时"
+          }
+        }
+      }
     },
     "%@ Average" : {
-
+      "comment" : "Context: Statistics > Reading Time. Heading for average reading time; the placeholder is a formatted date range, month, year, or All Time label.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 平均"
+          }
+        }
+      }
     },
     "%lld" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
@@ -144,6 +180,7 @@
       }
     },
     "%lld books" : {
+      "comment" : "Context: Statistics > Settings > Archive. Number of deleted books whose reading statistics are retained.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -162,10 +199,17 @@
               }
             }
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 本书"
+          }
         }
       }
     },
     "%lld characters" : {
+      "comment" : "Context: Statistics > Daily Goal. Number of characters read today, shown below the reading-time value.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -184,10 +228,17 @@
               }
             }
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 字"
+          }
         }
       }
     },
     "%lld days" : {
+      "comment" : "Context: Statistics > Daily Goal. Day count for current streak, longest streak, and days meeting the goal.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -206,6 +257,12 @@
               }
             }
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 天"
+          }
         }
       }
     },
@@ -221,25 +278,74 @@
       }
     },
     "%lld%% from previous month" : {
-
+      "comment" : "Context: Statistics > Reading Time. Percentage change from the previous period, preceded by an up or down arrow that indicates direction. Keep the wording neutral and preserve the escaped percent sign.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%（较上月）"
+          }
+        }
+      }
     },
     "%lld%% from previous week" : {
-
+      "comment" : "Context: Statistics > Reading Time. Percentage change from the previous period, preceded by an up or down arrow that indicates direction. Keep the wording neutral and preserve the escaped percent sign.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%（较上周）"
+          }
+        }
+      }
     },
     "%lld%% from previous year" : {
-
+      "comment" : "Context: Statistics > Reading Time. Percentage change from the previous period, preceded by an up or down arrow that indicates direction. Keep the wording neutral and preserve the escaped percent sign.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%（较上年）"
+          }
+        }
+      }
     },
     "%lldh" : {
-
+      "comment" : "Context: Statistics. Compact hour value on the reading-time chart and in the per-day reading-time editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 小时"
+          }
+        }
+      }
     },
     "%lldm" : {
-
+      "comment" : "Context: Statistics > Book > Daily Record. Minute value in the reading-time wheel picker.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 分钟"
+          }
+        }
+      }
     },
     "%llds" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Number of seconds to pause audiobook playback on an image.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 秒"
+          }
+        }
+      }
     },
     "0" : {
-
+      "comment" : "Context: Statistics > Reading Time. Zero label on the chart's vertical axis; keep the numeral unchanged.",
+      "shouldTranslate" : false
     },
     "1. After the initial setup, create another **OAuth client ID** in the same project." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
@@ -341,7 +447,15 @@
       }
     },
     "All" : {
-
+      "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部"
+          }
+        }
+      }
     },
     "All Time" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -355,7 +469,15 @@
       }
     },
     "Always Show Control Bar" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "始终显示控制栏"
+          }
+        }
+      }
     },
     "Always Show Progress" : {
       "localizations" : {
@@ -422,10 +544,15 @@
       }
     },
     "Archive" : {
-
-    },
-    "Arranges glossaries in two columns. Only recommended when used with full-width or on larger screens." : {
-
+      "comment" : "Context: Statistics > Settings. Archive retains reading statistics for deleted books; clearing it removes those retained statistics.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "归档"
+          }
+        }
+      }
     },
     "Attribution" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
@@ -525,10 +652,26 @@
       }
     },
     "Average" : {
-
+      "comment" : "Context: Statistics > Reading Time. Average reference line on the chart; avg is its compact visible annotation.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均"
+          }
+        }
+      }
     },
     "avg" : {
-
+      "comment" : "Context: Statistics > Reading Time. Average reference line on the chart; avg is its compact visible annotation.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均"
+          }
+        }
+      }
     },
     "Avoid Page Break" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -585,10 +728,26 @@
       }
     },
     "Best Day" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Highest reading time or character count recorded in a single day, with the date shown beneath it.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单日最佳"
+          }
+        }
+      }
     },
     "Blur" : {
-
+      "comment" : "Context: Bookshelf > Manage Shelves. Segmented control for showing, blurring, or hiding book-cover images.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊"
+          }
+        }
+      }
     },
     "Blur Images" : {
       "localizations" : {
@@ -678,13 +837,37 @@
       }
     },
     "Characters" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字数"
+          }
+        }
+      }
     },
     "characters per day" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日字数"
+          }
+        }
+      }
     },
     "Characters Read" : {
-
+      "comment" : "Context: Statistics. Label for characters read in the summary and in the per-day statistics editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已读字数"
+          }
+        }
+      }
     },
     "Characters Read:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -719,10 +902,26 @@
       }
     },
     "Clear Archive" : {
-
+      "comment" : "Context: Statistics > Settings. Archive retains reading statistics for deleted books; clearing it removes those retained statistics.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清空归档"
+          }
+        }
+      }
     },
     "Clear Archive?" : {
-
+      "comment" : "Context: Statistics > Settings. Archive retains reading statistics for deleted books; clearing it removes those retained statistics.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清空归档？"
+          }
+        }
+      }
     },
     "Clear Cache" : {
       "localizations" : {
@@ -756,7 +955,15 @@
       }
     },
     "Close" : {
-
+      "comment" : "Context: Reader. Error shown when opening a book fails, with a Close button to leave the reader.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
     },
     "Command Center" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -803,7 +1010,15 @@
       }
     },
     "Contents" : {
-
+      "comment" : "Context: Reader toolbar. Opens the contents sheet containing chapters, highlights, an image gallery, and in-book search.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内容"
+          }
+        }
+      }
     },
     "Continuous" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -817,10 +1032,26 @@
       }
     },
     "Control Bar" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制栏"
+          }
+        }
+      }
     },
     "Control Bar Side" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制栏位置"
+          }
+        }
+      }
     },
     "Could not access .epub file" : {
       "localizations" : {
@@ -843,10 +1074,26 @@
       }
     },
     "Couldn't open book" : {
-
+      "comment" : "Context: Reader. Error shown when opening a book fails, with a Close button to leave the reader.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法打开书籍"
+          }
+        }
+      }
     },
     "Covers" : {
-
+      "comment" : "Context: Bookshelf > Manage Shelves. Segmented control for showing, blurring, or hiding book-cover images.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "封面"
+          }
+        }
+      }
     },
     "Current Match" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -860,7 +1107,15 @@
       }
     },
     "Current Streak" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Consecutive days meeting the selected daily goal; the day count and date range appear separately.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前连续达标"
+          }
+        }
+      }
     },
     "Custom" : {
       "localizations" : {
@@ -873,7 +1128,15 @@
       }
     },
     "Daily Goal" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日目标"
+          }
+        }
+      }
     },
     "Dark" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -908,13 +1171,37 @@
       }
     },
     "Date" : {
-
+      "comment" : "Context: Statistics > Reading Time. Date axis of the reading-time chart.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期"
+          }
+        }
+      }
     },
     "Days" : {
-
+      "comment" : "Context: Statistics > Book. Section listing daily reading records that can be edited or deleted; this is not a numeric day-count label.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读记录"
+          }
+        }
+      }
     },
     "Days Met" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Count of days meeting the goal; the detail line gives the total number of days with reading activity.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "达标天数"
+          }
+        }
+      }
     },
     "Default" : {
       "extractionState" : "manual",
@@ -982,10 +1269,26 @@
       }
     },
     "Delete All Statistics" : {
-
+      "comment" : "Context: Statistics > Book. Destructive action and confirmation that delete all recorded statistics for this book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除所有统计数据"
+          }
+        }
+      }
     },
     "Delete All Statistics?" : {
-
+      "comment" : "Context: Statistics > Book. Destructive action and confirmation that delete all recorded statistics for this book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除所有统计数据？"
+          }
+        }
+      }
     },
     "Delete android.db (%@)" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
@@ -1053,7 +1356,15 @@
       }
     },
     "Dimmed" : {
-
+      "comment" : "Context: Settings > Appearance > Hide Furigana. Modes to dim furigana, hide it until tapped to reveal, or hide it completely.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "淡化"
+          }
+        }
+      }
     },
     "Direction" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
@@ -1217,7 +1528,15 @@
       }
     },
     "Gallery" : {
-
+      "comment" : "Context: Reader > Contents. Gallery tab displays images from the book; No Images is its empty-state message.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图库"
+          }
+        }
+      }
     },
     "GitHub" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
@@ -1242,10 +1561,26 @@
       }
     },
     "Goal" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标"
+          }
+        }
+      }
     },
     "Goal met" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Heatmap legend distinguishes days with reading activity from days meeting the goal.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已达标"
+          }
+        }
+      }
     },
     "Height" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1259,10 +1594,26 @@
       }
     },
     "Hidden" : {
-
+      "comment" : "Context: Settings > Appearance > Hide Furigana. Modes to dim furigana, hide it until tapped to reveal, or hide it completely.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏"
+          }
+        }
+      }
     },
     "Hide" : {
-
+      "comment" : "Context: Bookshelf > Manage Shelves. Segmented control for showing, blurring, or hiding book-cover images.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏"
+          }
+        }
+      }
     },
     "Hide Furigana" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1298,7 +1649,15 @@
       }
     },
     "Hours" : {
-
+      "comment" : "Context: Statistics. Reading-time unit on the chart or in the per-day reading-time editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小时"
+          }
+        }
+      }
     },
     "Import" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -1484,7 +1843,15 @@
       }
     },
     "Left" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左侧"
+          }
+        }
+      }
     },
     "Light" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1575,7 +1942,15 @@
       }
     },
     "Longest Streak" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Consecutive days meeting the selected daily goal; the day count and date range appear separately.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最长连续达标"
+          }
+        }
+      }
     },
     "Lower Volume" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
@@ -1675,10 +2050,26 @@
       }
     },
     "Minutes" : {
-
+      "comment" : "Context: Statistics. Reading-time unit on the chart or in the per-day reading-time editor.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分钟"
+          }
+        }
+      }
     },
     "minutes per day" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日分钟数"
+          }
+        }
+      }
     },
     "Mode" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1692,7 +2083,15 @@
       }
     },
     "Month" : {
-
+      "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月"
+          }
+        }
+      }
     },
     "Move" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -1717,10 +2116,26 @@
       }
     },
     "Next Page" : {
-
+      "comment" : "Context: Reader App Intents. Shortcuts that move to the next or previous page in the currently open book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一页"
+          }
+        }
+      }
     },
     "No audio found" : {
-
+      "comment" : "Context: Dictionary popup. Disabled audio-menu item shown when no pronunciation audio is available for the word.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到音频"
+          }
+        }
+      }
     },
     "No Books" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -1775,7 +2190,15 @@
       }
     },
     "No Images" : {
-
+      "comment" : "Context: Reader > Contents. Gallery tab displays images from the book; No Images is its empty-state message.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无图片"
+          }
+        }
+      }
     },
     "None" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -1810,6 +2233,7 @@
       }
     },
     "of %lld days read" : {
+      "comment" : "Context: Statistics > Daily Goal. Count of days meeting the goal; the detail line gives the total number of days with reading activity.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1827,6 +2251,12 @@
                 }
               }
             }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已阅读 %lld 天"
           }
         }
       }
@@ -1905,13 +2335,37 @@
       }
     },
     "Pause Duration" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Pause audiobook playback when reaching a book image, for the selected duration.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停时长"
+          }
+        }
+      }
     },
     "Pause on Images" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Pause audiobook playback when reaching a book image, for the selected duration.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遇到图片时暂停"
+          }
+        }
+      }
     },
     "Period" : {
-
+      "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间范围"
+          }
+        }
+      }
     },
     "Playback" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -1947,7 +2401,15 @@
       }
     },
     "Previous Page" : {
-
+      "comment" : "Context: Reader App Intents. Shortcuts that move to the next or previous page in the currently open book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一页"
+          }
+        }
+      }
     },
     "Privacy Policy" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
@@ -1961,7 +2423,15 @@
       }
     },
     "Progress" : {
-
+      "comment" : "Context: Settings > Appearance. Controls for displaying overall book progress and current-chapter progress in the reader.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读进度"
+          }
+        }
+      }
     },
     "Progress Position" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1975,7 +2445,15 @@
       }
     },
     "Read" : {
-
+      "comment" : "Context: Statistics > Daily Goal. Heatmap legend distinguishes days with reading activity from days meeting the goal.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已阅读"
+          }
+        }
+      }
     },
     "Reading" : {
       "localizations" : {
@@ -1999,7 +2477,15 @@
       }
     },
     "Reading Speed" : {
-
+      "comment" : "Context: Statistics > Reading Time. Summary labels for reading speed, reading time, and total reading time in the selected period.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读速度"
+          }
+        }
+      }
     },
     "Reading Speed:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -2013,7 +2499,15 @@
       }
     },
     "Reading Time" : {
-
+      "comment" : "Context: Statistics > Reading Time. Summary labels for reading speed, reading time, and total reading time in the selected period.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读时间"
+          }
+        }
+      }
     },
     "Reading Time:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -2070,7 +2564,15 @@
       }
     },
     "Reset Time" : {
-
+      "comment" : "Context: Statistics > Settings. Time of day used as the boundary between daily statistics, not an action that erases recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日重置时间"
+          }
+        }
+      }
     },
     "Restore" : {
       "comment" : "Context: Settings > Backup. Surrounding UI offers backup/restore actions for books and dictionaries, with restore overwrite warnings.",
@@ -2095,7 +2597,15 @@
       }
     },
     "Right" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右侧"
+          }
+        }
+      }
     },
     "Sasayaki" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -2142,7 +2652,15 @@
       }
     },
     "Search book" : {
-
+      "comment" : "Context: Reader > Contents. Search-field prompt for searching text inside the current book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索书中内容"
+          }
+        }
+      }
     },
     "Selector" : {
       "comment" : "Context: Dictionary custom CSS editor. Surrounding UI shows a menu of dictionary CSS selectors that can be inserted into the editor.",
@@ -2210,7 +2728,15 @@
       }
     },
     "Show" : {
-
+      "comment" : "Context: Bookshelf > Manage Shelves. Segmented control for showing, blurring, or hiding book-cover images.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示"
+          }
+        }
+      }
     },
     "Show Action Bar" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2224,7 +2750,15 @@
       }
     },
     "Show Chapter Progress" : {
-
+      "comment" : "Context: Settings > Appearance. Controls for displaying overall book progress and current-chapter progress in the reader.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示章节进度"
+          }
+        }
+      }
     },
     "Show Character Count" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2238,10 +2772,26 @@
       }
     },
     "Show Control Bar" : {
-
+      "comment" : "Context: Sasayaki settings and reader sheet. Audiobook playback control-bar visibility and placement.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示控制栏"
+          }
+        }
+      }
     },
     "Show More" : {
-
+      "comment" : "Context: Statistics > Books. Button reveals more rows of book-level reading statistics.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示更多"
+          }
+        }
+      }
     },
     "Show Percentage" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2255,7 +2805,15 @@
       }
     },
     "Show Progress" : {
-
+      "comment" : "Context: Settings > Appearance. Controls for displaying overall book progress and current-chapter progress in the reader.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示阅读进度"
+          }
+        }
+      }
     },
     "Show Reading Speed" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2375,7 +2933,15 @@
       }
     },
     "since %@" : {
-
+      "comment" : "Context: Statistics > Daily Goal > Current Streak. Start date of the current run of consecutive days meeting the goal.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自 %@ 起"
+          }
+        }
+      }
     },
     "Skip Controls will replace Next/Previous Cue controls as media controls." : {
       "localizations" : {
@@ -2658,9 +3224,18 @@
       }
     },
     "This will delete all recorded statistics for this book." : {
-
+      "comment" : "Context: Statistics > Book. Destructive action and confirmation that delete all recorded statistics for this book.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本书的所有统计数据将被删除。"
+          }
+        }
+      }
     },
     "This will delete the statistics of %lld deleted books." : {
+      "comment" : "Context: Statistics > Settings. Archive retains reading statistics for deleted books; clearing it removes those retained statistics.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2679,11 +3254,25 @@
               }
             }
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " %lld 本已删除书籍的统计数据将被删除。"
+          }
         }
       }
     },
     "Time" : {
-
+      "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时长"
+          }
+        }
+      }
     },
     "Time to finish Book:" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
@@ -2730,7 +3319,15 @@
       }
     },
     "Toggle" : {
-
+      "comment" : "Context: Settings > Appearance > Hide Furigana. Modes to dim furigana, hide it until tapped to reveal, or hide it completely.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按显示"
+          }
+        }
+      }
     },
     "Token exchange failed: %lld" : {
       "localizations" : {
@@ -2754,7 +3351,15 @@
       }
     },
     "Total Time" : {
-
+      "comment" : "Context: Statistics > Reading Time. Summary labels for reading speed, reading time, and total reading time in the selected period.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总时长"
+          }
+        }
+      }
     },
     "Unshelved" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -2832,7 +3437,15 @@
       }
     },
     "Week" : {
-
+      "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "周"
+          }
+        }
+      }
     },
     "Width" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2846,7 +3459,15 @@
       }
     },
     "Year" : {
-
+      "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "年"
+          }
+        }
+      }
     },
     "Yomitan JSON audio sources are supported" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
