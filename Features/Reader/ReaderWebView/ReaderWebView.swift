@@ -409,7 +409,6 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
             let pageHeight = Int(parent.viewSize.height)
             let pageWidth = Int(parent.viewSize.width)
             
@@ -425,24 +424,21 @@ struct ReaderWebView: UIViewRepresentable {
             : horizontalPadding
             
             let columnGap = parent.userConfig.verticalWriting
-            ? "calc(\(columnGapValue)\(columnGapUnit) + \(Double(bottomOverlap) + topInset + bottomInset)px)"
+            ? "calc(\(columnGapValue)\(columnGapUnit) + \(topInset + bottomInset)px)"
             : "\(columnGapValue)\(columnGapUnit)"
             let columnWidth = parent.userConfig.verticalWriting
             ? "var(--page-height, 100vh)"
             : "var(--page-width, 100vw)"
             
-            let bottomExtra = Double(parent.userConfig.verticalWriting ? bottomOverlap : 0) + bottomInset
-            let bottomPaddingCss = bottomExtra > 0
-            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomExtra)px) !important;"
+            let bottomPaddingCss = bottomInset > 0
+            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomInset)px) !important;"
             : ""
             let topPaddingCss = topInset > 0
             ? "padding-top: calc(\(verticalPadding / 2)vh + \(topInset)px) !important;"
             : ""
             
             let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
-            let imgHeight = parent.userConfig.verticalWriting
-            ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100 + topInset + bottomInset)px)"
-            : "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
+            let imgHeight = "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -623,10 +619,10 @@ struct ReaderWebView: UIViewRepresentable {
             
             let spacerJs: String = {
                 if parent.userConfig.verticalWriting {
-                    guard verticalPadding > 0 || bottomOverlap > 0 else { return "" }
+                    guard verticalPadding > 0 else { return "" }
                     return """
                     var spacer = document.createElement('div');
-                    spacer.style.height = 'calc(\(verticalPadding / 2)vh + \(bottomOverlap)px)';
+                    spacer.style.height = '\(verticalPadding / 2)vh';
                     spacer.style.width = '100%';
                     spacer.style.display = 'block';
                     spacer.style.breakInside = 'avoid';

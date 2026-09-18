@@ -311,7 +311,7 @@ struct ReaderView: View {
         VStack(spacing: 0) {
             GeometryReader { geometry in
                 ZStack {
-                    let viewSize = CGSize(width: geometry.size.width.rounded(), height: (geometry.size.height + (userConfig.verticalWriting ? CGFloat(userConfig.fontSize) : 0)).rounded())
+                    let viewSize = CGSize(width: geometry.size.width.rounded(), height: geometry.size.height.rounded())
                     let scrollViewSize = CGSize(
                         width: userConfig.verticalWriting ? (geometry.size.width * (1 - CGFloat(userConfig.horizontalPadding) / 100)).rounded() : viewSize.width,
                         height: userConfig.verticalWriting ? viewSize.height : (geometry.size.height * (1 - CGFloat(userConfig.verticalPadding) / 100)).rounded()
