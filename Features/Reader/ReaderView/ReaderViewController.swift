@@ -104,6 +104,12 @@ final class ReaderViewController: UIViewController {
             return
         }
         
+        let unfolded = traitCollection.horizontalSizeClass == .regular
+        let regions: SafeAreaRegions = unfolded ? [] : .all
+        if let host = host as? UIHostingController<AnyView>, host.safeAreaRegions != regions {
+            host.safeAreaRegions = regions
+        }
+        
         let vertical = traitCollection.verticalBarEdge != .unspecified
         guard vertical != verticalBar else {
             return
