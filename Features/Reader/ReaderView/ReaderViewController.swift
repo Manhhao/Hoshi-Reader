@@ -36,6 +36,7 @@ final class ReaderViewController: UIViewController {
     private let infoItem = UIBarButtonItem()
     private let closeItem = UIBarButtonItem()
     private let optionsItem = UIBarButtonItem()
+    private var verticalBar = false
     
     init(host: UIViewController, onClose: @escaping () -> Void) {
         self.host = host
@@ -105,6 +106,23 @@ final class ReaderViewController: UIViewController {
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         updateSafeArea()
+    }
+    
+    @available(iOS 26.0, *)
+    override func updateProperties() {
+        super.updateProperties()
+        guard #available(iOS 27.1, *) else {
+            return
+        }
+        
+        let vertical = traitCollection.verticalBarEdge != .unspecified
+        guard vertical != verticalBar else {
+            return
+        }
+        
+        verticalBar = vertical
+        updateBars()
+        navigationItem.leadingItemGroups = vertical ? [closeItem.creatingFixedGroup()] : []
     }
     
     func attach(_ viewModel: ReaderViewModel) {
@@ -198,9 +216,10 @@ final class ReaderViewController: UIViewController {
         infoLabel.textColor = infoColor ?? secondaryLabel
         infoLabel.sizeToFit()
         
+        let leading: [UIBarButtonItem] = verticalBar ? [] : [closeItem]
         let items: [UIBarButtonItem] = info.isEmpty
-            ? [closeItem, .flexibleSpace(), optionsItem]
-            : [closeItem, .flexibleSpace(), infoItem, .flexibleSpace(), optionsItem]
+            ? leading + [.flexibleSpace(), optionsItem]
+            : leading + [.flexibleSpace(), infoItem, .flexibleSpace(), optionsItem]
         if toolbarItems?.count != items.count {
             setToolbarItems(items, animated: false)
         }
