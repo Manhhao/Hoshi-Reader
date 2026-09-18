@@ -81,6 +81,8 @@ final class HoshiWKWebView: WKWebView {
     var onHighlightUpdated: ((HighlightColor, UUID) -> Void)?
     var hasSelection: Bool = false
     
+    override var safeAreaInsets: UIEdgeInsets { .zero }
+    
     // https://stackoverflow.com/a/78488754
     override func buildMenu(with builder: UIMenuBuilder) {
         super.buildMenu(with: builder)
