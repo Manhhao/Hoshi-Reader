@@ -1,4 +1,4 @@
-To sync between Hoshi Reader and ッツ Reader, a Google Cloud project is required.
+To sync between Hoshi Reader and ッツ Reader, a Google Cloud project is required. Google changes the setup sometimes so this might become outdated.
 
 ## Table of Contents
 - [Setting up the Google Cloud project](#setting-up-the-google-cloud-project)
