@@ -24,6 +24,8 @@ struct WebViewState: Hashable {
     var characterSpacing: Double
     var paragraphSpacing: Double
     var size: CGSize
+    var topInset: CGFloat
+    var bottomInset: CGFloat
 }
 
 struct ReaderLoader: View {
@@ -79,16 +81,14 @@ struct ReaderView: View {
     @State private var sasayakiControlsExpanded = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
-    @State private var topSafeArea: CGFloat
-    @State private var bottomSafeArea: CGFloat
     private let webViewPadding: CGFloat = 4
     
     private var readerTopInset: CGFloat {
-        topSafeArea + webViewPadding
+        (viewModel.topSafeArea > 0 ? viewModel.topSafeArea : viewModel.bottomSafeArea) + webViewPadding
     }
     
     private var readerBottomInset: CGFloat {
-        bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
+        viewModel.bottomSafeArea > 0 ? viewModel.bottomSafeArea : max(viewModel.topSafeArea, 25)
     }
     
     private var sepiaInverted: Bool {
@@ -195,8 +195,6 @@ struct ReaderView: View {
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
         ))
-        _topSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea)
-        _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
     }
     
     private var topInsetStrip: some View {
@@ -400,6 +398,8 @@ struct ReaderView: View {
                             characterSpacing: userConfig.characterSpacing,
                             paragraphSpacing: userConfig.paragraphSpacing,
                             size: scrollViewSize,
+                            topInset: readerTopInset,
+                            bottomInset: readerBottomInset,
                         ))
                         .frame(width: scrollViewSize.width, height: scrollViewSize.height)
                     } else {
@@ -467,6 +467,8 @@ struct ReaderView: View {
                             characterSpacing: userConfig.characterSpacing,
                             paragraphSpacing: userConfig.paragraphSpacing,
                             size: geometry.size,
+                            topInset: readerTopInset,
+                            bottomInset: readerBottomInset,
                         ))
                         .frame(width: viewSize.width, height: viewSize.height)
                     }

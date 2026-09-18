@@ -109,6 +109,7 @@ final class ReaderViewController: UIViewController {
         if let host = host as? UIHostingController<AnyView>, host.safeAreaRegions != regions {
             host.safeAreaRegions = regions
         }
+        updateSafeArea()
         
         let vertical = traitCollection.verticalBarEdge != .unspecified
         guard vertical != verticalBar else {
@@ -120,14 +121,36 @@ final class ReaderViewController: UIViewController {
         navigationItem.leadingItemGroups = vertical ? [closeItem.creatingFixedGroup()] : []
     }
     
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateSafeArea()
+    }
+    
     func attach(_ viewModel: ReaderViewModel) {
         guard self.viewModel !== viewModel else { return }
         self.viewModel = viewModel
+        updateSafeArea()
         observeBars()
     }
     
     func detach() {
         viewModel = nil
+    }
+    
+    private func updateSafeArea() {
+        guard UIDevice.current.userInterfaceIdiom != .pad,
+              let viewModel,
+              let insets = view.window?.safeAreaInsets else {
+            return
+        }
+        
+        let top = traitCollection.horizontalSizeClass == .regular ? 0 : insets.top
+        if viewModel.topSafeArea != top {
+            viewModel.topSafeArea = top
+        }
+        if viewModel.bottomSafeArea != insets.bottom {
+            viewModel.bottomSafeArea = insets.bottom
+        }
     }
     
     private func close() {

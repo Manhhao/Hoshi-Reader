@@ -90,6 +90,8 @@ class ReaderViewModel {
     var contentsTab: ContentsTab = .chapters
     var isLoading = true
     var focusMode = false
+    var topSafeArea: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea
+    var bottomSafeArea: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea
     var bookInfo: BookInfo
     private let chapterStarts: [Int]
     let bridge = WebViewBridge()
