@@ -98,7 +98,7 @@ final class ReaderViewController: UIViewController {
             }
         ])
         
-        registerForTraitChanges([UITraitUserInterfaceIdiom.self]) { (self: Self, _) in
+        registerForTraitChanges([UITraitHorizontalSizeClass.self, UITraitUserInterfaceIdiom.self]) { (self: Self, _) in
             self.updateSafeArea()
         }
     }
@@ -120,6 +120,7 @@ final class ReaderViewController: UIViewController {
         if let host = host as? UIHostingController<AnyView>, host.safeAreaRegions != regions {
             host.safeAreaRegions = regions
         }
+        updateSafeArea()
         
         let vertical = traitCollection.verticalBarEdge != .unspecified
         guard vertical != verticalBar else {
@@ -156,7 +157,7 @@ final class ReaderViewController: UIViewController {
             guard let insets = view.window?.safeAreaInsets else {
                 return
             }
-            top = insets.top
+            top = traitCollection.horizontalSizeClass == .regular ? 0 : insets.top
             bottom = insets.bottom
         }
         
