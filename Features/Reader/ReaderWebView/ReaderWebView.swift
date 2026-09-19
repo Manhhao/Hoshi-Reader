@@ -619,7 +619,6 @@ struct ReaderWebView: UIViewRepresentable {
             
             let spacerJs: String = {
                 if parent.userConfig.verticalWriting {
-                    guard verticalPadding > 0 else { return "" }
                     return """
                     var spacer = document.createElement('div');
                     spacer.style.height = '\(verticalPadding / 2)vh';
