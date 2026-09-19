@@ -26,6 +26,7 @@ struct WebViewState: Hashable {
     var size: CGSize
     var topInset: CGFloat
     var bottomInset: CGFloat
+    var foldWidth: CGFloat
 }
 
 struct ReaderLoader: View {
@@ -400,6 +401,7 @@ struct ReaderView: View {
                             size: scrollViewSize,
                             topInset: readerTopInset,
                             bottomInset: readerBottomInset,
+                            foldWidth: 0,
                         ))
                         .frame(width: scrollViewSize.width, height: scrollViewSize.height)
                     } else {
@@ -408,6 +410,7 @@ struct ReaderView: View {
                             viewSize: viewSize,
                             topInset: readerTopInset,
                             bottomInset: readerBottomInset,
+                            foldWidth: viewModel.foldWidth,
                             bridge: viewModel.bridge,
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
@@ -469,6 +472,7 @@ struct ReaderView: View {
                             size: geometry.size,
                             topInset: readerTopInset,
                             bottomInset: readerBottomInset,
+                            foldWidth: viewModel.foldWidth,
                         ))
                         .frame(width: viewSize.width, height: viewSize.height)
                     }

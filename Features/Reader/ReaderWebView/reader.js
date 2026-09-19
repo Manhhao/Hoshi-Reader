@@ -73,9 +73,9 @@ window.hoshiReader = {
     
     splitPoints(paragraph, pageSize, currentScroll, vertical) {
         const rect = paragraph.getBoundingClientRect();
-        const start = (vertical ? rect.top : rect.left) + currentScroll;
+        const start = (vertical ? this.pageWidth - rect.right : rect.left) + currentScroll;
         const first = Math.floor(start / pageSize);
-        const last = Math.floor((start + (vertical ? rect.height : rect.width) - 1) / pageSize);
+        const last = Math.floor((start + rect.width - 1) / pageSize);
         const points = [];
         if (last === first) {
             return points;
@@ -113,7 +113,7 @@ window.hoshiReader = {
                     rects = this.positionRects(range, positions[mid], vertical);
                 }
                 
-                const end = Math.max(...rects.map(rect => vertical ? rect.bottom : rect.right));
+                const end = Math.max(...rects.map(rect => vertical ? this.pageWidth - rect.left : rect.right));
                 if (end + currentScroll > limit) {
                     hit = mid;
                     high = mid - 1;
@@ -124,7 +124,7 @@ window.hoshiReader = {
             
             if (hit > 0) {
                 const rect = this.positionRects(range, positions[hit], vertical)[0];
-                if ((vertical ? rect.top : rect.left) + currentScroll >= limit) {
+                if ((vertical ? this.pageWidth - rect.right : rect.left) + currentScroll >= limit) {
                     points.push(positions[hit]);
                 }
             }
@@ -135,8 +135,8 @@ window.hoshiReader = {
     
     fragmentBlocks() {
         const vertical = this.isVertical();
-        const pageSize = vertical ? this.pageHeight : this.pageWidth;
-        const currentScroll = vertical ? document.body.scrollTop : document.body.scrollLeft;
+        const pageSize = this.pageWidth;
+        const currentScroll = Math.abs(document.body.scrollLeft);
         const targets = [];
         
         for (const paragraph of document.body.querySelectorAll('p')) {
@@ -216,7 +216,7 @@ window.hoshiReader = {
                 var range = document.createRange();
                 range.selectNodeContents(node);
                 var rect = this.getRect(range);
-                if ((vertical ? rect.top : rect.left) < 0) {
+                if ((vertical ? this.pageWidth - rect.right : rect.left) < 0) {
                     exploredChars += nodeLen;
                 }
             }
@@ -233,25 +233,14 @@ window.hoshiReader = {
         window.lastPageScroll = initialScroll;
         
         var vertical = this.isVertical();
-        var pageHeight = this.pageHeight;
         var pageWidth = this.pageWidth;
         document.body.addEventListener('scroll', function () {
-            if (vertical) {
-                var currentScroll = document.body.scrollTop;
-                var snappedScroll = Math.round(currentScroll / pageHeight) * pageHeight;
-                if (Math.abs(currentScroll - snappedScroll) > 1) {
-                    document.body.scrollTop = window.lastPageScroll;
-                } else {
-                    window.lastPageScroll = snappedScroll;
-                }
+            var currentScroll = Math.abs(document.body.scrollLeft);
+            var snappedScroll = Math.round(currentScroll / pageWidth) * pageWidth;
+            if (Math.abs(currentScroll - snappedScroll) > 1) {
+                document.body.scrollLeft = vertical ? -window.lastPageScroll : window.lastPageScroll;
             } else {
-                var currentScroll = document.body.scrollLeft;
-                var snappedScroll = Math.round(currentScroll / pageWidth) * pageWidth;
-                if (Math.abs(currentScroll - snappedScroll) > 1) {
-                    document.body.scrollLeft = window.lastPageScroll;
-                } else {
-                    window.lastPageScroll = snappedScroll;
-                }
+                window.lastPageScroll = snappedScroll;
             }
         }, { passive: true });
     },
@@ -284,19 +273,15 @@ window.hoshiReader = {
     getScrollContext() {
         var vertical = this.isVertical();
         var scrollEl = document.body;
-        var pageSize = vertical ? this.pageHeight : this.pageWidth;
-        var totalSize = vertical ? scrollEl.scrollHeight : scrollEl.scrollWidth;
+        var pageSize = this.pageWidth;
+        var totalSize = scrollEl.scrollWidth;
         var maxScroll = Math.max(0, totalSize - pageSize);
         return { vertical, scrollEl, pageSize, maxScroll };
     },
     
     setScrollOffset(context, scroll) {
         var clampedScroll = Math.min(Math.max(0, scroll), context.maxScroll);
-        if (context.vertical) {
-            context.scrollEl.scrollTop = clampedScroll;
-        } else {
-            context.scrollEl.scrollLeft = clampedScroll;
-        }
+        context.scrollEl.scrollLeft = context.vertical ? -clampedScroll : clampedScroll;
         return clampedScroll;
     },
     
@@ -310,27 +295,27 @@ window.hoshiReader = {
     
     paginate(direction) {
         var vertical = this.isVertical();
-        var pageSize = vertical ? this.pageHeight : this.pageWidth;
+        var pageSize = this.pageWidth;
         if (pageSize <= 0) return "limit";
         
         if (direction === "forward") {
-            var totalSize = vertical ? document.body.scrollHeight : document.body.scrollWidth;
+            var totalSize = document.body.scrollWidth;
             var maxScroll = Math.max(0, totalSize - pageSize);
             var maxAlignedScroll = Math.floor(maxScroll / pageSize) * pageSize;
-            var currentScroll = vertical ? document.body.scrollTop : document.body.scrollLeft;
+            var currentScroll = Math.abs(document.body.scrollLeft);
             if ((currentScroll + pageSize) <= (maxAlignedScroll + 1)) {
                 var targetScroll = Math.round((currentScroll + pageSize) / pageSize) * pageSize;
                 window.lastPageScroll = targetScroll;
-                if (vertical) { document.body.scrollTop = targetScroll; } else { document.body.scrollLeft = targetScroll; }
+                document.body.scrollLeft = vertical ? -targetScroll : targetScroll;
                 return "scrolled";
             }
             return "limit";
         } else {
-            var currentScroll = vertical ? document.body.scrollTop : document.body.scrollLeft;
+            var currentScroll = Math.abs(document.body.scrollLeft);
             if (currentScroll > 0) {
                 var targetScroll = Math.round((currentScroll - pageSize) / pageSize) * pageSize;
                 window.lastPageScroll = targetScroll;
-                if (vertical) { document.body.scrollTop = targetScroll; } else { document.body.scrollLeft = targetScroll; }
+                document.body.scrollLeft = vertical ? -targetScroll : targetScroll;
                 return "scrolled";
             }
             return "limit";
@@ -344,8 +329,8 @@ window.hoshiReader = {
         }
         
         const rect = this.getRect(range);
-        const currentScroll = context.vertical ? context.scrollEl.scrollTop : context.scrollEl.scrollLeft;
-        const anchor = (context.vertical ? (rect.top + rect.bottom) / 2 : (rect.left + rect.right) / 2) + currentScroll;
+        const currentScroll = Math.abs(context.scrollEl.scrollLeft);
+        const anchor = (context.vertical ? this.pageWidth - (rect.left + rect.right) / 2 : (rect.left + rect.right) / 2) + currentScroll;
         const targetScroll = this.alignToPage(context, anchor);
         
         if (targetScroll === currentScroll) {
@@ -589,7 +574,7 @@ window.hoshiReader = {
             range.setStart(targetNode, 0);
             range.setEnd(targetNode, 1);
             var rect = this.getRect(range);
-            var anchor = (context.vertical ? rect.top : rect.left) + (context.vertical ? context.scrollEl.scrollTop : context.scrollEl.scrollLeft);
+            var anchor = (context.vertical ? this.pageWidth - rect.right : rect.left) + Math.abs(context.scrollEl.scrollLeft);
             var targetScroll = this.alignToPage(context, anchor);
             
             this.setScrollOffset(context, targetScroll);
@@ -619,8 +604,8 @@ window.hoshiReader = {
         }
         
         var rect = this.getRect(target);
-        var currentScroll = context.vertical ? context.scrollEl.scrollTop : context.scrollEl.scrollLeft;
-        var anchor = (context.vertical ? rect.top : rect.left) + currentScroll;
+        var currentScroll = Math.abs(context.scrollEl.scrollLeft);
+        var anchor = (context.vertical ? this.pageWidth - rect.right : rect.left) + currentScroll;
         var targetScroll = this.alignToPage(context, anchor);
         
         this.setScrollOffset(context, targetScroll);

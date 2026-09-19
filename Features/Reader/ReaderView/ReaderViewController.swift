@@ -95,6 +95,10 @@ final class ReaderViewController: UIViewController {
                 completion(elements)
             }
         ])
+        
+        registerForTraitChanges([UITraitHorizontalSizeClass.self, UITraitUserInterfaceIdiom.self]) { (self: Self, _) in
+            self.updateSafeArea()
+        }
     }
     
     @available(iOS 26.0, *)
@@ -121,6 +125,11 @@ final class ReaderViewController: UIViewController {
         navigationItem.leadingItemGroups = vertical ? [closeItem.creatingFixedGroup()] : []
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateFold()
+    }
+    
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         updateSafeArea()
@@ -130,6 +139,7 @@ final class ReaderViewController: UIViewController {
         guard self.viewModel !== viewModel else { return }
         self.viewModel = viewModel
         updateSafeArea()
+        updateFold()
         observeBars()
     }
     
@@ -138,18 +148,40 @@ final class ReaderViewController: UIViewController {
     }
     
     private func updateSafeArea() {
-        guard UIDevice.current.userInterfaceIdiom != .pad,
-              let viewModel,
-              let insets = view.window?.safeAreaInsets else {
+        guard let viewModel else {
             return
         }
         
-        let top = traitCollection.horizontalSizeClass == .regular ? 0 : insets.top
+        let top: CGFloat
+        let bottom: CGFloat
+        if traitCollection.userInterfaceIdiom == .pad {
+            top = 32
+            bottom = 32
+        } else {
+            guard let insets = view.window?.safeAreaInsets else {
+                return
+            }
+            top = traitCollection.horizontalSizeClass == .regular ? 0 : insets.top
+            bottom = insets.bottom
+        }
+        
         if viewModel.topSafeArea != top {
             viewModel.topSafeArea = top
         }
-        if viewModel.bottomSafeArea != insets.bottom {
-            viewModel.bottomSafeArea = insets.bottom
+        if viewModel.bottomSafeArea != bottom {
+            viewModel.bottomSafeArea = bottom
+        }
+    }
+    
+    private func updateFold() {
+        guard #available(iOS 27.1, *), let viewModel else {
+            return
+        }
+        
+        let fold = view.reservedRegions(kind: .division).first { $0.isActive && $0.frame.height > $0.frame.width }
+        let width = fold?.frame.width ?? 0
+        if viewModel.foldWidth != width {
+            viewModel.foldWidth = width
         }
     }
     

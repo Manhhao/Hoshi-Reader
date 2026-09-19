@@ -135,6 +135,7 @@ struct ReaderWebView: UIViewRepresentable {
     let viewSize: CGSize
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
+    var foldWidth: CGFloat = 0
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
@@ -418,28 +419,22 @@ struct ReaderWebView: UIViewRepresentable {
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
             let topInset = Double(parent.topInset)
             let bottomInset = Double(parent.bottomInset)
+            let foldWidth = Double(parent.foldWidth)
+            let spread = foldWidth > 0
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
-            let columnGapUnit = parent.userConfig.verticalWriting ? "vh" : "vw"
-            let columnGapValue = parent.userConfig.verticalWriting
-            ? verticalPadding
-            : horizontalPadding
             
-            let columnGap = parent.userConfig.verticalWriting
-            ? "calc(\(columnGapValue)\(columnGapUnit) + \(topInset + bottomInset)px)"
-            : "\(columnGapValue)\(columnGapUnit)"
-            let columnWidth = parent.userConfig.verticalWriting
-            ? "var(--page-height, 100vh)"
-            : "var(--page-width, 100vw)"
+            let pages = spread ? 2 : 1
+            let gap = spread ? "max(\(foldWidth)px, \(horizontalPadding)vw)" : "\(horizontalPadding)vw"
+            let columnWidth = "calc(var(--page-width, 100vw) / \(pages) - \(gap) - 1px)"
             
-            let bottomPaddingCss = bottomInset > 0
-            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomInset)px) !important;"
-            : ""
-            let topPaddingCss = topInset > 0
-            ? "padding-top: calc(\(verticalPadding / 2)vh + \(topInset)px) !important;"
-            : ""
+            let sidePadding = "calc(\(gap) / 2)"
+            let leftPadding = spread && parent.userConfig.verticalWriting
+            ? "calc(var(--page-width, 100vw) / 2 + \(sidePadding))"
+            : sidePadding
+            let topPadding = "calc(\(verticalPadding / 2)vh + \(topInset)px)"
+            let bottomPadding = "calc(\(verticalPadding / 2)vh + \(bottomInset)px)"
             
-            let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
             let imgHeight = "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
             
             let textColorCss = """
@@ -535,11 +530,10 @@ struct ReaderWebView: UIViewRepresentable {
                 -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
+                -webkit-column-axis: horizontal !important;
                 column-width: \(columnWidth) !important;
-                column-gap: \(columnGap);
-                padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
-                \(topPaddingCss)
-                \(bottomPaddingCss)
+                column-gap: \(gap);
+                padding: \(topPadding) \(sidePadding) \(bottomPadding) \(leftPadding) !important;
                 \(gridCss)
             }
             body * {
@@ -547,7 +541,7 @@ struct ReaderWebView: UIViewRepresentable {
                 -webkit-column-count: auto !important;
             }
             img.block-img {
-                max-width: \(imgWidth) !important;
+                max-width: \(columnWidth) !important;
                 max-height: \(imgHeight) !important;
                 width: auto !important;
                 height: auto !important;
@@ -558,7 +552,7 @@ struct ReaderWebView: UIViewRepresentable {
                 object-fit: contain !important;
             }
             svg {
-                max-width: \(imgWidth) !important;
+                max-width: \(columnWidth) !important;
                 max-height: \(imgHeight) !important;
                 width: 100% !important;
                 height: 100% !important;
@@ -620,26 +614,16 @@ struct ReaderWebView: UIViewRepresentable {
             """
             
             let spacerJs: String = {
-                if parent.userConfig.verticalWriting {
-                    return """
+                guard spread || horizontalPadding > 0 else { return "" }
+                return """
+                for (var i = 0; i < \(pages); i++) {
                     var spacer = document.createElement('div');
-                    spacer.style.height = '\(verticalPadding / 2)vh';
-                    spacer.style.width = '100%';
+                    spacer.style.\(parent.userConfig.verticalWriting ? "width" : "height") = '100%';
                     spacer.style.display = 'block';
                     spacer.style.breakInside = 'avoid';
                     document.body.appendChild(spacer);
-                    """
-                } else {
-                    guard horizontalPadding > 0 else { return "" }
-                    return """
-                    var spacer = document.createElement('div');
-                    spacer.style.height = '100%';
-                    spacer.style.width = '\(horizontalPadding / 2)vw';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                    """
                 }
+                """
             }()
             
             let furiganaJs: String = {
@@ -710,7 +694,6 @@ struct ReaderWebView: UIViewRepresentable {
                 \(selectionJs)
                 \(readerJs)
                 \(highlightsJs)
-                window.hoshiReader.pageHeight = \(pageHeight);
                 window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
                 
