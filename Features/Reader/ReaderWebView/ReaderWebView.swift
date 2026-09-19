@@ -135,6 +135,7 @@ struct ReaderWebView: UIViewRepresentable {
     let viewSize: CGSize
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
+    var foldWidth: CGFloat = 0
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
@@ -418,13 +419,19 @@ struct ReaderWebView: UIViewRepresentable {
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
             let topInset = Double(parent.topInset)
             let bottomInset = Double(parent.bottomInset)
+            let foldWidth = Double(parent.foldWidth)
+            let spread = foldWidth > 0
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             
-            let gap = "\(horizontalPadding)vw"
-            let columnWidth = "calc(var(--page-width, 100vw) - \(gap) - 1px)"
+            let pages = spread ? 2 : 1
+            let gap = spread ? "max(\(foldWidth)px, \(horizontalPadding)vw)" : "\(horizontalPadding)vw"
+            let columnWidth = "calc(var(--page-width, 100vw) / \(pages) - \(gap) - 1px)"
             
             let sidePadding = "calc(\(gap) / 2)"
+            let leftPadding = spread && parent.userConfig.verticalWriting
+            ? "calc(var(--page-width, 100vw) / 2 + \(sidePadding))"
+            : sidePadding
             let topPadding = "calc(\(verticalPadding / 2)vh + \(topInset)px)"
             let bottomPadding = "calc(\(verticalPadding / 2)vh + \(bottomInset)px)"
             
@@ -546,7 +553,7 @@ struct ReaderWebView: UIViewRepresentable {
                 -webkit-column-axis: horizontal !important;
                 column-width: \(columnWidth) !important;
                 column-gap: \(gap);
-                padding: \(topPadding) \(sidePadding) \(bottomPadding) \(sidePadding) !important;
+                padding: \(topPadding) \(sidePadding) \(bottomPadding) \(leftPadding) !important;
                 \(gridCss)
             }
             body * {
@@ -622,13 +629,15 @@ struct ReaderWebView: UIViewRepresentable {
             """
             
             let spacerJs: String = {
-                guard horizontalPadding > 0 else { return "" }
+                guard spread || horizontalPadding > 0 else { return "" }
                 return """
-                var spacer = document.createElement('div');
-                spacer.style.\(parent.userConfig.verticalWriting ? "width" : "height") = '100%';
-                spacer.style.display = 'block';
-                spacer.style.breakInside = 'avoid';
-                document.body.appendChild(spacer);
+                for (var i = 0; i < \(pages); i++) {
+                    var spacer = document.createElement('div');
+                    spacer.style.\(parent.userConfig.verticalWriting ? "width" : "height") = '100%';
+                    spacer.style.display = 'block';
+                    spacer.style.breakInside = 'avoid';
+                    document.body.appendChild(spacer);
+                }
                 """
             }()
             

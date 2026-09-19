@@ -92,6 +92,7 @@ class ReaderViewModel {
     var focusMode = false
     var topSafeArea: CGFloat = 0
     var bottomSafeArea: CGFloat = 0
+    var foldWidth: CGFloat = 0
     var bookInfo: BookInfo
     private let chapterStarts: [Int]
     let bridge = WebViewBridge()

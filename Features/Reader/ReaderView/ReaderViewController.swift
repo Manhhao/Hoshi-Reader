@@ -103,11 +103,6 @@ final class ReaderViewController: UIViewController {
         }
     }
     
-    override func viewSafeAreaInsetsDidChange() {
-        super.viewSafeAreaInsetsDidChange()
-        updateSafeArea()
-    }
-    
     @available(iOS 26.0, *)
     override func updateProperties() {
         super.updateProperties()
@@ -132,10 +127,21 @@ final class ReaderViewController: UIViewController {
         navigationItem.leadingItemGroups = vertical ? [closeItem.creatingFixedGroup()] : []
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateFold()
+    }
+    
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateSafeArea()
+    }
+    
     func attach(_ viewModel: ReaderViewModel) {
         guard self.viewModel !== viewModel else { return }
         self.viewModel = viewModel
         updateSafeArea()
+        updateFold()
         observeBars()
     }
     
@@ -166,6 +172,18 @@ final class ReaderViewController: UIViewController {
         }
         if viewModel.bottomSafeArea != bottom {
             viewModel.bottomSafeArea = bottom
+        }
+    }
+    
+    private func updateFold() {
+        guard #available(iOS 27.1, *), let viewModel else {
+            return
+        }
+        
+        let fold = view.reservedRegions(kind: .division).first { $0.isActive && $0.frame.height > $0.frame.width }
+        let width = fold?.frame.width ?? 0
+        if viewModel.foldWidth != width {
+            viewModel.foldWidth = width
         }
     }
     
