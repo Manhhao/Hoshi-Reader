@@ -169,6 +169,7 @@ class SasayakiPlayer {
     func cues(for chapterIndex: Int) -> String {
         let cues = matchData?.matches
             .filter { $0.chapterIndex == chapterIndex }
+            .sorted { $0.start < $1.start }
             .map { SasayakiCueRange(id: $0.id, start: $0.start, length: $0.length) } ?? []
         let data = try? JSONEncoder().encode(cues)
         return data.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
@@ -490,7 +491,7 @@ class SasayakiPlayer {
             guard let info = notification.userInfo,
                   let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue)
-            else { return }
+                    else { return }
             let options = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
             Task { @MainActor [weak self] in
                 self?.handleInterruption(type, options: options)

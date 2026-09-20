@@ -6,6 +6,7 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+import Speech
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -15,47 +16,112 @@ struct SasayakiMatchView: View {
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     
+    @State private var useAudio = false
     @State private var isImporting = false
-    @State private var fileURL: URL?
-    @State private var isMatching = false
+    @State private var subtitleURL: URL?
+    @State private var audioURL: URL?
+    @State private var characterCount = 0
     @State private var match: SasayakiMatchData?
+    @State private var transcript: SasayakiTranscript?
+    @State private var showClearTranscript = false
+    
+    private var canTranscribe: Bool {
+        if #available(iOS 26.0, *) {
+            return SpeechTranscriber.isAvailable
+        }
+        return false
+    }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("File") {
+                Section {
                     HStack {
-                        fileNameView
+                        Text(fileURL?.lastPathComponent ?? String(localized: "No file selected"))
+                            .lineLimit(1)
                         Spacer()
                         Button("Open") {
                             isImporting = true
                         }
+                        .disabled(isMatching)
                     }
-                }
-                
-                Section {
-                    Button {
-                        matchFile()
-                    } label: {
-                        if isMatching {
-                            HStack {
-                                ProgressView()
-                                Text("Matching…")
+                    if isMatching {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(progressLabel)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.primary)
+                                if let progressDetail {
+                                    Text(progressDetail)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                        } else {
-                            Text("Match")
                         }
+                        Button("Pause") {
+                            viewModel.pauseSasayakiTranscription()
+                        }
+                    } else {
+                        Button(matchButtonTitle) {
+                            start()
+                        }
+                        .disabled(fileURL == nil)
                     }
-                    .disabled(fileURL == nil || isMatching)
                 }
                 
-                if let match {
+                if let errorMessage = viewModel.sasayakiError {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                    }
+                }
+                
+                if match != nil || transcript != nil {
                     Section("Current Match") {
-                        LabeledContent("Match Rate", value: matchRate(for: match))
+                        if let match, characterCount > 0 {
+                            LabeledContent("Coverage", value: coverage(for: match))
+                        }
+                        if let transcript, transcript.duration > 0 {
+                            LabeledContent("Transcribed") {
+                                Text("\(timeString(transcript.through)) / \(timeString(transcript.duration))")
+                                    .monospacedDigit()
+                            }
+                        }
+                        if transcript != nil {
+                            Button("Clear Transcription", role: .destructive) {
+                                showClearTranscript = true
+                            }
+                            .disabled(isMatching)
+                        }
                     }
                 }
             }
-            .navigationTitle("Match")
+            .contentMargins(.top, canTranscribe ? 0 : nil, for: .scrollContent)
+            .safeAreaInset(edge: .top, spacing: 12) {
+                if canTranscribe {
+                    Picker("", selection: $useAudio) {
+                        Text("Subtitles").tag(false)
+                        Text("Transcription").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(isMatching)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .background(.bar)
+                }
+            }
+            .alert("Clear transcription?", isPresented: $showClearTranscript) {
+                Button("Clear", role: .destructive) {
+                    try? viewModel.clearSasayakiTranscript(book: book)
+                    transcript = nil
+                    viewModel.sasayakiError = nil
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Only clears transcription data, match is kept.")
+            }
+            .navigationTitle(book.displayTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -65,47 +131,112 @@ struct SasayakiMatchView: View {
                 }
             }
             .onAppear {
-                match = viewModel.loadSasayakiMatch(book: book)
+                reloadMatch()
+                if canTranscribe, let url = viewModel.loadSasayakiAudioURL(book: book) {
+                    audioURL = url
+                }
+                if isMatching {
+                    useAudio = true
+                }
             }
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: ["srt", "txt"].compactMap { UTType(filenameExtension: $0) }
-            ) { result in
+            .onDisappear {
+                viewModel.pauseSasayakiTranscription()
+            }
+            .onChange(of: isMatching) { _, running in
+                if !running {
+                    reloadMatch()
+                }
+            }
+            .fileImporter(isPresented: $isImporting, allowedContentTypes: allowedTypes) { result in
                 if case .success(let url) = result {
-                    fileURL = url
+                    if useAudio {
+                        audioURL = url
+                    } else {
+                        subtitleURL = url
+                    }
                 }
             }
         }
     }
     
-    private func matchRate(for matchData: SasayakiMatchData) -> String {
-        let matched = matchData.matches.count
-        let total = matched + matchData.unmatched
-        
-        let percentage = total > 0 ? (Double(matched) / Double(total)) * 100 : 0
-        return "\(matched)/\(total) (\(String(format: "%.1f%%", percentage)))"
+    private var isMatching: Bool {
+        viewModel.sasayakiIsRunning(book)
     }
     
-    private func matchFile() {
+    private var fileURL: URL? {
+        useAudio ? audioURL : subtitleURL
+    }
+    
+    private var matchButtonTitle: String {
+        guard useAudio, let transcript else {
+            return "Match"
+        }
+        return transcript.through > 0 && !transcript.isComplete ? "Resume" : "Match"
+    }
+    
+    private var allowedTypes: [UTType] {
+        let extensions = useAudio ? ["mp3", "m4b", "m4a"] : ["srt", "txt"]
+        return extensions.compactMap { UTType(filenameExtension: $0) }
+    }
+    
+    private var progressLabel: String {
+        switch viewModel.sasayakiProgress {
+        case .downloading(let fraction):
+            return "Downloading model… \(Int(fraction * 100))%"
+        case .transcribing(let through, let duration, _):
+            guard duration > 0 else {
+                return "Transcribing…"
+            }
+            return "Transcribing \(timeString(through)) / \(timeString(duration))"
+        case .aligning:
+            return "Aligning…"
+        case nil:
+            return "Matching…"
+        }
+    }
+    
+    private var progressDetail: String? {
+        guard case .transcribing(_, _, let remaining) = viewModel.sasayakiProgress, let remaining else {
+            return nil
+        }
+        let minutes = Int((remaining / 60).rounded(.up))
+        return "about \(minutes) min left"
+    }
+    
+    private func timeString(_ seconds: Double) -> String {
+        let total = Int(seconds.rounded())
+        return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+    }
+    
+    private func coverage(for matchData: SasayakiMatchData) -> String {
+        let matched = matchData.matchedCharacters
+        let percentage = (Double(matched) / Double(characterCount)) * 100
+        return "\(matched)/\(characterCount) (\(String(format: "%.1f%%", percentage)))"
+    }
+    
+    private func start() {
         guard let fileURL else {
             return
         }
         
-        isMatching = true
-        Task { @MainActor in
-            defer { isMatching = false }
-            match = try? await viewModel.runSasayakiMatch(book: book, srtURL: fileURL)
+        viewModel.sasayakiError = nil
+        if !useAudio {
+            do {
+                match = try viewModel.runSasayakiMatch(book: book, srtURL: fileURL)
+            } catch {
+                viewModel.sasayakiError = error.localizedDescription
+            }
+        } else if #available(iOS 26.0, *) {
+            viewModel.startSasayakiTranscription(book: book, audioURL: fileURL)
         }
     }
     
-    @ViewBuilder
-    private var fileNameView: some View {
-        if fileURL?.lastPathComponent == nil {
-            Text("No file selected")
-                .lineLimit(1)
-        } else {
-            Text(fileURL!.lastPathComponent)
-                .lineLimit(1)
+    private func reloadMatch() {
+        guard let root = try? BookStorage.getBooksDirectory().appendingPathComponent(book.folder) else {
+            return
         }
+        match = BookStorage.loadSasayakiMatch(root: root)
+        transcript = BookStorage.loadSasayakiTranscript(root: root)
+        characterCount = BookStorage.loadBookInfo(root: root)?.characterCount ?? 0
     }
 }

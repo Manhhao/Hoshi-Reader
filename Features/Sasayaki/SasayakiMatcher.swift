@@ -6,66 +6,14 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
-import EPUBKit
 import Foundation
 
 struct SasayakiMatcher {
     private static let searchWindow = 200
     private static let maxMisses = 4
     
-    private enum MatchError: Error {
-        case missingEpub
-    }
-    
-    private struct Chapter {
-        let chapterIndex: Int
-        let start: Int
-        let length: Int
-        var end: Int { start + length }
-    }
-    
     static func match(rootURL: URL, cues: [SasayakiCue]) throws -> SasayakiMatchData {
-        guard let epub = BookStorage.loadMetadata(root: rootURL)?.epub else {
-            throw MatchError.missingEpub
-        }
-        
-        let document = try BookStorage.loadEpub(rootURL.appendingPathComponent(epub))
-        let guideTocPaths: Set<String> = Set(
-            (document.guide?.references ?? [])
-                .filter { $0.type.lowercased() == "toc" }
-                .map { $0.href.split(separator: "#", maxSplits: 1).first.map(String.init) ?? $0.href }
-        )
-        let imageTag = /<(?:img|image)\b/
-        var source: [Character] = []
-        var chapters: [Chapter] = []
-        var images: [SasayakiImage] = []
-        for (spineIndex, item) in document.spine.items.enumerated() {
-            guard item.linear, let manifestItem = document.manifest.items[item.idref] else {
-                continue
-            }
-            if manifestItem.property?.contains("nav") == true {
-                continue
-            }
-            if guideTocPaths.contains(manifestItem.path) {
-                continue
-            }
-            
-            let url = document.contentDirectory.appendingPathComponent(manifestItem.path)
-            guard let content = try? String(contentsOf: url, encoding: .utf8) else {
-                continue
-            }
-            
-            let body = content.body()
-            for (imageIndex, match) in body.matches(of: imageTag).enumerated() {
-                let offset = String(body[..<match.range.lowerBound]).filtered().count
-                images.append(SasayakiImage(chapterIndex: spineIndex, imageIndex: imageIndex, offset: offset))
-            }
-            
-            let chapterText = Array(body.filtered())
-            chapters.append(Chapter(chapterIndex: spineIndex, start: source.count, length: chapterText.count))
-            source.append(contentsOf: chapterText)
-        }
-        
+        let source = try SasayakiSource.build(rootURL: rootURL)
         var candidates: [Int] = []
         for cue in cues.prefix(15) {
             if cue.text.hasPrefix("＊") {
@@ -76,7 +24,7 @@ struct SasayakiMatcher {
             if text.count < 6 {
                 continue
             }
-            if let index = findText(source: source, text: text, start: 0, end: source.count) {
+            if let index = SasayakiSource.findText(source: source.text, text: text, start: 0, end: source.text.count) {
                 candidates.append(index)
             }
         }
@@ -109,9 +57,14 @@ struct SasayakiMatcher {
                 continue
             }
             
-            var found = findText(source: source, text: chars, start: cursor, end: min(source.count, cursor + chars.count + searchWindow))
+            var found = SasayakiSource.findText(
+                source: source.text,
+                text: chars,
+                start: cursor,
+                end: min(source.text.count, cursor + chars.count + searchWindow)
+            )
             if found == nil, misses >= maxMisses, chars.count >= 10 {
-                found = findUnique(source: source, text: chars, start: cursor)
+                found = findUnique(source: source.text, text: chars, start: cursor)
             }
             guard let index = found else {
                 unmatched += 1
@@ -120,7 +73,7 @@ struct SasayakiMatcher {
             }
             
             let end = index + chars.count
-            let range = chapters.first(where: { index >= $0.start && index < $0.end })!
+            let range = source.chapters.first { index >= $0.start && index < $0.end }!
             guard end <= range.end else {
                 unmatched += 1
                 misses += 1
@@ -145,28 +98,17 @@ struct SasayakiMatcher {
         return SasayakiMatchData(
             matches: matches,
             unmatched: unmatched,
-            images: images
+            images: source.images
         )
     }
     
     private static func findUnique(source: [Character], text: [Character], start: Int) -> Int? {
-        guard let index = findText(source: source, text: text, start: start, end: source.count) else {
+        guard let index = SasayakiSource.findText(source: source, text: text, start: start, end: source.count) else {
             return nil
         }
-        guard findText(source: source, text: text, start: index + 1, end: source.count) == nil else {
+        guard SasayakiSource.findText(source: source, text: text, start: index + 1, end: source.count) == nil else {
             return nil
         }
         return index
-    }
-    
-    private static func findText(source: [Character], text: [Character], start: Int, end: Int) -> Int? {
-        var index = start
-        while index <= end - text.count {
-            if source[index..<(index + text.count)].elementsEqual(text) {
-                return index
-            }
-            index += 1
-        }
-        return nil
     }
 }

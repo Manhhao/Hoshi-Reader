@@ -15,10 +15,32 @@ struct SasayakiCue: Hashable {
     let text: String
 }
 
-struct SasayakiMatch: Codable, Identifiable, Hashable {
+enum SasayakiTranscriptionProgress {
+    case downloading(Double)
+    case transcribing(through: Double, duration: Double, remaining: Double?)
+    case aligning
+}
+
+struct SasayakiToken: Codable, Sendable {
+    let text: String
+    let start: Double
+    let end: Double
+}
+
+struct SasayakiTranscript: Codable {
+    var through: Double
+    var duration: Double
+    var tokens: [SasayakiToken]
+    
+    var isComplete: Bool {
+        duration > 0 && through + 1.5 >= duration
+    }
+}
+
+struct SasayakiMatch: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let startTime: Double
-    let endTime: Double
+    var endTime: Double
     let text: String
     let chapterIndex: Int
     let start: Int
@@ -31,28 +53,19 @@ struct SasayakiCueRange: Encodable {
     let length: Int
 }
 
-struct SasayakiImage: Codable {
+struct SasayakiImage: Codable, Sendable {
     let chapterIndex: Int
     let imageIndex: Int
     let offset: Int
 }
 
-struct SasayakiMatchData: Codable {
+nonisolated struct SasayakiMatchData: Codable, Sendable {
     let matches: [SasayakiMatch]
     let unmatched: Int
     let images: [SasayakiImage]
     
-    init(matches: [SasayakiMatch], unmatched: Int, images: [SasayakiImage] = []) {
-        self.matches = matches
-        self.unmatched = unmatched
-        self.images = images
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        matches = try container.decode([SasayakiMatch].self, forKey: .matches)
-        unmatched = try container.decode(Int.self, forKey: .unmatched)
-        images = try container.decodeIfPresent([SasayakiImage].self, forKey: .images) ?? []
+    var matchedCharacters: Int {
+        matches.reduce(0) { $0 + $1.length }
     }
 }
 

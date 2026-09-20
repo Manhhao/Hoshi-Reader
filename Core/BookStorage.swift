@@ -18,6 +18,7 @@ nonisolated enum FileNames: Sendable {
     static let statistics = "statistics.json"
     static let sasayakiMatch = "sasayaki_match.json"
     static let sasayakiPlayback = "sasayaki_playback.json"
+    static let sasayakiTranscript = "sasayaki_transcript.json"
     static let highlights = "highlights.json"
 }
 
@@ -147,6 +148,10 @@ struct BookStorage {
     
     static func loadSasayakiMatch(root: URL) -> SasayakiMatchData? {
         load(SasayakiMatchData.self, from: root.appendingPathComponent(FileNames.sasayakiMatch))
+    }
+    
+    static func loadSasayakiTranscript(root: URL) -> SasayakiTranscript? {
+        load(SasayakiTranscript.self, from: root.appendingPathComponent(FileNames.sasayakiTranscript))
     }
     
     static func loadSasayakiPlayback(root: URL) -> SasayakiPlaybackData? {
