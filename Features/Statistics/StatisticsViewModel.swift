@@ -32,6 +32,7 @@ class StatisticsViewModel {
             guard resetTime != oldValue else {
                 return
             }
+            today = Self.startOfDay(resetTime: resetTime)
             referenceDate = today
         }
     }
@@ -42,16 +43,13 @@ class StatisticsViewModel {
     
     var visibleBookCount = 5
     
+    private(set) var today = StatisticsViewModel.startOfDay(resetTime: 0)
     private(set) var days: [ReadingDay] = []
     private(set) var books: [BookStatistics] = []
     
     private var allBooks: [BookStatistics] = []
     private var daysByDate: [Date: ReadingDay] = [:]
     private var daysByMonth: [Date: ReadingDay] = [:]
-    
-    var today: Date {
-        Calendar.current.startOfDay(for: Date.now.addingTimeInterval(-Double(resetTime) * 60))
-    }
     
     var firstDay: Date? {
         days.first?.date
@@ -105,6 +103,12 @@ class StatisticsViewModel {
     }
     
     func load() {
+        let current = Self.startOfDay(resetTime: resetTime)
+        if current != today, interval(for: referenceDate)?.halfOpen.contains(today) ?? true {
+            referenceDate = current
+        }
+        today = current
+        
         allBooks = StatisticsStorage.loadAll()
         daysByDate = allBooks.flatMap(\.days).reduce(into: [:]) { grouped, day in
             grouped[day.date, default: ReadingDay(date: day.date)].add(day)
@@ -200,6 +204,10 @@ class StatisticsViewModel {
             return book.days.isEmpty ? nil : book
         }
         .sorted { $0.readingTime > $1.readingTime }
+    }
+    
+    private static func startOfDay(resetTime: Int) -> Date {
+        Calendar.current.startOfDay(for: Date.now.addingTimeInterval(-Double(resetTime) * 60))
     }
 }
 

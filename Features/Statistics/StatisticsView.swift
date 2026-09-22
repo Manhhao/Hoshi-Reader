@@ -10,6 +10,7 @@ import SwiftUI
 
 struct StatisticsView: View {
     @Environment(UserConfig.self) private var userConfig
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = StatisticsViewModel()
     
     var body: some View {
@@ -82,6 +83,12 @@ struct StatisticsView: View {
             }
             .onChange(of: userConfig.statisticsResetTime) { _, resetTime in
                 viewModel.resetTime = resetTime
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else {
+                    return
+                }
+                viewModel.load()
             }
         }
     }
