@@ -12,6 +12,18 @@ import Foundation
 import SwiftUI
 
 extension String {
+    // https://github.com/Aidoku/Aidoku/commit/6c55a73d84d322ac36df35815b888edd5fcacdbe
+    nonisolated init(_ cxxString: std.string) {
+        let buffer = UnsafeBufferPointer<CChar>(
+            start: cxxString.__c_strUnsafe(),
+            count: cxxString.size()
+        )
+        self = buffer.withMemoryRebound(to: UInt8.self) {
+            String(bytes: $0, encoding: .utf8) ?? ""
+        }
+        withExtendedLifetime(cxxString) {}
+    }
+    
     nonisolated func filtered() -> String {
         var text = body()
         text = text.replacingOccurrences(of: "(?s)<(rt|rp)[^>]*>.*?</\\1>", with: "", options: .regularExpression)
