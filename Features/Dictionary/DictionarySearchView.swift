@@ -293,13 +293,6 @@ struct DictionarySearchView: View {
         }
         
         let results = LookupEngine.shared.lookup(trimmed, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength)
-        if results.isEmpty {
-            content = ""
-            lookupEntries = []
-            dictionaryStyles = [:]
-            return
-        }
-        
         let styles = LookupEngine.shared.getStyles()
         constructHtml(results: results, styles: styles)
     }
