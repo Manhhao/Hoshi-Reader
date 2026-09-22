@@ -96,20 +96,6 @@ extension URL {
     }
 }
 
-extension UIApplication {
-    static var topSafeArea: CGFloat {
-        (shared.connectedScenes.first as? UIWindowScene)?
-            .keyWindow?
-            .safeAreaInsets.top ?? 0
-    }
-    
-    static var bottomSafeArea: CGFloat {
-        (shared.connectedScenes.first as? UIWindowScene)?
-            .keyWindow?
-            .safeAreaInsets.bottom ?? 0
-    }
-}
-
 struct LoadingOverlay: View {
     let message: String
     

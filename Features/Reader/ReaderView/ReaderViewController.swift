@@ -96,16 +96,52 @@ final class ReaderViewController: UIViewController {
                 completion(elements)
             }
         ])
+        
+        registerForTraitChanges([UITraitUserInterfaceIdiom.self]) { (self: Self, _) in
+            self.updateSafeArea()
+        }
+    }
+    
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateSafeArea()
     }
     
     func attach(_ viewModel: ReaderViewModel) {
         guard self.viewModel !== viewModel else { return }
         self.viewModel = viewModel
+        updateSafeArea()
         observeBars()
     }
     
     func detach() {
         viewModel = nil
+    }
+    
+    private func updateSafeArea() {
+        guard let viewModel else {
+            return
+        }
+        
+        let top: CGFloat
+        let bottom: CGFloat
+        if traitCollection.userInterfaceIdiom == .pad {
+            top = 32
+            bottom = 32
+        } else {
+            guard let insets = view.window?.safeAreaInsets else {
+                return
+            }
+            top = insets.top
+            bottom = insets.bottom
+        }
+        
+        if viewModel.topSafeArea != top {
+            viewModel.topSafeArea = top
+        }
+        if viewModel.bottomSafeArea != bottom {
+            viewModel.bottomSafeArea = bottom
+        }
     }
     
     private func close() {

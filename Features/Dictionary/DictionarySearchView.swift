@@ -46,7 +46,6 @@ struct DictionarySearchView: View {
     """
     
     @Environment(UserConfig.self) private var userConfig
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query: String = ""
     @State private var lastQuery: String = ""
     @State private var content: String = ""
@@ -66,17 +65,10 @@ struct DictionarySearchView: View {
     @State private var scrollViewInitialContentOffset: CGFloat! = nil
     @State private var scrollViewContentOffset: CGFloat! = nil
     @State private var topHeight: CGFloat = 0
+    @State private var bottomHeight: CGFloat = 0
     @FocusState private var searchFocused: Bool
     var initialQuery: String = ""
     var shouldFocus: Bool = false
-    
-    private var usesTopTabBarLayout: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
-    }
-    
-    private var tabBarInset: CGFloat {
-        usesTopTabBarLayout ? 0 : 45
-    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -178,7 +170,7 @@ struct DictionarySearchView: View {
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
                         topInset: topHeight,
-                        bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
+                        bottomInset: max(bottomHeight, 30),
                         coverURL: nil,
                         documentTitle: nil,
                         clearSelection: popup.clearSelection,
@@ -238,6 +230,9 @@ struct DictionarySearchView: View {
                 Color.clear
                     .onChange(of: proxy.safeAreaInsets.top, initial: true) { _, inset in
                         topHeight = inset
+                    }
+                    .onChange(of: proxy.safeAreaInsets.bottom, initial: true) { _, inset in
+                        bottomHeight = inset
                     }
             }
         }

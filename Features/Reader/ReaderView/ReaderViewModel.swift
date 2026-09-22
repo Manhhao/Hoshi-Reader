@@ -90,6 +90,8 @@ class ReaderViewModel {
     var contentsTab: ContentsTab = .chapters
     var isLoading = true
     var focusMode = false
+    var topSafeArea: CGFloat = 0
+    var bottomSafeArea: CGFloat = 0
     var bookInfo: BookInfo
     private let chapterStarts: [Int]
     let bridge = WebViewBridge()
