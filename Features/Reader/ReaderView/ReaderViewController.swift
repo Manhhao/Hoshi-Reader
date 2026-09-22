@@ -22,6 +22,8 @@ final class ReaderToolbar: UIToolbar {
     }
 }
 
+private let secondaryLabel = UIColor { UIColor.secondaryLabel.resolvedColor(with: $0) }
+
 @MainActor
 final class ReaderViewController: UIViewController {
     private let host: UIViewController
@@ -157,7 +159,7 @@ final class ReaderViewController: UIViewController {
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
         infoLabel.text = info
-        infoLabel.textColor = infoColor ?? .secondaryLabel
+        infoLabel.textColor = infoColor ?? secondaryLabel
         infoLabel.sizeToFit()
         
         let items: [UIBarButtonItem] = info.isEmpty
