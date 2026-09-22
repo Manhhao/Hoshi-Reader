@@ -387,6 +387,26 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 """
             }
             
+            let hiddenFuriganaCss = parent.userConfig.verticalWriting
+            ? """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 0.14em 100% !important;
+                background-position: left center !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            : """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 100% 0.14em !important;
+                background-position: center bottom !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            	
             var dimmedFuriganaCss = ""
             if parent.userConfig.furiganaMode == .dimmed {
                 dimmedFuriganaCss = """
@@ -461,17 +481,12 @@ struct ScrollReaderWebView: UIViewRepresentable {
             ruby > rt, ruby > rp {
                 -webkit-user-select: none;
             }
-            ruby.furigana-hidden > rt,
-            ruby.furigana-hidden > rp {
+            ruby.furigana-hidden > rp,
+            ruby.furigana-hidden > rt > * {
                 visibility: hidden !important;
             }
             \(dimmedFuriganaCss)
-            ruby.furigana-hidden {
-                text-decoration-line: underline !important;
-                text-decoration-style: dotted !important;
-                text-decoration-color: rgba(160, 160, 160, 0.8) !important;
-                text-underline-offset: 0.05em !important;
-            }
+            \(hiddenFuriganaCss)
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;

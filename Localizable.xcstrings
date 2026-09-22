@@ -943,6 +943,12 @@
         }
       }
     },
+    "Clear Transcription" : {
+
+    },
+    "Clear transcription?" : {
+
+    },
     "Client ID" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1083,6 +1089,9 @@
           }
         }
       }
+    },
+    "Coverage" : {
+
     },
     "Covers" : {
       "comment" : "Context: Bookshelf > Manage Shelves. Segmented control for showing, blurring, or hiding book-cover images.",
@@ -1485,6 +1494,7 @@
     },
     "File" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2019,6 +2029,7 @@
     },
     "Match Rate" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2030,6 +2041,7 @@
     },
     "Matching…" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2292,6 +2304,9 @@
         }
       }
     },
+    "Only clears transcription data, match is kept." : {
+
+    },
     "Open" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -2333,6 +2348,9 @@
           }
         }
       }
+    },
+    "Pause" : {
+
     },
     "Pause Duration" : {
       "comment" : "Context: Sasayaki settings and reader sheet. Pause audiobook playback when reaching a book image, for the selected duration.",
@@ -3062,6 +3080,9 @@
         }
       }
     },
+    "Subtitles" : {
+
+    },
     "Swipe Threshold" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -3360,6 +3381,12 @@
           }
         }
       }
+    },
+    "Transcribed" : {
+
+    },
+    "Transcription" : {
+
     },
     "Unshelved" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
