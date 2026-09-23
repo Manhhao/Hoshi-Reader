@@ -46,7 +46,7 @@ class TokenStorage {
         delete("refreshToken")
         delete("clientId")
         Task { @MainActor in
-            GoogleDriveHandler.clearCache()
+            TtuDriveHandler.clearCache()
         }
     }
     

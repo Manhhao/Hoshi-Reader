@@ -141,12 +141,22 @@ struct BackupView: View {
         let destination = try! BookStorage.getAppDirectory().appendingPathComponent(folder)
         Task.detached {
             defer { url.stopAccessingSecurityScopedResource() }
+            if folder == "Books" {
+                await GoogleDriveSyncManager.shared.stop()
+            }
             do {
                 try? FileManager.default.removeItem(at: destination)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
                 try FileManager.default.unzipItem(at: url, to: destination)
+                if folder == "Books" {
+                    try await GoogleDriveSyncManager.shared.resetConnection(restoringBackup: true)
+                }
             } catch {
                 await MainActor.run {
+                    if folder == "Books" {
+                        UserConfig.shared.enableSync = false
+                        GoogleDriveSyncManager.shared.start()
+                    }
                     isLoading = false
                     errorMessage = error.localizedDescription
                     showError = true
@@ -155,7 +165,9 @@ struct BackupView: View {
             }
             await MainActor.run {
                 isLoading = false
-                if folder == "Dictionaries" {
+                if folder == "Books" {
+                    GoogleDriveSyncManager.shared.start()
+                } else if folder == "Dictionaries" {
                     DictionaryManager.shared.loadDictionaries()
                     DictionaryManager.shared.rebuildLookupQuery()
                 }
@@ -194,10 +206,13 @@ struct BackupView: View {
                     
                     let bookFolder = try TtuConverter.convertFromTtu(bookData: bookdataZip, to: booksDirectory)
                     
+                    let metadata = BookStorage.loadMetadata(root: bookFolder)!
+                    try SyncStorage.shared.handleBookImport(book: metadata, root: bookFolder)
+                    
                     if let statsFile = files.first(where: { $0.lastPathComponent.hasPrefix("statistics_") }) {
                         let statsData = try Data(contentsOf: statsFile)
-                        let stats = try JSONDecoder().decode([Statistics].self, from: statsData)
-                        try BookStorage.save(stats, inside: bookFolder, as: FileNames.statistics)
+                        let stats = try JSONDecoder().decode([TtuStatistics].self, from: statsData)
+                        TtuStatistics.importHistory(stats, key: metadata.folder, mode: .replace)
                     }
                     
                     if let progressFile = files.first(where: { $0.lastPathComponent.hasPrefix("progress_") }) {
@@ -214,6 +229,7 @@ struct BackupView: View {
                                 lastModified: progress.lastBookmarkModified
                             )
                             try BookStorage.save(bookmark, inside: bookFolder, as: FileNames.bookmark)
+                            try SyncStorage.shared.handleBookChange(folder: metadata.folder)
                         }
                     }
                 }
@@ -257,14 +273,20 @@ struct BackupView: View {
                     try FileManager.default.createDirectory(at: bookDir, withIntermediateDirectories: true)
                     guard let bookData = try TtuConverter.convertToTtu(bookFolder: folder, to: bookDir) else { continue }
                     
-                    let canonicalTitle = GoogleDriveHandler.sanitizeTtuFilename(metadata.displayTitle)
+                    let canonicalTitle = TtuDriveHandler.sanitizeTtuFilename(metadata.displayTitle)
                         .precomposedStringWithCanonicalMapping
                     try archive.addEntry(with: "\(canonicalTitle)/\(bookData.lastPathComponent)", fileURL: bookData, compressionMethod: .deflate)
                     if let coverURL = metadata.coverURL {
                         try archive.addEntry(with: "\(canonicalTitle)/cover_1_6.\(coverURL.pathExtension)", fileURL: coverURL, compressionMethod: .deflate)
                     }
-                    if let stats = BookStorage.loadStatistics(root: folder), !stats.isEmpty {
-                        let statsFileName = GoogleDriveHandler.getStatisticsFileName(stats: stats)
+                    
+                    let stats = TtuStatistics.export(
+                        StatisticsStorage.load(root: folder),
+                        title: metadata.displayTitle
+                    )
+                    
+                    if !stats.isEmpty {
+                        let statsFileName = TtuDriveHandler.getStatisticsFileName(stats: stats)
                         let statsData = try JSONEncoder().encode(stats)
                         let statsURL = bookDir.appendingPathComponent(statsFileName)
                         try statsData.write(to: statsURL)

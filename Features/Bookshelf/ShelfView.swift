@@ -11,6 +11,7 @@ import SwiftUI
 struct ShelfView: View {
     @Environment(UserConfig.self) var userConfig
     @State private var selectedBook: BookMetadata?
+    @State private var skipSyncOnOpen = false
     @State private var readerWindow = ReaderWindow()
     @State private var isCollapsed: Bool
     @State private var compactRowCount = 4
@@ -134,7 +135,19 @@ struct ShelfView: View {
                                 viewModel: viewModel,
                                 currentShelf: section.shelf?.name,
                                 hideMove: section.isReading,
-                                onSelect: { selectedBook = book },
+                                onSelect: {
+                                    if book.epub == nil {
+                                        viewModel.downloadBook(book) { downloaded in
+                                            skipSyncOnOpen = GoogleDriveSyncManager.shared.errorMessage == nil
+                                            selectedBook = downloaded
+                                        }
+                                    } else {
+                                        GoogleDriveSyncManager.shared.downloadTask?.cancel()
+                                        GoogleDriveSyncManager.shared.downloadTask = nil
+                                        skipSyncOnOpen = false
+                                        selectedBook = book
+                                    }
+                                },
                                 onMatch: { onMatch(book) },
                                 isSelecting: isSelecting,
                                 selectedBooks: $selectedBooks
@@ -157,7 +170,7 @@ struct ShelfView: View {
         .onChange(of: selectedBook) { old, new in
             if let book = new {
                 let presented = readerWindow.present(content: {
-                    ReaderLoader(book: book)
+                    ReaderLoader(book: book, skipSyncOnOpen: skipSyncOnOpen)
                         .environment(userConfig)
                 }) {
                     if selectedBook?.id == book.id {
@@ -198,25 +211,7 @@ private struct DriveBookCell: View {
         Button {
             onImport()
         } label: {
-            VStack(spacing: 6) {
-                BookCover(book: book, progress: progress)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(book.displayTitle)
-                        .font(.system(size: 16))
-                        .lineLimit(isDownloading ? 1 : 2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if isDownloading {
-                        HStack(spacing: 3) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(.caption, weight: .semibold))
-                            ProgressView(value: downloadProgress)
-                        }
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(height: 40, alignment: .top)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            BookView(book: book, progress: progress, downloadProgress: isDownloading ? downloadProgress : nil)
         }
         .buttonStyle(.plain)
         .contextMenu {

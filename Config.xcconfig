@@ -1,0 +1,4 @@
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID = $(PRODUCT_BUNDLE_IDENTIFIER).google
+
+#include? "Secrets.xcconfig"

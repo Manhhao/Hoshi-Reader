@@ -26,6 +26,11 @@ struct BookCell: View {
         selectedBooks.contains(book)
     }
     
+    private var hasBookInfo: Bool {
+        let directory = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+        return FileManager.default.fileExists(atPath: directory.appendingPathComponent(FileNames.bookinfo).path)
+    }
+    
     var body: some View {
         Button {
             if isSelecting {
@@ -40,7 +45,12 @@ struct BookCell: View {
                 onSelect()
             }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book), isSelected: isSelecting && isSelected)
+            BookView(
+                book: book,
+                progress: viewModel.progress(for: book),
+                isSelected: isSelecting && isSelected,
+                downloadProgress: viewModel.downloadingBooks[book.id]
+            )
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
@@ -66,7 +76,7 @@ struct BookCell: View {
             }
             
             if userConfig.enableSync {
-                if userConfig.syncMode == .manual {
+                if userConfig.syncProvider == .ttu && userConfig.syncMode == .manual {
                     Menu {
                         Button {
                             viewModel.syncBook(
@@ -124,6 +134,7 @@ struct BookCell: View {
             } label: {
                 Label("Mark Read", systemImage: "checkmark")
             }
+            .disabled(!hasBookInfo)
             
             Button {
                 renameText = book.displayTitle
@@ -157,8 +168,19 @@ struct BookCell: View {
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
-                viewModel.deleteBook(book)
+            if userConfig.enableSync && userConfig.syncProvider == .gdrive {
+                if book.epub != nil, SyncStorage.shared.state.books[book.folder]?.files[.epub]?.value != nil {
+                    Button("Delete Local") {
+                        viewModel.deleteLocalBook(book)
+                    }
+                }
+                Button("Delete Everywhere", role: .destructive) {
+                    viewModel.deleteBook(book)
+                }
+            } else {
+                Button("Delete", role: .destructive) {
+                    viewModel.deleteBook(book)
+                }
             }
         }
         .confirmationDialog(

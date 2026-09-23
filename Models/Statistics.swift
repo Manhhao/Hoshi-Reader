@@ -32,64 +32,79 @@ enum StatisticsPeriod {
     case all
 }
 
-// https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/data/database/books-db/versions/v6/books-db-v6.ts#L68
-struct Statistics: Codable, Identifiable {
-    let title: String
-    let dateKey: String
-    var charactersRead: Int
-    var readingTime: Double
-    var minReadingSpeed: Int
-    var altMinReadingSpeed: Int
-    var lastReadingSpeed: Int
-    var maxReadingSpeed: Int
-    var lastStatisticModified: Int
-    
-    var id: String { dateKey }
+nonisolated struct ReadingSession: Codable, Equatable, Sendable {
+    var startedAt: Int64
+    var endedAt: Int64
+    var charactersRead = 0
+    var readingTime = 0.0
     
     var hasActivity: Bool {
         charactersRead > 0 || readingTime > 0
     }
     
-    var date: Date {
-        let parts = dateKey.split(separator: "-").map { Int($0)! }
-        return Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))!
-    }
-    
-    var readingDay: ReadingDay {
-        ReadingDay(date: date, charactersRead: charactersRead, readingTime: readingTime)
-    }
-    
     var readingSpeed: Int {
-        ReadingDay.speed(charactersRead: charactersRead, readingTime: readingTime)
+        ReadingTotal.speed(charactersRead: charactersRead, readingTime: readingTime)
     }
     
     func timeToRead(_ characters: Int) -> Double {
-        lastReadingSpeed > 0 ? Double(characters) / (Double(lastReadingSpeed) / 3600.0) : 0
+        readingSpeed > 0 ? Double(characters) / (Double(readingSpeed) / 3600) : 0
     }
     
-    mutating func update(charactersRead: Int, readingTime: Double) {
-        self.charactersRead = max(charactersRead, 0)
-        self.readingTime = max(readingTime, 0)
-        lastReadingSpeed = readingSpeed
-        maxReadingSpeed = max(maxReadingSpeed, lastReadingSpeed)
-        minReadingSpeed = minReadingSpeed != 0 ? min(minReadingSpeed, lastReadingSpeed) : lastReadingSpeed
-        lastStatisticModified = Int(Date.now.timeIntervalSince1970 * 1000)
+    mutating func track(characters: Int, time: Double, until date: Date) {
+        charactersRead = max(charactersRead + characters, 0)
+        readingTime += time
+        endedAt = date.milliseconds
     }
     
-    static func merged(_ statistics: [Statistics]) -> [Statistics] {
-        var grouped: [String: Statistics] = [:]
-        for statistic in statistics {
-            if let existing = grouped[statistic.dateKey],
-               existing.lastStatisticModified >= statistic.lastStatisticModified {
-                continue
-            }
-            grouped[statistic.dateKey] = statistic
-        }
-        return grouped.values.sorted { $0.dateKey < $1.dateKey }
+    static func starting(at date: Date) -> ReadingSession {
+        let timestamp = date.milliseconds
+        
+        return ReadingSession(startedAt: timestamp, endedAt: timestamp)
     }
 }
 
-struct ReadingDay: Identifiable, Hashable {
+nonisolated struct StatisticsDay: Identifiable {
+    let date: Date
+    var sessions: [String: Timestamped<ReadingSession?>]
+    
+    var id: Date {
+        date
+    }
+    
+    var total: ReadingTotal {
+        sessions.values.reduce(into: ReadingTotal(date: date)) {
+            $0.add($1.value!)
+        }
+    }
+    
+    static func date(_ date: Date, resetTime: Int, calendar: Calendar = .current) -> Date {
+        calendar.startOfDay(for: date.addingTimeInterval(-Double(resetTime) * 60))
+    }
+    
+    static func grouped(_ sessions: [String: Timestamped<ReadingSession?>], resetTime: Int) -> [StatisticsDay] {
+        let calendar = Calendar.current
+        var days: [Date: StatisticsDay] = [:]
+        
+        for (id, change) in sessions {
+            guard let session = change.value else {
+                continue
+            }
+            
+            let date = date(
+                Date(milliseconds: session.startedAt),
+                resetTime: resetTime,
+                calendar: calendar
+            )
+            days[date, default: StatisticsDay(date: date, sessions: [:])].sessions[id] = change
+        }
+        
+        return days.values.sorted {
+            $0.date < $1.date
+        }
+    }
+}
+
+nonisolated struct ReadingTotal: Identifiable, Hashable {
     let date: Date
     var charactersRead = 0
     var readingTime = 0.0
@@ -109,14 +124,14 @@ struct ReadingDay: Identifiable, Hashable {
         }
     }
     
-    mutating func add(_ day: ReadingDay) {
-        charactersRead += day.charactersRead
-        readingTime += day.readingTime
+    mutating func add(_ total: ReadingTotal) {
+        charactersRead += total.charactersRead
+        readingTime += total.readingTime
     }
     
-    mutating func add(_ statistic: Statistics) {
-        charactersRead += statistic.charactersRead
-        readingTime += statistic.readingTime
+    mutating func add(_ session: ReadingSession) {
+        charactersRead += session.charactersRead
+        readingTime += session.readingTime
     }
     
     static func speed(charactersRead: Int, readingTime: Double) -> Int {
@@ -124,11 +139,11 @@ struct ReadingDay: Identifiable, Hashable {
     }
 }
 
-struct BookStatistics: Identifiable, Hashable {
+struct BookStatistics: Identifiable {
     let metadata: BookMetadata
     let isDeleted: Bool
-    var days: [ReadingDay]
+    var days: [StatisticsDay]
     
     var id: String { metadata.folder }
-    var readingTime: Double { days.reduce(0) { $0 + $1.readingTime } }
+    var readingTime: Double { days.reduce(0) { $0 + $1.total.readingTime } }
 }

@@ -69,7 +69,7 @@ struct BookshelfView: View {
                     }
                     .navigationTitle("Books")
                     .scrollIndicators(.hidden)
-                    .applyIf(userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated) { view in
+                    .applyIf(userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated(for: userConfig.syncProvider)) { view in
                         view.refreshable {
                             await viewModel.loadGoogleDriveBooks()
                         }
@@ -77,10 +77,13 @@ struct BookshelfView: View {
                     .toolbar {
                         toolbarContent
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
+                        viewModel.loadBooks()
+                    }
                     .onAppear {
                         viewModel.loadBooks()
                         Task {
-                            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated && !didLoadGDrive {
+                            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated(for: userConfig.syncProvider) && !didLoadGDrive {
                                 await viewModel.loadGoogleDriveBooks(suppressOfflineErrors: true)
                                 didLoadGDrive = true
                             }

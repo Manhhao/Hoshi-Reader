@@ -31,21 +31,6 @@ struct StatisticsSettingsView: View {
                     .datePickerStyle(.compact)
             }
             
-            if userConfig.enableSync {
-                Section {
-                    Toggle("ッツ Sync", isOn: $userConfig.statisticsEnableSync)
-                    Picker("Sync Behaviour", selection: $userConfig.statisticsSyncMode) {
-                        ForEach(StatisticsSyncMode.allCases, id: \.self) { mode in
-                            textOfAutoSyncMode(mode).tag(mode)
-                        }
-                    }
-                } header: {
-                    Text("Sync")
-                } footer: {
-                    Text("Determines if statistics will be merged entry by entry or replaced completely on a sync.")
-                }
-            }
-            
             if !archivedBooks.isEmpty {
                 Section {
                     Button("Clear Archive", role: .destructive) {
@@ -62,11 +47,14 @@ struct StatisticsSettingsView: View {
         .alert("Clear Archive?", isPresented: $showClearArchiveConfirmation) {
             Button("Clear", role: .destructive) {
                 StatisticsStorage.clearArchive()
-                archivedBooks = []
+                archivedBooks = StatisticsStorage.loadArchived()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This will delete the statistics of \(archivedBooks.count) deleted books.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
+            archivedBooks = StatisticsStorage.loadArchived()
         }
         .onAppear {
             archivedBooks = StatisticsStorage.loadArchived()
@@ -90,15 +78,6 @@ struct StatisticsSettingsView: View {
         } set: { newValue in
             let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
             userConfig.statisticsResetTime = (components.hour ?? 0) * 60 + (components.minute ?? 0)
-        }
-    }
-    
-    private func textOfAutoSyncMode(_ mode: StatisticsSyncMode) -> some View {
-        switch mode {
-        case .merge:
-            Text("Merge")
-        case .replace:
-            Text("Replace")
         }
     }
 }

@@ -13,6 +13,7 @@
       }
     },
     "**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/develop/TTUSYNC.md)**" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -153,6 +154,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ /小时"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
           }
         }
       }
@@ -349,6 +360,7 @@
     },
     "1. After the initial setup, create another **OAuth client ID** in the same project." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -360,6 +372,7 @@
     },
     "2. Select **iOS** as the **Application type** and set the **Bundle ID** to '**de.manhhao.hoshi**'." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -371,6 +384,7 @@
     },
     "3. Paste the **Client ID** in the textbox below and press '**Connect Google Drive**'." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -382,6 +396,7 @@
     },
     "4. You can sync individual books by long-pressing and selecting '**Sync**'." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -393,6 +408,7 @@
     },
     "A **[Google Cloud project](https://github.com/ttu-ttu/ebook-reader?tab=readme-ov-file#storage-sources)** is necessary for syncing." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -401,6 +417,9 @@
           }
         }
       }
+    },
+    "A **custom [Google Cloud project](https://github.com/Manhhao/Hoshi-Reader/blob/main/TTUSYNC.md)** is necessary for syncing to ッツ/yatsu. If you're only syncing between Hoshi Reader, it's highly recommended to use one of the alternative options." : {
+
     },
     "About" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",
@@ -1190,17 +1209,6 @@
         }
       }
     },
-    "Days" : {
-      "comment" : "Context: Statistics > Book. Section listing daily reading records that can be edited or deleted; this is not a numeric day-count label.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "阅读记录"
-          }
-        }
-      }
-    },
     "Days Met" : {
       "comment" : "Context: Statistics > Daily Goal. Count of days meeting the goal; the detail line gives the total number of days with reading activity.",
       "localizations" : {
@@ -1310,12 +1318,32 @@
         }
       }
     },
+    "Delete Everywhere" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从所有位置删除"
+          }
+        }
+      }
+    },
     "Delete from Google Drive" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "从 Google Drive 删除"
+          }
+        }
+      }
+    },
+    "Delete Local" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除本地副本"
           }
         }
       }
@@ -1592,6 +1620,9 @@
         }
       }
     },
+    "Google Drive" : {
+
+    },
     "Height" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1840,6 +1871,9 @@
           }
         }
       }
+    },
+    "Last Sync" : {
+
     },
     "Layout" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2462,6 +2496,9 @@
         }
       }
     },
+    "Provider" : {
+
+    },
     "Read" : {
       "comment" : "Context: Statistics > Daily Goal. Heatmap legend distinguishes days with reading activity from days meeting the goal.",
       "localizations" : {
@@ -2711,6 +2748,9 @@
           }
         }
       }
+    },
+    "Sessions" : {
+
     },
     "Settings" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -3139,6 +3179,7 @@
     },
     "Sync bookmarks and statistics with ッツ Reader or between Hoshi Reader devices via Google Drive." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3158,6 +3199,9 @@
         }
       }
     },
+    "Sync Now" : {
+
+    },
     "Sync Stats" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3167,6 +3211,9 @@
           }
         }
       }
+    },
+    "Sync your library between Hoshi Reader devices." : {
+
     },
     "Syncing" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
@@ -3399,6 +3446,9 @@
         }
       }
     },
+    "Unsupported sync format." : {
+
+    },
     "Upload Books" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3530,6 +3580,7 @@
     },
     "ッツ Sync" : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3538,6 +3589,9 @@
           }
         }
       }
+    },
+    "ッツ/yatsu" : {
+
     },
     "横" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",

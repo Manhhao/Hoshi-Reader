@@ -42,12 +42,20 @@ enum GoogleDriveAuthError: LocalizedError {
 @Observable
 class GoogleDriveAuth: NSObject {
     static let shared = GoogleDriveAuth()
+    static let hoshiClientId = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as! String
     private override init() {}
     
     var isAuthenticated: Bool {
         TokenStorage.get("accessToken") != nil
         && TokenStorage.get("refreshToken") != nil
         && TokenStorage.get("clientId") != nil
+    }
+    
+    func isAuthenticated(for provider: SyncProvider) -> Bool {
+        let configuredId = provider == .gdrive ? Self.hoshiClientId : UserConfig.shared.googleClientId
+        let clientId = configuredId.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return isAuthenticated && TokenStorage.get("clientId") == clientId
     }
     
     func getAccessToken() throws -> String {
@@ -57,8 +65,10 @@ class GoogleDriveAuth: NSObject {
         return token
     }
     
-    func authenticate(clientId: String) async throws {
-        let clientId = clientId.trimmingCharacters(in: .whitespacesAndNewlines)
+    func authenticate(provider: SyncProvider) async throws {
+        let configuredId = provider == .gdrive ? Self.hoshiClientId : UserConfig.shared.googleClientId
+        let clientId = configuredId.trimmingCharacters(in: .whitespacesAndNewlines)
+        
         guard Self.isValidGoogleClientId(clientId) else {
             throw GoogleDriveAuthError.invalidClientId
         }
@@ -77,12 +87,30 @@ class GoogleDriveAuth: NSObject {
             throw GoogleDriveAuthError.invalidAuthURL
         }
         
+        await GoogleDriveSyncManager.shared.stop()
+        defer {
+            GoogleDriveSyncManager.shared.start()
+        }
+        
         let code = try await getAuthorizationCode(from: authURL, callbackScheme: scheme)
-        try await exchangeCode(code: code, clientId: clientId, redirectUri: redirectUri)
+        let tokens = try await exchangeCode(code: code, clientId: clientId, redirectUri: redirectUri)
+        if provider == .gdrive {
+            try GoogleDriveSyncManager.shared.resetConnection()
+        }
+        TokenStorage.clear()
+        TokenStorage.save(tokens.accessToken, for: "accessToken")
+        
+        if let refresh = tokens.refreshToken {
+            TokenStorage.save(refresh, for: "refreshToken")
+        }
+        
         TokenStorage.save(clientId, for: "clientId")
+        TtuDriveHandler.clearCache()
     }
     
     func refreshAccessToken() async throws -> String {
+        let connection = GoogleDriveClient.shared.connectionId
+        
         guard let refreshToken = TokenStorage.get("refreshToken"),
               let clientId = TokenStorage.get("clientId") else {
             throw GoogleDriveAuthError.notAuthenticated
@@ -104,6 +132,9 @@ class GoogleDriveAuth: NSObject {
         request.httpBody = bodyComponents.percentEncodedQuery?.data(using: .utf8)
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        
+        try GoogleDriveClient.shared.checkConnection(connection)
+        try Task.checkCancellation()
         
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             TokenStorage.clear()
@@ -140,7 +171,7 @@ class GoogleDriveAuth: NSObject {
         return code
     }
     
-    private func exchangeCode(code: String, clientId: String, redirectUri: String) async throws {
+    private func exchangeCode(code: String, clientId: String, redirectUri: String) async throws -> TokenResponse {
         let url = URL(string: "https://oauth2.googleapis.com/token")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -164,12 +195,7 @@ class GoogleDriveAuth: NSObject {
             throw GoogleDriveAuthError.tokenExchangeFailed(statusCode: statusCode)
         }
         
-        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
-        
-        TokenStorage.save(tokenResponse.accessToken, for: "accessToken")
-        if let refresh = tokenResponse.refreshToken {
-            TokenStorage.save(refresh, for: "refreshToken")
-        }
+        return try JSONDecoder().decode(TokenResponse.self, from: data)
     }
     
     private static func isValidGoogleClientId(_ clientId: String) -> Bool {

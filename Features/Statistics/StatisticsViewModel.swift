@@ -38,25 +38,28 @@ class StatisticsViewModel {
     }
     
     var selectedDate: Date? {
-        didSet { updateBooks() }
+        didSet {
+            visibleBookCount = 5
+            updateBooks()
+        }
     }
     
     var visibleBookCount = 5
     
     private(set) var today = StatisticsViewModel.startOfDay(resetTime: 0)
-    private(set) var days: [ReadingDay] = []
+    private(set) var dailyTotals: [ReadingTotal] = []
     private(set) var books: [BookStatistics] = []
     
     private var allBooks: [BookStatistics] = []
-    private var daysByDate: [Date: ReadingDay] = [:]
-    private var daysByMonth: [Date: ReadingDay] = [:]
+    private var totalsByDate: [Date: ReadingTotal] = [:]
+    private var totalsByMonth: [Date: ReadingTotal] = [:]
     
     var firstDay: Date? {
-        days.first?.date
+        dailyTotals.first?.date
     }
     
-    var todaysReading: ReadingDay {
-        day(today) ?? ReadingDay(date: today)
+    var todaysTotal: ReadingTotal {
+        total(on: today) ?? ReadingTotal(date: today)
     }
     
     var bucketUnit: Calendar.Component {
@@ -80,16 +83,16 @@ class StatisticsViewModel {
         )
     }
     
-    var selectedDay: ReadingDay? {
+    var selectedTotal: ReadingTotal? {
         guard let selectedDate else {
             return nil
         }
         return buckets(for: referenceDate).first { $0.date == selectedDate }
     }
     
-    var summary: ReadingDay {
-        selectedDay ?? periodDays(for: referenceDate)
-            .reduce(into: ReadingDay(date: referenceDate)) { $0.add($1) }
+    var summary: ReadingTotal {
+        selectedTotal ?? periodTotals(for: referenceDate)
+            .reduce(into: ReadingTotal(date: referenceDate)) { $0.add($1) }
     }
     
     var readingTimeDelta: Double? {
@@ -109,25 +112,26 @@ class StatisticsViewModel {
         }
         today = current
         
-        allBooks = StatisticsStorage.loadAll()
-        daysByDate = allBooks.flatMap(\.days).reduce(into: [:]) { grouped, day in
-            grouped[day.date, default: ReadingDay(date: day.date)].add(day)
+        allBooks = StatisticsStorage.loadAll(resetTime: resetTime)
+        totalsByDate = allBooks.flatMap(\.days).map(\.total).reduce(into: [:]) { grouped, total in
+            grouped[total.date, default: ReadingTotal(date: total.date)].add(total)
         }
-        days = daysByDate.values.sorted { $0.date < $1.date }
-        daysByMonth = days.reduce(into: [:]) { grouped, day in
-            guard let month = Calendar.current.dateInterval(of: .month, for: day.date)?.start else {
+        dailyTotals = totalsByDate.values.sorted { $0.date < $1.date }
+        let calendar = Calendar.current
+        totalsByMonth = dailyTotals.reduce(into: [:]) { grouped, total in
+            guard let month = calendar.dateInterval(of: .month, for: total.date)?.start else {
                 return
             }
-            grouped[month, default: ReadingDay(date: month)].add(day)
+            grouped[month, default: ReadingTotal(date: month)].add(total)
         }
         updateBooks()
     }
     
-    func day(_ date: Date) -> ReadingDay? {
-        daysByDate[Calendar.current.startOfDay(for: date)]
+    func total(on date: Date) -> ReadingTotal? {
+        totalsByDate[Calendar.current.startOfDay(for: date)]
     }
     
-    func buckets(for referenceDate: Date) -> [ReadingDay] {
+    func buckets(for referenceDate: Date) -> [ReadingTotal] {
         let calendar = Calendar.current
         let unit = bucketUnit
         let dayStart = calendar.startOfDay(for: referenceDate)
@@ -139,11 +143,11 @@ class StatisticsViewModel {
             return []
         }
         
-        let grouped = unit == .day ? daysByDate : daysByMonth
+        let grouped = unit == .day ? totalsByDate : totalsByMonth
         
         return sequence(first: start) { calendar.date(byAdding: unit, value: 1, to: $0) }
             .prefix { $0 < span.end }
-            .map { grouped[$0] ?? ReadingDay(date: $0) }
+            .map { grouped[$0] ?? ReadingTotal(date: $0) }
     }
     
     func averageReadingTime(for referenceDate: Date) -> Double? {
@@ -152,7 +156,7 @@ class StatisticsViewModel {
             return nil
         }
         
-        return periodDays(for: referenceDate).reduce(0) { $0 + $1.readingTime } / Double(elapsed)
+        return periodTotals(for: referenceDate).reduce(0) { $0 + $1.readingTime } / Double(elapsed)
     }
     
     func title(for date: Date) -> String {
@@ -179,9 +183,9 @@ class StatisticsViewModel {
         }
     }
     
-    private func periodDays(for referenceDate: Date) -> [ReadingDay] {
+    private func periodTotals(for referenceDate: Date) -> [ReadingTotal] {
         let interval = interval(for: referenceDate)
-        return days.filter { interval?.halfOpen.contains($0.date) ?? true }
+        return dailyTotals.filter { interval?.halfOpen.contains($0.date) ?? true }
     }
     
     private func interval(for date: Date) -> DateInterval? {
@@ -193,7 +197,6 @@ class StatisticsViewModel {
     }
     
     private func updateBooks() {
-        visibleBookCount = 5
         let interval = selectedDate.flatMap { Calendar.current.dateInterval(of: bucketUnit, for: $0) }
         ?? interval(for: referenceDate)
         books = allBooks.compactMap { book in

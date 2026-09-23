@@ -24,27 +24,27 @@ struct StatisticsSheet: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.sessionStatistics.charactersRead)**")
+                        Text("**\(viewModel.currentSession.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.sessionStatistics.lastReadingSpeed) / h**")
+                        Text("**\(viewModel.currentSession.readingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.readingTime).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.currentSession.readingTime).formatted())**")
                     }
                     HStack {
                         Text("Time to finish Book:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.timeToRead(viewModel.bookInfo.characterCount - viewModel.currentCharacter)).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.currentSession.timeToRead(viewModel.bookInfo.characterCount - viewModel.currentCharacter)).formatted())**")
                     }
                     HStack {
                         Text("Time to finish Chapter:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.sessionStatistics.timeToRead(chapterCharactersRemaining)).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.currentSession.timeToRead(chapterCharactersRemaining)).formatted())**")
                     }
                 } header: {
                     HStack {
@@ -71,17 +71,17 @@ struct StatisticsSheet: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.todaysStatistics.charactersRead)**")
+                        Text("**\(viewModel.todaysTotal.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.todaysStatistics.lastReadingSpeed) / h**")
+                        Text("**\(viewModel.todaysTotal.readingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.todaysStatistics.readingTime).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.todaysTotal.readingTime).formatted())**")
                     }
                 } header: {
                     Text("Today")
@@ -91,17 +91,17 @@ struct StatisticsSheet: View {
                     HStack {
                         Text("Characters Read:")
                         Spacer()
-                        Text("**\(viewModel.allTimeStatistics.charactersRead)**")
+                        Text("**\(viewModel.allTimeTotal.charactersRead)**")
                     }
                     HStack {
                         Text("Reading Speed:")
                         Spacer()
-                        Text("**\(viewModel.allTimeStatistics.lastReadingSpeed) / h**")
+                        Text("**\(viewModel.allTimeTotal.readingSpeed) / h**")
                     }
                     HStack {
                         Text("Reading Time:")
                         Spacer()
-                        Text("**\(Duration.seconds(viewModel.allTimeStatistics.readingTime).formatted())**")
+                        Text("**\(Duration.seconds(viewModel.allTimeTotal.readingTime).formatted())**")
                     }
                 } header: {
                     Text("All Time")

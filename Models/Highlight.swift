@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-enum HighlightColor: String, CaseIterable, Codable, Identifiable {
+nonisolated enum HighlightColor: String, CaseIterable, Codable, Identifiable {
     case yellow
     case green
     case blue
@@ -45,7 +45,7 @@ enum HighlightColor: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct Highlight: Codable, Identifiable, Hashable {
+nonisolated struct Highlight: Codable, Identifiable, Hashable {
     let id: UUID
     let character: Int
     let offset: Int

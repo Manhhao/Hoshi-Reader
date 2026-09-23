@@ -12,6 +12,15 @@ struct BookView: View {
     let book: BookMetadata
     let progress: Double
     var isSelected: Bool = false
+    var downloadProgress: Double? = nil
+    
+    private var titleText: Text {
+        if book.epub == nil {
+            Text("\(Image(systemName: "icloud")) \(book.displayTitle)")
+        } else {
+            Text(book.displayTitle)
+        }
+    }
     
     var body: some View {
         VStack(spacing: 6) {
@@ -21,11 +30,23 @@ struct BookView: View {
                 isSelected: isSelected
             )
             
-            Text(book.displayTitle)
-                .font(.system(size: 16))
-                .lineLimit(2)
-                .frame(height: 40, alignment: .top)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                titleText
+                    .font(.system(size: 16))
+                    .lineLimit(downloadProgress == nil ? 2 : 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                if let downloadProgress {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(.caption, weight: .semibold))
+                        ProgressView(value: downloadProgress)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .frame(height: 40, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

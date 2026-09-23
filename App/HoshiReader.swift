@@ -28,7 +28,8 @@ struct HoshiReaderApp: App {
         }.value
         didFinishLaunch = true
         _ = DictionaryManager.shared
-        _ = GoogleDriveHandler.shared
+        _ = TtuDriveHandler.shared
+        _ = GoogleDriveSyncManager.shared
         WebViewPreloader.shared.warmup()
     }
     
@@ -54,6 +55,7 @@ struct HoshiReaderApp: App {
             .onChange(of: scenePhase, initial: true) { _, phase in
                 switch phase {
                 case .active:
+                    GoogleDriveSyncManager.shared.start()
                     LocalFileServer.shared.endBackgroundTask()
                     Task { @MainActor in
                         LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
@@ -62,6 +64,9 @@ struct HoshiReaderApp: App {
                         DictionaryManager.shared.autoUpdateDictionaries()
                     }
                 case .background:
+                    Task {
+                        await GoogleDriveSyncManager.shared.pause()
+                    }
                     LocalFileServer.shared.startBackgroundTask()
                 default:
                     break

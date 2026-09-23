@@ -124,9 +124,9 @@ struct DailyGoalView: View {
     }
     
     private var statGrid: some View {
-        let met = viewModel.days.filter { wasGoalMet($0) }.map(\.date)
+        let met = viewModel.dailyTotals.filter { wasGoalMet($0) }.map(\.date)
         let (current, longest) = streaks(met)
-        let best = viewModel.days.max { $0.value(for: metric) < $1.value(for: metric) }
+        let best = viewModel.dailyTotals.max { $0.value(for: metric) < $1.value(for: metric) }
         let bestValue = metric == .time ? (best?.readingTime ?? 0).formattedDuration : (best?.charactersRead ?? 0).formatted(.number)
         
         return Grid(alignment: .top, horizontalSpacing: 0, verticalSpacing: 14) {
@@ -151,7 +151,7 @@ struct DailyGoalView: View {
                 stat(
                     "Days Met",
                     value: String(localized: "\(met.count) days"),
-                    detail: Text("of \(viewModel.days.count) days read")
+                    detail: Text("of \(viewModel.dailyTotals.count) days read")
                 )
                 stat(
                     "Best Day",
@@ -250,7 +250,7 @@ struct DailyGoalView: View {
                 guard date <= today else {
                     return nil
                 }
-                let day = viewModel.day(date)
+                let total = viewModel.total(on: date)
                 return HeatmapCell(
                     rect: CGRect(
                         x: halo + CGFloat(column) * step,
@@ -258,8 +258,8 @@ struct DailyGoalView: View {
                         width: markerSize,
                         height: markerSize
                     ),
-                    read: day != nil,
-                    met: wasGoalMet(day),
+                    read: total != nil,
+                    met: wasGoalMet(total),
                     isToday: date == today
                 )
             }
@@ -398,26 +398,26 @@ struct DailyGoalView: View {
     }
     
     private var progress: Double {
-        min(viewModel.todaysReading.value(for: metric) / goal, 1)
+        min(viewModel.todaysTotal.value(for: metric) / goal, 1)
     }
     
     private var headline: String {
-        let today = viewModel.todaysReading
+        let total = viewModel.todaysTotal
         switch metric {
         case .time:
-            return Duration.seconds(today.readingTime.rounded()).formatted(.time(pattern: .minuteSecond))
+            return Duration.seconds(total.readingTime.rounded()).formatted(.time(pattern: .minuteSecond))
         case .characters:
-            return today.charactersRead.formatted(.number)
+            return total.charactersRead.formatted(.number)
         }
     }
     
     private var secondaryValue: Text {
-        let today = viewModel.todaysReading
+        let total = viewModel.todaysTotal
         switch metric {
         case .time:
-            return Text("\(today.charactersRead) characters")
+            return Text("\(total.charactersRead) characters")
         case .characters:
-            return Text(Duration.seconds(today.readingTime).formatted(.units(allowed: [.minutes], width: .wide)))
+            return Text(Duration.seconds(total.readingTime).formatted(.units(allowed: [.minutes], width: .wide)))
         }
     }
     
@@ -450,8 +450,8 @@ struct DailyGoalView: View {
         )
     }
     
-    private func wasGoalMet(_ day: ReadingDay?) -> Bool {
-        (day?.value(for: metric) ?? 0) >= goal
+    private func wasGoalMet(_ total: ReadingTotal?) -> Bool {
+        (total?.value(for: metric) ?? 0) >= goal
     }
     
     private static let minuteGoals = Array(stride(from: 5, through: 1440, by: 5))

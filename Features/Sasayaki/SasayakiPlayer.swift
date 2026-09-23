@@ -135,22 +135,37 @@ class SasayakiPlayer {
         self.bookMetadata = BookStorage.loadMetadata(root: rootURL)
         
         matchData = BookStorage.loadSasayakiMatch(root: rootURL)
-        if !hasMatch {
-            return
-        }
         timeline = CueTimeline(match: matchData)
         reloadPlayback()
     }
     
     func reloadPlayback() {
-        guard hasMatch else { return }
         isRestoring = true
         playback = BookStorage.loadSasayakiPlayback(root: rootURL) ?? SasayakiPlaybackData(lastPosition: 0)
         currentTime = playback.lastPosition
         delay = playback.delay
         rate = playback.rate
         lastUpdate = Int(currentTime.rounded(.down))
-        isRestoring = false
+        
+        if let player {
+            player.defaultRate = rate
+            
+            if isPlaying {
+                player.rate = rate
+            }
+            
+            player.seek(
+                to: CMTime(seconds: currentTime, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: .zero
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.isRestoring = false
+                }
+            }
+        } else {
+            isRestoring = false
+        }
     }
     
     func importAudio(from url: URL) throws {
@@ -410,6 +425,10 @@ class SasayakiPlayer {
     }
     
     private func tick(_ seconds: Double) {
+        if isRestoring {
+            return
+        }
+        
         currentTime = seconds
         
         if let duration = player?.currentItem?.duration.seconds, duration.isFinite, duration > 0 {
@@ -513,7 +532,7 @@ class SasayakiPlayer {
     }
     
     func restoreAudio() {
-        guard let bookmark = playback.audioBookmark else { return }
+        guard hasMatch, let bookmark = playback.audioBookmark else { return }
         var isStale = false
         guard let url = try? URL(resolvingBookmarkData: bookmark, relativeTo: nil, bookmarkDataIsStale: &isStale) else { return }
         guard url.startAccessingSecurityScopedResource() else { return }
@@ -528,7 +547,9 @@ class SasayakiPlayer {
     private func savePlayback() {
         playback.delay = delay
         playback.rate = rate
-        try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback)
+        if (try? BookStorage.savePlayback(&playback, root: rootURL)) == true {
+            try? SyncStorage.shared.handleBookChange(folder: rootURL.lastPathComponent)
+        }
     }
     
     private func updateCue(for time: Double) {

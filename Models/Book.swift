@@ -25,11 +25,14 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
     let author: String?
-    let epub: String?
-    let cover: String?
+    var epub: String?
+    var cover: String?
     let folder: String
     var lastAccess: Date
     var renamedTitle: String?
+    var modified: Int64?
+    var characterCount: Int?
+    var shelves: [String: Timestamped<Bool>]?
     var displayTitle: String { renamedTitle ?? title }
     
     init(id: UUID = UUID(), title: String, author: String? = nil, epub: String? = nil, cover: String?, folder: String, lastAccess: Date) {
@@ -79,7 +82,7 @@ struct BookInfo: Codable {
     }
 }
 
-struct BookShelf: Codable {
+struct BookShelf: Codable, Equatable {
     let name: String
     var bookIds: [UUID]
 }

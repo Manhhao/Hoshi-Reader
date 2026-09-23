@@ -187,6 +187,12 @@ class UserConfig {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
     }
     
+    var syncProvider: SyncProvider {
+        didSet {
+            UserDefaults.standard.set(syncProvider.rawValue, forKey: "syncProvider")
+        }
+    }
+    
     var syncMode: SyncMode {
         didSet { UserDefaults.standard.set(syncMode.rawValue, forKey: "syncMode") }
     }
@@ -530,10 +536,17 @@ class UserConfig {
         self.compactPitchAccents = defaults.object(forKey: "compactPitchAccents") as? Bool ?? true
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
+        let clientId = defaults.string(forKey: "googleClientId") ?? ""
+        let hasTtuLogin = !clientId.isEmpty && GoogleDriveAuth.shared.isAuthenticated
+        let syncProvider =
+            defaults.string(forKey: "syncProvider").flatMap(SyncProvider.init(rawValue:))
+            ?? (hasTtuLogin ? .ttu : .gdrive)
+        self.syncProvider = syncProvider
+        defaults.set(syncProvider.rawValue, forKey: "syncProvider")
         self.syncMode = defaults.string(forKey: "syncMode")
             .flatMap(SyncMode.init) ?? .auto
         self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
-        self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
+        self.googleClientId = clientId
         self.syncUploadBooks = defaults.object(forKey: "syncUploadBooks") as? Bool ?? true
         
         self.theme = defaults.string(forKey: "theme")

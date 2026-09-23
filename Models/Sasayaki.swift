@@ -74,6 +74,7 @@ struct SasayakiPlaybackData: Codable {
     var delay: Double = 0
     var rate: Float = 1
     var audioBookmark: Data?
+    var modified: Int64?
     
     init(lastPosition: Double) {
         self.lastPosition = lastPosition
@@ -85,5 +86,6 @@ struct SasayakiPlaybackData: Codable {
         delay = try container.decodeIfPresent(Double.self, forKey: .delay) ?? 0
         rate = try container.decodeIfPresent(Float.self, forKey: .rate) ?? 1
         audioBookmark = try container.decodeIfPresent(Data.self, forKey: .audioBookmark)
+        modified = try container.decodeIfPresent(Int64.self, forKey: .modified)
     }
 }

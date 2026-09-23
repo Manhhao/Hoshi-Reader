@@ -11,96 +11,124 @@ import ImageIO
 import UniformTypeIdentifiers
 
 struct StatisticsStorage {
-    static func loadAll() -> [BookStatistics] {
+    static var onSave: ((String, [String: Timestamped<ReadingSession?>]) -> Void)?
+    
+    static func loadAll(resetTime: Int) -> [BookStatistics] {
         guard let booksDirectory = try? BookStorage.getBooksDirectory() else {
             return []
         }
         
         let books = ((try? BookStorage.loadAllBooks()) ?? []).compactMap {
-            bookStatistics($0, root: booksDirectory.appendingPathComponent($0.folder), isDeleted: false)
+            bookStatistics($0, root: booksDirectory.appendingPathComponent($0.folder), isDeleted: false, resetTime: resetTime)
         }
         
-        return books + loadArchived()
+        return books + loadArchived(resetTime: resetTime)
     }
     
-    static func loadArchived() -> [BookStatistics] {
+    static func loadArchived(resetTime: Int = UserConfig.shared.statisticsResetTime) -> [BookStatistics] {
         guard let root = try? archiveDirectory(),
               let contents = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
             return []
         }
         
         return contents.compactMap { url in
-            BookStorage.loadMetadata(root: url).flatMap { bookStatistics($0, root: url, isDeleted: true) }
+            BookStorage.loadMetadata(root: url).flatMap { bookStatistics($0, root: url, isDeleted: true, resetTime: resetTime) }
         }
     }
     
-    static func load(folder: String) -> [Statistics] {
-        guard let root = bookDirectory(folder: folder) ?? archivedBookDirectory(folder: folder) else {
-            return []
+    static func load(root: URL) -> [String: Timestamped<ReadingSession?>] {
+        let url = root.appendingPathComponent(FileNames.statistics)
+        if let sessions = BookStorage.load([String: Timestamped<ReadingSession?>].self, from: url) {
+            return sessions
         }
-        return Statistics.merged(BookStorage.loadStatistics(root: root) ?? [])
+        
+        guard let daily = BookStorage.load([TtuStatistics].self, from: url) else { return [:] }
+        let sessions = TtuStatistics.legacySessions(daily, key: root.lastPathComponent)
+        try? BookStorage.save(sessions, inside: root, as: FileNames.statistics)
+        return sessions
     }
     
-    static func save(_ statistics: [Statistics], folder: String) {
-        let merged = Statistics.merged(statistics).filter(\.hasActivity)
-        
-        if let root = bookDirectory(folder: folder) {
-            try? BookStorage.save(merged, inside: root, as: FileNames.statistics)
-        } else if let root = archivedBookDirectory(folder: folder) {
-            if merged.isEmpty {
-                try? FileManager.default.removeItem(at: root)
-            } else {
-                try? BookStorage.save(merged, inside: root, as: FileNames.statistics)
-            }
-        }
+    static func load(folder: String) -> [String: Timestamped<ReadingSession?>] {
+        guard let root = bookDirectory(folder: folder) ?? archivedBookDirectory(folder: folder) else { return [:] }
+        return load(root: root)
     }
     
-    static func archive(_ book: BookMetadata) {
-        guard let root = bookDirectory(folder: book.folder),
-              let statistics = BookStorage.loadStatistics(root: root)?.filter(\.hasActivity),
-              !statistics.isEmpty,
-              let destination = try? archiveDirectory().appendingPathComponent(book.folder) else {
-            return
+    static func save(_ sessions: [String: Timestamped<ReadingSession?>], folder: String) {
+        guard let root = bookDirectory(folder: folder) ?? archivedBookDirectory(folder: folder) else { return }
+        try? BookStorage.save(sessions, inside: root, as: FileNames.statistics)
+        if root.deletingLastPathComponent().lastPathComponent == statisticsArchive,
+           sessions.values.allSatisfy({ $0.value == nil }) {
+            try? BookStorage.delete(at: root.appendingPathComponent(statisticsCover))
         }
+        onSave?(folder, sessions)
+    }
+    
+    static func edit(id: String, folder: String, charactersRead: Int?, readingTime: Double?) {
+        var sessions = load(folder: folder)
+        guard var session = sessions[id]?.value else { return }
+        if let charactersRead {
+            session.charactersRead = charactersRead
+        }
+        if let readingTime {
+            session.readingTime = readingTime
+        }
+        guard session != sessions[id]?.value else { return }
+        sessions[id] = Timestamped(modified: Date.now.milliseconds, value: session)
+        save(sessions, folder: folder)
+    }
+    
+    static func delete(ids: [String], folder: String) {
+        var sessions = load(folder: folder)
+        for id in ids where sessions[id]?.value != nil {
+            sessions[id] = Timestamped(modified: Date.now.milliseconds, value: nil as ReadingSession?)
+        }
+        save(sessions, folder: folder)
+    }
+    
+    static func archive(_ book: BookMetadata) throws {
+        guard let root = bookDirectory(folder: book.folder) else { return }
+        let destination = try archiveDirectory().appendingPathComponent(book.folder)
         
-        try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        let existing = BookStorage.loadStatistics(root: destination) ?? []
-        try? BookStorage.save(Statistics.merged(existing + statistics), inside: destination, as: FileNames.statistics)
+        let sessions = SyncBook.mergeRecords(load(root: root), load(root: destination))
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try BookStorage.save(sessions, inside: destination, as: FileNames.statistics)
         
-        let metadata = BookMetadata(
+        var metadata = BookMetadata(
             title: book.displayTitle,
             author: book.author,
-            cover: writeArchivedCover(book, inside: destination),
+            cover: sessions.values.contains { $0.value != nil } ? writeArchivedCover(book, inside: destination) : nil,
             folder: book.folder,
             lastAccess: book.lastAccess
         )
-        try? BookStorage.saveMetadata(metadata, inside: destination)
+        metadata.modified = book.modified
+        metadata.characterCount = book.characterCount ?? BookStorage.loadBookInfo(root: root)?.characterCount
+        try BookStorage.saveMetadata(metadata, inside: destination)
     }
     
-    static func restore(folder: String) {
+    static func restore(folder: String) throws {
         guard let archived = archivedBookDirectory(folder: folder),
               let root = bookDirectory(folder: folder) else {
             return
         }
         
-        let existing = BookStorage.loadStatistics(root: root) ?? []
-        let restored = BookStorage.loadStatistics(root: archived) ?? []
-        try? BookStorage.save(Statistics.merged(existing + restored), inside: root, as: FileNames.statistics)
-        try? FileManager.default.removeItem(at: archived)
+        let sessions = SyncBook.mergeRecords(load(root: root), load(root: archived))
+        try BookStorage.save(sessions, inside: root, as: FileNames.statistics)
+        try FileManager.default.removeItem(at: archived)
     }
     
     static func clearArchive() {
-        guard let root = try? archiveDirectory() else {
+        guard let root = try? archiveDirectory(),
+              let contents = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
             return
         }
-        try? FileManager.default.removeItem(at: root)
+        for url in contents {
+            delete(ids: Array(load(root: url).keys), folder: url.lastPathComponent)
+        }
     }
     
-    private static func bookStatistics(_ book: BookMetadata, root: URL, isDeleted: Bool) -> BookStatistics? {
-        let days = Statistics.merged(BookStorage.loadStatistics(root: root) ?? [])
-            .filter(\.hasActivity)
-            .map(\.readingDay)
-        
+    private static func bookStatistics(_ book: BookMetadata, root: URL, isDeleted: Bool, resetTime: Int) -> BookStatistics? {
+        let days = StatisticsDay.grouped(load(root: root), resetTime: resetTime)
+            .filter { $0.total.charactersRead > 0 || $0.total.readingTime > 0 }
         return days.isEmpty ? nil : BookStatistics(metadata: book, isDeleted: isDeleted, days: days)
     }
     

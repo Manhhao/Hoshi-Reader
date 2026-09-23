@@ -142,10 +142,6 @@ struct BookStorage {
         try data.write(to: directory.appendingPathComponent(FileNames.metadata), options: .atomic)
     }
     
-    static func loadStatistics(root: URL) -> [Statistics]? {
-        load([Statistics].self, from: root.appendingPathComponent(FileNames.statistics))
-    }
-    
     static func loadSasayakiMatch(root: URL) -> SasayakiMatchData? {
         load(SasayakiMatchData.self, from: root.appendingPathComponent(FileNames.sasayakiMatch))
     }
@@ -158,13 +154,74 @@ struct BookStorage {
         load(SasayakiPlaybackData.self, from: root.appendingPathComponent(FileNames.sasayakiPlayback))
     }
     
-    static func loadHighlights(root: URL) -> [Highlight]? {
-        load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
+    static func savePlayback(_ playback: inout SasayakiPlaybackData, root: URL) throws -> Bool {
+        let stored = loadSasayakiPlayback(root: root)
+        let changed = stored?.lastPosition != playback.lastPosition || stored?.delay != playback.delay || stored?.rate != playback.rate
+        playback.modified = changed ? Date.now.milliseconds : stored?.modified
+        try save(playback, inside: root, as: FileNames.sasayakiPlayback)
+        return changed
     }
     
-    static func loadShelves() -> [BookShelf]? {
-        guard let booksDirectory = try? getBooksDirectory() else { return nil }
-        return load([BookShelf].self, from: booksDirectory.appendingPathComponent(FileNames.shelves))
+    static func loadHighlightRecords(root: URL) -> [String: Timestamped<Highlight?>] {
+        let url = root.appendingPathComponent(FileNames.highlights)
+        if let records = load([String: Timestamped<Highlight?>].self, from: url) {
+            return records
+        }
+        let highlights = load([Highlight].self, from: url) ?? []
+        return Dictionary(uniqueKeysWithValues: highlights.map { ($0.id.uuidString, Timestamped(modified: $0.createdAt.milliseconds, value: $0)) })
+    }
+    
+    static func loadHighlights(root: URL) -> [Highlight] {
+        loadHighlightRecords(root: root).values.compactMap(\.value).sorted { $0.createdAt < $1.createdAt }
+    }
+    
+    static func saveHighlights(_ highlights: [Highlight], root: URL) throws {
+        var records = loadHighlightRecords(root: root)
+        let now = Date.now.milliseconds
+        let ids = Set(highlights.map(\.id.uuidString))
+        for (id, record) in records where record.value != nil && !ids.contains(id) {
+            records[id] = Timestamped(modified: now, value: nil)
+        }
+        for highlight in highlights {
+            let id = highlight.id.uuidString
+            if records[id] == nil || (records[id]!.value != nil && records[id]!.value != highlight) {
+                records[id] = Timestamped(modified: now, value: highlight)
+            }
+        }
+        try save(records, inside: root, as: FileNames.highlights)
+    }
+    
+    static func loadShelfList() -> [String: Timestamped<Int?>] {
+        guard let booksDirectory = try? getBooksDirectory() else { return [:] }
+        let url = booksDirectory.appendingPathComponent(FileNames.shelves)
+        if let shelves = load([String: Timestamped<Int?>].self, from: url) {
+            return shelves
+        }
+        
+        guard let legacy = load([BookShelf].self, from: url) else { return [:] }
+        var shelves: [String: Timestamped<Int?>] = [:]
+        do {
+            let folders = try FileManager.default.contentsOfDirectory(at: booksDirectory, includingPropertiesForKeys: nil)
+            var books = Dictionary(uniqueKeysWithValues: folders.compactMap { loadMetadata(root: $0) }.map { ($0.id, $0) })
+            for (index, shelf) in legacy.enumerated() {
+                let name = shelf.name.precomposedStringWithCanonicalMapping
+                shelves[name] = Timestamped(modified: 0, value: index)
+                for id in shelf.bookIds where books[id] != nil {
+                    var membership = books[id]!.shelves ?? [:]
+                    membership[name] = Timestamped(modified: 0, value: true)
+                    books[id]!.shelves = membership
+                }
+            }
+            for book in books.values where book.shelves != nil {
+                try saveMetadata(book, inside: booksDirectory.appendingPathComponent(book.folder))
+            }
+            try saveShelfList(shelves)
+        } catch {}
+        return shelves
+    }
+    
+    static func saveShelfList(_ shelves: [String: Timestamped<Int?>]) throws {
+        try save(shelves, inside: getBooksDirectory(), as: FileNames.shelves)
     }
     
     static func loadAllBooks() throws -> [BookMetadata] {

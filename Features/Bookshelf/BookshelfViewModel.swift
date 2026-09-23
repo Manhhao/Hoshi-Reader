@@ -29,12 +29,13 @@ class BookshelfViewModel {
     var sasayakiError: String?
     
     private var bookProgress: [UUID: Double] = [:]
-    private var googleDriveSyncFiles: [UUID: DriveSyncFiles] = [:]
+    private var googleDriveSyncFiles: [UUID: TtuSyncFiles] = [:]
     private var sasayakiTask: Task<Void, Never>?
     private var sasayakiBookId: UUID?
     
     func loadBooks() {
         do {
+            _ = BookStorage.loadShelfList()
             books = try BookStorage.loadAllBooks()
             loadBookProgress()
             loadShelves()
@@ -44,40 +45,66 @@ class BookshelfViewModel {
     }
     
     func loadShelves() {
-        shelves = BookStorage.loadShelves() ?? []
+        shelves = BookStorage.loadShelfList()
+            .compactMap { name, shelf in shelf.value.map { (name: name, position: $0) } }
+            .sorted { ($0.position, $0.name) < ($1.position, $1.name) }
+            .map { shelf in BookShelf(name: shelf.name, bookIds: books.filter { $0.shelves?[shelf.name]?.value == true }.map(\.id)) }
     }
     
-    func saveShelves() {
-        guard let directory = try? BookStorage.getBooksDirectory() else { return }
-        try? BookStorage.save(shelves, inside: directory, as: FileNames.shelves)
+    func updateShelfList(_ update: (inout [String: Timestamped<Int?>]) -> Void) {
+        var list = BookStorage.loadShelfList()
+        update(&list)
+        try? BookStorage.saveShelfList(list)
+        try? SyncStorage.shared.handleShelvesChange()
+        loadShelves()
+    }
+    
+    func updateMemberships(_ memberships: [String: Bool], bookId: UUID) {
+        let index = books.firstIndex { $0.id == bookId }!
+        let root = try! BookStorage.getBooksDirectory().appendingPathComponent(books[index].folder)
+        var metadata = BookStorage.loadMetadata(root: root)!
+        var shelves = metadata.shelves ?? [:]
+        for (name, member) in memberships where (shelves[name]?.value ?? false) != member {
+            shelves[name] = Timestamped(modified: Date.now.milliseconds, value: member)
+        }
+        if shelves != metadata.shelves ?? [:] {
+            metadata.shelves = shelves
+            try? BookStorage.saveMetadata(metadata, inside: root)
+            try? SyncStorage.shared.handleBookChange(folder: metadata.folder)
+        }
+        books[index] = metadata
     }
     
     func createShelf(name: String) {
         if !shelves.contains(where: { $0.name == name }) {
-            shelves.append(BookShelf(name: name, bookIds: []))
-            saveShelves()
+            updateShelfList { list in
+                list[name.precomposedStringWithCanonicalMapping] = Timestamped(
+                    modified: Date.now.milliseconds,
+                    value: (list.values.compactMap(\.value).max() ?? -1) + 1
+                )
+            }
         }
     }
     
     func deleteShelf(name: String) {
-        shelves.removeAll(where: { $0.name == name })
-        saveShelves()
+        for id in shelves.first(where: { $0.name == name })!.bookIds {
+            updateMemberships([name: false], bookId: id)
+        }
+        updateShelfList { $0[name] = Timestamped(modified: Date.now.milliseconds, value: nil) }
     }
     
     func moveShelves(from source: IndexSet, to destination: Int) {
         shelves.move(fromOffsets: source, toOffset: destination)
-        saveShelves()
+        updateShelfList { list in
+            for (index, shelf) in shelves.enumerated() {
+                list[shelf.name] = Timestamped(modified: Date.now.milliseconds, value: index)
+            }
+        }
     }
     
     func moveBook(_ id: UUID, to name: String?) {
-        for i in shelves.indices {
-            shelves[i].bookIds.removeAll { $0 == id }
-        }
-        if let name,
-           let index = shelves.firstIndex(where: { $0.name == name }) {
-            shelves[index].bookIds.append(id)
-        }
-        saveShelves()
+        updateMemberships(Dictionary(uniqueKeysWithValues: shelves.map { ($0.name, $0.name == name) }), bookId: id)
+        loadShelves()
     }
     
     func moveBooks(_ books: Set<BookMetadata>, to name: String?) {
@@ -153,7 +180,7 @@ class BookshelfViewModel {
             let bookInfo = BookStorage.loadBookInfo(root: root)
             let bookmark = BookStorage.loadBookmark(root: root)
             
-            if let total = bookInfo?.characterCount, total > 0,
+            if let total = bookInfo?.characterCount ?? book.characterCount, total > 0,
                let current = bookmark?.characterCount {
                 bookProgress[book.id] = Double(current) / Double(total)
             } else {
@@ -166,19 +193,24 @@ class BookshelfViewModel {
         bookProgress[book.id] ?? 0.0
     }
     
+    func deleteLocalBook(_ book: BookMetadata) {
+        do {
+            try SyncStorage.shared.deleteLocalBook(key: book.folder)
+        } catch {
+            showError(message: error.localizedDescription)
+        }
+    }
+    
     func deleteBook(_ book: BookMetadata) {
         if sasayakiBookId == book.id {
             sasayakiTask?.cancel()
         }
         do {
             let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
-            StatisticsStorage.archive(book)
-            try BookStorage.delete(at: bookURL)
+            try SyncStorage.shared.prepareBook(root: bookURL)
+            try SyncStorage.shared.deleteBook(key: book.folder)
             books.removeAll { $0.id == book.id }
-            for i in shelves.indices {
-                shelves[i].bookIds.removeAll { $0 == book.id }
-            }
-            saveShelves()
+            loadShelves()
         } catch {
             showError(message: error.localizedDescription)
         }
@@ -190,8 +222,12 @@ class BookshelfViewModel {
         }
         
         let bookURL = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
-        books[index].renamedTitle = title.isEmpty ? nil : title
-        try? BookStorage.save(books[index], inside: bookURL, as: FileNames.metadata)
+        var metadata = BookStorage.loadMetadata(root: bookURL)!
+        metadata.renamedTitle = title.isEmpty ? nil : title
+        metadata.modified = Date.now.milliseconds
+        try? BookStorage.saveMetadata(metadata, inside: bookURL)
+        books[index] = metadata
+        try? SyncStorage.shared.handleBookChange(folder: book.folder)
     }
     
     func importBook(result: Result<URL, Error>) {
@@ -262,40 +298,48 @@ class BookshelfViewModel {
         }
     }
     
-    func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncBookData: Bool, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
+    func syncBook(book: BookMetadata, direction: TtuSyncDirection? = nil, syncBookData: Bool, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
         isSyncing = true
         Task {
-            defer {
-                isSyncing = false
-            }
-            do {
-                let result = try await SyncManager.shared.syncBook(
-                    book: book,
-                    direction: direction,
-                    syncBookData: syncBookData,
-                    syncStats: syncStats,
-                    statsSyncMode: statsSyncMode,
-                    syncAudioBook: syncAudioBook
-                )
-                handleSyncResult(result)
-            } catch {
-                showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
+            defer { isSyncing = false }
+            if UserConfig.shared.syncProvider == .ttu {
+                do {
+                    let result = try await TtuSyncManager.shared.syncBook(
+                        book: book,
+                        direction: direction,
+                        syncBookData: syncBookData,
+                        syncStats: syncStats,
+                        statsSyncMode: statsSyncMode,
+                        syncAudioBook: syncAudioBook
+                    )
+                    handleSyncResult(result)
+                } catch {
+                    showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
+                }
+            } else {
+                await GoogleDriveSyncManager.shared.sync(book: book)
             }
         }
     }
     
     func loadGoogleDriveBooks(suppressOfflineErrors: Bool = false) async {
+        if UserConfig.shared.syncProvider == .gdrive {
+            googleDriveBooks = []
+            await GoogleDriveSyncManager.shared.sync()
+            return
+        }
+        
         do {
-            let root = try await GoogleDriveHandler.shared.findRootFolder()
-            let folders = try await GoogleDriveHandler.shared.listBooks(rootFolder: root)
-            let localTitles = Set(books.map { GoogleDriveHandler.sanitizeTtuFilename($0.title) })
+            let root = try await TtuDriveHandler.shared.findRootFolder()
+            let folders = try await TtuDriveHandler.shared.listBooks(rootFolder: root)
+            let localTitles = Set(books.map { TtuDriveHandler.sanitizeTtuFilename($0.title) })
             let remoteFolders = folders.filter { !localTitles.contains($0.name) }
-            let allFiles = try await GoogleDriveHandler.shared.listSyncFiles(folderIds: remoteFolders.map(\.id))
+            let allFiles = try await TtuDriveHandler.shared.listSyncFiles(folderIds: remoteFolders.map(\.id))
             let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
                 .appendingPathComponent("gdrive-covers")
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             
-            let results = await withTaskGroup(of: (BookMetadata, DriveSyncFiles)?.self) { group in
+            let results = await withTaskGroup(of: (BookMetadata, TtuSyncFiles)?.self) { group in
                 for folder in remoteFolders {
                     guard let files = allFiles[folder.id], files.bookData != nil else { continue }
                     group.addTask {
@@ -313,12 +357,12 @@ class BookshelfViewModel {
                                 cover = cached.path(percentEncoded: false)
                             }
                         }
-                        let title = await GoogleDriveHandler.desanitizeTtuFilename(folder.name)
+                        let title = await TtuDriveHandler.desanitizeTtuFilename(folder.name)
                         let book = BookMetadata(title: title, cover: cover, folder: folder.id, lastAccess: files.lastAccess ?? .distantPast)
                         return (book, files)
                     }
                 }
-                var collected: [(BookMetadata, DriveSyncFiles)] = []
+                var collected: [(BookMetadata, TtuSyncFiles)] = []
                 for await result in group {
                     if let result {
                         collected.append(result)
@@ -327,7 +371,7 @@ class BookshelfViewModel {
                 return collected
             }
             
-            var remoteSyncFiles: [UUID: DriveSyncFiles] = [:]
+            var remoteSyncFiles: [UUID: TtuSyncFiles] = [:]
             for (book, files) in results {
                 remoteSyncFiles[book.id] = files
                 if let name = files.progress?.name.dropLast(5),
@@ -347,6 +391,39 @@ class BookshelfViewModel {
         }
     }
     
+    func downloadBook(_ book: BookMetadata, onOpen: @escaping (BookMetadata) -> Void) {
+        guard downloadingBooks[book.id] == nil else {
+            return
+        }
+        
+        downloadingBooks[book.id] = 0
+        let sync = GoogleDriveSyncManager.shared
+        sync.downloadTask?.cancel()
+        sync.downloadTask = Task {
+            defer {
+                downloadingBooks.removeValue(forKey: book.id)
+                if !Task.isCancelled {
+                    sync.downloadTask = nil
+                    sync.startFileSync()
+                }
+            }
+            
+            do {
+                let downloaded = try await sync.downloadBook(book) { progress in
+                    self.downloadingBooks[book.id] = progress
+                }
+                try Task.checkCancellation()
+                loadBooks()
+                onOpen(downloaded)
+            } catch is CancellationError {
+            } catch {
+                if !Task.isCancelled {
+                    showError(message: error.localizedDescription)
+                }
+            }
+        }
+    }
+    
     func importGoogleDriveBook(_ book: BookMetadata, syncStats: Bool, syncAudioBook: Bool) {
         guard let syncFiles = googleDriveSyncFiles[book.id],
               downloadingBooks[book.id] == nil else {
@@ -358,7 +435,7 @@ class BookshelfViewModel {
                 downloadingBooks.removeValue(forKey: book.id)
             }
             do {
-                _ = try await SyncManager.shared.importGoogleDriveBook(
+                _ = try await TtuSyncManager.shared.importGoogleDriveBook(
                     syncFiles: syncFiles,
                     syncStats: syncStats,
                     syncAudioBook: syncAudioBook
@@ -378,7 +455,11 @@ class BookshelfViewModel {
         guard downloadingBooks[book.id] == nil else { return }
         Task {
             do {
-                try await GoogleDriveHandler.shared.trashFile(fileId: book.folder)
+                guard UserConfig.shared.syncProvider == .ttu, GoogleDriveAuth.shared.isAuthenticated(for: .ttu) else {
+                    throw GoogleDriveAuthError.notAuthenticated
+                }
+                
+                try await GoogleDriveClient.shared.trashFile(fileId: book.folder)
                 googleDriveBooks.removeAll { $0.id == book.id }
                 googleDriveSyncFiles.removeValue(forKey: book.id)
                 bookProgress.removeValue(forKey: book.id)
@@ -388,7 +469,7 @@ class BookshelfViewModel {
         }
     }
     
-    private func handleSyncResult(_ result: SyncResult) {
+    private func handleSyncResult(_ result: TtuSyncResult) {
         switch result {
         case .synced(let title):
             showSuccess(message: "\(title) is already synced")
@@ -415,6 +496,7 @@ class BookshelfViewModel {
         )
         
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? SyncStorage.shared.handleBookChange(folder: book.folder)
         loadBookProgress()
     }
     
@@ -449,7 +531,8 @@ class BookshelfViewModel {
         let srtData = try Data(contentsOf: srtURL)
         let cues = SasayakiParser.parseCues(from: srtData)
         let result = try SasayakiMatcher.match(rootURL: rootURL, cues: cues)
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        try SyncStorage.shared.saveSasayakiMatch(result, folder: book.folder, root: rootURL)
+        
         return result
     }
     
@@ -551,7 +634,7 @@ class BookshelfViewModel {
             SasayakiAligner.align(source: source, tokens: tokens)
         }.value
         
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        try SyncStorage.shared.saveSasayakiMatch(result, folder: book.folder, root: rootURL)
     }
     
     func clearSasayakiTranscript(book: BookMetadata) throws {
@@ -622,7 +705,7 @@ class BookshelfViewModel {
         let booksDir = try BookStorage.getBooksDirectory()
         let bookFolder = booksDir.appendingPathComponent(safeTitle)
         
-        if FileManager.default.fileExists(atPath: bookFolder.path(percentEncoded: false)) {
+        if let existing = BookStorage.loadMetadata(root: bookFolder), existing.epub != nil {
             return
         }
         
@@ -633,7 +716,8 @@ class BookshelfViewModel {
         
         let document = try BookStorage.loadEpub(localURL)
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
-        StatisticsStorage.restore(folder: safeTitle)
+        let metadata = BookStorage.loadMetadata(root: bookFolder)!
+        try SyncStorage.shared.handleBookImport(book: metadata, root: bookFolder)
     }
     
     private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {
@@ -646,7 +730,9 @@ class BookshelfViewModel {
                 coverURL = coverDestination
             }
             
-            let metadata = BookMetadata(
+            let existing = BookStorage.loadMetadata(root: bookFolder)
+            var metadata = BookMetadata(
+                id: existing?.id ?? UUID(),
                 title: title,
                 author: document.author?.trimmingCharacters(in: .whitespacesAndNewlines),
                 epub: localURL.lastPathComponent,
@@ -655,10 +741,23 @@ class BookshelfViewModel {
                 lastAccess: Date()
             )
             
+            metadata.renamedTitle = existing?.renamedTitle
+            metadata.shelves = existing?.shelves
             let bookinfo = BookProcessor.process(document: document)
             
             try BookStorage.save(metadata, inside: bookFolder, as: FileNames.metadata)
             try BookStorage.save(bookinfo, inside: bookFolder, as: FileNames.bookinfo)
+            
+            if let bookmark = BookStorage.loadBookmark(root: bookFolder) {
+                let position = bookinfo.resolveCharacterPosition(bookmark.characterCount)
+                let resolved = Bookmark(
+                    chapterIndex: position?.spineIndex ?? 0,
+                    progress: position?.progress ?? 0,
+                    characterCount: bookmark.characterCount,
+                    lastModified: bookmark.lastModified
+                )
+                try BookStorage.save(resolved, inside: bookFolder, as: FileNames.bookmark)
+            }
         } catch {
             try? BookStorage.delete(at: localURL)
             try? BookStorage.delete(at: bookFolder)

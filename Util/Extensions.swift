@@ -94,6 +94,16 @@ extension Double {
     }
 }
 
+nonisolated extension Date {
+    var milliseconds: Int64 {
+        Int64((timeIntervalSince1970 * 1000).rounded())
+    }
+    
+    init(milliseconds: Int64) {
+        self.init(timeIntervalSince1970: Double(milliseconds) / 1000)
+    }
+}
+
 extension Data {
     var sha1: String {
         Insecure.SHA1.hash(data: self).map { String(format: "%02x", $0) }.joined()

@@ -64,13 +64,28 @@ class ReaderLoaderViewModel {
             return
         }
         
-        if let info = BookStorage.loadBookInfo(root: root), info.images == nil {
-            try? BookStorage.save(BookProcessor.process(document: doc), inside: root, as: FileNames.bookinfo)
+        let info = BookStorage.loadBookInfo(root: root)
+        if info == nil {
+            let processed = BookProcessor.process(document: doc)
+            try? BookStorage.save(processed, inside: root, as: FileNames.bookinfo)
+            if let bookmark = BookStorage.loadBookmark(root: root) {
+                let position = processed.resolveCharacterPosition(bookmark.characterCount)
+                let resolved = Bookmark(
+                    chapterIndex: position?.spineIndex ?? 0,
+                    progress: position?.progress ?? 0,
+                    characterCount: bookmark.characterCount,
+                    lastModified: bookmark.lastModified
+                )
+                try? BookStorage.save(resolved, inside: root, as: FileNames.bookmark)
+            }
+        } else if info?.images == nil {
+            let processed = BookProcessor.process(document: doc)
+            try? BookStorage.save(processed, inside: root, as: FileNames.bookinfo)
         }
         
         CSSSanitizer.sanitizeDirectory(doc.contentDirectory)
         
-        var bookCopy = self.book
+        var bookCopy = BookStorage.loadMetadata(root: root)!
         bookCopy.lastAccess = Date()
         try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)
         
@@ -89,6 +104,8 @@ class ReaderViewModel {
     var activeSheet: ActiveSheet?
     var contentsTab: ContentsTab = .chapters
     var isLoading = true
+    var bookDeleted = false
+    private var applyingBookmark = false
     var focusMode = false
     var topSafeArea: CGFloat = 0
     var bottomSafeArea: CGFloat = 0
@@ -104,12 +121,18 @@ class ReaderViewModel {
     var isPaused = false
     var lastTimestamp: Date = .now
     var lastCount: Int = 0
-    var stats: [Statistics] = []
-    var sessionStatistics: Statistics
-    var todaysStatistics: Statistics
-    var allTimeStatistics: Statistics
+    private var sessionId = UUID().uuidString
+    private(set) var currentSession = ReadingSession.starting(at: .now)
+    private var history: [String: Timestamped<ReadingSession?>] = [:]
+    private var historyDays: [Date: ReadingTotal] = [:]
+    private var historyTotal = ReadingTotal(date: .distantPast)
     let autostartStatistics: Bool
-    let statisticsResetTime: Int
+    
+    var statisticsResetTime: Int {
+        didSet {
+            regroupSessions()
+        }
+    }
     
     // sasayaki
     var sasayakiPlayer: SasayakiPlayer!
@@ -173,11 +196,7 @@ class ReaderViewModel {
         bookInfo = info
         chapterStarts = Self.chapterStarts(document: document, bookInfo: info)
         
-        sessionStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
-        todaysStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
-        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
-        
-        loadStatistics()
+        loadSessions()
         
         if autostartStatistics {
             startTracking()
@@ -200,7 +219,7 @@ class ReaderViewModel {
             }
         )
         
-        highlights = BookStorage.loadHighlights(root: rootURL) ?? []
+        highlights = BookStorage.loadHighlights(root: rootURL)
     }
     
     // todo: name is misleading after fragment changes. this is technically the character count of the xhtml file, not necessarily the count of a toc chapter. fix during refactor
@@ -266,14 +285,33 @@ class ReaderViewModel {
         return parts.joined(separator: " ")
     }
     
+    var todaysTotal: ReadingTotal {
+        let today = StatisticsDay.date(.now, resetTime: statisticsResetTime)
+        var total = historyDays[today] ?? ReadingTotal(date: today)
+        let start = Date(milliseconds: currentSession.startedAt)
+        
+        if StatisticsDay.date(start, resetTime: statisticsResetTime) == today {
+            total.add(currentSession)
+        }
+        
+        return total
+    }
+    
+    var allTimeTotal: ReadingTotal {
+        var total = historyTotal
+        total.add(currentSession)
+        
+        return total
+    }
+    
     var statisticsString: String {
         let config = UserConfig.shared
         var result: [String] = []
         if config.readerShowReadingSpeed {
-            result.append("\(sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
+            result.append("\(currentSession.readingSpeed.formatted(.number.grouping(.never))) / h")
         }
         if config.readerShowReadingTime {
-            result.append("\(Duration.seconds(sessionStatistics.readingTime).formatted(.time(pattern: .hourMinute)))")
+            result.append("\(Duration.seconds(currentSession.readingTime).formatted(.time(pattern: .hourMinute)))")
         }
         return result.joined(separator: " ")
     }
@@ -323,6 +361,11 @@ class ReaderViewModel {
     }
     
     func handleRestoreCompleted() {
+        if applyingBookmark {
+            applyingBookmark = false
+            resetTrackingBaseline()
+        }
+        
         if !sasayakiPlayer.hasAudio {
             sasayakiPlayer.restoreAudio()
         }
@@ -343,9 +386,18 @@ class ReaderViewModel {
         try sasayakiPlayer.importAudio(from: url)
     }
     
-    func syncOnOpen() async {
-        if autoSyncEnabled {
-            let result = try? await SyncManager.shared.syncBook(
+    func syncOnOpen(skipSync: Bool) async {
+        if UserConfig.shared.enableSync && UserConfig.shared.syncProvider == .gdrive {
+            if !skipSync {
+                await GoogleDriveSyncManager.shared.sync(book: book)
+            }
+            
+            if bookDeleted || BookStorage.loadMetadata(root: rootURL)?.epub == nil {
+                bookDeleted = true
+                return
+            }
+        } else if autoSyncEnabled {
+            let result = try? await TtuSyncManager.shared.syncBook(
                 book: book,
                 direction: nil,
                 syncBookData: syncBookData,
@@ -364,11 +416,16 @@ class ReaderViewModel {
     }
     
     func syncAfterForeground() async {
+        if UserConfig.shared.syncProvider == .gdrive {
+            await GoogleDriveSyncManager.shared.sync(book: book)
+            return
+        }
+        
         guard autoSyncEnabled, !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
         
-        let result = try? await SyncManager.shared.syncBook(
+        let result = try? await TtuSyncManager.shared.syncBook(
             book: book,
             direction: nil,
             syncBookData: syncBookData,
@@ -386,16 +443,74 @@ class ReaderViewModel {
     }
     
     func flushAutoSync() async {
+        if UserConfig.shared.syncProvider == .gdrive {
+            await GoogleDriveSyncManager.shared.sync()
+            
+            return
+        }
+        
         debounceTask?.cancel()
         debounceTask = nil
         await runAutoExport(direction: .exportToTtu)
     }
     
+    func applySyncedState(_ syncedBook: SyncBook, bookmarkChanged: Bool) {
+        if bookmarkChanged {
+            let count = syncedBook.bookmark!.value.characterCount
+            
+            if let position = bookInfo.resolveCharacterPosition(count) {
+                applyingBookmark = true
+                isLoading = true
+                index = position.spineIndex
+                currentProgress = position.progress
+                resetTrackingBaseline()
+                
+                if bridge.chapterURL != nil {
+                    loadCurrentChapter()
+                }
+            }
+        }
+        
+        let values = Dictionary(
+            uniqueKeysWithValues: highlights.map { ($0.id.uuidString, SyncHighlight($0)) }
+        )
+        if values != syncedBook.highlights.compactMapValues(\.value) {
+            highlights = BookStorage.loadHighlights(root: rootURL)
+            syncHighlights()
+        }
+        
+        if let change = syncedBook.audiobook {
+            let value = change.value
+            let playback = sasayakiPlayer.playback
+            
+            if playback.lastPosition != value.lastPosition || playback.delay != value.delay
+                || Double(playback.rate) != value.rate {
+                sasayakiPlayer.reloadPlayback()
+            }
+        }
+        
+        applySessions(syncedBook.sessions)
+    }
+    
+    func reloadSyncedMatch() {
+        sasayakiPlayer.matchData = BookStorage.loadSasayakiMatch(root: rootURL)
+        sasayakiPlayer.timeline = CueTimeline(match: sasayakiPlayer.matchData)
+        bridge.send(.applySasayakiCues(sasayakiPlayer.cues(for: index)))
+    }
+    
     func updateProgress(_ progress: Double) {
+        if applyingBookmark {
+            return
+        }
+        
         currentProgress = progress
     }
     
     func saveBookmark(progress: Double) {
+        if applyingBookmark || bookDeleted {
+            return
+        }
+        
         persistBookmark(progress: progress)
         flushStats()
     }
@@ -555,6 +670,10 @@ class ReaderViewModel {
     }
     
     func startTracking() {
+        if !currentSession.hasActivity {
+            currentSession = .starting(at: .now)
+        }
+        
         isTracking = true
         lastTimestamp = .now
         lastCount = currentCharacter
@@ -568,28 +687,18 @@ class ReaderViewModel {
     
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
     func updateStats() {
-        let currentDateKey = Self.formattedDate(date: .now, resetTime: statisticsResetTime)
-        if todaysStatistics.dateKey != currentDateKey {
-            if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
-                stats[index] = todaysStatistics
-            } else {
-                stats.append(todaysStatistics)
-            }
-            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
+        if applyingBookmark {
+            return
         }
-        
         let now: Date = .now
-        let timeDiff = Date.now.timeIntervalSince(lastTimestamp)
-        let charDiff = currentCharacter - lastCount
-        let finalCharDiff = charDiff < 0 && abs(charDiff) > sessionStatistics.charactersRead ? -sessionStatistics.charactersRead : charDiff;
-        let lastStatisticModified = Int(Date.now.timeIntervalSince1970 * 1000)
+        let timeDiff = now.timeIntervalSince(lastTimestamp)
+        let charDiff = max(currentCharacter - lastCount, -currentSession.charactersRead)
+        
         guard timeDiff > 0 else {
             return
         }
         
-        updateStatistic(to: &sessionStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
-        updateStatistic(to: &todaysStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
-        updateStatistic(to: &allTimeStatistics, timeDiff: timeDiff, characterDiff: finalCharDiff, lastStatisticModified: lastStatisticModified)
+        currentSession.track(characters: charDiff, time: timeDiff, until: now)
         
         lastTimestamp = now
         lastCount = currentCharacter
@@ -598,6 +707,40 @@ class ReaderViewModel {
     func resetTrackingBaseline() {
         lastCount = currentCharacter
         lastTimestamp = .now
+    }
+    
+    func flushStats() {
+        guard isTracking else { return }
+        if !isPaused {
+            updateStats()
+        }
+        saveStats()
+    }
+    
+    func applySessions(_ sessions: [String: Timestamped<ReadingSession?>]) {
+        if let change = sessions[sessionId], change.value == nil {
+            sessionId = UUID().uuidString
+            currentSession = .starting(at: .now)
+        }
+        
+        if history != sessions {
+            history = sessions
+            regroupSessions()
+        }
+    }
+    
+    func regroupSessions() {
+        let savedSessions = history.filter {
+            $0.key != sessionId
+        }
+        historyDays = Dictionary(
+            uniqueKeysWithValues: StatisticsDay.grouped(savedSessions, resetTime: statisticsResetTime).map {
+                ($0.date, $0.total)
+            }
+        )
+        historyTotal = historyDays.values.reduce(into: ReadingTotal(date: .distantPast)) {
+            $0.add($1)
+        }
     }
     
     func addHighlight(_ color: HighlightColor, _ creation: HighlightData) {
@@ -677,13 +820,17 @@ class ReaderViewModel {
     private func persistBookmark(progress: Double) {
         currentProgress = progress
         bridge.updateProgress(progress)
+        let stored = BookStorage.loadBookmark(root: rootURL)
         let bookmark = Bookmark(
             chapterIndex: index,
             progress: progress,
             characterCount: currentCharacter,
-            lastModified: Date()
+            lastModified: stored?.characterCount == currentCharacter ? stored?.lastModified : Date()
         )
+        
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+        try? SyncStorage.shared.handleBookChange(folder: book.folder)
+        
         scheduleAutoExport()
     }
     
@@ -715,7 +862,7 @@ class ReaderViewModel {
             index = bookmark.chapterIndex
             currentProgress = bookmark.progress
         }
-        loadStatistics()
+        loadSessions()
         if syncAudioBook {
             sasayakiPlayer.reloadPlayback()
         }
@@ -736,7 +883,7 @@ class ReaderViewModel {
         }
     }
     
-    private func runAutoExport(direction: SyncDirection?) async {
+    private func runAutoExport(direction: TtuSyncDirection?) async {
         if let existing = exportTask {
             await existing.value
         }
@@ -746,7 +893,7 @@ class ReaderViewModel {
         
         let task = Task { [weak self] in
             guard let self else { return }
-            _ = try? await SyncManager.shared.syncBook(
+            _ = try? await TtuSyncManager.shared.syncBook(
                 book: self.book,
                 direction: direction,
                 syncBookData: syncBookData,
@@ -788,48 +935,19 @@ class ReaderViewModel {
         return fragment.removingPercentEncoding ?? fragment
     }
     
-    private func flushStats() {
-        guard isTracking else { return }
-        if !isPaused {
-            updateStats()
-        }
-        saveStats()
-    }
-    
-    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
-    private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
-        to.readingTime += timeDiff
-        to.charactersRead = max(to.charactersRead + characterDiff, 0)
-        to.lastReadingSpeed = to.readingSpeed
-        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
-        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        if characterDiff != 0 {
-            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        }
-        to.lastStatisticModified = lastStatisticModified
-    }
-    
     private func saveStats() {
-        if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
-            stats[index] = todaysStatistics
-        } else {
-            stats.append(todaysStatistics)
+        var sessions = StatisticsStorage.load(folder: book.folder)
+        applySessions(sessions)
+        if currentSession.hasActivity && sessions[sessionId]?.value != currentSession {
+            sessions[sessionId] = Timestamped(modified: Date.now.milliseconds, value: currentSession)
+            StatisticsStorage.save(sessions, folder: book.folder)
         }
         
-        stats = Statistics.merged(stats).filter(\.hasActivity)
-        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
         scheduleAutoExport()
     }
     
-    private func loadStatistics() {
-        stats = Statistics.merged(BookStorage.loadStatistics(root: rootURL) ?? [])
-        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now, resetTime: statisticsResetTime) }) ?? Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
-        allTimeStatistics = Self.getDefaultStatistic(title: document.title ?? "", resetTime: statisticsResetTime)
-        
-        let allTime = stats.reduce(into: ReadingDay(date: .now)) { $0.add($1) }
-        allTimeStatistics.charactersRead = allTime.charactersRead
-        allTimeStatistics.readingTime = allTime.readingTime
-        allTimeStatistics.lastReadingSpeed = allTime.readingSpeed
+    private func loadSessions() {
+        applySessions(StatisticsStorage.load(folder: book.folder))
     }
     
     private func chapterHighlights() -> String? {
@@ -846,7 +964,8 @@ class ReaderViewModel {
     }
     
     private func saveHighlights() {
-        try? BookStorage.save(highlights, inside: rootURL, as: FileNames.highlights)
+        try? BookStorage.saveHighlights(highlights, root: rootURL)
+        try? SyncStorage.shared.handleBookChange(folder: book.folder)
     }
     
     private func syncHighlights() {
@@ -880,17 +999,5 @@ class ReaderViewModel {
         }
         walk(document.tableOfContents)
         return starts.sorted()
-    }
-    
-    private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {
-        return Statistics(title: title, dateKey: Self.formattedDate(date: .now, resetTime: resetTime), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
-    }
-    
-    private static func formattedDate(date: Date, resetTime: Int = 0) -> String {
-        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 60)
-        let formatter = ISO8601DateFormatter()
-        formatter.timeZone = TimeZone.current
-        formatter.formatOptions = [.withFullDate]
-        return formatter.string(from: adjustedDate)
     }
 }

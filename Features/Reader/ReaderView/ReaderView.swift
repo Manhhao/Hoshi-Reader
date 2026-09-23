@@ -32,8 +32,10 @@ struct ReaderLoader: View {
     @Environment(UserConfig.self) private var userConfig
     @Environment(\.dismissReader) private var dismissReader
     @State private var viewModel: ReaderLoaderViewModel
+    private let skipSyncOnOpen: Bool
     
-    init(book: BookMetadata) {
+    init(book: BookMetadata, skipSyncOnOpen: Bool = false) {
+        self.skipSyncOnOpen = skipSyncOnOpen
         _viewModel = State(initialValue: ReaderLoaderViewModel(book: book))
     }
     
@@ -45,11 +47,12 @@ struct ReaderLoader: View {
                 rootURL: root,
                 autostartStatistics: userConfig.statisticsAutostartMode == .on,
                 statisticsResetTime: userConfig.statisticsResetTime,
-                autoSyncEnabled: userConfig.enableSync && userConfig.enableAutoSync,
+                autoSyncEnabled: userConfig.enableSync && userConfig.syncProvider == .ttu && userConfig.enableAutoSync,
                 syncBookData: userConfig.enableSync && userConfig.syncUploadBooks,
                 syncStats: userConfig.enableSync && userConfig.statisticsEnableSync,
                 statsSyncMode: userConfig.statisticsSyncMode,
-                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync
+                syncAudioBook: userConfig.enableSasayaki && userConfig.sasayakiEnableSync,
+                skipSyncOnOpen: skipSyncOnOpen
             )
         } else {
             BookLoadFailedView { dismissReader?() }
@@ -81,6 +84,7 @@ struct ReaderView: View {
     @State private var sasayakiControlsExpanded = false
     @State private var inactiveSince: Date?
     @State private var imageURL: URL?
+    private let skipSyncOnOpen: Bool
     private let webViewPadding: CGFloat = 4
     
     private var readerTopInset: CGFloat {
@@ -181,8 +185,10 @@ struct ReaderView: View {
         syncBookData: Bool,
         syncStats: Bool,
         statsSyncMode: StatisticsSyncMode,
-        syncAudioBook: Bool
+        syncAudioBook: Bool,
+        skipSyncOnOpen: Bool
     ) {
+        self.skipSyncOnOpen = skipSyncOnOpen
         _viewModel = State(initialValue: ReaderViewModel(
             book: book,
             document: document,
@@ -598,7 +604,7 @@ struct ReaderView: View {
             }
         }
         .task {
-            await viewModel.syncOnOpen()
+            await viewModel.syncOnOpen(skipSync: skipSyncOnOpen)
         }
         .onChange(of: viewModel.activeSheet) { _, sheet in
             if sheet == nil {
@@ -619,11 +625,14 @@ struct ReaderView: View {
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }
         .onChange(of: sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
+        .onChange(of: userConfig.statisticsResetTime) { _, resetTime in
+            viewModel.statisticsResetTime = resetTime
+        }
         .onChange(of: userConfig.sasayakiAutoScroll) { _, _ in viewModel.sasayakiPlayer.updateIdleTimerDisabled() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             let shouldResync = inactiveSince.map { Date.now.timeIntervalSince($0) >= 600 } ?? false
             inactiveSince = nil
-            if shouldResync {
+            if shouldResync || userConfig.syncProvider == .gdrive {
                 Task {
                     await viewModel.syncAfterForeground()
                 }
@@ -636,6 +645,7 @@ struct ReaderView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             inactiveSince = .now
+            viewModel.flushStats()
             flushAutoSyncInBackground()
             guard viewModel.isTracking else {
                 return
@@ -646,7 +656,13 @@ struct ReaderView: View {
             ReaderIntentBridge.shared.reader = viewModel
             readerViewController?.attach(viewModel)
         }
+        .onChange(of: viewModel.bookDeleted) { _, deleted in
+            if deleted {
+                dismissReader?()
+            }
+        }
         .onDisappear {
+            viewModel.stopTracking()
             ReaderIntentBridge.shared.reader = nil
             readerViewController?.detach()
             viewModel.sasayakiPlayer.teardown()
