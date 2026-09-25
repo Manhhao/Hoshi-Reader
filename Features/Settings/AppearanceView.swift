@@ -63,7 +63,7 @@ struct AppearanceView: View {
                             Text("Light").tag(Themes.light)
                             Text("Dark").tag(Themes.dark)
                         }
-                        ColorPicker("Background Color", selection: $userConfig.customBackgroundColor)
+                        ColorPicker("Background Color", selection: $userConfig.customBackgroundColor, supportsOpacity: false)
                         ColorPicker("Text Color", selection: $userConfig.customTextColor)
                         ColorPicker("Info Color", selection: $userConfig.customInfoColor)
                     }

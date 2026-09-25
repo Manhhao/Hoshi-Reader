@@ -106,7 +106,7 @@ struct ReaderView: View {
         if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
             return Color(red: 0.949, green: 0.886, blue: 0.788)
         }
-        return userConfig.theme == .custom ? userConfig.customBackgroundColor : Color(.systemBackground)
+        return userConfig.theme == .custom ? Color(UIColor(userConfig.customBackgroundColor).withAlphaComponent(1)) : Color(.systemBackground)
     }
     
     private var readerTextColor: String? {
