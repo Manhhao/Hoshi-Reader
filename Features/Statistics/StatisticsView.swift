@@ -82,7 +82,7 @@ struct StatisticsView: View {
                 viewModel.load()
             }
             .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
-                viewModel.load()
+                viewModel.scheduleLoad()
             }
             .onChange(of: userConfig.statisticsResetTime) { _, resetTime in
                 viewModel.resetTime = resetTime

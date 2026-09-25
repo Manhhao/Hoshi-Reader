@@ -54,6 +54,7 @@ struct StatisticsSettingsView: View {
             Text("This will delete the statistics of \(archivedBooks.count) deleted books.")
         }
         .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
+            guard ReaderIntentBridge.shared.reader == nil else { return }
             archivedBooks = StatisticsStorage.loadArchived()
         }
         .onAppear {

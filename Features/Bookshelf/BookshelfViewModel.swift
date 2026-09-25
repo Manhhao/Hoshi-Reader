@@ -32,6 +32,7 @@ class BookshelfViewModel {
     private var googleDriveSyncFiles: [UUID: TtuSyncFiles] = [:]
     private var sasayakiTask: Task<Void, Never>?
     private var sasayakiBookId: UUID?
+    private var reloadTask: Task<Void, Never>?
     
     func loadBooks() {
         do {
@@ -41,6 +42,16 @@ class BookshelfViewModel {
             loadShelves()
         } catch {
             showError(message: error.localizedDescription)
+        }
+    }
+    
+    func scheduleReload() {
+        guard reloadTask == nil else { return }
+        reloadTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            reloadTask = nil
+            guard ReaderIntentBridge.shared.reader == nil else { return }
+            loadBooks()
         }
     }
     

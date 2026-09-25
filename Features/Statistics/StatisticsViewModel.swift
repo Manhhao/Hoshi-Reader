@@ -53,6 +53,7 @@ class StatisticsViewModel {
     private var allBooks: [BookStatistics] = []
     private var totalsByDate: [Date: ReadingTotal] = [:]
     private var totalsByMonth: [Date: ReadingTotal] = [:]
+    private var reloadTask: Task<Void, Never>?
     
     var firstDay: Date? {
         dailyTotals.first?.date
@@ -125,6 +126,16 @@ class StatisticsViewModel {
             grouped[month, default: ReadingTotal(date: month)].add(total)
         }
         updateBooks()
+    }
+    
+    func scheduleLoad() {
+        guard reloadTask == nil else { return }
+        reloadTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            reloadTask = nil
+            guard ReaderIntentBridge.shared.reader == nil else { return }
+            load()
+        }
     }
     
     func total(on date: Date) -> ReadingTotal? {

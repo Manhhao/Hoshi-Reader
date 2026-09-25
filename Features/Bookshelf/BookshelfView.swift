@@ -78,7 +78,7 @@ struct BookshelfView: View {
                         toolbarContent
                     }
                     .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
-                        viewModel.loadBooks()
+                        viewModel.scheduleReload()
                     }
                     .onAppear {
                         viewModel.loadBooks()
