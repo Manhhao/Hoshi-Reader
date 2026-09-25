@@ -129,6 +129,7 @@ final class HoshiWKWebView: WKWebView {
 }
 
 struct ReaderWebView: UIViewRepresentable {
+    @Environment(\.readerViewController) private var readerViewController
     let userConfig: UserConfig
     let viewSize: CGSize
     var topInset: CGFloat = 0
@@ -169,6 +170,7 @@ struct ReaderWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        readerViewController?.setContentScrollView(webView.scrollView)
         if #available(iOS 26.0, *) {
             webView.scrollView.topEdgeEffect.style = .soft
             webView.scrollView.bottomEdgeEffect.style = .soft

@@ -229,6 +229,7 @@ struct ReaderView: View {
                     }
                     .foregroundStyle(userConfig.theme == .custom ? AnyShapeStyle(userConfig.customInfoColor) : AnyShapeStyle(.secondary))
                     .offset(y: -3)
+                    .allowsHitTesting(false)
                 }
             }
     }
@@ -654,7 +655,9 @@ struct ReaderView: View {
         }
         .onAppear {
             ReaderIntentBridge.shared.reader = viewModel
-            readerViewController?.attach(viewModel)
+            readerViewController?.attach(viewModel) {
+                handleTapOutside(clearSelection: true)
+            }
         }
         .onChange(of: viewModel.bookDeleted) { _, deleted in
             if deleted {

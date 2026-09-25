@@ -11,6 +11,7 @@ import SwiftUI
 import UIKit
 
 struct ScrollReaderWebView: UIViewRepresentable {
+    @Environment(\.readerViewController) private var readerViewController
     let userConfig: UserConfig
     let viewportWidth: Int
     var topInset: CGFloat = 0
@@ -65,6 +66,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        readerViewController?.setContentScrollView(webView.scrollView)
         if #available(iOS 26.0, *) {
             webView.scrollView.topEdgeEffect.style = .soft
             webView.scrollView.bottomEdgeEffect.style = .soft

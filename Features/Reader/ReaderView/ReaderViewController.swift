@@ -22,6 +22,15 @@ final class ReaderToolbar: UIToolbar {
     }
 }
 
+private final class ReaderInfoPlaceholder: UIView {
+    var onLayout: (() -> Void)?
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?()
+    }
+}
+
 private let secondaryLabel = UIColor { UIColor.secondaryLabel.resolvedColor(with: $0) }
 
 @MainActor
@@ -29,9 +38,13 @@ final class ReaderViewController: UIViewController {
     private let host: UIViewController
     private let onClose: () -> Void
     private var viewModel: ReaderViewModel?
+    private var onTap: (() -> Void)?
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
     private let infoLabel = UILabel()
+    private let infoPlaceholder = ReaderInfoPlaceholder()
+    private lazy var infoWidth = infoPlaceholder.widthAnchor.constraint(equalToConstant: 0)
+    private lazy var infoHeight = infoPlaceholder.heightAnchor.constraint(equalToConstant: 0)
     private let titleView = UIStackView()
     private let infoItem = UIBarButtonItem()
     private let closeItem = UIBarButtonItem()
@@ -71,6 +84,11 @@ final class ReaderViewController: UIViewController {
         infoLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         infoLabel.numberOfLines = 0
         infoLabel.textAlignment = .center
+        infoWidth.isActive = true
+        infoHeight.isActive = true
+        infoPlaceholder.onLayout = { [weak self] in self?.layoutInfo() }
+        infoPlaceholder.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap)))
+        view.addSubview(infoLabel)
         
         titleView.axis = .vertical
         titleView.alignment = .center
@@ -78,7 +96,7 @@ final class ReaderViewController: UIViewController {
         titleView.addArrangedSubview(titleLabel)
         titleView.addArrangedSubview(subtitleLabel)
         
-        infoItem.customView = infoLabel
+        infoItem.customView = infoPlaceholder
         if #available(iOS 26.0, *) {
             infoItem.hidesSharedBackground = true
         }
@@ -102,20 +120,33 @@ final class ReaderViewController: UIViewController {
         }
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutInfo()
+    }
+    
+    private func layoutInfo() {
+        guard infoPlaceholder.window != nil else { return }
+        infoLabel.bounds.size = CGSize(width: infoWidth.constant, height: infoHeight.constant)
+        infoLabel.center = infoPlaceholder.convert(CGPoint(x: infoPlaceholder.bounds.midX, y: infoPlaceholder.bounds.midY), to: view)
+    }
+    
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         updateSafeArea()
     }
     
-    func attach(_ viewModel: ReaderViewModel) {
+    func attach(_ viewModel: ReaderViewModel, onTap: @escaping () -> Void) {
         guard self.viewModel !== viewModel else { return }
         self.viewModel = viewModel
+        self.onTap = onTap
         updateSafeArea()
         observeBars()
     }
     
     func detach() {
         viewModel = nil
+        onTap = nil
     }
     
     private func updateSafeArea() {
@@ -149,6 +180,10 @@ final class ReaderViewController: UIViewController {
             viewModel?.stopTracking()
         }
         onClose()
+    }
+    
+    @objc private func tap() {
+        onTap?()
     }
     
     private func menuElements() -> [UIMenuElement] {
@@ -196,7 +231,9 @@ final class ReaderViewController: UIViewController {
             .joined(separator: "\n")
         infoLabel.text = info
         infoLabel.textColor = infoColor ?? secondaryLabel
-        infoLabel.sizeToFit()
+        let size = (info as NSString).size(withAttributes: [.font: infoLabel.font!])
+        infoWidth.constant = ceil(size.width)
+        infoHeight.constant = ceil(size.height)
         
         let items: [UIBarButtonItem] = info.isEmpty
             ? [closeItem, .flexibleSpace(), optionsItem]
@@ -220,7 +257,19 @@ final class ReaderViewController: UIViewController {
     
     private func setBarsHidden(_ hidden: Bool) {
         guard let nav = navigationController, nav.isNavigationBarHidden != hidden else { return }
-        nav.setNavigationBarHidden(hidden, animated: true)
-        nav.setToolbarHidden(hidden, animated: true)
+        if #available(iOS 26.0, *) {
+            UIView.transition(with: host.view, duration: 0.25, options: [.transitionCrossDissolve, .allowAnimatedContent, .beginFromCurrentState, .allowUserInteraction]) {
+                self.contentScrollView(for: .top)?.topEdgeEffect.isHidden = hidden
+                self.contentScrollView(for: .bottom)?.bottomEdgeEffect.isHidden = hidden
+                nav.setNavigationBarHidden(hidden, animated: true)
+                nav.setToolbarHidden(hidden, animated: true)
+            }
+        } else {
+            nav.setNavigationBarHidden(hidden, animated: true)
+            nav.setToolbarHidden(hidden, animated: true)
+        }
+        UIView.animate(withDuration: 0.25, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseInOut]) {
+            self.infoLabel.alpha = hidden ? 0 : 1
+        }
     }
 }
