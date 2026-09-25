@@ -19,6 +19,7 @@ final class GoogleDriveSyncManager {
     let drive = GoogleDriveSyncHandler.shared
     private let pathMonitor = NWPathMonitor()
     var cache = GoogleDriveSyncCache()
+    private var remoteBooks: [String: (versions: [String: String], book: SyncBook)] = [:]
     
     private var stateTask: Task<Void, Never>?
     private var fileTransferTask: Task<Void, Never>?
@@ -349,7 +350,10 @@ final class GoogleDriveSyncManager {
             try saveCache()
         }
         
-        let remote = try await readState(files, merge: SyncBook.merge)
+        var remote = remoteBooks[key].flatMap { $0.versions == versions ? $0.book : nil }
+        if remote == nil {
+            remote = try await readState(files, merge: SyncBook.merge)
+        }
         try mergeBook(key, remote: remote)
         
         guard let book = try store.loadBook(key: key) else {
@@ -359,12 +363,14 @@ final class GoogleDriveSyncManager {
         if book.needsUpload(remote: remote) || files.count > 1 {
             let written = try await writeState(book, name: key + ".json", files: files)
             versions = [written.id: written.version]
+            remote = book
         }
         
         if store.state.books[key]!.pending, try store.loadBook(key: key) == book {
             store.state.books[key]!.pending = false
             try store.save()
         }
+        remoteBooks[key] = (versions, remote!)
         cache.bookVersions[key] = versions
         try saveCache()
     }
