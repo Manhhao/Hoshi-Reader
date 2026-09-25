@@ -77,8 +77,12 @@ class BookshelfViewModel {
     
     func createShelf(name: String) {
         if !shelves.contains(where: { $0.name == name }) {
+            let name = name.precomposedStringWithCanonicalMapping
+            for book in books where book.shelves?[name]?.value == true {
+                updateMemberships([name: false], bookId: book.id)
+            }
             updateShelfList { list in
-                list[name.precomposedStringWithCanonicalMapping] = Timestamped(
+                list[name] = Timestamped(
                     modified: Date.now.milliseconds,
                     value: (list.values.compactMap(\.value).max() ?? -1) + 1
                 )
