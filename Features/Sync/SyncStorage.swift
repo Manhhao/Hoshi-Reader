@@ -226,6 +226,9 @@ final class SyncStorage {
             for fileType in [SyncFileType.epub, .sasayaki] {
                 record.sources.removeValue(forKey: fileType)
             }
+            if oldRecord?.deleted != true || oldRecord?.generation != book.generation {
+                record.sources.removeValue(forKey: .cover)
+            }
         }
         
         state.books[key] = record
