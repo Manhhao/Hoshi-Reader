@@ -241,6 +241,7 @@ window.hoshiReader = {
                 document.body.scrollLeft = vertical ? -window.lastPageScroll : window.lastPageScroll;
             } else {
                 window.lastPageScroll = snappedScroll;
+                window.hoshiReader.notifyPageChanged();
             }
         }, { passive: true });
     },
@@ -267,7 +268,62 @@ window.hoshiReader = {
     },
     
     notifyRestoreComplete() {
+        this.notifyPageChanged();
         window.webkit?.messageHandlers?.restoreCompleted?.postMessage(null);
+    },
+    
+    notifyPageChanged() {
+        const page = Math.round(Math.abs(document.body.scrollLeft) / this.pageWidth);
+        window.webkit?.messageHandlers?.pageChanged?.postMessage(page);
+    },
+    
+    calculatePageStarts() {
+        const { vertical, pageSize, maxScroll } = this.getScrollContext();
+        const pageCount = Math.floor(maxScroll / pageSize) + 1;
+        const starts = new Array(pageCount).fill(null);
+        const walker = this.createWalker();
+        const range = document.createRange();
+        let totalChars = 0;
+        let node;
+        
+        while (node = walker.nextNode()) {
+            const nodeLen = this.countChars(node.textContent);
+            if (!nodeLen) {
+                continue;
+            }
+            const nodeStart = this.nodeStartOffsets.get(node);
+            totalChars = nodeStart + nodeLen;
+            range.selectNodeContents(node);
+            for (const rect of range.getClientRects()) {
+                if (!rect.width || !rect.height) {
+                    continue;
+                }
+                const position = vertical ? pageSize - rect.right : rect.left;
+                const page = Math.min(pageCount - 1, Math.max(0, Math.floor(position / pageSize)));
+                if (starts[page] === null) {
+                    let low = 0;
+                    let high = node.textContent.length;
+                    while (low < high) {
+                        const mid = (low + high) >> 1;
+                        range.setStart(node, mid);
+                        range.setEnd(node, mid + 1);
+                        const charRect = this.getRect(range);
+                        const charPosition = vertical ? pageSize - charRect.right : charRect.left;
+                        if (charPosition >= page * pageSize) {
+                            high = mid;
+                        } else {
+                            low = mid + 1;
+                        }
+                    }
+                    starts[page] = nodeStart + this.countChars(node.textContent.slice(0, low));
+                }
+            }
+        }
+        
+        for (let page = pageCount - 1; page >= 0; page--) {
+            starts[page] ??= starts[page + 1] ?? totalChars;
+        }
+        return starts;
     },
     
     getScrollContext() {

@@ -99,12 +99,16 @@ class ReaderViewModel {
     let book: BookMetadata
     let document: EPUBDocument
     let rootURL: URL
+    let spineURLs: [URL]
     var index: Int = 0
     var currentProgress: Double = 0.0
     var activeSheet: ActiveSheet?
     var contentsTab: ContentsTab = .chapters
     var isLoading = true
     var bookDeleted = false
+    private var pageStarts: [Int] = []
+    private var spineFirstPages: [Int] = []
+    private var currentPage: (url: URL, page: Int)?
     private var applyingBookmark = false
     var focusMode = false
     var topSafeArea: CGFloat = 0
@@ -176,6 +180,9 @@ class ReaderViewModel {
         self.book = book
         self.document = document
         self.rootURL = rootURL
+        self.spineURLs = document.spine.items.map {
+            document.contentDirectory.appendingPathComponent(document.manifest.items[$0.idref]!.path)
+        }
         self.autostartStatistics = autostartStatistics
         self.statisticsResetTime = statisticsResetTime
         self.autoSyncEnabled = autoSyncEnabled
@@ -207,7 +214,7 @@ class ReaderViewModel {
             bridge: bridge,
             loadChapter: { [weak self] chapterIndex in
                 self?.flushStats()
-                self?.loadChapter(index: chapterIndex, progress: self?.sasayakiCueProgress(for: chapterIndex) ?? 0)
+                self?.loadSpine(index: chapterIndex, progress: self?.sasayakiCueProgress(for: chapterIndex) ?? 0)
                 self?.resetTrackingBaseline()
             },
             getCurrentIndex: { [weak self] in
@@ -222,22 +229,15 @@ class ReaderViewModel {
         highlights = BookStorage.loadHighlights(root: rootURL)
     }
     
-    // todo: name is misleading after fragment changes. this is technically the character count of the xhtml file, not necessarily the count of a toc chapter. fix during refactor
-    var currentChapterCount: Int {
-        guard document.spine.items.indices.contains(index),
-              let manifestItem = document.manifest.items[document.spine.items[index].idref],
-              let chapterInfo = bookInfo.chapterInfo[manifestItem.path] else {
-            return 0
-        }
-        return chapterInfo.currentTotal + chapterInfo.chapterCount
+    private var currentChapter: (start: Int, count: Int) {
+        let spineEnd = spineRange?.end ?? 0
+        return chapterBounds(at: spineEnd > 0 ? min(currentCharacter, spineEnd - 1) : currentCharacter)
     }
     
     // "true" chapter range
     var currentChapterRange: (character: Int, total: Int, progress: Double) {
-        let position = currentCharacter
-        let xhtmlEnd = currentChapterCount
-        let range = chapterBounds(at: xhtmlEnd > 0 ? min(position, xhtmlEnd - 1) : position)
-        let character = position - range.start
+        let range = currentChapter
+        let character = currentCharacter - range.start
         let progress = range.count > 0 ? Double(character) / Double(range.count) : 0
         return (character, range.count, progress)
     }
@@ -252,11 +252,61 @@ class ReaderViewModel {
         return chapterInfo.currentTotal + Int(Double(chapterInfo.chapterCount) * currentProgress)
     }
     
+    func updatePages(_ starts: [[Int]]) {
+        pageStarts = []
+        spineFirstPages = []
+        for (spineIndex, spineStarts) in starts.enumerated() {
+            spineFirstPages.append(pageStarts.count)
+            let path = document.manifest.items[document.spine.items[spineIndex].idref]!.path
+            let spineStart = bookInfo.chapterInfo[path]?.currentTotal ?? 0
+            pageStarts += spineStarts.map { spineStart + $0 }
+        }
+    }
+    
+    func updateCurrentPage(url: URL, page: Int) {
+        currentPage = (url, page)
+    }
+    
+    private var showPages: Bool {
+        UserConfig.shared.readerProgressCount == .pages && !UserConfig.shared.continuousMode
+    }
+    
+    func positionLabel(_ character: Int, spineIndex: Int? = nil) -> String {
+        guard showPages, !pageStarts.isEmpty,
+              let spineIndex = spineIndex ?? bookInfo.resolveCharacterPosition(character)?.spineIndex else {
+            return "\(character)"
+        }
+        return "\(page(at: character, spineIndex: spineIndex) + 1)"
+    }
+    
+    private func page(at character: Int, spineIndex: Int) -> Int {
+        let firstPage = spineFirstPages[spineIndex]
+        let endPage = spineIndex + 1 < spineFirstPages.count ? spineFirstPages[spineIndex + 1] : pageStarts.count
+        return (firstPage..<endPage).last { pageStarts[$0] <= character } ?? firstPage
+    }
+    
+    private var pageProgress: (page: Int, total: Int, chapterPage: Int, chapterTotal: Int)? {
+        guard !pageStarts.isEmpty else { return nil }
+        let page: Int
+        if let currentPage, currentPage.url == currentSpineURL {
+            page = spineFirstPages[index] + currentPage.page
+        } else {
+            page = currentProgress == 0 ? spineFirstPages[index] : self.page(at: currentCharacter, spineIndex: index)
+        }
+        let chapter = currentChapter
+        let chapterFirstPage = pageStarts.firstIndex(of: chapter.start) ?? pageStarts.lastIndex { $0 < chapter.start } ?? 0
+        let chapterLastPage = chapter.start + chapter.count == bookInfo.characterCount ? pageStarts.count - 1 : pageStarts.lastIndex { $0 < chapter.start + chapter.count } ?? chapterFirstPage
+        let chapterTotal = chapterLastPage - chapterFirstPage + 1
+        let chapterPage = min(max(page - chapterFirstPage + 1, 1), chapterTotal)
+        return (page + 1, pageStarts.count, chapterPage, chapterTotal)
+    }
+    
     var progressString: String {
         let config = UserConfig.shared
         var lines: [String] = []
+        let pages = pageProgress
         if config.readerShowProgress {
-            let line = progressLine(current: currentCharacter, total: bookInfo.characterCount)
+            let line = progressLine(current: currentCharacter, total: bookInfo.characterCount, pages: pages.map { ($0.page, $0.total) })
             if !line.isEmpty {
                 lines.append(line)
             }
@@ -264,7 +314,7 @@ class ReaderViewModel {
         
         if config.readerShowChapterProgress {
             let chapter = currentChapterRange
-            let line = progressLine(current: chapter.character, total: chapter.total)
+            let line = progressLine(current: chapter.character, total: chapter.total, pages: pages.map { ($0.chapterPage, $0.chapterTotal) })
             if !line.isEmpty {
                 lines.append("(\(line))")
             }
@@ -272,10 +322,12 @@ class ReaderViewModel {
         return lines.joined(separator: config.readerAlwaysShowProgress || config.readerShowProgressTop ? " " : "\n")
     }
     
-    private func progressLine(current: Int, total: Int) -> String {
+    private func progressLine(current: Int, total: Int, pages: (current: Int, total: Int)?) -> String {
         let config = UserConfig.shared
         var parts: [String] = []
-        if config.readerShowCharacters {
+        if showPages {
+            parts.append(pages.map { "\($0.current) of \($0.total)" } ?? "…")
+        } else if config.readerProgressCount != .off {
             parts.append("\(current) / \(total)")
         }
         if config.readerShowPercentage {
@@ -327,21 +379,11 @@ class ReaderViewModel {
         (bookInfo.images ?? []).map { document.contentDirectory.appendingPathComponent($0) }
     }
     
-    // todo: fix naming
-    private var currentChapterURL: URL? {
-        guard document.spine.items.indices.contains(index) else {
-            return nil
-        }
-        
-        let item = document.spine.items[index]
-        guard let manifestItem = document.manifest.items[item.idref] else {
-            return nil
-        }
-        return document.contentDirectory.appendingPathComponent(manifestItem.path)
+    private var currentSpineURL: URL? {
+        spineURLs.indices.contains(index) ? spineURLs[index] : nil
     }
     
-    // todo: fix naming
-    private var chapterRange: (start: Int, end: Int)? {
+    private var spineRange: (start: Int, end: Int)? {
         guard document.spine.items.indices.contains(index),
               let manifestItem = document.manifest.items[document.spine.items[index].idref],
               let info = bookInfo.chapterInfo[manifestItem.path] else {
@@ -465,7 +507,7 @@ class ReaderViewModel {
                 currentProgress = position.progress
                 resetTrackingBaseline()
                 
-                if bridge.chapterURL != nil {
+                if bridge.spineURL != nil {
                     loadCurrentChapter()
                 }
             }
@@ -529,8 +571,7 @@ class ReaderViewModel {
         navigate(to: Position(index: result.spineIndex, progress: result.progress))
     }
     
-    // todo: fix naming
-    func jumpToChapter(index: Int, fragment: String? = nil) {
+    func jumpToSpine(index: Int, fragment: String? = nil) {
         recordPosition()
         navigate(to: Position(index: index, progress: 0), fragment: fragment)
     }
@@ -554,7 +595,7 @@ class ReaderViewModel {
             return true
         }
         
-        loadChapter(index: destination.spineIndex, progress: 0, fragment: destination.fragment)
+        loadSpine(index: destination.spineIndex, progress: 0, fragment: destination.fragment)
         resetTrackingBaseline()
         return true
     }
@@ -564,18 +605,16 @@ class ReaderViewModel {
         resetTrackingBaseline()
     }
     
-    // todo: fix naming
-    func nextChapter() -> Bool {
+    func nextSpine() -> Bool {
         guard index < document.spine.items.count - 1 else { return false }
-        loadChapter(index: index + 1, progress: 0)
+        loadSpine(index: index + 1, progress: 0)
         flushStats()
         return true
     }
     
-    // todo: fix naming
-    func previousChapter() -> Bool {
+    func previousSpine() -> Bool {
         guard index > 0 else { return false }
-        loadChapter(index: index - 1, progress: 1)
+        loadSpine(index: index - 1, progress: 1)
         flushStats()
         return true
     }
@@ -744,7 +783,7 @@ class ReaderViewModel {
     }
     
     func addHighlight(_ color: HighlightColor, _ creation: HighlightData) {
-        guard let range = chapterRange else { return }
+        guard let range = spineRange else { return }
         let highlight = Highlight(
             id: creation.id,
             character: range.start + creation.start,
@@ -774,7 +813,7 @@ class ReaderViewModel {
         highlights.removeAll { $0.id == highlight.id }
         saveHighlights()
         syncHighlights()
-        if let range = chapterRange,
+        if let range = spineRange,
            highlight.character >= range.start,
            highlight.character < range.end {
             bridge.send(.removeHighlight(highlight.id.uuidString))
@@ -812,7 +851,7 @@ class ReaderViewModel {
             persistBookmark(progress: position.progress)
             bridge.send(.restoreProgress(position.progress))
         } else {
-            loadChapter(index: position.index, progress: position.progress, fragment: fragment)
+            loadSpine(index: position.index, progress: position.progress, fragment: fragment)
         }
         resetTrackingBaseline()
     }
@@ -834,26 +873,26 @@ class ReaderViewModel {
         scheduleAutoExport()
     }
     
-    // todo: fix naming
-    private func loadChapter(index: Int, progress: Double, fragment: String? = nil) {
+    private func loadSpine(index: Int, progress: Double, fragment: String? = nil) {
+        currentPage = nil
         isLoading = true
         sasayakiPlayer.prepareTransition()
         self.index = index
         persistBookmark(progress: progress)
-        if let url = currentChapterURL {
+        if let url = currentSpineURL {
             let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
-            let highlights = chapterHighlights()
+            let highlights = spineHighlights()
             bridge.updateState(url: url, progress: progress, sasayakiCues: cues, highlights: highlights)
-            bridge.send(.loadChapter(url: url, progress: progress, fragment: fragment, sasayakiCues: cues, highlights: highlights))
+            bridge.send(.loadSpine(url: url, progress: progress, fragment: fragment, sasayakiCues: cues, highlights: highlights))
         }
     }
     
     private func loadCurrentChapter() {
-        if let url = currentChapterURL {
+        if let url = currentSpineURL {
             let cues = sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil
-            let highlights = chapterHighlights()
+            let highlights = spineHighlights()
             bridge.updateState(url: url, progress: currentProgress, sasayakiCues: cues, highlights: highlights)
-            bridge.send(.loadChapter(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues, highlights: highlights))
+            bridge.send(.loadSpine(url: url, progress: currentProgress, fragment: nil, sasayakiCues: cues, highlights: highlights))
         }
     }
     
@@ -950,8 +989,8 @@ class ReaderViewModel {
         applySessions(StatisticsStorage.load(folder: book.folder))
     }
     
-    private func chapterHighlights() -> String? {
-        guard let range = chapterRange else { return nil }
+    private func spineHighlights() -> String? {
+        guard let range = spineRange else { return nil }
         let list = highlights.filter { $0.character >= range.start && $0.character < range.end }
         if list.isEmpty {
             return nil
@@ -969,7 +1008,7 @@ class ReaderViewModel {
     }
     
     private func syncHighlights() {
-        bridge.updateHighlights(chapterHighlights())
+        bridge.updateHighlights(spineHighlights())
     }
     
     private func recordPosition() {

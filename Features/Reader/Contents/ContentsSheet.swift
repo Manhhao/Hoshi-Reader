@@ -57,7 +57,7 @@ struct ContentsSheet: View {
         NavigationStack {
             Group {
                 if isSearchPresented {
-                    SearchResultsView(results: searchResults, query: searchQuery) { result in
+                    SearchResultsView(results: searchResults, query: searchQuery, positionLabel: { viewModel.positionLabel($0) }) { result in
                         jump {
                             viewModel.jumpToSearchResult(
                                 character: result.character,
@@ -171,15 +171,17 @@ struct ContentsSheet: View {
             ChapterListView(
                 document: viewModel.document,
                 bookInfo: viewModel.bookInfo,
-                currentCharacter: viewModel.currentCharacter
+                currentCharacter: viewModel.currentCharacter,
+                positionLabel: { viewModel.positionLabel($0, spineIndex: $1) }
             ) { spineIndex, fragment in
-                jump { viewModel.jumpToChapter(index: spineIndex, fragment: fragment) }
+                jump { viewModel.jumpToSpine(index: spineIndex, fragment: fragment) }
             }
         case .highlights:
             HighlightListView(
                 document: viewModel.document,
                 bookInfo: viewModel.bookInfo,
                 highlights: viewModel.highlights,
+                positionLabel: { viewModel.positionLabel($0) },
                 onJump: { highlight in
                     jump { viewModel.jumpToCharacter(highlight.character) }
                 },

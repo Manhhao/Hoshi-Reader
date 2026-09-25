@@ -20,8 +20,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
     let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
-    var onNextChapter: () -> Bool
-    var onPreviousChapter: () -> Bool
+    var onNextSpine: () -> Bool
+    var onPreviousSpine: () -> Bool
     var onSaveBookmark: (Double) -> Void
     var onInternalLink: (URL) -> Bool
     var onInternalJump: (Double) -> Void
@@ -110,7 +110,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
+                case .loadSpine(let url, let progress, let fragment, let sasayakiCues, let highlights):
                     context.coordinator.currentURL = url
                     context.coordinator.pendingProgress = progress
                     context.coordinator.pendingFragment = fragment
@@ -179,7 +179,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             return
         }
         
-        if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
+        if context.coordinator.currentURL == nil, let url = bridge.spineURL {
             context.coordinator.currentURL = url
             context.coordinator.pendingProgress = bridge.progress
             context.coordinator.pendingFragment = nil
@@ -779,14 +779,14 @@ struct ScrollReaderWebView: UIViewRepresentable {
             
             if scrolledPastEnd {
                 webView?.scrollView.delegate = nil
-                if parent.onNextChapter() {
+                if parent.onNextSpine() {
                     webView?.alpha = 0
                 } else {
                     webView?.scrollView.delegate = self
                 }
             } else if scrolledPastStart {
                 webView?.scrollView.delegate = nil
-                if parent.onPreviousChapter() {
+                if parent.onPreviousSpine() {
                     webView?.alpha = 0
                 } else {
                     webView?.scrollView.delegate = self

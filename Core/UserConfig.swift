@@ -99,6 +99,12 @@ enum CoverMode: String, CaseIterable, Codable {
     case hide = "Hide"
 }
 
+enum ProgressCount: String, CaseIterable, Codable {
+    case off = "Off"
+    case characters = "Characters"
+    case pages = "Pages"
+}
+
 @Observable
 class UserConfig {
     static let shared = UserConfig()
@@ -309,8 +315,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerShowChapterProgress, forKey: "readerShowChapterProgress") }
     }
     
-    var readerShowCharacters: Bool {
-        didSet { UserDefaults.standard.set(readerShowCharacters, forKey: "readerShowCharacters") }
+    var readerProgressCount: ProgressCount {
+        didSet { UserDefaults.standard.set(readerProgressCount.rawValue, forKey: "readerProgressCount") }
     }
     
     var readerShowPercentage: Bool {
@@ -539,8 +545,8 @@ class UserConfig {
         let clientId = defaults.string(forKey: "googleClientId") ?? ""
         let hasTtuLogin = !clientId.isEmpty && GoogleDriveAuth.shared.isAuthenticated
         let syncProvider =
-            defaults.string(forKey: "syncProvider").flatMap(SyncProvider.init(rawValue:))
-            ?? (hasTtuLogin ? .ttu : .gdrive)
+        defaults.string(forKey: "syncProvider").flatMap(SyncProvider.init(rawValue:))
+        ?? (hasTtuLogin ? .ttu : .gdrive)
         self.syncProvider = syncProvider
         defaults.set(syncProvider.rawValue, forKey: "syncProvider")
         self.syncMode = defaults.string(forKey: "syncMode")
@@ -580,7 +586,8 @@ class UserConfig {
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowProgress = defaults.object(forKey: "readerShowProgress") as? Bool ?? true
         self.readerShowChapterProgress = defaults.object(forKey: "readerShowChapterProgress") as? Bool ?? false
-        self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
+        self.readerProgressCount = defaults.string(forKey: "readerProgressCount")
+            .flatMap(ProgressCount.init) ?? (defaults.object(forKey: "readerShowCharacters") as? Bool ?? true ? .characters : .off)
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
         self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true

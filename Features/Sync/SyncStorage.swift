@@ -390,6 +390,7 @@ final class SyncStorage {
             try BookStorage.delete(at: root.appendingPathComponent(FileNames.sasayakiTranscript))
             try BookStorage.delete(at: root.appendingPathComponent(FileNames.bookmark))
             try BookStorage.delete(at: root.appendingPathComponent(FileNames.highlights))
+            try BookStorage.delete(at: root.appendingPathComponent(FileNames.pages))
             
             if var playback = BookStorage.loadSasayakiPlayback(root: root) {
                 playback.lastPosition = 0

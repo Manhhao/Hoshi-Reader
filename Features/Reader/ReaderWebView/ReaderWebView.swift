@@ -32,7 +32,7 @@ struct HighlightData {
 }
 
 enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil, highlights: String? = nil)
+    case loadSpine(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil, highlights: String? = nil)
     case restoreProgress(Double)
     case jumpToFragment(String)
     case clearSelection
@@ -50,7 +50,7 @@ enum WebViewCommand {
 @Observable
 @MainActor
 class WebViewBridge {
-    private(set) var chapterURL: URL?
+    private(set) var spineURL: URL?
     private(set) var progress: Double = 0
     private(set) var sasayakiCues: String?
     private(set) var highlights: String?
@@ -61,7 +61,7 @@ class WebViewBridge {
     }
     
     func updateState(url: URL, progress: Double, sasayakiCues: String? = nil, highlights: String? = nil) {
-        self.chapterURL = url
+        self.spineURL = url
         self.progress = progress
         self.sasayakiCues = sasayakiCues
         self.highlights = highlights
@@ -131,6 +131,11 @@ final class HoshiWKWebView: WKWebView {
 struct ReaderWebView: UIViewRepresentable {
     @Environment(\.readerViewController) private var readerViewController
     let userConfig: UserConfig
+    let rootURL: URL
+    let layout: WebViewState
+    let spineURLs: [URL]
+    var onPagesChanged: ([[Int]]) -> Void
+    var onPageChanged: (URL, Int) -> Void
     let viewSize: CGSize
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
@@ -138,8 +143,8 @@ struct ReaderWebView: UIViewRepresentable {
     let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
-    var onNextChapter: () -> Bool
-    var onPreviousChapter: () -> Bool
+    var onNextSpine: () -> Bool
+    var onPreviousSpine: () -> Bool
     var onSaveBookmark: (Double) -> Void
     var onInternalLink: (URL) -> Bool
     var onInternalJump: (Double) -> Void
@@ -163,6 +168,7 @@ struct ReaderWebView: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "restoreCompleted")
         config.userContentController.add(context.coordinator, name: "selectionState")
         config.userContentController.add(context.coordinator, name: "imageTapped")
+        config.userContentController.add(context.coordinator, name: "pageChanged")
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         
         let webView = HoshiWKWebView(frame: .zero, configuration: config)
@@ -209,6 +215,10 @@ struct ReaderWebView: UIViewRepresentable {
         webView.addGestureRecognizer(tap)
         
         context.coordinator.webView = webView
+        Task { @MainActor [weak coordinator] in
+            guard let coordinator else { return }
+            coordinator.parent.onPagesChanged(coordinator.pageStarts)
+        }
         
         webView.alpha = 0
         
@@ -219,13 +229,14 @@ struct ReaderWebView: UIViewRepresentable {
     
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.measurePages()
         
         if !bridge.pendingCommands.isEmpty {
             let commands = bridge.pendingCommands
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
+                case .loadSpine(let url, let progress, let fragment, let sasayakiCues, let highlights):
                     context.coordinator.currentURL = url
                     context.coordinator.pendingProgress = progress
                     context.coordinator.pendingFragment = fragment
@@ -290,7 +301,7 @@ struct ReaderWebView: UIViewRepresentable {
             return
         }
         
-        if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
+        if context.coordinator.currentURL == nil, let url = bridge.spineURL {
             context.coordinator.currentURL = url
             context.coordinator.pendingProgress = bridge.progress
             context.coordinator.pendingFragment = nil
@@ -307,6 +318,8 @@ struct ReaderWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "restoreCompleted")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "selectionState")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "imageTapped")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "pageChanged")
+        coordinator.stopMeasuringPages()
     }
     
     class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler {
@@ -318,12 +331,71 @@ struct ReaderWebView: UIViewRepresentable {
         var pendingSasayakiCues: String?
         var pendingHighlights: String?
         var shouldSyncProgressAfterRestore = false
+        private var pagesWebView: WKWebView?
+        private(set) var pageStarts: [[Int]] = []
+        
+        private struct PageCache: Codable {
+            let layout: WebViewState
+            let pageStarts: [[Int]]
+        }
         
         init(_ parent: ReaderWebView) {
             self.parent = parent
+            if let cache = BookStorage.load(PageCache.self, from: parent.rootURL.appendingPathComponent(FileNames.pages)),
+               cache.layout == parent.layout {
+                pageStarts = cache.pageStarts
+            }
+        }
+        
+        func measurePages() {
+            guard parent.userConfig.readerProgressCount == .pages else {
+                stopMeasuringPages()
+                return
+            }
+            let spineIndex = pageStarts.count
+            guard pagesWebView == nil, spineIndex < parent.spineURLs.count,
+                  let webView, let appDirectory = try? BookStorage.getAppDirectory() else { return }
+            let config = WKWebViewConfiguration()
+            config.defaultWebpagePreferences.preferredContentMode = .mobile
+            config.userContentController.add(self, name: "spineMeasured")
+            let pagesWebView = WKWebView(frame: CGRect(origin: .zero, size: parent.viewSize), configuration: config)
+            pagesWebView.alpha = 0
+            pagesWebView.accessibilityElementsHidden = true
+            pagesWebView.scrollView.contentInsetAdjustmentBehavior = .never
+            pagesWebView.navigationDelegate = self
+            webView.insertSubview(pagesWebView, at: 0)
+            self.pagesWebView = pagesWebView
+            pagesWebView.loadFileURL(parent.spineURLs[spineIndex], allowingReadAccessTo: appDirectory)
+        }
+        
+        func stopMeasuringPages() {
+            pagesWebView?.configuration.userContentController.removeScriptMessageHandler(forName: "spineMeasured")
+            pagesWebView?.removeFromSuperview()
+            pagesWebView = nil
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "spineMeasured" {
+                guard message.webView === pagesWebView, let starts = message.body as? [Int],
+                      let appDirectory = try? BookStorage.getAppDirectory() else { return }
+                pageStarts.append(starts)
+                let spineIndex = pageStarts.count
+                if spineIndex == parent.spineURLs.count {
+                    let cache = PageCache(layout: parent.layout, pageStarts: pageStarts)
+                    try? BookStorage.save(cache, inside: parent.rootURL, as: FileNames.pages)
+                    parent.onPagesChanged(pageStarts)
+                    stopMeasuringPages()
+                } else {
+                    pagesWebView?.loadFileURL(parent.spineURLs[spineIndex], allowingReadAccessTo: appDirectory)
+                }
+                return
+            }
+            if message.name == "pageChanged" {
+                if let page = message.body as? Int, let url = message.webView?.url {
+                    parent.onPageChanged(url, page)
+                }
+                return
+            }
             if message.name == "selectionState" {
                 if let hasSelection = message.body as? Bool, let hv = message.webView as? HoshiWKWebView {
                     hv.hasSelection = hasSelection
@@ -649,33 +721,40 @@ struct ReaderWebView: UIViewRepresentable {
                 }
             }()
             
-            let sasayakiSetupScript: String = {
-                if let cues = pendingSasayakiCues {
-                    return """
-                    window.hoshiReader.applySasayakiCues(\(cues));
-                    """
-                }
-                return ""
-            }()
-            pendingSasayakiCues = nil
-            
-            let highlightsSetupScript: String = {
-                if let highlights = pendingHighlights {
-                    return "window.hoshiHighlights.applyHighlights(\(highlights));"
-                }
-                return ""
-            }()
-            pendingHighlights = nil
-            
-            let initialRestoreScript: String = {
-                if let fragment = pendingFragment {
-                    shouldSyncProgressAfterRestore = true
-                    return "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)));"
-                }
-                shouldSyncProgressAfterRestore = false
-                return "window.hoshiReader.restoreProgress(\(self.pendingProgress));"
-            }()
-            pendingFragment = nil
+            let setupScript: String
+            if webView === pagesWebView {
+                setupScript = "window.webkit.messageHandlers.spineMeasured.postMessage(window.hoshiReader.calculatePageStarts());"
+            } else {
+                let sasayakiSetupScript: String = {
+                    if let cues = pendingSasayakiCues {
+                        return """
+                        window.hoshiReader.applySasayakiCues(\(cues));
+                        """
+                    }
+                    return ""
+                }()
+                pendingSasayakiCues = nil
+                
+                let highlightsSetupScript: String = {
+                    if let highlights = pendingHighlights {
+                        return "window.hoshiHighlights.applyHighlights(\(highlights));"
+                    }
+                    return ""
+                }()
+                pendingHighlights = nil
+                
+                let initialRestoreScript: String = {
+                    if let fragment = pendingFragment {
+                        shouldSyncProgressAfterRestore = true
+                        return "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)));"
+                    }
+                    shouldSyncProgressAfterRestore = false
+                    return "window.hoshiReader.restoreProgress(\(self.pendingProgress));"
+                }()
+                pendingFragment = nil
+                
+                setupScript = [sasayakiSetupScript, highlightsSetupScript, initialRestoreScript].joined(separator: "\n")
+            }
             
             let script = """
             (function() {
@@ -784,9 +863,7 @@ struct ReaderWebView: UIViewRepresentable {
                 }).then(() => {
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
-                    \(sasayakiSetupScript)
-                    \(highlightsSetupScript)
-                    \(initialRestoreScript)
+                    \(setupScript)
                 });
             })();
             """
@@ -795,6 +872,10 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            if webView === pagesWebView {
+                stopMeasuringPages()
+                return
+            }
             guard let currentURL, let appDirectory = try? BookStorage.getAppDirectory() else { return }
             
             pendingFragment = nil
@@ -822,8 +903,8 @@ struct ReaderWebView: UIViewRepresentable {
                 if let res = result as? String, res == "scrolled" {
                     self.saveBookmark()
                 } else {
-                    let chapterChanged = direction == .forward ? self.parent.onNextChapter() : self.parent.onPreviousChapter()
-                    if chapterChanged {
+                    let spineChanged = direction == .forward ? self.parent.onNextSpine() : self.parent.onPreviousSpine()
+                    if spineChanged {
                         webView.alpha = 0
                     }
                 }

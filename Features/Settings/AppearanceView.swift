@@ -254,7 +254,18 @@ struct AppearanceView: View {
                     Toggle("Show Chapter Progress", isOn: $userConfig.readerShowChapterProgress)
                     
                     if userConfig.readerShowProgress || userConfig.readerShowChapterProgress {
-                        Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
+                        VStack {
+                            HStack {
+                                Text("Count")
+                                Spacer()
+                            }
+                            Picker("", selection: $userConfig.readerProgressCount) {
+                                Text("Off").tag(ProgressCount.off)
+                                Text("Characters").tag(ProgressCount.characters)
+                                Text("Pages").tag(ProgressCount.pages)
+                            }
+                            .pickerStyle(.segmented)
+                        }
                         Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
                         
                         VStack {

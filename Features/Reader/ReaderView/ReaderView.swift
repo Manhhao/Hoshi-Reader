@@ -9,7 +9,7 @@
 import SwiftUI
 import EPUBKit
 
-struct WebViewState: Hashable {
+struct WebViewState: Hashable, Codable {
     var verticalWriting: Bool
     var fontSize: Int
     var selectedFont: String
@@ -337,8 +337,8 @@ struct ReaderView: View {
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
                             sasayakiBackgroundColor: sasayakiBackgroundColor,
-                            onNextChapter: viewModel.nextChapter,
-                            onPreviousChapter: viewModel.previousChapter,
+                            onNextSpine: viewModel.nextSpine,
+                            onPreviousSpine: viewModel.previousSpine,
                             onSaveBookmark: viewModel.saveBookmark,
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
@@ -410,8 +410,32 @@ struct ReaderView: View {
                         ))
                         .frame(width: scrollViewSize.width, height: scrollViewSize.height)
                     } else {
+                        let layout = WebViewState(
+                            verticalWriting: userConfig.verticalWriting,
+                            fontSize: userConfig.fontSize,
+                            selectedFont: userConfig.selectedFont,
+                            furiganaMode: userConfig.furiganaMode,
+                            horizontalPadding: userConfig.horizontalPadding,
+                            verticalPadding: userConfig.verticalPadding,
+                            avoidPageBreak: userConfig.avoidPageBreak,
+                            justifyText: userConfig.justifyText,
+                            blurImages: userConfig.blurImages,
+                            layoutAdvanced: userConfig.layoutAdvanced,
+                            lineHeight: userConfig.lineHeight,
+                            characterSpacing: userConfig.characterSpacing,
+                            paragraphSpacing: userConfig.paragraphSpacing,
+                            size: viewSize,
+                            topInset: readerTopInset,
+                            bottomInset: readerBottomInset,
+                        )
+                        
                         ReaderWebView(
                             userConfig: userConfig,
+                            rootURL: viewModel.rootURL,
+                            layout: layout,
+                            spineURLs: viewModel.spineURLs,
+                            onPagesChanged: viewModel.updatePages,
+                            onPageChanged: viewModel.updateCurrentPage,
                             viewSize: viewSize,
                             topInset: readerTopInset,
                             bottomInset: readerBottomInset,
@@ -419,8 +443,8 @@ struct ReaderView: View {
                             textColor: readerTextColor,
                             sasayakiTextColor: sasayakiTextColor,
                             sasayakiBackgroundColor: sasayakiBackgroundColor,
-                            onNextChapter: viewModel.nextChapter,
-                            onPreviousChapter: viewModel.previousChapter,
+                            onNextSpine: viewModel.nextSpine,
+                            onPreviousSpine: viewModel.previousSpine,
                             onSaveBookmark: viewModel.saveBookmark,
                             onInternalLink: viewModel.jumpToLink,
                             onInternalJump: viewModel.syncProgressAfterLinkJump,
@@ -459,24 +483,7 @@ struct ReaderView: View {
                             onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { imageURL = $0 }
                         )
-                        .id(WebViewState(
-                            verticalWriting: userConfig.verticalWriting,
-                            fontSize: userConfig.fontSize,
-                            selectedFont: userConfig.selectedFont,
-                            furiganaMode: userConfig.furiganaMode,
-                            horizontalPadding: userConfig.horizontalPadding,
-                            verticalPadding: userConfig.verticalPadding,
-                            avoidPageBreak: userConfig.avoidPageBreak,
-                            justifyText: userConfig.justifyText,
-                            blurImages: userConfig.blurImages,
-                            layoutAdvanced: userConfig.layoutAdvanced,
-                            lineHeight: userConfig.lineHeight,
-                            characterSpacing: userConfig.characterSpacing,
-                            paragraphSpacing: userConfig.paragraphSpacing,
-                            size: geometry.size,
-                            topInset: readerTopInset,
-                            bottomInset: readerBottomInset,
-                        ))
+                        .id(layout)
                         .frame(width: viewSize.width, height: viewSize.height)
                     }
                     

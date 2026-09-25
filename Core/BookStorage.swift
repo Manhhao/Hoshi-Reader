@@ -20,6 +20,7 @@ nonisolated enum FileNames: Sendable {
     static let sasayakiPlayback = "sasayaki_playback.json"
     static let sasayakiTranscript = "sasayaki_transcript.json"
     static let highlights = "highlights.json"
+    static let pages = "pages.json"
 }
 
 struct BookStorage {

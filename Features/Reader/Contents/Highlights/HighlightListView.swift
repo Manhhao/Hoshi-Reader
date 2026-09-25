@@ -19,6 +19,7 @@ struct HighlightListView: View {
     let document: EPUBDocument
     let bookInfo: BookInfo
     let highlights: [Highlight]
+    let positionLabel: (Int) -> String
     let onJump: (Highlight) -> Void
     let onDelete: (Highlight) -> Void
     
@@ -53,7 +54,7 @@ struct HighlightListView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                     Spacer(minLength: 8)
-                                    Text("\(highlight.character)")
+                                    Text(positionLabel(highlight.character))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }

@@ -11,6 +11,7 @@ import SwiftUI
 struct SearchResultsView: View {
     let results: [SearchResult]?
     let query: String
+    let positionLabel: (Int) -> String
     let onJump: (SearchResult) -> Void
     
     var body: some View {
@@ -28,7 +29,7 @@ struct SearchResultsView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                         Spacer(minLength: 8)
-                        Text("\(result.character)")
+                        Text(positionLabel(result.character))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

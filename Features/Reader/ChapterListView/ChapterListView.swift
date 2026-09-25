@@ -13,6 +13,7 @@ struct ChapterListView: View {
     let document: EPUBDocument
     let bookInfo: BookInfo
     let currentCharacter: Int
+    let positionLabel: (Int, Int) -> String
     let onJumpToChapter: (Int, String?) -> Void
     
     @State private var viewModel: ChapterListViewModel?
@@ -22,7 +23,7 @@ struct ChapterListView: View {
             List {
                 if let vm = viewModel {
                     ForEach(vm.rows) { row in
-                        ChapterView(row: row) {
+                        ChapterView(row: row, position: row.characterCount.map { positionLabel($0, row.spineIndex) }) {
                             onJumpToChapter(row.spineIndex, row.fragment)
                         }
                     }
@@ -50,6 +51,7 @@ struct ChapterListView: View {
 
 struct ChapterView: View {
     let row: ChapterRow
+    let position: String?
     let action: () -> Void
     
     var body: some View {
@@ -61,8 +63,8 @@ struct ChapterView: View {
                     .font(row.indentLevel > 0 ? .subheadline : .subheadline.weight(.bold))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                if let count = row.characterCount {
-                    Text("\(count)")
+                if let position {
+                    Text(position)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

@@ -1109,6 +1109,9 @@
         }
       }
     },
+    "Count" : {
+
+    },
     "Coverage" : {
 
     },
@@ -2362,6 +2365,9 @@
         }
       }
     },
+    "Pages" : {
+
+    },
     "Paginated" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -2820,6 +2826,7 @@
     },
     "Show Character Count" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
