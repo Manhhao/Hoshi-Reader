@@ -249,6 +249,31 @@ struct AppearanceView: View {
                     }
                 }
                 
+                if !userConfig.continuousMode {
+                    Section("Paragraph Mode") {
+                        Toggle("Enable", isOn: $userConfig.paragraphMode)
+                        
+                        if userConfig.paragraphMode {
+                            Toggle("Animation", isOn: $userConfig.textAnimation)
+                            
+                            if userConfig.textAnimation {
+                                VStack {
+                                    HStack {
+                                        Text("Text Speed")
+                                        Spacer()
+                                        Text("\(userConfig.textSpeed)/s")
+                                            .fontWeight(.semibold)
+                                    }
+                                    Slider(value: .init(
+                                        get: { Double(userConfig.textSpeed) },
+                                        set: { userConfig.textSpeed = Int($0) }
+                                    ), in: 25...100, step: 5)
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 Section("Progress") {
                     Toggle("Show Progress", isOn: $userConfig.readerShowProgress)
                     Toggle("Show Chapter Progress", isOn: $userConfig.readerShowChapterProgress)

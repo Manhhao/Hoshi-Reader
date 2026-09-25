@@ -11,6 +11,7 @@ import EPUBKit
 
 struct WebViewState: Hashable, Codable {
     var verticalWriting: Bool
+    var paragraphMode: Bool
     var fontSize: Int
     var selectedFont: String
     var furiganaMode: FuriganaMode
@@ -391,6 +392,7 @@ struct ReaderView: View {
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
+                            paragraphMode: userConfig.paragraphMode,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
                             furiganaMode: userConfig.furiganaMode,
@@ -411,6 +413,7 @@ struct ReaderView: View {
                     } else {
                         let layout = WebViewState(
                             verticalWriting: userConfig.verticalWriting,
+                            paragraphMode: userConfig.paragraphMode,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
                             furiganaMode: userConfig.furiganaMode,
@@ -480,7 +483,8 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { viewModel.imageURL = $0 }
+                            onImageTapped: { viewModel.imageURL = $0 },
+                            onPageCuesChanged: viewModel.sasayakiPlayer.handlePageChanged
                         )
                         .id(layout)
                         .frame(width: viewSize.width, height: viewSize.height)

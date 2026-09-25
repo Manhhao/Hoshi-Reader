@@ -277,6 +277,9 @@
         }
       }
     },
+    "%lld/s" : {
+
+    },
     "%lld%%" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -454,6 +457,9 @@
         }
       }
     },
+    "Advance on Page Turn" : {
+
+    },
     "Advanced" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -518,6 +524,9 @@
           }
         }
       }
+    },
+    "Animation" : {
+
     },
     "Anki" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -2379,6 +2388,9 @@
         }
       }
     },
+    "Paragraph Mode" : {
+
+    },
     "Paragraph Spacing" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3276,6 +3288,9 @@
           }
         }
       }
+    },
+    "Text Speed" : {
+
     },
     "Theme" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",

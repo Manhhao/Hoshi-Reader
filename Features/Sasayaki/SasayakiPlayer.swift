@@ -31,6 +31,11 @@ struct CueTimeline {
         return index > 0 ? cues[index - 1].startTime : nil
     }
     
+    func cue(before time: Double) -> SasayakiMatch? {
+        let index = findCue(time)
+        return index > 0 ? cues[index - 1] : nil
+    }
+    
     func cue(at time: Double) -> SasayakiMatch? {
         let index = findCue(time)
         if index < cues.count, abs(cues[index].startTime - time) <= 0.01 {
@@ -74,6 +79,7 @@ class SasayakiPlayer {
     var duration: Double = 0
     var isPlaying = false { didSet { updateIdleTimerDisabled() } }
     var stopPlaybackTime: Double?
+    var pageRange: (start: Double, end: Double)?
     var lastUpdate = -1
     
     var delay: Double = 0 {
@@ -96,6 +102,10 @@ class SasayakiPlayer {
     var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
     var imagePause: Bool { UserDefaults.standard.object(forKey: "sasayakiImagePause") as? Bool ?? true }
     var imagePauseDuration: Double { UserDefaults.standard.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3 }
+    var pageAdvance: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: "sasayakiPageAdvance") && defaults.bool(forKey: "paragraphMode") && !defaults.bool(forKey: "continuousMode")
+    }
     
     var currentCue: SasayakiMatch?
     var lastCue: SasayakiMatch?
@@ -311,6 +321,34 @@ class SasayakiPlayer {
         )
     }
     
+    func handlePageChanged(cueIds: [String], play: Bool?) {
+        let ids = Set(cueIds)
+        let cues = matchData?.matches.filter { ids.contains($0.id) } ?? []
+        
+        pageRange = nil
+        if play != nil {
+            stopPlaybackTime = nil
+            if isPlaying {
+                pausePlayback()
+            }
+        }
+        
+        guard let first = cues.min(by: { $0.startTime < $1.startTime }), let end = cues.map(\.endTime).max() else {
+            return
+        }
+        
+        var start = first.startTime
+        if let prev = timeline.cue(before: first.startTime),
+           first.start > (prev.chapterIndex == first.chapterIndex ? prev.start + prev.length : 0) {
+            start = min(start, prev.endTime + 0.05)
+        }
+        pageRange = (start, end)
+        
+        if let play {
+            seek(seconds: start + delay, startPlayback: play)
+        }
+    }
+    
     func teardown() {
         cancelImagePause()
         player?.pause()
@@ -429,10 +467,18 @@ class SasayakiPlayer {
             return
         }
         
+        let previousTime = currentTime
         currentTime = seconds
         
         if let duration = player?.currentItem?.duration.seconds, duration.isFinite, duration > 0 {
             self.duration = duration
+        }
+        
+        if pageAdvance, let pageEnd = pageRange.map({ $0.end + delay }), previousTime < pageEnd, seconds >= pageEnd {
+            if isPlaying {
+                pausePlayback()
+            }
+            return
         }
         
         if let stopTime = stopPlaybackTime, seconds >= stopTime {
@@ -457,6 +503,9 @@ class SasayakiPlayer {
         guard let player else { return }
         lastCue = nil
         cancelImagePause()
+        if let pageRange, !(pageRange.start...pageRange.end).contains(seconds - delay) {
+            self.pageRange = nil
+        }
         
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in

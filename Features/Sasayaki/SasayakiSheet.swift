@@ -115,6 +115,10 @@ struct SasayakiSheet: View {
                     }
                 }
                 
+                Section("Paragraph Mode") {
+                    Toggle("Advance on Page Turn", isOn: Bindable(userConfig).sasayakiPageAdvance)
+                }
+                
                 Section("Control Bar") {
                     Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {

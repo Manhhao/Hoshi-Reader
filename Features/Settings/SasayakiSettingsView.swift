@@ -47,6 +47,10 @@ struct SasayakiSettingsView: View {
                     }
                 }
                 
+                Section("Paragraph Mode") {
+                    Toggle("Advance on Page Turn", isOn: $userConfig.sasayakiPageAdvance)
+                }
+                
                 Section("Control Bar") {
                     Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {

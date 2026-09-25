@@ -156,6 +156,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
+    var onPageCuesChanged: ([String], Bool?) -> Void
     let maxSelectionLength: Int = 16
     
     func makeCoordinator() -> Coordinator {
@@ -275,6 +276,7 @@ struct ReaderWebView: UIViewRepresentable {
                         if let progress = result as? Double {
                             onPageTurn()
                             onSaveBookmark(progress)
+                            context.coordinator.updatePageCues(play: nil)
                         }
                     }
                 case .clearSasayakiCue:
@@ -331,6 +333,7 @@ struct ReaderWebView: UIViewRepresentable {
         var pendingSasayakiCues: String?
         var pendingHighlights: String?
         var shouldSyncProgressAfterRestore = false
+        var pendingPagePlayback: Bool?
         private var pagesWebView: WKWebView?
         private(set) var pageStarts: [[Int]] = []
         
@@ -416,6 +419,9 @@ struct ReaderWebView: UIViewRepresentable {
                 UIView.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
+                message.webView?.evaluateJavaScript(textAnimationScript) { _, _ in }
+                updatePageCues(play: pendingPagePlayback)
+                pendingPagePlayback = nil
                 parent.onRestoreCompleted()
             }
             if message.name == "textSelected" {
@@ -482,6 +488,14 @@ struct ReaderWebView: UIViewRepresentable {
             return js
         }
         
+        private var paragraphJs: String {
+            guard let url = Bundle.main.url(forResource: "paragraph", withExtension: "js"),
+                  let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
+                return ""
+            }
+            return js
+        }
+        
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let pageHeight = Int(parent.viewSize.height)
             let pageWidth = Int(parent.viewSize.width)
@@ -529,6 +543,23 @@ struct ReaderWebView: UIViewRepresentable {
                 p {
                     break-inside: avoid !important;
                     -webkit-column-break-inside: avoid !important;
+                }
+                """
+            }
+            
+            var paragraphModeCss = ""
+            if parent.userConfig.paragraphMode {
+                paragraphModeCss = """
+                body {
+                    column-fill: auto !important;
+                    font-kerning: none !important;
+                }
+                p.hoshi-paragraph {
+                    break-before: column !important;
+                    -webkit-column-break-before: always !important;
+                }
+                ::highlight(hoshi-animation) {
+                    color: transparent !important;
                 }
                 """
             }
@@ -690,6 +721,7 @@ struct ReaderWebView: UIViewRepresentable {
             \(HighlightColor.css)
             \(pageBreakCss)
             \(paragraphSpacingCss)
+            \(paragraphModeCss)
             \(textColorCss)
             """
             
@@ -779,6 +811,7 @@ struct ReaderWebView: UIViewRepresentable {
                 \(selectionJs)
                 \(readerJs)
                 \(highlightsJs)
+                \(paragraphJs)
                 window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
                 
@@ -861,6 +894,7 @@ struct ReaderWebView: UIViewRepresentable {
                 Promise.all(imagePromises).then(() => {
                     return window.hoshiReader.awaitFonts();
                 }).then(() => {
+                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs();" : "")
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
                     \(setupScript)
@@ -894,6 +928,9 @@ struct ReaderWebView: UIViewRepresentable {
             clearSelection()
             clearSearchHighlight()
             parent.onPageTurn()
+            if pageAdvance {
+                parent.onPageCuesChanged([], false)
+            }
             
             let script = paginationScript(direction: direction)
             
@@ -902,10 +939,12 @@ struct ReaderWebView: UIViewRepresentable {
                 
                 if let res = result as? String, res == "scrolled" {
                     self.saveBookmark()
+                    self.updatePageCues(play: direction == .forward)
                 } else {
                     let spineChanged = direction == .forward ? self.parent.onNextSpine() : self.parent.onPreviousSpine()
                     if spineChanged {
                         webView.alpha = 0
+                        self.pendingPagePlayback = direction == .forward
                     }
                 }
             }
@@ -915,9 +954,23 @@ struct ReaderWebView: UIViewRepresentable {
             let jsDirection = direction == .forward ? "forward" : "backward"
             return """
             (function() {
-                return window.hoshiReader.paginate('\(jsDirection)');
+                window.hoshiParagraph.finishTextAnimation();
+                var result = window.hoshiReader.paginate('\(jsDirection)');
+                if (result === 'scrolled') {
+                    \(direction == .forward ? textAnimationScript : "")
+                }
+                return result;
             })()
             """
+        }
+        
+        private var pageAdvance: Bool {
+            parent.userConfig.paragraphMode && parent.userConfig.sasayakiPageAdvance && parent.userConfig.enableSasayaki
+        }
+        
+        private var textAnimationScript: String {
+            guard parent.userConfig.paragraphMode && parent.userConfig.textAnimation else { return "" }
+            return "window.hoshiParagraph.animateText(\(parent.userConfig.textSpeed));"
         }
         
         @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
@@ -940,7 +993,14 @@ struct ReaderWebView: UIViewRepresentable {
             let point = gesture.location(in: webView)
             let maxLength = parent.maxSelectionLength
             
-            let script = "window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength))"
+            let script = """
+            (function() {
+                if (window.hoshiParagraph.finishTextAnimation()) {
+                    return 'animation';
+                }
+                return window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength));
+            })()
+            """
             
             webView.evaluateJavaScript(script) { result, _ in
                 if result is NSNull || result == nil {
@@ -964,6 +1024,13 @@ struct ReaderWebView: UIViewRepresentable {
             shouldSyncProgressAfterRestore = true
             let script = "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)))"
             webView.evaluateJavaScript(script) { _, _ in }
+        }
+        
+        func updatePageCues(play: Bool?) {
+            guard pageAdvance, let webView else { return }
+            webView.evaluateJavaScript("window.hoshiParagraph.pageSasayakiCues()") { [weak self] result, _ in
+                self?.parent.onPageCuesChanged(result as? [String] ?? [], play)
+            }
         }
         
         private func syncLinkJumpProgress() {

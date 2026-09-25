@@ -263,6 +263,18 @@ class UserConfig {
         didSet { UserDefaults.standard.set(continuousMode, forKey: "continuousMode") }
     }
     
+    var paragraphMode: Bool {
+        didSet { UserDefaults.standard.set(paragraphMode, forKey: "paragraphMode") }
+    }
+    
+    var textAnimation: Bool {
+        didSet { UserDefaults.standard.set(textAnimation, forKey: "textAnimation") }
+    }
+    
+    var textSpeed: Int {
+        didSet { UserDefaults.standard.set(textSpeed, forKey: "textSpeed") }
+    }
+    
     var chapterSwipeDistance: Int {
         didSet { UserDefaults.standard.set(chapterSwipeDistance, forKey: "chapterSwipeDistance") }
     }
@@ -475,6 +487,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiImagePauseDuration, forKey: "sasayakiImagePauseDuration") }
     }
     
+    var sasayakiPageAdvance: Bool {
+        didSet { UserDefaults.standard.set(sasayakiPageAdvance, forKey: "sasayakiPageAdvance") }
+    }
+    
     var sasayakiShowControlBar: Bool {
         didSet { UserDefaults.standard.set(sasayakiShowControlBar, forKey: "sasayakiShowControlBar") }
     }
@@ -572,6 +588,9 @@ class UserConfig {
             .flatMap(FuriganaMode.init) ?? (defaults.bool(forKey: "readerHideFurigana") ? .hidden : .off)
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
+        self.paragraphMode = defaults.object(forKey: "paragraphMode") as? Bool ?? false
+        self.textAnimation = defaults.object(forKey: "textAnimation") as? Bool ?? false
+        self.textSpeed = defaults.object(forKey: "textSpeed") as? Int ?? 35
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
@@ -640,6 +659,7 @@ class UserConfig {
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
         self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
         self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
+        self.sasayakiPageAdvance = defaults.object(forKey: "sasayakiPageAdvance") as? Bool ?? false
         self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
         self.sasayakiAlwaysShowControlBar = defaults.object(forKey: "sasayakiAlwaysShowControlBar") as? Bool ?? false
         self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")
