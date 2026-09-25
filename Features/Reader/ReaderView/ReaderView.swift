@@ -372,7 +372,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
+                                if userConfig.statisticsAutostartMode != .off && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
                             },
@@ -471,7 +471,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if userConfig.statisticsAutostartMode == .pageturn && !viewModel.isTracking {
+                                if userConfig.statisticsAutostartMode != .off && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
                             },
