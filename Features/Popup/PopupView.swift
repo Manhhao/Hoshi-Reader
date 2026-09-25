@@ -332,8 +332,8 @@ struct PopupView: View {
                 onRedirect: { query in
                     let results = LookupEngine.shared.lookup(
                         query,
-                        maxResults: userConfig.maxResults,
-                        scanLength: userConfig.scanLength
+                        maxResults: UserConfig.shared.maxResults,
+                        scanLength: UserConfig.shared.scanLength
                     )
                     let entries = Self.buildLookupEntries(lookupResults: results)
                     if !entries.isEmpty {

@@ -355,12 +355,12 @@ struct ReaderView: View {
                                     sentence: $0.sentence,
                                     rect: $0.rect.offsetBy(
                                         dx: (geometry.size.width - scrollViewSize.width) / 2,
-                                        dy: userConfig.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
+                                        dy: UserConfig.shared.verticalWriting ? 0 : (geometry.size.height - scrollViewSize.height) / 2
                                     ),
                                     normalizedOffset: $0.normalizedOffset,
                                     clozeOffset: $0.clozeOffset
                                 )
-                                return viewModel.handleTextSelection(selection, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
+                                return viewModel.handleTextSelection(selection, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength, isVertical: UserConfig.shared.verticalWriting, isFullWidth: UserConfig.shared.popupFullWidth, autoPause: UserConfig.shared.sasayakiAutoPause)
                             },
                             onTapOutside: {
                                 handleTapOutside()
@@ -372,7 +372,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if userConfig.statisticsAutostartMode != .off && !viewModel.isTracking {
+                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
                             },
@@ -458,7 +458,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: userConfig.verticalWriting, isFullWidth: userConfig.popupFullWidth, autoPause: userConfig.sasayakiAutoPause)
+                                return viewModel.handleTextSelection($0, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength, isVertical: UserConfig.shared.verticalWriting, isFullWidth: UserConfig.shared.popupFullWidth, autoPause: UserConfig.shared.sasayakiAutoPause)
                             },
                             onTapOutside: {
                                 handleTapOutside()
@@ -471,7 +471,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if userConfig.statisticsAutostartMode != .off && !viewModel.isTracking {
+                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking {
                                     viewModel.startTracking()
                                 }
                             },

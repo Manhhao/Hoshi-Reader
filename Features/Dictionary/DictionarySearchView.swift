@@ -89,12 +89,12 @@ struct DictionarySearchView: View {
                     },
                     onTextSelected: {
                         closePopups()
-                        return handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false)
+                        return handleTextSelection($0, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength, isVertical: false, isFullWidth: false)
                     },
                     onTapOutside: closePopups,
                     onRedirect: { query in
                         closePopups()
-                        let results = LookupEngine.shared.lookup(query, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength)
+                        let results = LookupEngine.shared.lookup(query, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength)
                         let entries = Self.buildLookupEntries(lookupResults: results)
                         if !entries.isEmpty {
                             backCount += 1
