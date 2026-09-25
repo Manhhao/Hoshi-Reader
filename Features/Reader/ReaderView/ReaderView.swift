@@ -83,7 +83,6 @@ struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @State private var sasayakiControlsExpanded = false
     @State private var inactiveSince: Date?
-    @State private var imageURL: URL?
     private let skipSyncOnOpen: Bool
     private let webViewPadding: CGFloat = 4
     
@@ -388,7 +387,7 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { imageURL = $0 }
+                            onImageTapped: { viewModel.imageURL = $0 }
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -481,7 +480,7 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { imageURL = $0 }
+                            onImageTapped: { viewModel.imageURL = $0 }
                         )
                         .id(layout)
                         .frame(width: viewSize.width, height: viewSize.height)
@@ -570,9 +569,9 @@ struct ReaderView: View {
             }
         }
         .overlay {
-            if let url = imageURL {
+            if let url = viewModel.imageURL {
                 FullscreenImageView(url: url, backgroundColor: readerBackgroundColor) {
-                    imageURL = nil
+                    viewModel.imageURL = nil
                 }
                 .ignoresSafeArea()
             }
@@ -586,7 +585,7 @@ struct ReaderView: View {
             case .contents:
                 ContentsSheet(viewModel: viewModel, readerTheme: readerTheme) { url in
                     viewModel.activeSheet = nil
-                    imageURL = url
+                    viewModel.imageURL = url
                 }
             case .statistics:
                 StatisticsSheet(viewModel: viewModel)
@@ -622,7 +621,7 @@ struct ReaderView: View {
                 viewModel.isPaused = true
             }
         }
-        .onChange(of: imageURL) { _, url in
+        .onChange(of: viewModel.imageURL) { _, url in
             if url == nil {
                 viewModel.resetTrackingBaseline()
                 viewModel.isPaused = false
@@ -645,7 +644,7 @@ struct ReaderView: View {
                     await viewModel.syncAfterForeground()
                 }
             }
-            guard viewModel.isTracking, viewModel.activeSheet == nil, imageURL == nil else {
+            guard viewModel.isTracking, viewModel.activeSheet == nil, viewModel.imageURL == nil else {
                 return
             }
             viewModel.resetTrackingBaseline()
@@ -682,7 +681,7 @@ struct ReaderView: View {
         }
         .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)
-        .statusBarHidden(viewModel.focusMode)
+        .statusBarHidden(viewModel.focusMode || viewModel.imageURL != nil)
         .persistentSystemOverlays(viewModel.focusMode ? .hidden : .automatic)
         .preferredColorScheme(readerTheme)
     }

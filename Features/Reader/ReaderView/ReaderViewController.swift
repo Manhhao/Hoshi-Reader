@@ -242,7 +242,7 @@ final class ReaderViewController: UIViewController {
             setToolbarItems(items, animated: false)
         }
         
-        setBarsHidden(viewModel.focusMode)
+        setBarsHidden(viewModel.focusMode || viewModel.imageURL != nil)
     }
     
     private func applyTitle(_ title: String?, subtitle: String?, infoColor: UIColor?) {

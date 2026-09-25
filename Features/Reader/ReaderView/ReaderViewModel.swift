@@ -111,6 +111,7 @@ class ReaderViewModel {
     private var currentPage: (url: URL, page: Int)?
     private var applyingBookmark = false
     var focusMode = false
+    var imageURL: URL?
     var topSafeArea: CGFloat = 0
     var bottomSafeArea: CGFloat = 0
     var bookInfo: BookInfo
