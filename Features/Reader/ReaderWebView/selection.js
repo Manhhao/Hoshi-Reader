@@ -108,7 +108,7 @@ window.hoshiSelection = {
     
     findParagraph(node) {
         let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        return el?.closest('p, .glossary-content, .expr-tag') || null;
+        return el?.closest('p, .glossary-content, .expr-tag, .kanji-entry li') || null;
     },
     
     createWalker(rootNode) {
