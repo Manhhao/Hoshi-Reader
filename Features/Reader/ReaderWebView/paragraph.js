@@ -100,6 +100,7 @@ window.hoshiParagraph = {
         }
         cancelAnimationFrame(this.animationFrame);
         this.animationFrame = null;
+        CSS.highlights.get('hoshi-animation').clear();
         CSS.highlights.delete('hoshi-animation');
         return true;
     }
