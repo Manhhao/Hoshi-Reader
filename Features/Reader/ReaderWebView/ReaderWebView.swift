@@ -555,6 +555,7 @@ struct ReaderWebView: UIViewRepresentable {
                     font-kerning: none !important;
                 }
                 p.hoshi-paragraph {
+                    margin-block-start: 0 !important;
                     break-before: column !important;
                     -webkit-column-break-before: always !important;
                 }
