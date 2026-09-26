@@ -191,6 +191,27 @@ struct AppearanceView: View {
                                 set: { userConfig.chapterSwipeDistance = Int($0) }
                             ), in: 10...60, step: 5)
                         }
+                    } else {
+                        Toggle("Paragraph Mode", isOn: $userConfig.paragraphMode)
+                        
+                        if userConfig.paragraphMode {
+                            Toggle("Animation", isOn: $userConfig.textAnimation)
+                            
+                            if userConfig.textAnimation {
+                                VStack {
+                                    HStack {
+                                        Text("Text Speed")
+                                        Spacer()
+                                        Text("\(userConfig.textSpeed)/s")
+                                            .fontWeight(.semibold)
+                                    }
+                                    Slider(value: .init(
+                                        get: { Double(userConfig.textSpeed) },
+                                        set: { userConfig.textSpeed = Int($0) }
+                                    ), in: 25...100, step: 5)
+                                }
+                            }
+                        }
                     }
                     
                     HStack {
@@ -245,31 +266,6 @@ struct AppearanceView: View {
                                     .fontWeight(.semibold)
                             }
                             Slider(value: $userConfig.paragraphSpacing, in: 0...3, step: 0.1)
-                        }
-                    }
-                }
-                
-                if !userConfig.continuousMode {
-                    Section("Paragraph Mode") {
-                        Toggle("Enable", isOn: $userConfig.paragraphMode)
-                        
-                        if userConfig.paragraphMode {
-                            Toggle("Animation", isOn: $userConfig.textAnimation)
-                            
-                            if userConfig.textAnimation {
-                                VStack {
-                                    HStack {
-                                        Text("Text Speed")
-                                        Spacer()
-                                        Text("\(userConfig.textSpeed)/s")
-                                            .fontWeight(.semibold)
-                                    }
-                                    Slider(value: .init(
-                                        get: { Double(userConfig.textSpeed) },
-                                        set: { userConfig.textSpeed = Int($0) }
-                                    ), in: 25...100, step: 5)
-                                }
-                            }
                         }
                     }
                 }
