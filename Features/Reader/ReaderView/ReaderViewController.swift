@@ -88,7 +88,11 @@ final class ReaderViewController: UIViewController {
         infoHeight.isActive = true
         infoPlaceholder.onLayout = { [weak self] in self?.layoutInfo() }
         infoPlaceholder.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap)))
-        view.addSubview(infoLabel)
+        if #available(iOS 26.0, *) {
+            view.addSubview(infoLabel)
+        } else {
+            infoPlaceholder.addSubview(infoLabel)
+        }
         
         titleView.axis = .vertical
         titleView.alignment = .center
@@ -128,7 +132,7 @@ final class ReaderViewController: UIViewController {
     private func layoutInfo() {
         guard infoPlaceholder.window != nil else { return }
         infoLabel.bounds.size = CGSize(width: infoWidth.constant, height: infoHeight.constant)
-        infoLabel.center = infoPlaceholder.convert(CGPoint(x: infoPlaceholder.bounds.midX, y: infoPlaceholder.bounds.midY), to: view)
+        infoLabel.center = infoPlaceholder.convert(CGPoint(x: infoPlaceholder.bounds.midX, y: infoPlaceholder.bounds.midY), to: infoLabel.superview)
     }
     
     override func viewSafeAreaInsetsDidChange() {
