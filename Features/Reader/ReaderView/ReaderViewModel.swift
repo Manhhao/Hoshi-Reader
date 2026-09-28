@@ -124,6 +124,7 @@ class ReaderViewModel {
     // stats
     var isTracking = false
     var isPaused = false
+    var trackingStoppedManually = false
     var lastTimestamp: Date = .now
     var lastCount: Int = 0
     private var sessionId = UUID().uuidString
@@ -723,6 +724,15 @@ class ReaderViewModel {
         guard isTracking else { return }
         flushStats()
         isTracking = false
+    }
+    
+    func toggleTracking() {
+        if isTracking {
+            stopTracking()
+        } else {
+            startTracking()
+        }
+        trackingStoppedManually = !isTracking
     }
     
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72

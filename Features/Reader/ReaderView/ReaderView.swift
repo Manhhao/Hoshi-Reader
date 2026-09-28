@@ -239,11 +239,7 @@ struct ReaderView: View {
             HStack(spacing: 2) {
                 if userConfig.readerShowStatisticsToggle {
                     Button {
-                        if viewModel.isTracking {
-                            viewModel.stopTracking()
-                        } else {
-                            viewModel.startTracking()
-                        }
+                        viewModel.toggleTracking()
                     } label: {
                         Image(systemName: viewModel.isTracking ? "timer" : "chart.bar.xaxis")
                             .font(.system(size: 16))
@@ -372,7 +368,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking {
+                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking && !viewModel.trackingStoppedManually {
                                     viewModel.startTracking()
                                 }
                             },
@@ -471,7 +467,7 @@ struct ReaderView: View {
                                         viewModel.focusMode = true
                                     }
                                 }
-                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking {
+                                if UserConfig.shared.statisticsAutostartMode != .off && !viewModel.isTracking && !viewModel.trackingStoppedManually {
                                     viewModel.startTracking()
                                 }
                             },

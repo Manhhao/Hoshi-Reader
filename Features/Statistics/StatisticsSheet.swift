@@ -51,14 +51,14 @@ struct StatisticsSheet: View {
                         Text("Session")
                         if !viewModel.isTracking {
                             Button {
-                                viewModel.startTracking()
+                                viewModel.toggleTracking()
                             } label: {
                                 Image(systemName: "play.fill")
                             }
                             .foregroundStyle(.primary)
                         } else {
                             Button {
-                                viewModel.stopTracking()
+                                viewModel.toggleTracking()
                             } label: {
                                 Image(systemName: "pause.fill")
                             }
