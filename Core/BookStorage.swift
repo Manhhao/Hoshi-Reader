@@ -23,7 +23,7 @@ nonisolated enum FileNames: Sendable {
     static let pages = "pages.json"
 }
 
-struct BookStorage {
+nonisolated struct BookStorage {
     static var migrationsComplete: Bool {
         return true
     }
@@ -147,14 +147,17 @@ struct BookStorage {
         load(SasayakiMatchData.self, from: root.appendingPathComponent(FileNames.sasayakiMatch))
     }
     
+    @MainActor
     static func loadSasayakiTranscript(root: URL) -> SasayakiTranscript? {
         load(SasayakiTranscript.self, from: root.appendingPathComponent(FileNames.sasayakiTranscript))
     }
     
+    @MainActor
     static func loadSasayakiPlayback(root: URL) -> SasayakiPlaybackData? {
         load(SasayakiPlaybackData.self, from: root.appendingPathComponent(FileNames.sasayakiPlayback))
     }
     
+    @MainActor
     static func savePlayback(_ playback: inout SasayakiPlaybackData, root: URL) throws -> Bool {
         let stored = loadSasayakiPlayback(root: root)
         let changed = stored?.lastPosition != playback.lastPosition || stored?.delay != playback.delay || stored?.rate != playback.rate

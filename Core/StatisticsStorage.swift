@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 struct StatisticsStorage {
     static var onSave: ((String, [String: Timestamped<ReadingSession?>]) -> Void)?
     
-    static func loadAll(resetTime: Int) -> [BookStatistics] {
+    nonisolated static func loadAll(resetTime: Int) -> [BookStatistics] {
         guard let booksDirectory = try? BookStorage.getBooksDirectory() else {
             return []
         }
@@ -25,7 +25,7 @@ struct StatisticsStorage {
         return books + loadArchived(resetTime: resetTime)
     }
     
-    static func loadArchived(resetTime: Int = UserConfig.shared.statisticsResetTime) -> [BookStatistics] {
+    nonisolated static func loadArchived(resetTime: Int) -> [BookStatistics] {
         guard let root = try? archiveDirectory(),
               let contents = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
             return []
@@ -37,13 +37,17 @@ struct StatisticsStorage {
     }
     
     static func load(root: URL) -> [String: Timestamped<ReadingSession?>] {
+        load(root: root, resetTime: UserConfig.shared.statisticsResetTime)
+    }
+    
+    nonisolated static func load(root: URL, resetTime: Int) -> [String: Timestamped<ReadingSession?>] {
         let url = root.appendingPathComponent(FileNames.statistics)
         if let sessions = BookStorage.load([String: Timestamped<ReadingSession?>].self, from: url) {
             return sessions
         }
         
         guard let daily = BookStorage.load([TtuStatistics].self, from: url) else { return [:] }
-        let sessions = TtuStatistics.legacySessions(daily, key: root.lastPathComponent)
+        let sessions = TtuStatistics.legacySessions(daily, key: root.lastPathComponent, resetTime: resetTime)
         try? BookStorage.save(sessions, inside: root, as: FileNames.statistics)
         return sessions
     }
@@ -126,8 +130,8 @@ struct StatisticsStorage {
         }
     }
     
-    private static func bookStatistics(_ book: BookMetadata, root: URL, isDeleted: Bool, resetTime: Int) -> BookStatistics? {
-        let days = StatisticsDay.grouped(load(root: root), resetTime: resetTime)
+    nonisolated private static func bookStatistics(_ book: BookMetadata, root: URL, isDeleted: Bool, resetTime: Int) -> BookStatistics? {
+        let days = StatisticsDay.grouped(load(root: root, resetTime: resetTime), resetTime: resetTime)
             .filter { $0.total.charactersRead > 0 || $0.total.readingTime > 0 }
         return days.isEmpty ? nil : BookStatistics(metadata: book, isDeleted: isDeleted, days: days)
     }
@@ -164,7 +168,7 @@ struct StatisticsStorage {
         return "Books/\(statisticsArchive)/\(book.folder)/\(statisticsCover)"
     }
     
-    private static func archiveDirectory() throws -> URL {
+    nonisolated private static func archiveDirectory() throws -> URL {
         try BookStorage.getBooksDirectory().appendingPathComponent(statisticsArchive)
     }
     
@@ -184,6 +188,6 @@ struct StatisticsStorage {
         return url
     }
     
-    private static let statisticsArchive = "statistics_archive"
+    nonisolated private static let statisticsArchive = "statistics_archive"
     private static let statisticsCover = "cover.jpg"
 }

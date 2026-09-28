@@ -46,14 +46,14 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     }
 }
 
-struct Bookmark: Codable {
+nonisolated struct Bookmark: Codable {
     let chapterIndex: Int
     let progress: Double
     let characterCount: Int
     var lastModified: Date?
 }
 
-struct BookInfo: Codable {
+nonisolated struct BookInfo: Codable {
     let characterCount: Int
     let chapterInfo: [String: ChapterInfo]
     let images: [String]?
@@ -82,7 +82,7 @@ struct BookInfo: Codable {
     }
 }
 
-struct BookShelf: Codable, Equatable {
+nonisolated struct BookShelf: Codable, Equatable {
     let name: String
     var bookIds: [UUID]
 }

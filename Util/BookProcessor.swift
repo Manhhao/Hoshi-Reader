@@ -9,7 +9,7 @@
 import EPUBKit
 import Foundation
 
-struct BookProcessor {
+nonisolated struct BookProcessor {
     static func process(document: EPUBDocument) -> BookInfo {
         var chapterInfo: [String: BookInfo.ChapterInfo] = [:]
         var images: [String] = []
@@ -68,7 +68,7 @@ struct BookProcessor {
     }
     
     private static let imageExtensions: Set<String> = ["jpg", "jpeg", "png"]
-    private static let imageRegex = #/<(?:img|image)\b(?![^>]*\bclass="[^"]*\bgaiji)[^>]*?(?:src|xlink:href)="([^"]+)"/#
+    nonisolated(unsafe) private static let imageRegex = #/<(?:img|image)\b(?![^>]*\bclass="[^"]*\bgaiji)[^>]*?(?:src|xlink:href)="([^"]+)"/#
     
     private static func imagePaths(in html: String, path: URL, contentDirectory: URL) -> [String] {
         let chapterPath = path.deletingLastPathComponent()

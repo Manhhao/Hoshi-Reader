@@ -47,7 +47,7 @@ struct StatisticsSettingsView: View {
         .alert("Clear Archive?", isPresented: $showClearArchiveConfirmation) {
             Button("Clear", role: .destructive) {
                 StatisticsStorage.clearArchive()
-                archivedBooks = StatisticsStorage.loadArchived()
+                archivedBooks = StatisticsStorage.loadArchived(resetTime: UserConfig.shared.statisticsResetTime)
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -55,10 +55,10 @@ struct StatisticsSettingsView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
             guard ReaderIntentBridge.shared.reader == nil else { return }
-            archivedBooks = StatisticsStorage.loadArchived()
+            archivedBooks = StatisticsStorage.loadArchived(resetTime: UserConfig.shared.statisticsResetTime)
         }
         .onAppear {
-            archivedBooks = StatisticsStorage.loadArchived()
+            archivedBooks = StatisticsStorage.loadArchived(resetTime: UserConfig.shared.statisticsResetTime)
         }
     }
     

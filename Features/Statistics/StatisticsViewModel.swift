@@ -53,6 +53,7 @@ class StatisticsViewModel {
     private var allBooks: [BookStatistics] = []
     private var totalsByDate: [Date: ReadingTotal] = [:]
     private var totalsByMonth: [Date: ReadingTotal] = [:]
+    private var loadTask: Task<Void, Never>?
     private var reloadTask: Task<Void, Never>?
     
     var firstDay: Date? {
@@ -113,19 +114,27 @@ class StatisticsViewModel {
         }
         today = current
         
-        allBooks = StatisticsStorage.loadAll(resetTime: resetTime)
-        totalsByDate = allBooks.flatMap(\.days).map(\.total).reduce(into: [:]) { grouped, total in
-            grouped[total.date, default: ReadingTotal(date: total.date)].add(total)
-        }
-        dailyTotals = totalsByDate.values.sorted { $0.date < $1.date }
-        let calendar = Calendar.current
-        totalsByMonth = dailyTotals.reduce(into: [:]) { grouped, total in
-            guard let month = calendar.dateInterval(of: .month, for: total.date)?.start else {
-                return
+        let resetTime = resetTime
+        loadTask?.cancel()
+        loadTask = Task {
+            let allBooks = await Task.detached(priority: .userInitiated) {
+                StatisticsStorage.loadAll(resetTime: resetTime)
+            }.value
+            guard !Task.isCancelled else { return }
+            self.allBooks = allBooks
+            totalsByDate = allBooks.flatMap(\.days).map(\.total).reduce(into: [:]) { grouped, total in
+                grouped[total.date, default: ReadingTotal(date: total.date)].add(total)
             }
-            grouped[month, default: ReadingTotal(date: month)].add(total)
+            dailyTotals = totalsByDate.values.sorted { $0.date < $1.date }
+            let calendar = Calendar.current
+            totalsByMonth = dailyTotals.reduce(into: [:]) { grouped, total in
+                guard let month = calendar.dateInterval(of: .month, for: total.date)?.start else {
+                    return
+                }
+                grouped[month, default: ReadingTotal(date: month)].add(total)
+            }
+            updateBooks()
         }
-        updateBooks()
     }
     
     func scheduleLoad() {

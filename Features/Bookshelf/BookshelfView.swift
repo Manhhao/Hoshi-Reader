@@ -42,14 +42,16 @@ struct BookshelfView: View {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
                         let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption, showReading: userConfig.bookshelfShowReading)
-                        if viewModel.books.isEmpty && viewModel.googleDriveBooks.isEmpty {
+                        if !viewModel.isLoaded {
+                            ProgressView()
+                                .containerRelativeFrame([.horizontal, .vertical])
+                        } else if viewModel.books.isEmpty && viewModel.googleDriveBooks.isEmpty {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
                             } description: {
                                 Text("Import an EPUB using the \(Image(systemName: "plus")) button to start reading.")
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 160)
+                            .containerRelativeFrame([.horizontal, .vertical])
                         } else {
                             ForEach(sections) { section in
                                 if section.books.count > 0 {
@@ -212,10 +214,13 @@ struct BookshelfView: View {
                         viewModel.errorMessage = error.localizedDescription
                         viewModel.shouldShowError = true
                     }
+                    viewModel.clearInbox()
                 } else {
-                    viewModel.importBook(result: .success(url))
+                    Task {
+                        await viewModel.importBook(result: .success(url))
+                        viewModel.clearInbox()
+                    }
                 }
-                viewModel.clearInbox()
                 pendingImportURL = nil
             }
         }

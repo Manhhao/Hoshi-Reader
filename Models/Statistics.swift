@@ -139,7 +139,7 @@ nonisolated struct ReadingTotal: Identifiable, Hashable {
     }
 }
 
-struct BookStatistics: Identifiable {
+nonisolated struct BookStatistics: Identifiable {
     let metadata: BookMetadata
     let isDeleted: Bool
     var days: [StatisticsDay]

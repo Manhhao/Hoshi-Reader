@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-struct TtuStatistics: Codable, Equatable {
+nonisolated struct TtuStatistics: Codable, Equatable {
     let title: String
     let dateKey: String
     var charactersRead: Int
@@ -29,13 +29,13 @@ struct TtuStatistics: Codable, Equatable {
         }
     }
     
-    static func legacySessions(_ statistics: [TtuStatistics], key: String) -> [String: Timestamped<ReadingSession?>] {
+    static func legacySessions(_ statistics: [TtuStatistics], key: String, resetTime: Int) -> [String: Timestamped<ReadingSession?>] {
         var sessions: [String: Timestamped<ReadingSession?>] = [:]
         
         for statistic in merged(statistics).filter(\.hasActivity) {
             sessions[legacyId(key: key, dateKey: statistic.dateKey)] = Timestamped(
                 modified: Int64(statistic.lastStatisticModified),
-                value: statistic.session
+                value: statistic.session(resetTime: resetTime)
             )
         }
         
@@ -47,6 +47,7 @@ struct TtuStatistics: Codable, Equatable {
         return hash.withUnsafeBytes { UUID(uuid: $0.load(as: uuid_t.self)) }.uuidString
     }
     
+    @MainActor
     static func export(_ sessions: [String: Timestamped<ReadingSession?>], title: String) -> [TtuStatistics] {
         let days = StatisticsDay.grouped(sessions, resetTime: UserConfig.shared.statisticsResetTime)
         let formatter = ISO8601DateFormatter()
@@ -70,6 +71,7 @@ struct TtuStatistics: Codable, Equatable {
         }.filter(\.hasActivity)
     }
     
+    @MainActor
     static func importHistory(_ statistics: [TtuStatistics], key: String, mode: StatisticsSyncMode = .merge) {
         if statistics.isEmpty {
             return
@@ -98,7 +100,7 @@ struct TtuStatistics: Codable, Equatable {
                 id = UUID().uuidString
             }
             
-            let value = imported.hasActivity ? imported.session : nil
+            let value = imported.hasActivity ? imported.session(resetTime: UserConfig.shared.statisticsResetTime) : nil
             if mode == .replace && previous.count == 1 && previous[id]?.value == value {
                 continue
             }
@@ -125,8 +127,7 @@ struct TtuStatistics: Codable, Equatable {
         }
     }
     
-    private var session: ReadingSession {
-        let resetTime = UserConfig.shared.statisticsResetTime
+    private func session(resetTime: Int) -> ReadingSession {
         let parts = dateKey.split(separator: "-").map {
             Int($0)!
         }

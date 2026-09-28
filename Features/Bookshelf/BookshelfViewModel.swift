@@ -15,6 +15,7 @@ import EPUBKit
 class BookshelfViewModel {
     var books: [BookMetadata] = []
     var shelves: [BookShelf] = []
+    private(set) var isLoaded = false
     var googleDriveBooks: [BookMetadata] = []
     var isImporting: Bool = false
     var shouldShowError: Bool = false
@@ -32,16 +33,24 @@ class BookshelfViewModel {
     private var googleDriveSyncFiles: [UUID: TtuSyncFiles] = [:]
     private var sasayakiTask: Task<Void, Never>?
     private var sasayakiBookId: UUID?
+    private var loadTask: Task<Void, Never>?
     private var reloadTask: Task<Void, Never>?
     
     func loadBooks() {
-        do {
-            _ = BookStorage.loadShelfList()
-            books = try BookStorage.loadAllBooks()
-            loadBookProgress()
-            loadShelves()
-        } catch {
-            showError(message: error.localizedDescription)
+        loadTask?.cancel()
+        loadTask = Task {
+            do {
+                let library = try await Task.detached(priority: .userInitiated) {
+                    try Self.loadLibrary()
+                }.value
+                guard !Task.isCancelled else { return }
+                books = library.books
+                bookProgress = library.progress
+                loadShelves()
+            } catch {
+                showError(message: error.localizedDescription)
+            }
+            isLoaded = true
         }
     }
     
@@ -184,11 +193,18 @@ class BookshelfViewModel {
         sortBooks(books, by: option)
     }
     
-    private func loadBookProgress() {
+    nonisolated private static func loadLibrary() throws -> (books: [BookMetadata], progress: [UUID: Double]) {
+        _ = BookStorage.loadShelfList()
+        let books = try BookStorage.loadAllBooks()
+        return (books, loadBookProgress(books))
+    }
+    
+    nonisolated private static func loadBookProgress(_ books: [BookMetadata]) -> [UUID: Double] {
         guard let directory = try? BookStorage.getBooksDirectory() else {
-            return
+            return [:]
         }
         
+        var bookProgress: [UUID: Double] = [:]
         for book in books {
             let root = directory.appendingPathComponent(book.folder)
             
@@ -202,6 +218,7 @@ class BookshelfViewModel {
                 bookProgress[book.id] = 0.0
             }
         }
+        return bookProgress
     }
     
     func progress(for book: BookMetadata) -> Double {
@@ -245,9 +262,9 @@ class BookshelfViewModel {
         try? SyncStorage.shared.handleBookChange(folder: book.folder)
     }
     
-    func importBook(result: Result<URL, Error>) {
+    func importBook(result: Result<URL, Error>) async {
         do {
-            try importBook(from: try result.get())
+            try await importBook(from: try result.get())
             loadBooks()
         } catch {
             showError(message: error.localizedDescription)
@@ -262,28 +279,26 @@ class BookshelfViewModel {
             }
             
             if urls.count == 1 {
-                importBook(result: .success(urls[0]))
+                Task {
+                    await importBook(result: .success(urls[0]))
+                }
                 return
             }
             
             importBooksProgress = "Importing 1 / \(urls.count)..."
             Task {
                 defer { importBooksProgress = nil }
-                await Task.yield()
                 
                 var failed: [String] = []
                 for (index, url) in urls.enumerated() {
-                    autoreleasepool {
-                        do {
-                            try importBook(from: url)
-                        } catch {
-                            failed.append(url.lastPathComponent)
-                        }
+                    do {
+                        try await importBook(from: url)
+                    } catch {
+                        failed.append(url.lastPathComponent)
                     }
                     let next = index + 1
                     if next < urls.count {
                         importBooksProgress = "Importing \(next + 1) / \(urls.count)..."
-                        await Task.yield()
                     }
                 }
                 loadBooks()
@@ -305,7 +320,7 @@ class BookshelfViewModel {
             }
             do {
                 let (tempURL, _) = try await URLSession.shared.download(from: url)
-                try processImport(sourceURL: tempURL)
+                try await importBook(from: tempURL)
                 loadBooks()
             } catch {
                 showError(message: "Download failed: \(error.localizedDescription)")
@@ -489,7 +504,7 @@ class BookshelfViewModel {
         case .synced(let title):
             showSuccess(message: "\(title) is already synced")
         case .imported(let title, let characterCount):
-            loadBookProgress()
+            bookProgress = Self.loadBookProgress(books)
             showSuccess(message: "Synced \(title) from ッツ\n\(characterCount) characters")
         case .exported(let title, let characterCount):
             showSuccess(message: "Synced \(title) to ッツ\n\(characterCount) characters")
@@ -512,7 +527,7 @@ class BookshelfViewModel {
         
         try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
         try? SyncStorage.shared.handleBookChange(folder: book.folder)
-        loadBookProgress()
+        bookProgress = Self.loadBookProgress(books)
     }
     
     func clearInbox() {
@@ -686,17 +701,24 @@ class BookshelfViewModel {
         return url
     }
     
-    private func importBook(from url: URL) throws {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if accessing {
-                url.stopAccessingSecurityScopedResource()
+    private func importBook(from url: URL) async throws {
+        let imported = try await Task.detached(priority: .userInitiated) {
+            try autoreleasepool {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                return try Self.processImport(sourceURL: url)
             }
+        }.value
+        if let imported {
+            try SyncStorage.shared.handleBookImport(book: imported.book, root: imported.root)
         }
-        try processImport(sourceURL: url)
     }
     
-    private func processImport(sourceURL: URL) throws {
+    nonisolated private static func processImport(sourceURL: URL) throws -> (book: BookMetadata, root: URL)? {
         let tempDir = FileManager.default.temporaryDirectory
         let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
         
@@ -721,7 +743,7 @@ class BookshelfViewModel {
         let bookFolder = booksDir.appendingPathComponent(safeTitle)
         
         if let existing = BookStorage.loadMetadata(root: bookFolder), existing.epub != nil {
-            return
+            return nil
         }
         
         try FileManager.default.createDirectory(at: bookFolder, withIntermediateDirectories: true)
@@ -731,11 +753,10 @@ class BookshelfViewModel {
         
         let document = try BookStorage.loadEpub(localURL)
         try finalizeImport(localURL: localURL, bookFolder: bookFolder, document: document, title: title)
-        let metadata = BookStorage.loadMetadata(root: bookFolder)!
-        try SyncStorage.shared.handleBookImport(book: metadata, root: bookFolder)
+        return (BookStorage.loadMetadata(root: bookFolder)!, bookFolder)
     }
     
-    private func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {
+    nonisolated private static func finalizeImport(localURL: URL, bookFolder: URL, document: EPUBDocument, title: String) throws {
         do {
             var coverURL: String?
             if let coverPath = findCoverInManifest(document: document) {
@@ -780,7 +801,7 @@ class BookshelfViewModel {
         }
     }
     
-    private func findCoverInManifest(document: EPUBDocument) -> String? {
+    nonisolated private static func findCoverInManifest(document: EPUBDocument) -> String? {
         // EPUB3
         // <item href="Images/embed0028_HD.jpg" properties="cover-image" id="embed0028_HD" media-type="image/jpeg"/>
         if let coverItem = document.manifest.items.values.first(where: { $0.property?.contains("cover-image") == true }) {
