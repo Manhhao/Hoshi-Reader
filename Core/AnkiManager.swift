@@ -302,16 +302,24 @@ class AnkiManager {
         
         if !pictureFields.isEmpty, let coverURL = context.coverURL,
            let coverData = try? Data(contentsOf: coverURL) {
-            note["picture"] = [[
-                "data": coverData.base64EncodedString(),
-                "filename": "hoshi_cover_\(coverData.sha1).\(coverURL.pathExtension)",
-                "fields": pictureFields
-            ]]
+            let filename = "hoshi_cover_\(coverData.sha1).\(coverURL.pathExtension)"
+            if let stored = try? await ankiConnectRequest(action: "getMediaFilesNames", params: ["pattern": filename]) as? [String], !stored.isEmpty {
+                for field in pictureFields {
+                    fields[field] = "<img src=\"\(filename)\">"
+                }
+                note["fields"] = fields
+            } else {
+                note["picture"] = [[
+                    "data": coverData.base64EncodedString(),
+                    "filename": filename,
+                    "fields": pictureFields
+                ]]
+            }
         }
         
         if let json = content["dictionaryMedia"],
            let dictionaryMedia = try? JSONDecoder().decode([DictionaryMedia].self, from: Data(json.utf8)) {
-            for media in dictionaryMedia {
+            for media in dictionaryMedia where fields.values.contains(where: { $0.contains(media.filename) }) {
                 let mediaData = LookupEngine.shared.getMediaFile(dictName: media.dictionary, mediaPath: media.path)
                 let ext = media.path.split(separator: ".").last!
                 let filename = "hoshi_dict_\(mediaData.sha1).\(ext)"
