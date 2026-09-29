@@ -64,9 +64,16 @@ class AnkiManager {
     
     var useAnkiConnect: Bool = false
     var ankiConnectConfig: AnkiConnectConfig? = AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
-    var isAnkiConnectReachable = false
+    var isAnkiConnectReachable = false {
+        didSet {
+            if isAnkiConnectReachable != oldValue {
+                NotificationCenter.default.post(name: Self.ankiConnectNotification, object: nil)
+            }
+        }
+    }
     
     static let wordAddedNotification = Notification.Name("hoshiWordAdded")
+    static let ankiConnectNotification = Notification.Name("hoshiAnkiConnect")
     
     private static let scheme = "hoshi://"
     private static let fetchCallback = scheme + "ankiFetch"

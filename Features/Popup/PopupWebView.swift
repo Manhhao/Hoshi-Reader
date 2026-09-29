@@ -253,7 +253,7 @@ struct PopupWebView: UIViewRepresentable {
     }
     
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
-        coordinator.removeWordAddedObserver()
+        coordinator.removeObservers()
         Task {
             await WordAudioPlayer.shared.stop(id: coordinator.id)
         }
@@ -282,13 +282,13 @@ struct PopupWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         private var buttons: [String: UIButton] = [:]
         private var buttonActions: [UIButton: (kind: String, entryIndex: Int, slotIndex: Int)] = [:]
-        private var wordAddedObserver: NSObjectProtocol?
+        private var observers: [NSObjectProtocol] = []
         let id = UUID()
         
         init(parent: PopupWebView) {
             self.parent = parent
             super.init()
-            wordAddedObserver = NotificationCenter.default.addObserver(
+            observers.append(NotificationCenter.default.addObserver(
                 forName: AnkiManager.wordAddedNotification,
                 object: nil,
                 queue: .main
@@ -296,14 +296,21 @@ struct PopupWebView: UIViewRepresentable {
                 MainActor.assumeIsolated {
                     self?.webView?.evaluateJavaScript("recheckDuplicates()")
                 }
-            }
+            })
+            observers.append(NotificationCenter.default.addObserver(
+                forName: AnkiManager.ankiConnectNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.webView?.evaluateJavaScript("window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable); recheckDuplicates()")
+                }
+            })
         }
         
-        func removeWordAddedObserver() {
-            if let wordAddedObserver {
-                NotificationCenter.default.removeObserver(wordAddedObserver)
-                self.wordAddedObserver = nil
-            }
+        func removeObservers() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers.removeAll()
         }
         
         private func updateButtons(_ rects: [[String: Any]], in webView: WKWebView) {
@@ -440,11 +447,13 @@ struct PopupWebView: UIViewRepresentable {
                 """
                 window.dictionaryStyles = dictionaryStyles;
                 window.entryCount = entryCount;
+                window.isAnkiConnectReachable = isAnkiConnectReachable;
                 window.renderPopup();
                 """,
                 arguments: [
                     "dictionaryStyles": parent.dictionaryStyles,
                     "entryCount": entries.count,
+                    "isAnkiConnectReachable": AnkiManager.shared.isAnkiConnectReachable,
                 ],
                 in: nil,
                 in: .page,
