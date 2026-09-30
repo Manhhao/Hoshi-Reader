@@ -1151,6 +1151,9 @@
         }
       }
     },
+    "Create" : {
+
+    },
     "Current Match" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -2059,6 +2062,9 @@
         }
       }
     },
+    "Mark" : {
+
+    },
     "Mark \"%@\" as read?" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -2072,6 +2078,7 @@
     },
     "Mark Read" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2080,6 +2087,12 @@
           }
         }
       }
+    },
+    "Mark Unread" : {
+
+    },
+    "Mark Unread?" : {
+
     },
     "Match" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -2191,6 +2204,12 @@
           }
         }
       }
+    },
+    "New Shelf" : {
+
+    },
+    "New Shelf…" : {
+
     },
     "Next Page" : {
       "comment" : "Context: Reader App Intents. Shortcuts that move to the next or previous page in the currently open book.",
@@ -3375,6 +3394,9 @@
         }
       }
     },
+    "This will reset the bookmark and statistics for \"%@\"." : {
+
+    },
     "Time" : {
       "comment" : "Context: Statistics > Daily Goal picker. Choose a reading-time or character-count target and set its daily amount.",
       "localizations" : {
@@ -3477,6 +3499,9 @@
 
     },
     "Transcription" : {
+
+    },
+    "Unread" : {
 
     },
     "Unshelved" : {

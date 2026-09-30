@@ -14,6 +14,8 @@ struct BookCell: View {
     @State private var markUnreadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var showNewShelfAlert = false
+    @State private var newShelfName = ""
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -70,6 +72,13 @@ struct BookCell: View {
                             Label(shelf.name, systemImage: "folder")
                         }
                         .disabled(shelf.name == currentShelf)
+                    }
+                    Divider()
+                    Button {
+                        newShelfName = ""
+                        showNewShelfAlert = true
+                    } label: {
+                        Label("New Shelf…", systemImage: "folder.badge.plus")
                     }
                 } label: {
                     Label("Move", systemImage: "folder")
@@ -171,6 +180,13 @@ struct BookCell: View {
             TextField("Title", text: $renameText)
             Button("Save") {
                 viewModel.renameBook(book, title: renameText.trimmingCharacters(in: .whitespaces))
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+        .alert("New Shelf", isPresented: $showNewShelfAlert) {
+            TextField("Shelf name", text: $newShelfName)
+            Button("Create") {
+                viewModel.moveBooksToNewShelf([book], name: newShelfName)
             }
             Button("Cancel", role: .cancel) { }
         }

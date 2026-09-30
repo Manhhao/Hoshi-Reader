@@ -96,8 +96,8 @@ class BookshelfViewModel {
     }
     
     func createShelf(name: String) {
+        let name = name.precomposedStringWithCanonicalMapping
         if !shelves.contains(where: { $0.name == name }) {
-            let name = name.precomposedStringWithCanonicalMapping
             for book in books where book.shelves?[name]?.value == true {
                 updateMemberships([name: false], bookId: book.id)
             }
@@ -135,6 +135,13 @@ class BookshelfViewModel {
         for book in books {
             moveBook(book.id, to: name)
         }
+    }
+    
+    func moveBooksToNewShelf(_ books: Set<BookMetadata>, name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines).precomposedStringWithCanonicalMapping
+        guard !name.isEmpty else { return }
+        createShelf(name: name)
+        moveBooks(books, to: name)
     }
     
     func deleteBooks(_ books: Set<BookMetadata>) {

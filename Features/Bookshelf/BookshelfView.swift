@@ -24,6 +24,8 @@ struct BookshelfView: View {
     @State private var isSelecting = false
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
+    @State private var showNewShelfAlert = false
+    @State private var newShelfName = ""
     @State private var sasayakiBook: BookMetadata?
     @State private var didLoadGDrive = false
     @Binding var pendingImportURL: URL?
@@ -109,6 +111,14 @@ struct BookshelfView: View {
                     ) {
                         Button("Delete", role: .destructive) {
                             viewModel.deleteBooks(selectedBooks)
+                            clearSelection()
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    }
+                    .alert("New Shelf", isPresented: $showNewShelfAlert) {
+                        TextField("Shelf name", text: $newShelfName)
+                        Button("Create") {
+                            viewModel.moveBooksToNewShelf(selectedBooks, name: newShelfName)
                             clearSelection()
                         }
                         Button("Cancel", role: .cancel) { }
@@ -286,6 +296,13 @@ struct BookshelfView: View {
                         } label: {
                             Label(shelf.name, systemImage: "folder")
                         }
+                    }
+                    Divider()
+                    Button {
+                        newShelfName = ""
+                        showNewShelfAlert = true
+                    } label: {
+                        Label("New Shelf…", systemImage: "folder.badge.plus")
                     }
                 } label: {
                     Image(systemName: "folder")
