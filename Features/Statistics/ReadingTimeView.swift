@@ -120,7 +120,7 @@ struct ReadingTimeView: View {
     private func chart(for referenceDate: Date) -> some View {
         let buckets = viewModel.buckets(for: referenceDate)
         let average = (viewModel.averageReadingTime(for: referenceDate) ?? 0) / 3600
-        let maximum = max(5, ceil((buckets.map(\.readingTime).max() ?? 0) / 3600))
+        let maximum = max(2, ceil((buckets.map(\.readingTime).max() ?? 0) / 3600))
         let selected = buckets.first { $0.date == viewModel.selectedDate }?.date
         let end = Calendar.current.date(byAdding: viewModel.bucketUnit, value: 1, to: buckets.last!.date)!
         
