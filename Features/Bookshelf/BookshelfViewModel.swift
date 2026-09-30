@@ -415,7 +415,7 @@ class BookshelfViewModel {
             }
             googleDriveSyncFiles = remoteSyncFiles
         } catch let error as URLError where error.code == .cancelled {
-        } catch let error as URLError where suppressOfflineErrors && [.notConnectedToInternet, .timedOut, .networkConnectionLost].contains(error.code) {
+        } catch GoogleDriveError.unavailable(let error as URLError) where suppressOfflineErrors && [.notConnectedToInternet, .timedOut, .networkConnectionLost].contains(error.code) {
         } catch {
             showError(message: "Failed to fetch books from Google Drive: \(error.localizedDescription)")
         }

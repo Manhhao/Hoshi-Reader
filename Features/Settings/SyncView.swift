@@ -16,6 +16,7 @@ struct SyncView: View {
     @State private var showClearCacheConfirmation = false
     @State private var showSignOutConfirmation = false
     @State private var isConnecting = false
+    @State private var showQueue = false
     
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -119,6 +120,42 @@ struct SyncView: View {
                                 }
                             }
                             
+                            let queue = GoogleDriveSyncManager.shared.queue
+                            let progress = GoogleDriveSyncManager.shared.progress
+                            let failed = queue.filter { $0.error != nil }.count
+                            Button {
+                                showQueue = true
+                            } label: {
+                                VStack(spacing: 8) {
+                                    HStack {
+                                        Text("Queue")
+                                        Spacer()
+                                        if let progress {
+                                            Text("\(progress.done) / \(progress.total)")
+                                                .monospacedDigit()
+                                                .foregroundStyle(.secondary)
+                                        } else if failed > 0 {
+                                            Text("\(failed) failed")
+                                                .foregroundStyle(.red)
+                                        } else if !queue.isEmpty {
+                                            Text("\(queue.count)")
+                                                .monospacedDigit()
+                                                .foregroundStyle(.secondary)
+                                        } else {
+                                            Text("Empty")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.footnote.weight(.semibold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    if let progress {
+                                        ProgressView(value: Double(progress.done), total: Double(progress.total))
+                                    }
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                            
                             Button("Sync Now") {
                                 Task {
                                     await GoogleDriveSyncManager.shared.sync()
@@ -145,6 +182,9 @@ struct SyncView: View {
             }
         }
         .navigationTitle("Syncing")
+        .sheet(isPresented: $showQueue) {
+            SyncQueueView()
+        }
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
         } message: {
@@ -229,6 +269,69 @@ struct SyncView: View {
             Text("Merge")
         case .replace:
             Text("Replace")
+        }
+    }
+}
+
+struct SyncQueueView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        let queue = GoogleDriveSyncManager.shared.queue
+        let current = GoogleDriveSyncManager.shared.progress?.current
+        NavigationStack {
+            List(queue) { item in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            if let direction = item.direction {
+                                Image(systemName: imageOfDirection(direction))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(item.title)
+                                .lineLimit(1)
+                        }
+                        if let error = item.error {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    Spacer()
+                    if item.key == current {
+                        ProgressView()
+                    }
+                }
+            }
+            .overlay {
+                if queue.isEmpty {
+                    ContentUnavailableView("All Books Synced", systemImage: "checkmark.icloud")
+                }
+            }
+            .navigationTitle("Queue")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func imageOfDirection(_ direction: GoogleDriveSyncManager.Direction) -> String {
+        switch direction {
+        case .upload:
+            "arrow.up"
+        case .download:
+            "arrow.down"
+        case .both:
+            "arrow.up.arrow.down"
         }
     }
 }

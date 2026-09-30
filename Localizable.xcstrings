@@ -190,6 +190,16 @@
         }
       }
     },
+    "%lld / %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
     "%lld books" : {
       "comment" : "Context: Statistics > Settings > Archive. Number of deleted books whose reading statistics are retained.",
       "localizations" : {
@@ -276,6 +286,9 @@
           }
         }
       }
+    },
+    "%lld failed" : {
+
     },
     "%lld/s" : {
 
@@ -481,6 +494,9 @@
           }
         }
       }
+    },
+    "All Books Synced" : {
+
     },
     "All Time" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -1458,6 +1474,9 @@
           }
         }
       }
+    },
+    "Empty" : {
+
     },
     "Enable" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -2515,6 +2534,9 @@
       }
     },
     "Provider" : {
+
+    },
+    "Queue" : {
 
     },
     "Read" : {

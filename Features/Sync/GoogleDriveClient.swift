@@ -4,6 +4,7 @@ import Network
 enum GoogleDriveError: LocalizedError {
     case invalidResponse
     case apiError(String, statusCode: Int?)
+    case unavailable(Error)
     
     var errorDescription: String? {
         switch self {
@@ -11,6 +12,8 @@ enum GoogleDriveError: LocalizedError {
             return String(localized: "Invalid response from Google Drive")
         case .apiError(let message, _):
             return message
+        case .unavailable(let error):
+            return error.localizedDescription
         }
     }
     
@@ -79,7 +82,7 @@ final class GoogleDriveClient {
         request.httpMethod = method
         request.httpBody = body
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(try GoogleDriveAuth.shared.getAccessToken())", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(try await unavailable { try GoogleDriveAuth.shared.getAccessToken() })", forHTTPHeaderField: "Authorization")
         return try await performRequest(request, delegate: delegate)
     }
     
@@ -88,20 +91,20 @@ final class GoogleDriveClient {
             throw URLError(.cancelled)
         }
         if pathMonitor.currentPath.status == .unsatisfied {
-            throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
+            throw GoogleDriveError.unavailable(URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."]))
         }
         
         let connection = connectionId
         var request = request
         request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : 60
-        let (data, response) = try await session.data(for: request, delegate: delegate)
+        let (data, response) = try await unavailable { try await session.data(for: request, delegate: delegate) }
         
         try checkConnection(connection)
         try Task.checkCancellation()
         
         guard let httpResponse = response as? HTTPURLResponse else { throw GoogleDriveError.invalidResponse }
         if httpResponse.statusCode == 401 && retry {
-            let newToken = try await GoogleDriveAuth.shared.refreshAccessToken()
+            let newToken = try await unavailable { try await GoogleDriveAuth.shared.refreshAccessToken() }
             try checkConnection(connection)
             try Task.checkCancellation()
             var newRequest = request
@@ -119,6 +122,17 @@ final class GoogleDriveClient {
         }
         
         return data
+    }
+    
+    private func unavailable<T>(_ operation: () async throws -> T) async throws -> T {
+        do {
+            return try await operation()
+        } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                throw error
+            }
+            throw GoogleDriveError.unavailable(error)
+        }
     }
     
     @discardableResult

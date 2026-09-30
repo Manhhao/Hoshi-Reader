@@ -9,9 +9,64 @@ nonisolated struct GoogleDriveSyncCache: Codable {
     var bookVersions: [String: [String: String]] = [:]
 }
 
+private struct RemoteChanges {
+    var listed: [String: [GoogleDriveFile]]?
+    var changed: Set<String>
+    var cursor: String
+    
+    func contains(_ key: String) -> Bool {
+        changed.contains(key) || listed?[key] != nil
+    }
+    
+    func files(_ key: String) -> [GoogleDriveFile]? {
+        if changed.contains(key) {
+            return nil
+        }
+        return listed.map { $0[key] ?? [] }
+    }
+}
+
 @MainActor
 @Observable
 final class GoogleDriveSyncManager {
+    enum Phase: Comparable {
+        case state
+        case file
+    }
+    
+    enum Direction {
+        case upload
+        case download
+        case both
+    }
+    
+    struct QueueItem: Identifiable {
+        var key: String
+        var title: String
+        var direction: Direction?
+        var error: String?
+        
+        var id: String { key }
+    }
+    
+    struct Progress {
+        var done: Int
+        var total: Int
+        var current: String?
+    }
+    
+    private struct BookErrorKey: Hashable {
+        var key: String
+        var phase: Phase
+    }
+    
+    private struct BookError {
+        var title: String
+        var message: String
+    }
+    
+    private typealias Folders = [String: [Int: String]]
+    
     static let shared = GoogleDriveSyncManager()
     var errorMessage: String?
     var lastSync: Date?
@@ -28,8 +83,23 @@ final class GoogleDriveSyncManager {
     var downloadTask: Task<Void, Never>?
     private var stopped = false
     private var unsupportedFormat = false
+    private var transfers: [QueueItem] = []
+    private(set) var progress: Progress?
+    private var bookErrors: [BookErrorKey: BookError] = [:]
     
-    var isSyncing: Bool { stateTask != nil }
+    var isSyncing: Bool { stateTask != nil || fileTransferTask != nil }
+    
+    var queue: [QueueItem] {
+        var queue = transfers
+        for (id, error) in bookErrors.sorted(by: { ($0.key.key, $0.key.phase) < ($1.key.key, $1.key.phase) }) {
+            if let index = queue.firstIndex(where: { $0.key == id.key }) {
+                queue[index].error = queue[index].error ?? error.message
+            } else {
+                queue.append(QueueItem(key: id.key, title: error.title, direction: nil, error: error.message))
+            }
+        }
+        return queue
+    }
     
     var enabled: Bool {
         UserConfig.shared.enableSync && UserConfig.shared.syncProvider == .gdrive
@@ -98,6 +168,9 @@ final class GoogleDriveSyncManager {
         stateTask = nil
         fileTransferTask = nil
         downloadTask = nil
+        transfers = []
+        progress = nil
+        bookErrors = [:]
     }
     
     func signOut() async throws {
@@ -173,31 +246,33 @@ final class GoogleDriveSyncManager {
                     }
                     
                     let key = book.folder.precomposedStringWithCanonicalMapping
-                    try await syncBook(key)
+                    try await recordBook(key, phase: .state) {
+                        try await syncBook(key)
+                    }
                     return
                 }
                 
-                let (changed, cursor) = try await changes()
+                let remote = try await changes()
                 let pending = store.state.books.compactMap { $0.value.pending ? $0.key : nil }
-                let keys = changed.union(pending)
-                for key in keys.subtracting([".shelves"]).sorted() {
-                    try await syncBook(key)
+                let keys = remote.changed.union(pending).union((remote.listed ?? [:]).keys).subtracting([".shelves"]).sorted()
+                for key in keys {
+                    try await recordBook(key, phase: .state) {
+                        try await syncBook(key, files: remote.files(key))
+                    }
                 }
-                if !store.state.books.values.contains(where: { !$0.attached && !$0.deleted }) {
-                    if keys.contains(".shelves") || store.state.shelvesPending {
+                let failed = keys.contains { bookErrors[BookErrorKey(key: $0, phase: .state)] != nil }
+                if !failed && !store.state.books.values.contains(where: { !$0.attached && !$0.deleted }) {
+                    if remote.contains(".shelves") || store.state.shelvesPending {
                         try await syncShelves()
                     }
-                    cache.cursor = cursor
+                    cache.cursor = remote.cursor
                     try saveCache()
                     lastSync = .now
                     unsupportedFormat = false
                 }
             } catch {
                 if !Task.isCancelled {
-                    errorMessage = error.localizedDescription
-                    if error is SyncFormatError {
-                        unsupportedFormat = true
-                    }
+                    failRun(error)
                     fileTransferTask?.cancel()
                 }
             }
@@ -209,7 +284,7 @@ final class GoogleDriveSyncManager {
         if !task.isCancelled {
             stateTask = nil
             
-            if book != nil || (errorMessage == nil && (store.state.books.values.contains(where: { $0.pending }) || store.state.shelvesPending)) {
+            if book != nil || (errorMessage == nil && !bookErrors.keys.contains(where: { $0.phase == .state }) && (store.state.books.values.contains(where: { $0.pending }) || store.state.shelvesPending)) {
                 schedule()
             }
             if book == nil {
@@ -221,47 +296,127 @@ final class GoogleDriveSyncManager {
     func startFileSync() {
         guard enabled, !unsupportedFormat, errorMessage == nil, !isSyncing, fileTransferTask == nil, downloadTask == nil, !cache.bookFolder.isEmpty else { return }
         fileTransferTask = Task {
-            defer { fileTransferTask = nil }
-            for key in store.state.books.keys.sorted() {
-                if Task.isCancelled {
-                    return
-                }
-                
-                for fileType in SyncFileType.allCases {
-                    do {
-                        try await uploadFile(key: key, fileType: fileType)
-                        if fileType != .epub {
-                            try await downloadFile(key: key, fileType: fileType)
-                        }
-                    } catch {
-                        if stopsFileSync(error) {
-                            return
-                        }
-                    }
-                }
-                
-                do {
-                    try await cleanupFiles(key: key)
-                } catch {
-                    if stopsFileSync(error) {
-                        return
-                    }
+            defer {
+                fileTransferTask = nil
+                progress = nil
+            }
+            do {
+                try await runFileSync()
+            } catch {
+                if !Task.isCancelled {
+                    failRun(error)
                 }
             }
         }
     }
     
-    private func stopsFileSync(_ error: Error) -> Bool {
-        if Task.isCancelled {
-            return true
+    private func runFileSync() async throws {
+        var folders: Folders = [:]
+        let keys = store.state.books.keys.sorted()
+        beginTransfers(keys)
+        for key in keys {
+            try Task.checkCancellation()
+            progress?.current = key
+            try await recordBook(key, phase: .file) {
+                try await syncFiles(key: key, folders: &folders)
+            }
+            finishTransfer(key)
+        }
+    }
+    
+    private func syncFiles(key: String, folders: inout Folders) async throws {
+        var failure: Error?
+        for fileType in SyncFileType.allCases {
+            try Task.checkCancellation()
+            do {
+                try await uploadFile(key: key, fileType: fileType, folders: &folders)
+                if fileType != .epub {
+                    try await downloadFile(key: key, fileType: fileType, folders: &folders)
+                }
+            } catch {
+                failure = failure ?? error
+            }
         }
         
+        do {
+            try await cleanupFiles(key: key, folders: &folders)
+        } catch {
+            failure = failure ?? error
+        }
+        if let failure {
+            throw failure
+        }
+    }
+    
+    private func transferDirection(_ record: SyncRecord) -> Direction? {
+        let fileTypes = SyncFileType.allCases.filter { !record.deleted || $0 == .cover }
+        let upload = record.attached && fileTypes.contains { fileType in
+            guard let source = record.sources[fileType] else { return false }
+            return (record.files[fileType]?.modified ?? .min) < source
+        }
+        let download = fileTypes.contains { fileType in
+            guard fileType != .epub, let published = record.files[fileType] else { return false }
+            return (record.sources[fileType] ?? .min) < published.modified
+        }
+        switch (upload, download) {
+        case (true, true):
+            return .both
+        case (true, false):
+            return .upload
+        case (false, true):
+            return .download
+        case (false, false):
+            return nil
+        }
+    }
+    
+    private func beginTransfers(_ keys: [String]) {
+        transfers = keys.compactMap { key in
+            let record = store.state.books[key]!
+            return transferDirection(record).map {
+                QueueItem(key: key, title: bookTitle(key, deleted: record.deleted), direction: $0)
+            }
+        }
+        progress = transfers.isEmpty ? nil : Progress(done: 0, total: transfers.count)
+    }
+    
+    private func finishTransfer(_ key: String) {
+        guard transfers.contains(where: { $0.key == key }) else { return }
+        progress?.done += 1
+        if bookErrors[BookErrorKey(key: key, phase: .file)] == nil {
+            transfers.removeAll { $0.key == key }
+        }
+    }
+    
+    private func recordBook(_ key: String, phase: Phase, _ operation: () async throws -> Void) async throws {
+        do {
+            try await operation()
+            bookErrors[BookErrorKey(key: key, phase: phase)] = nil
+        } catch {
+            if Task.isCancelled || stopsRun(error) {
+                throw error
+            }
+            let deleted = store.state.books[key]?.deleted ?? false
+            bookErrors[BookErrorKey(key: key, phase: phase)] = BookError(title: bookTitle(key, deleted: deleted), message: error.localizedDescription)
+        }
+    }
+    
+    private func stopsRun(_ error: Error) -> Bool {
+        if case GoogleDriveError.unavailable = error {
+            return true
+        }
+        return error is SyncFormatError || error is CancellationError || (error as? URLError)?.code == .cancelled
+    }
+    
+    private func failRun(_ error: Error) {
         errorMessage = error.localizedDescription
         if error is SyncFormatError {
             unsupportedFormat = true
-            return true
         }
-        return false
+    }
+    
+    private func bookTitle(_ key: String, deleted: Bool) -> String {
+        (try? SyncStorage.bookDirectory(folder: key, archived: deleted)).flatMap { BookStorage.loadMetadata(root: $0) }?.title ?? key
     }
     
     func downloadBook(_ book: BookMetadata, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> BookMetadata {
@@ -270,7 +425,7 @@ final class GoogleDriveSyncManager {
         if unsupportedFormat {
             throw SyncFormatError.unsupportedVersion
         }
-        if let errorMessage {
+        if let errorMessage = errorMessage ?? bookErrors[BookErrorKey(key: key, phase: .state)]?.message {
             throw GoogleDriveError.apiError(errorMessage, statusCode: nil)
         }
         
@@ -282,7 +437,8 @@ final class GoogleDriveSyncManager {
         }
         
         if enabled, store.state.books[key]?.files[.epub]?.value != nil {
-            try await downloadFile(key: key, fileType: .epub, onProgress: onProgress)
+            var folders: Folders = [:]
+            try await downloadFile(key: key, fileType: .epub, folders: &folders, onProgress: onProgress)
         }
         
         try Task.checkCancellation()
@@ -294,14 +450,15 @@ final class GoogleDriveSyncManager {
         return metadata
     }
     
-    private func changes() async throws -> (Set<String>, String) {
-        var keys: Set<String> = []
+    private func changes() async throws -> RemoteChanges {
+        var listed: [String: [GoogleDriveFile]]?
+        var changed: Set<String> = []
         var cursor: String
         if let saved = cache.cursor {
             cursor = saved
         } else {
             cursor = try await drive.startToken()
-            keys = try await listRemote()
+            listed = try await listRemote()
         }
         while true {
             let page = try await drive.changes(cursor: cursor)
@@ -310,15 +467,15 @@ final class GoogleDriveSyncManager {
                 guard let file = change.file, file.isFolder else { return false }
                 return file.name == "Hoshi Reader" || file.parents?.contains(cache.root) == true
             }) {
-                keys.formUnion(try await listRemote())
+                listed = try await listRemote()
             }
             for change in page.changes where !change.removed && change.file?.trashed != true {
                 if let file = change.file, file.parents?.contains(cache.stateFolder) == true,
                    let key = file.stateKey {
-                    keys.insert(key)
+                    changed.insert(key)
                 }
             }
-            guard let next = page.nextPageToken else { return (keys, page.newStartPageToken!) }
+            guard let next = page.nextPageToken else { return RemoteChanges(listed: listed, changed: changed, cursor: page.newStartPageToken!) }
             cursor = next
         }
     }
@@ -331,15 +488,21 @@ final class GoogleDriveSyncManager {
         cache.bookFolder = layout.books
     }
     
-    private func listRemote() async throws -> Set<String> {
+    private func listRemote() async throws -> [String: [GoogleDriveFile]] {
         try await loadLayout()
         let files = try await drive.children(parent: cache.stateFolder)
         try Task.checkCancellation()
-        return Set(files.compactMap(\.stateKey))
+        var grouped: [String: [GoogleDriveFile]] = [:]
+        for file in files {
+            if let key = file.stateKey {
+                grouped[key, default: []].append(file)
+            }
+        }
+        return grouped
     }
     
-    private func syncBook(_ key: String) async throws {
-        let files = try await drive.children(parent: cache.stateFolder, name: key + ".json")
+    private func syncBook(_ key: String, files listed: [GoogleDriveFile]? = nil) async throws {
+        let files = if let listed { listed } else { try await drive.children(parent: cache.stateFolder, name: key + ".json") }
         try Task.checkCancellation()
         
         var versions = Dictionary(uniqueKeysWithValues: files.map { ($0.id, $0.version) })
@@ -445,7 +608,7 @@ final class GoogleDriveSyncManager {
         try store.save()
     }
     
-    private func uploadFile(key: String, fileType: SyncFileType) async throws {
+    private func uploadFile(key: String, fileType: SyncFileType, folders: inout Folders) async throws {
         let record = store.state.books[key]!
         if !record.attached || (record.deleted && fileType != .cover) {
             return
@@ -475,7 +638,7 @@ final class GoogleDriveSyncManager {
             return
         }
         
-        let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: record.generation, create: true)
+        let folder = try await fileFolder(&folders, key: key, generation: record.generation, create: true)
         try await drive.upload(data: data, fileName: name, folder: folder!)
         try Task.checkCancellation()
         if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
@@ -490,6 +653,15 @@ final class GoogleDriveSyncManager {
         try store.saveChanges(booksChanged: false)
     }
     
+    private func fileFolder(_ folders: inout Folders, key: String, generation: Int, create: Bool) async throws -> String? {
+        if let folder = folders[key]?[generation] {
+            return folder
+        }
+        let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: generation, create: create)
+        folders[key, default: [:]][generation] = folder
+        return folder
+    }
+    
     private func canPublish(key: String, fileType: SyncFileType, source: Int64, generation: Int) -> Bool {
         let record = store.state.books[key]!
         return record.generation == generation && record.sources[fileType] == source
@@ -497,7 +669,7 @@ final class GoogleDriveSyncManager {
             && (record.files[fileType]?.modified ?? .min) <= source
     }
     
-    private func downloadFile(key: String, fileType: SyncFileType, onProgress: @MainActor @Sendable @escaping (Double) -> Void = { _ in }) async throws {
+    private func downloadFile(key: String, fileType: SyncFileType, folders: inout Folders, onProgress: @MainActor @Sendable @escaping (Double) -> Void = { _ in }) async throws {
         let record = store.state.books[key]!
         if record.deleted && fileType != .cover {
             return
@@ -519,7 +691,7 @@ final class GoogleDriveSyncManager {
             return
         }
         
-        let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: record.generation, create: false)
+        let folder = try await fileFolder(&folders, key: key, generation: record.generation, create: false)
         
         let data = try await drive.download(fileName: name, folder: folder, onProgress: onProgress)
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -595,7 +767,7 @@ final class GoogleDriveSyncManager {
         }
     }
     
-    private func cleanupFiles(key: String) async throws {
+    private func cleanupFiles(key: String, folders: inout Folders) async throws {
         for generation in store.state.books[key]!.cleanup {
             if store.state.books[key]!.pending {
                 return
@@ -613,11 +785,12 @@ final class GoogleDriveSyncManager {
                 return
             }
             
-            let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: generation, create: false)
+            let folder = try await fileFolder(&folders, key: key, generation: generation, create: false)
             
             var recent = false
             if let folder, generation < book.generation {
                 try await GoogleDriveClient.shared.trashFile(fileId: folder)
+                folders[key]?[generation] = nil
                 try Task.checkCancellation()
             } else if let folder {
                 let files = try await drive.children(parent: folder)
