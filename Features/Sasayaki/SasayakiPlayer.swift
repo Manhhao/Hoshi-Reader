@@ -333,8 +333,13 @@ class SasayakiPlayer {
             }
         }
         
-        guard let first = cues.min(by: { $0.startTime < $1.startTime }), let end = cues.map(\.endTime).max() else {
+        guard let first = cues.min(by: { $0.startTime < $1.startTime }),
+              let last = cues.max(by: { $0.startTime < $1.startTime }),
+              var end = cues.map(\.endTime).max() else {
             return
+        }
+        if let next = timeline.nextCue(after: last.startTime) {
+            end = min(end, max(next - 0.02, last.startTime))
         }
         
         var start = first.startTime
