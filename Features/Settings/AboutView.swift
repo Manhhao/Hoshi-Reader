@@ -87,9 +87,9 @@ struct AboutView: View {
                     text: bsdLicenseZstd
                 )
                 LicenseRow(
-                    name: "SwiftLAME",
-                    license: "LGPL-2.1",
-                    url: "https://github.com/hidden-spectrum/SwiftLAME",
+                    name: "LAME",
+                    license: "LGPL-2.0",
+                    url: "https://lame.sourceforge.io",
                     text: nil
                 )
                 LicenseRow(

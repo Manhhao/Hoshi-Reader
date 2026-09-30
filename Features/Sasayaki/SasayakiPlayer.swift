@@ -7,8 +7,8 @@
 //
 
 import AVFoundation
+import LAME
 import MediaPlayer
-import SwiftLAME
 import SwiftUI
 
 struct CueTimeline {
@@ -402,32 +402,49 @@ class SasayakiPlayer {
         }
         
         let range = expandCue(cue, sentence: sentence)
-        let asset = AVURLAsset(url: url)
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
-        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.mp3")
-        try? FileManager.default.removeItem(at: temp)
-        try? FileManager.default.removeItem(at: output)
-        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
-            return nil
-        }
-        
         let start = max(0, range.start + delay)
         let end = max(start, range.end + delay)
-        session.timeRange = CMTimeRange(
-            start: CMTime(seconds: start, preferredTimescale: 600),
-            end: CMTime(seconds: end, preferredTimescale: 600)
-        )
-        try? await session.export(to: temp, as: .m4a)
-        
-        let encoder = try? SwiftLameEncoder(
-            sourceUrl: temp,
-            configuration: .init(sampleRate: .default, bitrateMode: .constant(128), quality: .nearBest),
-            destinationUrl: output
-        )
-        guard let encoder, (try? await encoder.encode()) != nil else {
+        return await Task.detached(priority: .userInitiated) {
+            Self.encodeClip(url: url, start: start, end: end)
+        }.value
+    }
+    
+    nonisolated private static func encodeClip(url: URL, start: Double, end: Double) -> Data? {
+        guard let file = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
             return nil
         }
-        return try? Data(contentsOf: output)
+        let format = file.processingFormat
+        let first = min(AVAudioFramePosition(start * format.sampleRate), file.length)
+        let last = min(AVAudioFramePosition(end * format.sampleRate), file.length)
+        guard last > first, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(last - first)) else {
+            return nil
+        }
+        file.framePosition = first
+        guard (try? file.read(into: buffer)) != nil, let data = buffer.int16ChannelData else {
+            return nil
+        }
+        
+        let frames = Int32(buffer.frameLength)
+        let left = data[0]
+        let right = data[Int(format.channelCount) - 1]
+        let mono = memcmp(left, right, Int(frames) * MemoryLayout<Int16>.size) == 0
+        let lame = lame_init()
+        defer { lame_close(lame) }
+        lame_set_in_samplerate(lame, Int32(format.sampleRate))
+        lame_set_num_channels(lame, mono ? 1 : 2)
+        lame_set_VBR(lame, vbr_mtrh)
+        lame_set_VBR_quality(lame, 0)
+        guard lame_init_params(lame) >= 0 else {
+            return nil
+        }
+        
+        let mp3 = [UInt8](unsafeUninitializedCapacity: Int(frames) * 5 / 4 + 7200) { output, count in
+            let base = output.baseAddress!
+            let encoded = Int(lame_encode_buffer(lame, left, right, frames, base, Int32(output.count)))
+            count = encoded + Int(lame_encode_flush(lame, base + encoded, Int32(output.count - encoded)))
+            lame_get_lametag_frame(lame, base, count)
+        }
+        return Data(mp3)
     }
     
     private func expandCue(_ cue: SasayakiMatch, sentence: String) -> (start: Double, end: Double) {

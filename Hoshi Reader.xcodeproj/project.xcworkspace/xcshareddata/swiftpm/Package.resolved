@@ -20,12 +20,12 @@
       }
     },
     {
-      "identity" : "swiftlame",
+      "identity" : "swift-lame",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/hidden-spectrum/SwiftLAME.git",
+      "location" : "https://github.com/Manhhao/swift-lame.git",
       "state" : {
         "branch" : "main",
-        "revision" : "45d1b021c2bd2bbd38b9669934c0584cda0d1b6b"
+        "revision" : "3beaf847c4ca93266ca0c602c82db5622a7cd920"
       }
     },
     {
