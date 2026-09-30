@@ -11,6 +11,7 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     @State private var showDeleteConfirmation = false
     @State private var markReadConfirmation = false
+    @State private var markUnreadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
     let book: BookMetadata
@@ -129,12 +130,22 @@ struct BookCell: View {
                 }
             }
             
-            Button {
-                markReadConfirmation = true
+            Menu {
+                Button {
+                    markReadConfirmation = true
+                } label: {
+                    Label("Read", systemImage: "checkmark")
+                }
+                .disabled(!hasBookInfo)
+                Button {
+                    markUnreadConfirmation = true
+                } label: {
+                    Label("Unread", systemImage: "arrow.uturn.backward")
+                }
+                .disabled(!viewModel.canMarkUnread(book: book))
             } label: {
-                Label("Mark Read", systemImage: "checkmark")
+                Label("Mark", systemImage: "checkmark")
             }
-            .disabled(!hasBookInfo)
             
             Button {
                 renameText = book.displayTitle
@@ -191,6 +202,17 @@ struct BookCell: View {
             Button("Confirm") {
                 viewModel.markRead(book: book)
             }
+        }
+        .confirmationDialog(
+            "Mark Unread?",
+            isPresented: $markUnreadConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Mark Unread", role: .destructive) {
+                viewModel.markUnread(book: book)
+            }
+        } message: {
+            Text("This will reset the bookmark and statistics for \"\(book.displayTitle)\".")
         }
     }
 }

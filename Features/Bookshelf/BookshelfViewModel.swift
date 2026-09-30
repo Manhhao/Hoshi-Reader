@@ -530,6 +530,25 @@ class BookshelfViewModel {
         bookProgress = Self.loadBookProgress(books)
     }
     
+    func canMarkUnread(book: BookMetadata) -> Bool {
+        let url = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+        if let bookmark = BookStorage.loadBookmark(root: url),
+           bookmark.chapterIndex > 0 || bookmark.progress > 0 || bookmark.characterCount > 0 {
+            return true
+        }
+        return StatisticsStorage.load(folder: book.folder).values.contains { $0.value != nil }
+    }
+    
+    func markUnread(book: BookMetadata) {
+        let url = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+        StatisticsStorage.delete(ids: Array(StatisticsStorage.load(folder: book.folder).keys), folder: book.folder)
+        
+        let bookmark = Bookmark(chapterIndex: 0, progress: 0, characterCount: 0, lastModified: Date())
+        try? BookStorage.save(bookmark, inside: url, as: FileNames.bookmark)
+        try? SyncStorage.shared.handleBookChange(folder: book.folder)
+        bookProgress = Self.loadBookProgress(books)
+    }
+    
     func clearInbox() {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return
