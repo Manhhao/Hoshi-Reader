@@ -2,23 +2,44 @@ import Foundation
 
 private struct RemoteChanges {
     var listed: [String: [GoogleDriveFile]]?
-    var changed: Set<String>
+    var changed: [String: [GoogleDriveFile]]
     var cursor: String
     
     func contains(_ key: String) -> Bool {
-        changed.contains(key) || listed?[key] != nil
+        changed[key] != nil || listed?[key] != nil
     }
     
-    func files(_ key: String) -> [GoogleDriveFile]? {
-        if changed.contains(key) {
-            return nil
+    static func cachedFiles(_ key: String, versions: [String: String]?) -> [String: GoogleDriveFile]? {
+        versions?.reduce(into: [:]) { files, version in
+            files[version.key] = GoogleDriveFile(id: version.key, name: key + ".json", mimeType: "", md5Checksum: version.value, createdTime: "")
         }
-        return listed.map { $0[key] ?? [] }
+    }
+    
+    func files(_ key: String, cached: [String: String]?) -> [GoogleDriveFile]? {
+        let changed = changed[key]
+        if changed == nil, let listed {
+            return listed[key] ?? []
+        }
+        guard var files = Self.cachedFiles(key, versions: cached) else { return nil }
+        for file in changed ?? [] {
+            files[file.id] = file.trashed == true ? nil : file
+        }
+        return files.values.sorted { $0.id < $1.id }
     }
 }
 
 extension GoogleDriveSyncManager {
     func runSync(book: BookMetadata?) async throws {
+        do {
+            try await syncState(book: book)
+        } catch {
+            try? saveCache()
+            throw error
+        }
+        try saveCache()
+    }
+    
+    private func syncState(book: BookMetadata?) async throws {
         try Task.checkCancellation()
         errorMessage = nil
         
@@ -36,12 +57,18 @@ extension GoogleDriveSyncManager {
         
         let remote = try await changes()
         let pending = store.state.books.compactMap { $0.value.pending ? $0.key : nil }
-        let keys = remote.changed.union(pending).union((remote.listed ?? [:]).keys).subtracting([".shelves"]).sorted()
-        await prefetch(remote, keys: keys)
-        for key in keys {
-            try await recordBook(key, phase: .state) {
-                try await syncBook(key, files: remote.files(key))
+        let keys = Set(remote.changed.keys).union(pending).union((remote.listed ?? [:]).keys).subtracting([".shelves"]).sorted()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (index, key) in keys.enumerated() {
+                if index >= 8 {
+                    try await group.next()
+                }
+                let files = remote.files(key, cached: cache.bookVersions[key])
+                group.addTask {
+                    try await self.syncState(key, files: files)
+                }
             }
+            try await group.waitForAll()
         }
         let failed = keys.contains { bookErrors[BookErrorKey(key: $0, phase: .state)] != nil }
         if !failed && !store.state.books.values.contains(where: { !$0.attached && !$0.deleted }) {
@@ -49,15 +76,20 @@ extension GoogleDriveSyncManager {
                 try await syncShelves()
             }
             cache.cursor = remote.cursor
-            try saveCache()
             lastSync = .now
             unsupportedFormat = false
         }
     }
     
+    private func syncState(_ key: String, files: [GoogleDriveFile]?) async throws {
+        try await recordBook(key, phase: .state) {
+            try await syncBook(key, files: files)
+        }
+    }
+    
     private func changes() async throws -> RemoteChanges {
         var listed: [String: [GoogleDriveFile]]?
-        var changed: Set<String> = []
+        var changed: [String: [GoogleDriveFile]] = [:]
         var cursor: String
         if let saved = cache.cursor {
             cursor = saved
@@ -74,10 +106,10 @@ extension GoogleDriveSyncManager {
             }) {
                 listed = try await listRemote()
             }
-            for change in page.changes where !change.removed && change.file?.trashed != true {
+            for change in page.changes where !change.removed {
                 if let file = change.file, file.parents?.contains(cache.stateFolder) == true,
                    let key = file.stateKey {
-                    changed.insert(key)
+                    changed[key, default: []].append(file)
                 }
             }
             guard let next = page.nextPageToken else { return RemoteChanges(listed: listed, changed: changed, cursor: page.newStartPageToken!) }
@@ -106,22 +138,37 @@ extension GoogleDriveSyncManager {
         return grouped
     }
     
-    private func syncBook(_ key: String, files listed: [GoogleDriveFile]? = nil) async throws {
-        let files = if let listed { listed } else { try await drive.children(parent: cache.stateFolder, name: key + ".json") }
+    private func remoteState(_ key: String, files listed: [GoogleDriveFile]?) async throws -> (files: [GoogleDriveFile], book: SyncBook?)? {
+        guard let files = listed else {
+            let cached = RemoteChanges.cachedFiles(key, versions: cache.bookVersions[key]).map { Array($0.values) }
+            let files = if let cached { cached } else { try await drive.children(parent: cache.stateFolder, name: key + ".json") }
+            try Task.checkCancellation()
+            cache.bookVersions[key] = nil
+            do {
+                return (files, try await readState(files, merge: SyncBook.merge))
+            } catch GoogleDriveError.apiError {
+                let files = try await drive.children(parent: cache.stateFolder, name: key + ".json")
+                return (files, try await readState(files, merge: SyncBook.merge))
+            }
+        }
         try Task.checkCancellation()
         
-        var versions = fileVersions(files)
-        if unchanged(key, files: files) {
-            return
+        let versions = fileVersions(files)
+        if files.count == 1, store.state.books[key]?.pending == false, cache.bookVersions[key] == versions {
+            return nil
         }
-        if cache.bookVersions.removeValue(forKey: key) != nil {
-            try saveCache()
-        }
+        cache.bookVersions[key] = nil
         
-        var remote = remoteBooks[key].flatMap { $0.versions == versions ? $0.book : nil }
-        if remote == nil {
-            remote = try await readState(files, merge: SyncBook.merge)
+        if let cached = remoteBooks[key], cached.versions == versions {
+            return (files, cached.book)
         }
+        return (files, try await readState(files, merge: SyncBook.merge))
+    }
+    
+    private func syncBook(_ key: String, files listed: [GoogleDriveFile]? = nil) async throws {
+        guard let (files, state) = try await remoteState(key, files: listed) else { return }
+        var remote = state
+        var versions = fileVersions(files)
         try mergeBook(key, remote: remote)
         
         guard let book = try store.loadBook(key: key, remote: remote) else {
@@ -135,7 +182,7 @@ extension GoogleDriveSyncManager {
         
         if book.needsUpload(remote: remote) || files.count > 1 {
             let written = try await writeState(book, name: key + ".json", files: files)
-            versions = [written.id: written.version]
+            versions = [written.id: written.md5Checksum ?? ""]
             remote = book
         }
         
@@ -145,39 +192,10 @@ extension GoogleDriveSyncManager {
         }
         remoteBooks[key] = (versions, remote!)
         cache.bookVersions[key] = versions
-        try saveCache()
     }
     
     private func fileVersions(_ files: [GoogleDriveFile]) -> [String: String] {
-        Dictionary(uniqueKeysWithValues: files.map { ($0.id, $0.version) })
-    }
-    
-    private func unchanged(_ key: String, files: [GoogleDriveFile]) -> Bool {
-        files.count == 1 && store.state.books[key]?.pending == false && cache.bookVersions[key] == fileVersions(files)
-    }
-    
-    private func prefetch(_ remote: RemoteChanges, keys: [String]) async {
-        let downloads = keys.compactMap { key -> (key: String, files: [GoogleDriveFile])? in
-            guard let files = remote.files(key), !files.isEmpty, !unchanged(key, files: files),
-                  remoteBooks[key]?.versions != fileVersions(files) else {
-                return nil
-            }
-            return (key, files)
-        }
-        for start in stride(from: 0, to: downloads.count, by: 8) {
-            await withTaskGroup(of: (String, [GoogleDriveFile], SyncBook?).self) { group in
-                for download in downloads[start..<min(start + 8, downloads.count)] {
-                    group.addTask {
-                        (download.key, download.files, try? await self.readState(download.files, merge: SyncBook.merge))
-                    }
-                }
-                for await (key, files, book) in group {
-                    if let book {
-                        remoteBooks[key] = (fileVersions(files), book)
-                    }
-                }
-            }
-        }
+        Dictionary(uniqueKeysWithValues: files.map { ($0.id, $0.md5Checksum ?? "") })
     }
     
     func readState<T: Codable & Sendable>(_ files: [GoogleDriveFile], merge: (T, T) -> T) async throws -> T? {

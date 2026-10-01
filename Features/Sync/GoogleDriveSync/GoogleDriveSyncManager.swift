@@ -7,6 +7,7 @@ nonisolated struct GoogleDriveSyncCache: Codable {
     var stateFolder = ""
     var bookFolder = ""
     var bookVersions: [String: [String: String]] = [:]
+    var bookFolders: [String: String]?
 }
 
 @MainActor
@@ -250,7 +251,11 @@ final class GoogleDriveSyncManager {
                 progress = nil
             }
             do {
-                try await runFileSync()
+                if try await runFileSync(), !Task.isCancelled {
+                    Task {
+                        await sync()
+                    }
+                }
             } catch {
                 if !Task.isCancelled {
                     failRun(error)

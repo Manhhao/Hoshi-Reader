@@ -4,7 +4,7 @@ nonisolated struct GoogleDriveFile: Codable, Equatable, Sendable {
     var id: String
     var name: String
     var mimeType: String
-    var version: String
+    var md5Checksum: String?
     var size: String?
     var parents: [String]?
     var trashed: Bool?
@@ -37,7 +37,7 @@ nonisolated struct GoogleDriveChanges: Decodable {
 final class GoogleDriveSyncHandler {
     static let shared = GoogleDriveSyncHandler()
     private let client = GoogleDriveClient.shared
-    private let fileFields = "id,name,mimeType,version,size,parents,trashed,createdTime"
+    private let fileFields = "id,name,mimeType,md5Checksum,size,parents,trashed,createdTime"
     
     func startToken() async throws -> String {
         struct Token: Decodable {
@@ -72,13 +72,6 @@ final class GoogleDriveSyncHandler {
         return (root, state, books)
     }
     
-    func fileFolder(books: String, key: String, generation: Int, create: Bool) async throws -> String? {
-        guard let book = try await folder(parent: books, name: key, create: create) else {
-            return nil
-        }
-        return try await folder(parent: book, name: String(generation), create: create)
-    }
-    
     func folder(parent: String, name: String, create: Bool) async throws -> String? {
         if let folder = try await children(parent: parent, name: name).first(where: \.isFolder) {
             return folder.id
@@ -87,7 +80,10 @@ final class GoogleDriveSyncHandler {
         if !create {
             return nil
         }
-        
+        return try await createFolder(parent: parent, name: name)
+    }
+    
+    func createFolder(parent: String, name: String) async throws -> String {
         let body = try JSONSerialization.data(withJSONObject: [
             "name": name,
             "parents": [parent],
@@ -143,15 +139,8 @@ final class GoogleDriveSyncHandler {
         try await client.write(data: data, name: fileName, parent: folder)
     }
     
-    func download(fileName: String, folder: String?, listed: GoogleDriveFile?, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
-        var file = listed
-        if file == nil, let folder {
-            file = try await children(parent: folder, name: fileName).first
-        }
-        guard let file else {
-            throw GoogleDriveError.apiError("\(fileName) is missing from Google Drive.", statusCode: 404)
-        }
-        return try await GoogleDriveClient.shared.downloadFile(fileId: file.id, fileSize: file.size.flatMap(Int64.init)!, onProgress: onProgress)
+    func download(_ file: GoogleDriveFile, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
+        try await GoogleDriveClient.shared.downloadFile(fileId: file.id, fileSize: file.size.flatMap(Int64.init)!, onProgress: onProgress)
     }
     
     func trash(_ file: GoogleDriveFile) async throws {

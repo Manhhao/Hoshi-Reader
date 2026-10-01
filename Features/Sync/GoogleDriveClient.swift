@@ -160,7 +160,7 @@ final class GoogleDriveClient {
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         let response = try await request(
             fileId.map { "files/\($0)" } ?? "files",
-            query: [URLQueryItem(name: "uploadType", value: "multipart"), URLQueryItem(name: "fields", value: "id,name,mimeType,version,createdTime")],
+            query: [URLQueryItem(name: "uploadType", value: "multipart"), URLQueryItem(name: "fields", value: "id,name,mimeType,md5Checksum,createdTime")],
             method: fileId == nil ? "POST" : "PATCH",
             body: body,
             contentType: "multipart/related; boundary=\(boundary)",

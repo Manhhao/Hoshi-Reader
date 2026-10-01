@@ -1,12 +1,7 @@
 import Foundation
 
-private final class Listing {
-    var folders: [String: [Int: String]] = [:]
-    var files: [String: [String: GoogleDriveFile]] = [:]
-}
-
 extension GoogleDriveSyncManager {
-    func runFileSync() async throws {
+    func runFileSync() async throws -> Bool {
         let keys = store.state.books.keys.sorted()
         beginTransfers(keys)
         let listing = progress == nil ? Listing() : try await listFiles()
@@ -21,6 +16,8 @@ extension GoogleDriveSyncManager {
             }
             try await group.waitForAll()
         }
+        try saveCache()
+        return listing.published
     }
     
     private func transferFiles(_ key: String, listing: Listing) async throws {
@@ -30,23 +27,6 @@ extension GoogleDriveSyncManager {
             try await syncFiles(key: key, listing: listing)
         }
         finishTransfer(key)
-    }
-    
-    private func listFiles() async throws -> Listing {
-        let listing = Listing()
-        let listed = try await drive.list(query: "'me' in owners")
-        let keys = Dictionary(uniqueKeysWithValues: listed.filter { $0.parents?.contains(cache.bookFolder) == true }.map { ($0.id, $0.name) })
-        for file in listed {
-            guard let parent = file.parents?.first else { continue }
-            if file.isFolder, let key = keys[parent], let generation = Int(file.name) {
-                if listing.folders[key]?[generation] == nil {
-                    listing.folders[key, default: [:]][generation] = file.id
-                }
-            } else if listing.files[parent]?[file.name] == nil {
-                listing.files[parent, default: [:]][file.name] = file
-            }
-        }
-        return listing
     }
     
     private func syncFiles(key: String, listing: Listing) async throws {
@@ -158,6 +138,7 @@ extension GoogleDriveSyncManager {
         guard let url = try store.sourceURL(key: key, fileType: fileType) else {
             store.state.books[key]!.files[fileType] = Timestamped(modified: source, value: nil)
             store.state.books[key]!.pending = true
+            listing.published = true
             try store.saveChanges(booksChanged: false)
             return
         }
@@ -174,10 +155,7 @@ extension GoogleDriveSyncManager {
             return
         }
         
-        let folder = try await fileFolder(listing, key: key, generation: record.generation, create: true)
-        if listing.files[folder!]?[name] == nil {
-            try await drive.upload(data: data, fileName: name, folder: folder!)
-        }
+        try await upload(listing, key: key, generation: record.generation, name: name, data: data)
         try Task.checkCancellation()
         if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
             return
@@ -188,16 +166,8 @@ extension GoogleDriveSyncManager {
         }
         store.state.books[key]!.files[fileType] = Timestamped(modified: source, value: name)
         store.state.books[key]!.pending = true
+        listing.published = true
         try store.saveChanges(booksChanged: false)
-    }
-    
-    private func fileFolder(_ listing: Listing, key: String, generation: Int, create: Bool) async throws -> String? {
-        if let folder = listing.folders[key]?[generation] {
-            return folder
-        }
-        let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: generation, create: create)
-        listing.folders[key, default: [:]][generation] = folder
-        return folder
     }
     
     private func canPublish(key: String, fileType: SyncFileType, source: Int64, generation: Int) -> Bool {
@@ -229,9 +199,10 @@ extension GoogleDriveSyncManager {
             return
         }
         
-        let folder = try await fileFolder(listing, key: key, generation: record.generation, create: false)
-        
-        let data = try await drive.download(fileName: name, folder: folder, listed: folder.flatMap { listing.files[$0]?[name] }, onProgress: onProgress)
+        guard let file = try await findFile(listing, key: key, generation: record.generation, name: name) else {
+            throw GoogleDriveError.apiError("\(name) is missing from Google Drive.", statusCode: 404)
+        }
+        let data = try await drive.download(file, onProgress: onProgress)
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer {
             try? FileManager.default.removeItem(at: temporary)
@@ -325,12 +296,12 @@ extension GoogleDriveSyncManager {
                 return
             }
             
-            let folder = try await fileFolder(listing, key: key, generation: generation, create: false)
+            let folder = try await folder(listing, key: key, generation: generation)
             
             var recent = false
             if let folder, generation < book.generation {
                 try await GoogleDriveClient.shared.trashFile(fileId: folder)
-                listing.folders[key]?[generation] = nil
+                forgetFolder(listing, key: key, generation: generation)
                 try Task.checkCancellation()
             } else if let folder {
                 let files = try await drive.children(parent: folder)
