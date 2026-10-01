@@ -120,6 +120,9 @@ extension GoogleDriveSyncManager {
     private func loadLayout() async throws {
         let layout = try await drive.layout()
         try Task.checkCancellation()
+        if !cache.root.isEmpty, cache.root != layout.root {
+            try resetConnection()
+        }
         cache.root = layout.root
         cache.stateFolder = layout.state
         cache.bookFolder = layout.books
