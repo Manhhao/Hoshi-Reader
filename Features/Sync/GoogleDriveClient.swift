@@ -87,7 +87,13 @@ final class GoogleDriveClient {
         return try await performRequest(request, delegate: delegate)
     }
     
-    func performRequest(_ request: URLRequest, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil) async throws -> Data {
+    private func isTransient(_ request: URLRequest, status: Int, error: [String: Any]?) -> Bool {
+        let reason = (error?["errors"] as? [[String: Any]])?.first?["reason"] as? String
+        let limited = status == 429 || (status == 403 && reason?.hasSuffix("ateLimitExceeded") == true)
+        return limited || (status >= 500 && request.httpMethod != "POST")
+    }
+    
+    func performRequest(_ request: URLRequest, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil, attempt: Int = 0) async throws -> Data {
         if isStopped {
             throw URLError(.cancelled)
         }
@@ -110,12 +116,16 @@ final class GoogleDriveClient {
             try Task.checkCancellation()
             var newRequest = request
             newRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-            return try await performRequest(newRequest, retry: false, delegate: delegate)
+            return try await performRequest(newRequest, retry: false, delegate: delegate, attempt: attempt)
         }
         if httpResponse.statusCode >= 400 {
-            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let error = errorJson["error"] as? [String: Any],
-                let message = error["message"] as? String {
+            let error = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? [String: Any]
+            if attempt < 4, isTransient(request, status: httpResponse.statusCode, error: error) {
+                try await Task.sleep(for: .seconds(pow(2, Double(attempt)) + Double.random(in: 0..<1)))
+                try checkConnection(connection)
+                return try await performRequest(request, retry: retry, delegate: delegate, attempt: attempt + 1)
+            }
+            if let message = error?["message"] as? String {
                 throw GoogleDriveError.apiError(message, statusCode: httpResponse.statusCode)
             }
             
