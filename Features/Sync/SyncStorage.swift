@@ -56,6 +56,7 @@ final class SyncStorage {
     }
     
     func resetSyncState() throws {
+        state.books = try state.books.filter { try BookStorage.loadMetadata(root: SyncStorage.resolveBookDirectory(folder: $0.key)) != nil }
         for (key, var record) in state.books {
             let archived = BookStorage.loadMetadata(root: try SyncStorage.bookDirectory(folder: key)) == nil
             record.generation = archived ? 0 : 1
@@ -71,13 +72,20 @@ final class SyncStorage {
     }
     
     func prepareLibrary() throws {
+        var empty: [URL] = []
         for root in try SyncStorage.bookDirectories() {
-            _ = StatisticsStorage.load(root: root)
+            let sessions = StatisticsStorage.load(root: root)
             try prepareBook(root: root)
+            if root.deletingLastPathComponent().lastPathComponent == "statistics_archive", sessions.isEmpty {
+                empty.append(root)
+            }
         }
         
         _ = BookStorage.loadShelfList()
         try save()
+        for root in empty {
+            try BookStorage.delete(at: root)
+        }
     }
     
     func prepareBook(root: URL) throws {
@@ -96,10 +104,19 @@ final class SyncStorage {
         state.books[key] = record
     }
     
-    func loadBook(key: String) throws -> SyncBook? {
+    func loadBook(key: String, remote: SyncBook? = nil) throws -> SyncBook? {
         guard let record = state.books[key] else { return nil }
         let root = try SyncStorage.resolveBookDirectory(folder: key)
-        guard let metadata = BookStorage.loadMetadata(root: root) else { return nil }
+        guard let metadata = BookStorage.loadMetadata(root: root) else {
+            guard let remote, record.deleted else { return nil }
+            return SyncBook(
+                generation: record.generation,
+                deleted: true,
+                metadata: remote.metadata,
+                characterCount: remote.characterCount,
+                files: record.files
+            )
+        }
         var book = SyncBook(
             generation: record.generation,
             deleted: record.deleted,
@@ -140,6 +157,7 @@ final class SyncStorage {
         }
         
         let root = try SyncStorage.bookDirectory(folder: folder, archived: book.deleted)
+        let stored = book.deleted && book.sessions.isEmpty
         let oldMetadata = BookStorage.loadMetadata(root: root)
         var metadata = BookMetadata(
             id: oldMetadata?.id ?? UUID(),
@@ -160,7 +178,7 @@ final class SyncStorage {
             }
         }
         
-        if metadata != oldMetadata {
+        if !stored, metadata != oldMetadata {
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             try BookStorage.saveMetadata(metadata, inside: root)
             booksChanged = true
@@ -236,6 +254,9 @@ final class SyncStorage {
         if state.books[key] != oldRecord {
             try save()
         }
+        if stored {
+            try BookStorage.delete(at: root)
+        }
         if booksChanged {
             NotificationCenter.default.post(name: Self.booksChangedNotification, object: nil)
         }
@@ -286,8 +307,18 @@ final class SyncStorage {
     func deleteBook(key: String) throws {
         let root = try SyncStorage.bookDirectory(folder: key)
         try StatisticsStorage.archive(BookStorage.loadMetadata(root: root)!)
+        let archive = try SyncStorage.bookDirectory(folder: key, archived: true)
+        let stored = StatisticsStorage.load(root: archive).isEmpty
         
         var record = state.books[key]!
+        if stored, !record.attached, !GoogleDriveSyncManager.shared.enabled {
+            state.books[key] = nil
+            try save()
+            try BookStorage.delete(at: archive)
+            try BookStorage.delete(at: root)
+            NotificationCenter.default.post(name: Self.booksChangedNotification, object: nil)
+            return
+        }
         record.deleted = true
         record.pending = true
         record.cleanup.insert(record.generation)
@@ -299,6 +330,9 @@ final class SyncStorage {
         
         try saveChanges()
         try BookStorage.delete(at: root)
+        if stored {
+            try BookStorage.delete(at: archive)
+        }
         
         try clearUnusedCover(key: key)
         try saveChanges()

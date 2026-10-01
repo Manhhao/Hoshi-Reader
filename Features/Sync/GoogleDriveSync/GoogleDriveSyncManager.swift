@@ -519,7 +519,12 @@ final class GoogleDriveSyncManager {
         }
         try mergeBook(key, remote: remote)
         
-        guard let book = try store.loadBook(key: key) else {
+        guard let book = try store.loadBook(key: key, remote: remote) else {
+            if store.state.books[key] != nil {
+                store.state.books[key]!.pending = false
+                store.state.books[key]!.cleanup = []
+                try store.save()
+            }
             return
         }
         
@@ -529,7 +534,7 @@ final class GoogleDriveSyncManager {
             remote = book
         }
         
-        if store.state.books[key]!.pending, try store.loadBook(key: key) == book {
+        if store.state.books[key]!.pending, try store.loadBook(key: key, remote: remote) == book {
             store.state.books[key]!.pending = false
             try store.save()
         }
@@ -580,7 +585,7 @@ final class GoogleDriveSyncManager {
             reader.bookDeleted = true
         }
         
-        var local = try store.loadBook(key: key)!
+        var local = try store.loadBook(key: key, remote: remote)!
         if replaced {
             try store.removeBookFiles(key: key)
             store.state.books[key]!.cleanup.insert(book.generation)
@@ -777,7 +782,9 @@ final class GoogleDriveSyncManager {
             let remote = try await readState(files, merge: SyncBook.merge)
             try mergeBook(key, remote: remote)
             
-            let book = try store.loadBook(key: key)!
+            guard let book = try store.loadBook(key: key, remote: remote) else {
+                return
+            }
             if book.needsUpload(remote: remote) {
                 store.state.books[key]!.pending = true
                 
