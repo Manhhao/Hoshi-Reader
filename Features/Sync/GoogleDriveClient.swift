@@ -32,6 +32,8 @@ final class GoogleDriveClient {
     static let shared = GoogleDriveClient()
     private(set) var connectionId = 0
     private var isStopped = false
+    private var active = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
     private let pathMonitor = NWPathMonitor()
     
     private let session: URLSession = {
@@ -104,7 +106,7 @@ final class GoogleDriveClient {
         let connection = connectionId
         var request = request
         request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : 60
-        let (data, response) = try await unavailable { try await session.data(for: request, delegate: delegate) }
+        let (data, response) = try await limited { try await unavailable { try await session.data(for: request, delegate: delegate) } }
         
         try checkConnection(connection)
         try Task.checkCancellation()
@@ -133,6 +135,22 @@ final class GoogleDriveClient {
         }
         
         return data
+    }
+    
+    private func limited<T>(_ operation: () async throws -> T) async throws -> T {
+        if active < 8 {
+            active += 1
+        } else {
+            await withCheckedContinuation { waiting.append($0) }
+        }
+        defer {
+            if waiting.isEmpty {
+                active -= 1
+            } else {
+                waiting.removeFirst().resume()
+            }
+        }
+        return try await operation()
     }
     
     private func unavailable<T>(_ operation: () async throws -> T) async throws -> T {
