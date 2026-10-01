@@ -78,6 +78,7 @@ final class GoogleDriveClient {
     ) async throws -> Data {
         var components = URLComponents(string: "https://www.googleapis.com/\(upload ? "upload/" : "")drive/v3/\(path)")!
         components.queryItems = query
+        components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
         request.httpBody = body
