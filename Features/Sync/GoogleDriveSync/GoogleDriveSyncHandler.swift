@@ -143,8 +143,12 @@ final class GoogleDriveSyncHandler {
         try await client.write(data: data, name: fileName, parent: folder)
     }
     
-    func download(fileName: String, folder: String?, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
-        guard let folder, let file = try await children(parent: folder, name: fileName).first else {
+    func download(fileName: String, folder: String?, listed: GoogleDriveFile?, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
+        var file = listed
+        if file == nil, let folder {
+            file = try await children(parent: folder, name: fileName).first
+        }
+        guard let file else {
             throw GoogleDriveError.apiError("\(fileName) is missing from Google Drive.", statusCode: 404)
         }
         return try await GoogleDriveClient.shared.downloadFile(fileId: file.id, fileSize: file.size.flatMap(Int64.init)!, onProgress: onProgress)

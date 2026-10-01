@@ -300,7 +300,7 @@ struct SyncQueueView: View {
                         }
                     }
                     Spacer()
-                    if item.key == current {
+                    if current?.contains(item.key) == true {
                         ProgressView()
                     }
                 }

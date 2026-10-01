@@ -52,7 +52,7 @@ final class GoogleDriveSyncManager {
     struct Progress {
         var done: Int
         var total: Int
-        var current: String?
+        var current: Set<String> = []
     }
     
     private struct BookErrorKey: Hashable {
@@ -75,6 +75,7 @@ final class GoogleDriveSyncManager {
     private let pathMonitor = NWPathMonitor()
     var cache = GoogleDriveSyncCache()
     private var remoteBooks: [String: (versions: [String: String], book: SyncBook)] = [:]
+    private var listedFiles: [String: [String: GoogleDriveFile]] = [:]
     
     private var stateTask: Task<Void, Never>?
     private var fileTransferTask: Task<Void, Never>?
@@ -255,6 +256,7 @@ final class GoogleDriveSyncManager {
                 let remote = try await changes()
                 let pending = store.state.books.compactMap { $0.value.pending ? $0.key : nil }
                 let keys = remote.changed.union(pending).union((remote.listed ?? [:]).keys).subtracting([".shelves"]).sorted()
+                await prefetch(remote, keys: keys)
                 for key in keys {
                     try await recordBook(key, phase: .state) {
                         try await syncBook(key, files: remote.files(key))
@@ -299,6 +301,7 @@ final class GoogleDriveSyncManager {
             defer {
                 fileTransferTask = nil
                 progress = nil
+                listedFiles = [:]
             }
             do {
                 try await runFileSync()
@@ -311,17 +314,42 @@ final class GoogleDriveSyncManager {
     }
     
     private func runFileSync() async throws {
-        var folders: Folders = [:]
         let keys = store.state.books.keys.sorted()
         beginTransfers(keys)
-        for key in keys {
-            try Task.checkCancellation()
-            progress?.current = key
-            try await recordBook(key, phase: .file) {
-                try await syncFiles(key: key, folders: &folders)
-            }
-            finishTransfer(key)
+        if progress != nil {
+            listedFiles = try await listFiles()
         }
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (index, key) in keys.enumerated() {
+                if index >= 8 {
+                    try await group.next()
+                }
+                group.addTask {
+                    try await self.transferFiles(key)
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
+    
+    private func transferFiles(_ key: String) async throws {
+        try Task.checkCancellation()
+        progress?.current.insert(key)
+        var folders: Folders = [:]
+        try await recordBook(key, phase: .file) {
+            try await syncFiles(key: key, folders: &folders)
+        }
+        finishTransfer(key)
+    }
+    
+    private func listFiles() async throws -> [String: [String: GoogleDriveFile]] {
+        var listed: [String: [String: GoogleDriveFile]] = [:]
+        for file in try await drive.list(query: "'me' in owners") {
+            if let parent = file.parents?.first, listed[parent]?[file.name] == nil {
+                listed[parent, default: [:]][file.name] = file
+            }
+        }
+        return listed
     }
     
     private func syncFiles(key: String, folders: inout Folders) async throws {
@@ -381,6 +409,7 @@ final class GoogleDriveSyncManager {
     }
     
     private func finishTransfer(_ key: String) {
+        progress?.current.remove(key)
         guard transfers.contains(where: { $0.key == key }) else { return }
         progress?.done += 1
         if bookErrors[BookErrorKey(key: key, phase: .file)] == nil {
@@ -505,8 +534,8 @@ final class GoogleDriveSyncManager {
         let files = if let listed { listed } else { try await drive.children(parent: cache.stateFolder, name: key + ".json") }
         try Task.checkCancellation()
         
-        var versions = Dictionary(uniqueKeysWithValues: files.map { ($0.id, $0.version) })
-        if files.count == 1, store.state.books[key]?.pending == false, cache.bookVersions[key] == versions {
+        var versions = fileVersions(files)
+        if unchanged(key, files: files) {
             return
         }
         if cache.bookVersions.removeValue(forKey: key) != nil {
@@ -541,6 +570,38 @@ final class GoogleDriveSyncManager {
         remoteBooks[key] = (versions, remote!)
         cache.bookVersions[key] = versions
         try saveCache()
+    }
+    
+    private func fileVersions(_ files: [GoogleDriveFile]) -> [String: String] {
+        Dictionary(uniqueKeysWithValues: files.map { ($0.id, $0.version) })
+    }
+    
+    private func unchanged(_ key: String, files: [GoogleDriveFile]) -> Bool {
+        files.count == 1 && store.state.books[key]?.pending == false && cache.bookVersions[key] == fileVersions(files)
+    }
+    
+    private func prefetch(_ remote: RemoteChanges, keys: [String]) async {
+        let downloads = keys.compactMap { key -> (key: String, files: [GoogleDriveFile])? in
+            guard let files = remote.files(key), !files.isEmpty, !unchanged(key, files: files),
+                  remoteBooks[key]?.versions != fileVersions(files) else {
+                return nil
+            }
+            return (key, files)
+        }
+        for start in stride(from: 0, to: downloads.count, by: 8) {
+            await withTaskGroup(of: (String, [GoogleDriveFile], SyncBook?).self) { group in
+                for download in downloads[start..<min(start + 8, downloads.count)] {
+                    group.addTask {
+                        (download.key, download.files, try? await self.readState(download.files, merge: SyncBook.merge))
+                    }
+                }
+                for await (key, files, book) in group {
+                    if let book {
+                        remoteBooks[key] = (fileVersions(files), book)
+                    }
+                }
+            }
+        }
     }
     
     private func readState<T: Codable & Sendable>(_ files: [GoogleDriveFile], merge: (T, T) -> T) async throws -> T? {
@@ -644,7 +705,9 @@ final class GoogleDriveSyncManager {
         }
         
         let folder = try await fileFolder(&folders, key: key, generation: record.generation, create: true)
-        try await drive.upload(data: data, fileName: name, folder: folder!)
+        if listedFiles[folder!]?[name] == nil {
+            try await drive.upload(data: data, fileName: name, folder: folder!)
+        }
         try Task.checkCancellation()
         if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
             return
@@ -662,7 +725,10 @@ final class GoogleDriveSyncManager {
         if let folder = folders[key]?[generation] {
             return folder
         }
-        let folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: generation, create: create)
+        var folder = listedFiles[cache.bookFolder]?[key].flatMap { listedFiles[$0.id]?[String(generation)] }?.id
+        if folder == nil {
+            folder = try await drive.fileFolder(books: cache.bookFolder, key: key, generation: generation, create: create)
+        }
         folders[key, default: [:]][generation] = folder
         return folder
     }
@@ -698,7 +764,7 @@ final class GoogleDriveSyncManager {
         
         let folder = try await fileFolder(&folders, key: key, generation: record.generation, create: false)
         
-        let data = try await drive.download(fileName: name, folder: folder, onProgress: onProgress)
+        let data = try await drive.download(fileName: name, folder: folder, listed: folder.flatMap { listedFiles[$0]?[name] }, onProgress: onProgress)
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer {
             try? FileManager.default.removeItem(at: temporary)
