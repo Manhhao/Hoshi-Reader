@@ -195,6 +195,23 @@ struct AppearanceView: View {
                         Toggle("Paragraph Mode", isOn: $userConfig.paragraphMode)
                         
                         if userConfig.paragraphMode {
+                            VStack {
+                                HStack {
+                                    Text("Sentences per Page")
+                                    Spacer()
+                                    Text(userConfig.sentencesPerPage == 0 ? "Off" : "\(userConfig.sentencesPerPage)")
+                                        .fontWeight(.semibold)
+                                }
+                                Slider(value: .init(
+                                    get: { Double(userConfig.sentencesPerPage) },
+                                    set: { userConfig.sentencesPerPage = Int($0) }
+                                ), in: 0...10, step: 1)
+                            }
+                            
+                            if userConfig.sentencesPerPage > 0 {
+                                Toggle("Split up Dialogue", isOn: $userConfig.splitDialogue)
+                            }
+                            
                             Toggle("Animation", isOn: $userConfig.textAnimation)
                             
                             if userConfig.textAnimation {

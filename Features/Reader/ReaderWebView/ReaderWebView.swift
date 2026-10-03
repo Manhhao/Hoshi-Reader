@@ -559,6 +559,9 @@ struct ReaderWebView: UIViewRepresentable {
                     break-before: column !important;
                     -webkit-column-break-before: always !important;
                 }
+                p.hoshi-sentence {
+                    text-indent: 0 !important;
+                }
                 ::highlight(hoshi-animation) {
                     color: transparent !important;
                 }
@@ -895,7 +898,7 @@ struct ReaderWebView: UIViewRepresentable {
                 Promise.all(imagePromises).then(() => {
                     return window.hoshiReader.awaitFonts();
                 }).then(() => {
-                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs();" : "")
+                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs(\(parent.userConfig.sentencesPerPage), \(parent.userConfig.splitDialogue));" : "")
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
                     \(setupScript)

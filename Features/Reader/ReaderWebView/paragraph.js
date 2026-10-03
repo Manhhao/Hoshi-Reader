@@ -9,7 +9,61 @@
 window.hoshiParagraph = {
     animationFrame: null,
     
-    layoutParagraphs() {
+    splitSentences(sentencesPerPage, splitDialogue) {
+        const { brackets } = window.hoshiSelection;
+        const openBrackets = Object.keys(brackets);
+        const closeBrackets = Object.values(brackets);
+        const sentenceDelimiters = '。！？!?';
+        const range = document.createRange();
+        
+        for (const paragraph of document.querySelectorAll('p')) {
+            const walker = window.hoshiReader.createWalker(paragraph);
+            const points = [];
+            let sentences = 0;
+            let depth = 0;
+            let ended = false;
+            let node;
+            let previous;
+            
+            while (node = walker.nextNode()) {
+                const text = node.textContent;
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    if (ended && char.trim() && !sentenceDelimiters.includes(char) && !closeBrackets.includes(char)) {
+                        ended = false;
+                        if (++sentences % sentencesPerPage === 0) {
+                            points.push(i ? { node, offset: i } : { node: previous, offset: previous.length });
+                        }
+                    }
+                    if (openBrackets.includes(char)) {
+                        depth++;
+                    } else if (depth && closeBrackets.includes(char)) {
+                        depth--;
+                        ended = false;
+                    } else if (sentenceDelimiters.includes(char) && (splitDialogue || !depth)) {
+                        ended = true;
+                    }
+                }
+                previous = node;
+            }
+            
+            for (const point of points.reverse()) {
+                range.setStart(point.node, point.offset);
+                range.setEndAfter(paragraph.lastChild);
+                
+                const sentence = paragraph.cloneNode(false);
+                sentence.classList.add('hoshi-sentence');
+                sentence.appendChild(range.extractContents());
+                paragraph.after(sentence);
+            }
+        }
+    },
+    
+    layoutParagraphs(sentencesPerPage, splitDialogue) {
+        if (sentencesPerPage > 0) {
+            this.splitSentences(sentencesPerPage, splitDialogue);
+        }
+        
         const paragraphs = [...document.querySelectorAll('p')].filter(p => p.textContent.trim() || p.querySelector('img, svg'));
         paragraphs.forEach(p => p.classList.add('hoshi-paragraph'));
         
