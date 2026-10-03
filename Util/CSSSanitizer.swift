@@ -2,6 +2,7 @@ import Foundation
 
 struct CSSSanitizer {
     private static let calibreRule = /(?ms)^(\s*\.(?:calibre\d*|body|c\d*|p\d+)\s*)\{(.*?)\}/
+    private static let ruleBody = /\{([^{}]*)\}/
     private static let writingModeProperties: Set<String> = [
         "writing-mode", "-webkit-writing-mode", "-epub-writing-mode",
     ]
@@ -34,7 +35,11 @@ struct CSSSanitizer {
                 .joined(separator: ";")
             return "\(match.1){\(cleaned)}"
         }
-        return didStripLineHeight ? result + "\nbody { line-height: 1.65; }\n" : result
+        let limited = result.replacing(ruleBody) { match in
+            guard let limit = contentLimit(match.1) else { return String(match.0) }
+            return "{\(match.1);\(limit)}"
+        }
+        return didStripLineHeight ? limited + "\nbody { line-height: 1.65; }\n" : limited
     }
     
     private static func sanitizeDeclaration(_ declaration: Substring, stripHeight: Bool) -> String? {
@@ -52,6 +57,24 @@ struct CSSSanitizer {
         default:
             return String(declaration)
         }
+    }
+    
+    private static func contentLimit(_ body: Substring) -> String? {
+        guard !body.contains("--hoshi-content-") else { return nil }
+        let declarations = body.split(separator: ";")
+        func value(_ names: Set<String>) -> String? {
+            declarations.first { names.contains(propertyName(of: $0)) }.map {
+                $0.drop { $0 != ":" }.dropFirst()
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased()
+            }
+        }
+        guard let writingMode = value(writingModeProperties),
+              writingMode.hasPrefix("horizontal") || writingMode.hasPrefix("vertical") else { return nil }
+        let size = writingMode.hasPrefix("horizontal") ? "width" : "height"
+        guard let length = value([size]), length.hasSuffix("%"),
+              let percent = Double(length.dropLast().trimmingCharacters(in: .whitespaces)) else { return nil }
+        return "max-\(size):calc(var(--hoshi-content-\(size)) * \(percent / 100))"
     }
     
     private static func propertyName(of declaration: Substring) -> String {

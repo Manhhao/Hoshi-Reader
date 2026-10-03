@@ -515,6 +515,9 @@ struct ReaderWebView: UIViewRepresentable {
             let bottomPadding = "calc(\(verticalPadding / 2)vh + \(bottomInset)px)"
             
             let imgHeight = "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
+            let contentSize = parent.userConfig.verticalWriting
+            ? "--hoshi-content-width: calc(var(--page-width, 100vw) - \(gap));"
+            : "--hoshi-content-height: \(imgHeight);"
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -635,11 +638,14 @@ struct ReaderWebView: UIViewRepresentable {
             :root {
                 --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
+                \(contentSize)
             }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;
                 width: var(--page-width, 100vw) !important;
+                max-height: none !important;
+                max-width: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 writing-mode: \(writingMode) !important;
