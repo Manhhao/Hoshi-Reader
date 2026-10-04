@@ -163,10 +163,11 @@ final class ReaderViewController: UIViewController {
             top = 32
             bottom = 32
         } else {
-            guard let insets = view.window?.safeAreaInsets else {
+            guard let window = view.window else {
                 return
             }
-            top = insets.top
+            let insets = window.safeAreaInsets
+            top = insets.bottom == 0 && window.bounds.height > window.bounds.width ? max(insets.top, 20) : insets.top
             bottom = insets.bottom
         }
         
