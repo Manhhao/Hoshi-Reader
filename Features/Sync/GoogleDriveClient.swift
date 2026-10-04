@@ -74,6 +74,7 @@ final class GoogleDriveClient {
         query: [URLQueryItem] = [],
         method: String = "GET",
         body: Data? = nil,
+        bodyFile: URL? = nil,
         contentType: String? = "application/json",
         upload: Bool = false,
         delegate: URLSessionTaskDelegate? = nil
@@ -86,7 +87,7 @@ final class GoogleDriveClient {
         request.httpBody = body
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(try await unavailable { try GoogleDriveAuth.shared.getAccessToken() })", forHTTPHeaderField: "Authorization")
-        return try await performRequest(request, delegate: delegate)
+        return try await performRequest(request, bodyFile: bodyFile, delegate: delegate)
     }
     
     private func isTransient(_ request: URLRequest, status: Int, error: [String: Any]?) -> Bool {
@@ -95,7 +96,7 @@ final class GoogleDriveClient {
         return limited || (status >= 500 && request.httpMethod != "POST")
     }
     
-    func performRequest(_ request: URLRequest, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil, attempt: Int = 0) async throws -> Data {
+    func performRequest(_ request: URLRequest, bodyFile: URL? = nil, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil, attempt: Int = 0) async throws -> Data {
         if isStopped {
             throw URLError(.cancelled)
         }
@@ -106,7 +107,15 @@ final class GoogleDriveClient {
         let connection = connectionId
         var request = request
         request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : 60
-        let (data, response) = try await limited { try await unavailable { try await session.data(for: request, delegate: delegate) } }
+        let (data, response) = try await limited {
+            try await unavailable {
+                if let bodyFile {
+                    try await session.upload(for: request, fromFile: bodyFile, delegate: delegate)
+                } else {
+                    try await session.data(for: request, delegate: delegate)
+                }
+            }
+        }
         
         try checkConnection(connection)
         try Task.checkCancellation()
@@ -118,14 +127,14 @@ final class GoogleDriveClient {
             try Task.checkCancellation()
             var newRequest = request
             newRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-            return try await performRequest(newRequest, retry: false, delegate: delegate, attempt: attempt)
+            return try await performRequest(newRequest, bodyFile: bodyFile, retry: false, delegate: delegate, attempt: attempt)
         }
         if httpResponse.statusCode >= 400 {
             let error = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? [String: Any]
             if attempt < 4, isTransient(request, status: httpResponse.statusCode, error: error) {
                 try await Task.sleep(for: .seconds(pow(2, Double(attempt)) + Double.random(in: 0..<1)))
                 try checkConnection(connection)
-                return try await performRequest(request, retry: retry, delegate: delegate, attempt: attempt + 1)
+                return try await performRequest(request, bodyFile: bodyFile, retry: retry, delegate: delegate, attempt: attempt + 1)
             }
             if let message = error?["message"] as? String {
                 throw GoogleDriveError.apiError(message, statusCode: httpResponse.statusCode)
@@ -166,21 +175,48 @@ final class GoogleDriveClient {
     
     @discardableResult
     func write(data: Data, name: String, parent: String, fileId: String? = nil, contentType: String = "application/octet-stream") async throws -> GoogleDriveFile {
+        let boundary = UUID().uuidString
+        var body = try multipartPrefix(boundary: boundary, name: name, parent: parent, fileId: fileId, contentType: contentType)
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        return try await write(fileId: fileId, boundary: boundary, body: body)
+    }
+    
+    @discardableResult
+    func write(file: URL, name: String, parent: String, contentType: String = "application/octet-stream") async throws -> GoogleDriveFile {
+        let boundary = UUID().uuidString
+        let prefix = try multipartPrefix(boundary: boundary, name: name, parent: parent, fileId: nil, contentType: contentType)
+        let bodyFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: bodyFile) }
+        try await Task.detached {
+            try prefix.write(to: bodyFile)
+            let output = try FileHandle(forWritingTo: bodyFile)
+            defer { try? output.close() }
+            try output.seekToEnd()
+            try output.write(contentsOf: Data(contentsOf: file, options: .alwaysMapped))
+            try output.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
+        }.value
+        return try await write(fileId: nil, boundary: boundary, bodyFile: bodyFile)
+    }
+    
+    private func multipartPrefix(boundary: String, name: String, parent: String, fileId: String?, contentType: String) throws -> Data {
         var metadata: [String: Any] = ["name": name]
         if fileId == nil {
             metadata["parents"] = [parent]
         }
-        let boundary = UUID().uuidString
-        var body = Data("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".utf8)
-        body.append(try JSONSerialization.data(withJSONObject: metadata))
-        body.append(Data("\r\n--\(boundary)\r\nContent-Type: \(contentType)\r\n\r\n".utf8))
-        body.append(data)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        var prefix = Data("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".utf8)
+        prefix.append(try JSONSerialization.data(withJSONObject: metadata))
+        prefix.append(Data("\r\n--\(boundary)\r\nContent-Type: \(contentType)\r\n\r\n".utf8))
+        return prefix
+    }
+    
+    private func write(fileId: String?, boundary: String, body: Data? = nil, bodyFile: URL? = nil) async throws -> GoogleDriveFile {
         let response = try await request(
             fileId.map { "files/\($0)" } ?? "files",
             query: [URLQueryItem(name: "uploadType", value: "multipart"), URLQueryItem(name: "fields", value: "id,name,mimeType,md5Checksum,createdTime")],
             method: fileId == nil ? "POST" : "PATCH",
             body: body,
+            bodyFile: bodyFile,
             contentType: "multipart/related; boundary=\(boundary)",
             upload: true
         )

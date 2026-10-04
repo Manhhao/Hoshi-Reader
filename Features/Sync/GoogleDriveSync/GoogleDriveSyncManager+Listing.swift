@@ -43,7 +43,7 @@ extension GoogleDriveSyncManager {
         cache.bookFolders?["\(key)/\(generation)"] = nil
     }
     
-    func upload(_ listing: Listing, key: String, generation: Int, name: String, data: Data) async throws {
+    func upload(_ listing: Listing, key: String, generation: Int, name: String, file: URL) async throws {
         var (book, folder) = try await resolveFolder(listing, key: key, generation: generation)
         if folder == nil {
             if book == nil {
@@ -59,9 +59,9 @@ extension GoogleDriveSyncManager {
             return
         }
         if listing.listed || listing.created.contains(folder!) {
-            try await GoogleDriveClient.shared.write(data: data, name: name, parent: folder!)
+            try await GoogleDriveClient.shared.write(file: file, name: name, parent: folder!)
         } else {
-            try await drive.upload(data: data, fileName: name, folder: folder!)
+            try await drive.upload(file: file, fileName: name, folder: folder!)
         }
     }
     

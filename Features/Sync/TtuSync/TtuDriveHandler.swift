@@ -220,8 +220,7 @@ class TtuDriveHandler {
     }
     
     func uploadBookData(folderId: String, fileURL: URL, fileName: String) async throws {
-        let data = try Data(contentsOf: fileURL)
-        try await client.write(data: data, name: fileName, parent: folderId, contentType: "application/zip")
+        try await client.write(file: fileURL, name: fileName, parent: folderId, contentType: "application/zip")
     }
     
     func updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress) async throws {

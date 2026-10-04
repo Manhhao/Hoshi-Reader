@@ -146,16 +146,7 @@ extension GoogleDriveSyncManager {
         let fileName = url.lastPathComponent.precomposedStringWithCanonicalMapping
         let name = fileType == .sasayaki ? "\(source)-\(fileName)" : fileName
         
-        let data = try await Task.detached {
-            try Data(contentsOf: url)
-        }.value
-        try Task.checkCancellation()
-        
-        if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
-            return
-        }
-        
-        try await upload(listing, key: key, generation: record.generation, name: name, data: data)
+        try await upload(listing, key: key, generation: record.generation, name: name, file: url)
         try Task.checkCancellation()
         if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
             return
