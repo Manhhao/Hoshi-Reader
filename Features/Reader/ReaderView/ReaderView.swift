@@ -12,7 +12,7 @@ import EPUBKit
 struct WebViewState: Hashable, Codable {
     var verticalWriting: Bool
     var paragraphMode: Bool
-    var sentencesPerPage: Int
+    var maxSentencesPerPage: Int
     var splitDialogue: Bool
     var fontSize: Int
     var selectedFont: String
@@ -391,7 +391,7 @@ struct ReaderView: View {
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             paragraphMode: userConfig.paragraphMode,
-                            sentencesPerPage: userConfig.sentencesPerPage,
+                            maxSentencesPerPage: userConfig.maxSentencesPerPage,
                             splitDialogue: userConfig.splitDialogue,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
@@ -414,7 +414,7 @@ struct ReaderView: View {
                         let layout = WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             paragraphMode: userConfig.paragraphMode,
-                            sentencesPerPage: userConfig.sentencesPerPage,
+                            maxSentencesPerPage: userConfig.maxSentencesPerPage,
                             splitDialogue: userConfig.splitDialogue,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,

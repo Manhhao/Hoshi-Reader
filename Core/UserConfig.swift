@@ -267,8 +267,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(paragraphMode, forKey: "paragraphMode") }
     }
     
-    var sentencesPerPage: Int {
-        didSet { UserDefaults.standard.set(sentencesPerPage, forKey: "sentencesPerPage") }
+    var maxSentencesPerPage: Int {
+        didSet { UserDefaults.standard.set(maxSentencesPerPage, forKey: "maxSentencesPerPage") }
     }
     
     var splitDialogue: Bool {
@@ -597,7 +597,7 @@ class UserConfig {
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
         self.paragraphMode = defaults.object(forKey: "paragraphMode") as? Bool ?? false
-        self.sentencesPerPage = defaults.object(forKey: "sentencesPerPage") as? Int ?? 0
+        self.maxSentencesPerPage = defaults.object(forKey: "maxSentencesPerPage") as? Int ?? 0
         self.splitDialogue = defaults.object(forKey: "splitDialogue") as? Bool ?? false
         self.textAnimation = defaults.object(forKey: "textAnimation") as? Bool ?? false
         self.textSpeed = defaults.object(forKey: "textSpeed") as? Int ?? 35

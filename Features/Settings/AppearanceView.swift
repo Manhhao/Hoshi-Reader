@@ -197,18 +197,18 @@ struct AppearanceView: View {
                         if userConfig.paragraphMode {
                             VStack {
                                 HStack {
-                                    Text("Sentences per Page")
+                                    Text("Max Sentences per Page")
                                     Spacer()
-                                    Text(userConfig.sentencesPerPage == 0 ? "Off" : "\(userConfig.sentencesPerPage)")
+                                    Text(userConfig.maxSentencesPerPage == 0 ? "Off" : "\(userConfig.maxSentencesPerPage)")
                                         .fontWeight(.semibold)
                                 }
                                 Slider(value: .init(
-                                    get: { Double(userConfig.sentencesPerPage) },
-                                    set: { userConfig.sentencesPerPage = Int($0) }
+                                    get: { Double(userConfig.maxSentencesPerPage) },
+                                    set: { userConfig.maxSentencesPerPage = Int($0) }
                                 ), in: 0...10, step: 1)
                             }
                             
-                            if userConfig.sentencesPerPage > 0 {
+                            if userConfig.maxSentencesPerPage > 0 {
                                 Toggle("Split up Dialogue", isOn: $userConfig.splitDialogue)
                             }
                             

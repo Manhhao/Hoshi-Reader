@@ -904,7 +904,7 @@ struct ReaderWebView: UIViewRepresentable {
                 Promise.all(imagePromises).then(() => {
                     return window.hoshiReader.awaitFonts();
                 }).then(() => {
-                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs(\(parent.userConfig.sentencesPerPage), \(parent.userConfig.splitDialogue));" : "")
+                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs(\(parent.userConfig.maxSentencesPerPage), \(parent.userConfig.splitDialogue));" : "")
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
                     \(setupScript)

@@ -9,7 +9,7 @@
 window.hoshiParagraph = {
     animationFrame: null,
     
-    splitSentences(sentencesPerPage, splitDialogue) {
+    splitSentences(maxSentencesPerPage, splitDialogue) {
         const { brackets } = window.hoshiSelection;
         const openBrackets = Object.keys(brackets);
         const closeBrackets = Object.values(brackets);
@@ -31,7 +31,7 @@ window.hoshiParagraph = {
                     const char = text[i];
                     if (ended && char.trim() && !sentenceDelimiters.includes(char) && !closeBrackets.includes(char)) {
                         ended = false;
-                        if (++sentences % sentencesPerPage === 0) {
+                        if (++sentences % maxSentencesPerPage === 0) {
                             points.push(i ? { node, offset: i } : { node: previous, offset: previous.length });
                         }
                     }
@@ -59,9 +59,9 @@ window.hoshiParagraph = {
         }
     },
     
-    layoutParagraphs(sentencesPerPage, splitDialogue) {
-        if (sentencesPerPage > 0) {
-            this.splitSentences(sentencesPerPage, splitDialogue);
+    layoutParagraphs(maxSentencesPerPage, splitDialogue) {
+        if (maxSentencesPerPage > 0) {
+            this.splitSentences(maxSentencesPerPage, splitDialogue);
         }
         
         const paragraphs = [...document.querySelectorAll('p')].filter(p => p.textContent.trim() || p.querySelector('img, svg'));
