@@ -105,7 +105,7 @@ struct SasayakiMatcher {
             }
             
             let end = index + chars.count
-            let range = chapters.first(where: { index >= $0.start && index < $0.end })!
+            let range = chapter(containing: index, in: chapters)!
             guard end <= range.end else {
                 unmatched += 1
                 continue
@@ -132,6 +132,23 @@ struct SasayakiMatcher {
         )
     }
     
+    private static func chapter(containing index: Int, in chapters: [Chapter]) -> Chapter? {
+        var lower = 0
+        var upper = chapters.count
+        while lower < upper {
+            let middle = lower + (upper - lower) / 2
+            if chapters[middle].end <= index {
+                lower = middle + 1
+            } else {
+                upper = middle
+            }
+        }
+        guard lower < chapters.count, index >= chapters[lower].start else {
+            return nil
+        }
+        return chapters[lower]
+    }
+
     private static func findText(source: [Character], text: [Character], start: Int, end: Int) -> Int? {
         var index = start
         while index <= end - text.count {
