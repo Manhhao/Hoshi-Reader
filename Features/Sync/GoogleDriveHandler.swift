@@ -290,7 +290,7 @@ class GoogleDriveHandler {
         return grouped.mapValues { DriveSyncFiles(files: $0) }
     }
     
-    func downloadFile(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
+    func downloadFile(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> URL {
         do {
             return try await downloadFileRequest(fileId: fileId, onProgress: onProgress)
         } catch GoogleDriveError.apiError(_, statusCode: 401) {
@@ -299,7 +299,7 @@ class GoogleDriveHandler {
         }
     }
     
-    private func downloadFileRequest(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
+    private func downloadFileRequest(fileId: String, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> URL {
         if pathMonitor.currentPath.status == .unsatisfied {
             throw URLError(.notConnectedToInternet, userInfo: [NSLocalizedDescriptionKey: "No Internet connection."])
         }
@@ -319,18 +319,19 @@ class GoogleDriveHandler {
         
         return try await withCheckedThrowingContinuation { continuation in
             let observationRetainer = ObservationHolder()
-            let task = session.dataTask(with: request) { data, response, error in
+            let task = session.downloadTask(with: request) { location, response, error in
                 _ = observationRetainer
                 if let error {
                     continuation.resume(throwing: error)
                     return
                 }
-                guard let httpResponse = response as? HTTPURLResponse, let data else {
+                guard let httpResponse = response as? HTTPURLResponse, let location else {
                     continuation.resume(throwing: GoogleDriveError.invalidResponse)
                     return
                 }
                 if httpResponse.statusCode >= 400 {
-                    let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
+                    let data = try? Data(contentsOf: location)
+                    let message = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
                         .flatMap { ($0?["error"] as? [String: Any])?["message"] as? String }
                     continuation.resume(throwing: GoogleDriveError.apiError(
                         message ?? "Request failed with status \(httpResponse.statusCode)",
@@ -338,7 +339,15 @@ class GoogleDriveHandler {
                     ))
                     return
                 }
-                continuation.resume(returning: data)
+                do {
+                    let file = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(UUID().uuidString)
+                        .appendingPathExtension("zip")
+                    try FileManager.default.moveItem(at: location, to: file)
+                    continuation.resume(returning: file)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
             observationRetainer.observation = task.observe(\.countOfBytesReceived) { task, _ in
                 let total = task.countOfBytesExpectedToReceive

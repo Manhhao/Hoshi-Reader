@@ -167,16 +167,12 @@ class SyncManager {
             throw GoogleDriveError.invalidResponse
         }
         
-        async let downloadedData = GoogleDriveHandler.shared.downloadFile(fileId: bookDataId, onProgress: onProgress)
+        async let downloadedFile = GoogleDriveHandler.shared.downloadFile(fileId: bookDataId, onProgress: onProgress)
         async let ttuProgress = fetchProgress(fileId: syncFiles.progress?.id)
         async let ttuStats = fetchStats(fileId: syncStats ? syncFiles.statistics?.id : nil)
         async let ttuAudioBook = fetchAudioBook(fileId: syncAudioBook ? syncFiles.audioBook?.id : nil)
         
-        let data = try await downloadedData
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("zip")
-        try data.write(to: tempURL)
+        let tempURL = try await downloadedFile
         defer { try? FileManager.default.removeItem(at: tempURL) }
         
         let booksDir = try BookStorage.getBooksDirectory()
