@@ -775,10 +775,8 @@ class AnkiManager {
         try FileManager.default.unzipItem(at: url, to: tempDir)
         
         let collection = try Data(contentsOf: tempDir.appendingPathComponent("collection.anki21b"))
-        let sqliteData = try Self.decompressZstd(collection)
-        
         let dbFile = tempDir.appendingPathComponent("collection.db")
-        try sqliteData.write(to: dbFile)
+        try Self.decompressZstd(collection, to: dbFile)
         
         savedWords = try Self.extractExpressionField(from: dbFile)
         try Self.saveWords(savedWords)
@@ -831,11 +829,13 @@ class AnkiManager {
         try JSONEncoder().encode(words).write(to: file)
     }
     
-    private static func decompressZstd(_ data: Data) throws -> Data {
+    private static func decompressZstd(_ data: Data, to url: URL) throws {
         let dctx = ZSTD_createDCtx()!
         defer { ZSTD_freeDCtx(dctx) }
         
-        var result = Data()
+        try Data().write(to: url)
+        let file = try FileHandle(forWritingTo: url)
+        defer { try? file.close() }
         let blockSize = ZSTD_DStreamOutSize()
         
         try data.withUnsafeBytes { src in
@@ -849,10 +849,10 @@ class AnkiManager {
                 guard ZSTD_isError(ret) == 0 else {
                     throw ColpkgError.zstd
                 }
-                result.append(dst, count: outBuf.pos)
+                try file.write(contentsOf: Data(bytes: dst, count: outBuf.pos))
             }
         }
-        return result
+        try file.close()
     }
     
     private static func extractExpressionField(from url: URL) throws -> Set<String> {
