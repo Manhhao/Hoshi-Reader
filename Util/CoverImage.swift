@@ -54,6 +54,9 @@ private actor ThumbnailDecoder {
     static let shared = ThumbnailDecoder()
     
     func thumbnail(url: URL, maxPixelSize: Int) -> UIImage? {
+        guard !Task.isCancelled else {
+            return nil
+        }
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             return nil
         }
