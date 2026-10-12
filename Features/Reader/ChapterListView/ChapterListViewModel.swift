@@ -40,17 +40,24 @@ class ChapterListViewModel {
     }
     
     private func generateRows() -> [ChapterRow] {
-        var rows = flattenTOC(document.tableOfContents.subTable ?? [], indentLevel: 0)
+        var spineIndices: [String: Int] = [:]
+        for (index, item) in document.spine.items.enumerated() {
+            if let path = document.manifest.items[item.idref]?.path, spineIndices[path] == nil {
+                spineIndices[path] = index
+            }
+        }
+        var rows = flattenTOC(document.tableOfContents.subTable ?? [], indentLevel: 0, spineIndices: spineIndices)
         if let current = rows.indices.last(where: { (rows[$0].characterCount ?? .max) <= currentCharacter }) {
             rows[current].isCurrent = true
         }
         return rows
     }
     
-    private func flattenTOC(_ items: [EPUBTableOfContents], indentLevel: Int) -> [ChapterRow] {
+    private func flattenTOC(_ items: [EPUBTableOfContents], indentLevel: Int, spineIndices: [String: Int]) -> [ChapterRow] {
         items.flatMap { item -> [ChapterRow] in
             let row: [ChapterRow]
-            if let index = findSpineIndex(for: item) {
+            if let path = item.item?.components(separatedBy: "#").first,
+               let index = spineIndices[path] {
                 let parts = item.item?.split(separator: "#", maxSplits: 1)
                 let fragment = (parts?.count ?? 0) > 1 ? String(parts![1]) : nil
                 row = [ChapterRow(
@@ -64,7 +71,7 @@ class ChapterListViewModel {
             } else {
                 row = []
             }
-            return row + flattenTOC(item.subTable ?? [], indentLevel: indentLevel + 1)
+            return row + flattenTOC(item.subTable ?? [], indentLevel: indentLevel + 1, spineIndices: spineIndices)
         }
     }
     
@@ -80,21 +87,5 @@ class ChapterListViewModel {
         let fragment = parts.count > 1 ? parts[1] : nil
         let offset = fragment.flatMap { info.fragmentOffsets?[$0] } ?? 0
         return info.currentTotal + offset
-    }
-    
-    private func findSpineIndex(for item: EPUBTableOfContents) -> Int? {
-        guard let tocPath = item.item else {
-            return nil
-        }
-        let basePath = tocPath.components(separatedBy: "#").first ?? tocPath
-        
-        for (index, spineItem) in document.spine.items.enumerated() {
-            if let manifestItem = document.manifest.items[spineItem.idref] {
-                if manifestItem.path == basePath {
-                    return index
-                }
-            }
-        }
-        return nil
     }
 }
