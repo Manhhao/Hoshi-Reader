@@ -1521,12 +1521,18 @@ function getButtonSlots(kind, entryIndex) {
     return [...document.querySelectorAll(`.button-slot[data-kind="${kind}"][data-entry-index="${entryIndex}"]`)];
 }
 
+let buttonRectsRaf = null;
+
 function updateButtonSlot(slot, changes) {
     if (!slot || !slot.isConnected) { return; }
     if ('state' in changes) { slot.dataset.state = changes.state; }
     if ('enabled' in changes) { slot.dataset.enabled = String(changes.enabled); }
     if ('hidden' in changes) { slot.hidden = changes.hidden; }
-    requestAnimationFrame(reportButtonRects);
+    if (buttonRectsRaf !== null) { return; }
+    buttonRectsRaf = requestAnimationFrame(() => {
+        buttonRectsRaf = null;
+        reportButtonRects();
+    });
 }
 
 async function playEntryAudio(entryIndex, sourceIndex = null) {
