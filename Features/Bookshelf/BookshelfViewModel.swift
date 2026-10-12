@@ -105,7 +105,8 @@ class BookshelfViewModel {
         }
         
         for shelf in shelves {
-            let shelvedBooks = books.filter { shelf.bookIds.contains($0.id) }
+            let bookIds = Set(shelf.bookIds)
+            let shelvedBooks = books.filter { bookIds.contains($0.id) }
             sections.append(ShelfSection(shelf: shelf, books: sortBooks(shelvedBooks, by: sortedBy)))
         }
         
