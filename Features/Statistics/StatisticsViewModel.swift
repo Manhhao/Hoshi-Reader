@@ -199,7 +199,9 @@ class StatisticsViewModel {
             }
             return book.days.isEmpty ? nil : book
         }
+        .map { (book: $0, readingTime: $0.readingTime) }
         .sorted { $0.readingTime > $1.readingTime }
+        .map(\.book)
     }
 }
 
