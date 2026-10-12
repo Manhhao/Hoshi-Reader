@@ -147,6 +147,7 @@ struct TtuConverter {
         var elementParts: [String] = []
         var sections: [Section] = []
         var currentParent: String?
+        let labels = Self.tocLabels(in: document.tableOfContents)
         for item in document.spine.items {
             guard let manifestItem = document.manifest.items[item.idref] else {
                 continue
@@ -169,7 +170,7 @@ struct TtuConverter {
             let reference = "ttu-\(item.idref)"
             let startCharacter = chapterInfo?.currentTotal ?? 0
             
-            let label = Self.tocLabel(for: manifestItem.path, in: document.tableOfContents)
+            let label = labels[manifestItem.path]
             if let label {
                 currentParent = reference
                 sections.append(Section(
@@ -452,18 +453,18 @@ struct TtuConverter {
         """
     }
     
-    private static func tocLabel(for path: String, in toc: EPUBTableOfContents) -> String? {
-        if let item = toc.item?.components(separatedBy: "#").first {
-            if item == path {
-                return toc.label
+    private static func tocLabels(in toc: EPUBTableOfContents) -> [String: String] {
+        var labels: [String: String] = [:]
+        func visit(_ item: EPUBTableOfContents) {
+            if let path = item.item?.components(separatedBy: "#").first, labels[path] == nil {
+                labels[path] = item.label
+            }
+            for child in item.subTable ?? [] {
+                visit(child)
             }
         }
-        for child in toc.subTable ?? [] {
-            if let label = tocLabel(for: path, in: child) {
-                return label
-            }
-        }
-        return nil
+        visit(toc)
+        return labels
     }
     
     private static func rewriteImages(_ html: String, path: String) -> String {
