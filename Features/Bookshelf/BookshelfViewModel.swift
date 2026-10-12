@@ -145,11 +145,8 @@ class BookshelfViewModel {
         for book in books {
             let root = directory.appendingPathComponent(book.folder)
             
-            let bookInfo = BookStorage.loadBookInfo(root: root)
-            let bookmark = BookStorage.loadBookmark(root: root)
-            
-            if let total = bookInfo?.characterCount, total > 0,
-               let current = bookmark?.characterCount {
+            if let current = BookStorage.loadBookmark(root: root)?.characterCount,
+               let total = BookStorage.loadBookInfo(root: root)?.characterCount, total > 0 {
                 bookProgress[book.id] = Double(current) / Double(total)
             } else {
                 bookProgress[book.id] = 0.0
