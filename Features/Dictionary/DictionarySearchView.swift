@@ -169,7 +169,6 @@ struct DictionarySearchView: View {
                 ForEach($popups) { $popup in
                     let popupId = popup.id
                     PopupView(
-                        userConfig: userConfig,
                         isVisible: $popup.showPopup,
                         selectionData: popup.currentSelection,
                         lookupResults: popup.lookupResults,

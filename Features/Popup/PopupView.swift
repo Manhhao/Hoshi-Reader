@@ -126,8 +126,7 @@ struct PopupView: View {
     var sasayakiPlayer: SasayakiPlayer?
     var wasPaused = false
     
-    @State private var content: String = ""
-    @State private var lookupEntries: [[String: Any]] = []
+    @State private var preparedContent: (content: String, lookupEntries: [[String: Any]])?
     @State private var controlsHeight: CGFloat = 0
     @State private var backCount: Int = 0
     @State private var forwardCount: Int = 0
@@ -135,7 +134,6 @@ struct PopupView: View {
     @State private var forwardTrigger: Bool = false
     
     init(
-        userConfig: UserConfig,
         isVisible: Binding<Bool>,
         selectionData: SelectionData?,
         lookupResults: [LookupResult],
@@ -179,12 +177,11 @@ struct PopupView: View {
         self.sasayakiCue = sasayakiCue
         self.sasayakiPlayer = sasayakiPlayer
         self.wasPaused = wasPaused
-        
-        let cache = Self.buildContent(lookupResults: lookupResults, userConfig: userConfig)
-        _content = State(initialValue: cache.content)
-        _lookupEntries = State(initialValue: cache.lookupEntries)
     }
     
+    private var content: String { preparedContent?.content ?? "" }
+    private var lookupEntries: [[String: Any]] { preparedContent?.lookupEntries ?? [] }
+
     private var layout: PopupLayout? {
         guard let selectionData else {
             return nil
@@ -356,26 +353,32 @@ struct PopupView: View {
     }
     
     var body: some View {
-        if #available(iOS 26, *), !userConfig.popupDisableTransparency {
-            GlassEffectContainer {
-                if isVisible, let selectionData, let layout, !content.isEmpty {
-                    popupContent(selectionData: selectionData, layout: layout)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 8))
-                        .position(layout.position)
+        ZStack {
+            if #available(iOS 26, *), !userConfig.popupDisableTransparency {
+                GlassEffectContainer {
+                    if isVisible, let selectionData, let layout, !content.isEmpty {
+                        popupContent(selectionData: selectionData, layout: layout)
+                            .glassEffect(.regular, in: .rect(cornerRadius: 8))
+                            .position(layout.position)
+                    }
+                }
+            } else {
+                Group {
+                    if isVisible, let selectionData, let layout, !content.isEmpty {
+                        popupContent(selectionData: selectionData, layout: layout)
+                            .background(
+                                userConfig.popupDisableTransparency ? AnyShapeStyle(Color(.systemBackground)) : AnyShapeStyle(.ultraThinMaterial),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
+                            .position(layout.position)
+                    }
                 }
             }
-        } else {
-            Group {
-                if isVisible, let selectionData, let layout, !content.isEmpty {
-                    popupContent(selectionData: selectionData, layout: layout)
-                        .background(
-                            userConfig.popupDisableTransparency ? AnyShapeStyle(Color(.systemBackground)) : AnyShapeStyle(.ultraThinMaterial),
-                            in: RoundedRectangle(cornerRadius: 8)
-                        )
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.2), lineWidth: 1))
-                        .position(layout.position)
-                }
-            }
+        }
+        .onAppear {
+            guard preparedContent == nil else { return }
+            preparedContent = Self.buildContent(lookupResults: lookupResults, userConfig: userConfig)
         }
     }
     

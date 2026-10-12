@@ -482,7 +482,6 @@ struct ReaderView: View {
                         let popupId = popup.id
                         let controlBarInset: CGFloat = userConfig.enableSasayaki && userConfig.sasayakiShowControlBar && userConfig.sasayakiAlwaysShowControlBar && viewModel.sasayakiPlayer.hasAudio ? 54 : 0
                         PopupView(
-                            userConfig: userConfig,
                             isVisible: $popup.showPopup,
                             selectionData: popup.currentSelection,
                             lookupResults: popup.lookupResults,
