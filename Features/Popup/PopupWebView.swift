@@ -11,7 +11,7 @@ import UIKit
 import WebKit
 
 class AudioHandler: NSObject, WKURLSchemeHandler {
-    private var tasks = Set<ObjectIdentifier>()
+    private var tasks: [ObjectIdentifier: Task<Void, Never>] = [:]
     
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
         guard let requestUrl = task.request.url,
@@ -23,15 +23,14 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
         }
         
         let taskId = ObjectIdentifier(task)
-        tasks.insert(taskId)
         
-        Task {
+        tasks[taskId] = Task {
             do {
                 let request = URLRequest(url: targetUrl, timeoutInterval: 4)
                 let (data, _) = try await URLSession.shared.data(for: request)
                 
                 await MainActor.run {
-                    guard self.tasks.contains(taskId) else { return }
+                    guard self.tasks.removeValue(forKey: taskId) != nil else { return }
                     
                     let response = HTTPURLResponse(
                         url: requestUrl,
@@ -48,7 +47,7 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
                 }
             } catch {
                 await MainActor.run {
-                    guard self.tasks.contains(taskId) else { return }
+                    guard self.tasks.removeValue(forKey: taskId) != nil else { return }
                     task.didFailWithError(error)
                 }
             }
@@ -56,7 +55,7 @@ class AudioHandler: NSObject, WKURLSchemeHandler {
     }
     
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {
-        tasks.remove(ObjectIdentifier(task))
+        tasks.removeValue(forKey: ObjectIdentifier(task))?.cancel()
     }
 }
 
