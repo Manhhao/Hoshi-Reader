@@ -225,7 +225,7 @@ struct TtuConverter {
         let elementHtml = elementParts.joined()
         let staticData = StaticData(title: metadata.title, styleSheet: stylesheet, elementHtml: elementHtml, sections: sections)
         let jsonData = try JSONEncoder().encode(staticData)
-        try archive.addEntry(with: "staticdata.json", contents: String(data: jsonData, encoding: .utf8)!, compressionMethod: .deflate)
+        try archive.addEntry(with: "staticdata.json", contents: jsonData, compressionMethod: .deflate)
         
         let images = document.manifest.items.values.filter { $0.mediaType == .gif || $0.mediaType == .jpeg || $0.mediaType == .png || $0.mediaType == .svg }
         for image in images {
@@ -530,7 +530,10 @@ struct TtuConverter {
 
 private extension Archive {
     func addEntry(with path: String, contents text: String, compressionMethod: CompressionMethod) throws {
-        let data = Data(text.utf8)
+        try addEntry(with: path, contents: Data(text.utf8), compressionMethod: compressionMethod)
+    }
+
+    func addEntry(with path: String, contents data: Data, compressionMethod: CompressionMethod) throws {
         try addEntry(
             with: path,
             type: .file,
