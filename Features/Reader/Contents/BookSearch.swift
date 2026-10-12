@@ -56,14 +56,18 @@ nonisolated enum BookSearch {
     static func search(chapters: [SearchChapter], query: String) -> [SearchResult] {
         var results: [SearchResult] = []
         for chapter in chapters {
+            guard !Task.isCancelled else { return [] }
             guard let content = try? String(contentsOf: chapter.url, encoding: .utf8) else {
                 continue
             }
+            guard !Task.isCancelled else { return [] }
             var offset = chapter.start
             for paragraph in plainText(content).components(separatedBy: "\n") {
+                guard !Task.isCancelled else { return [] }
                 let line = paragraph.trimmingCharacters(in: .whitespaces)
                 var cursor = line.startIndex
                 while let range = line.range(of: query, options: .caseInsensitive, range: cursor..<line.endIndex) {
+                    guard !Task.isCancelled else { return [] }
                     let bounds = sentence(in: line, around: range)
                     results.append(SearchResult(
                         id: results.count,

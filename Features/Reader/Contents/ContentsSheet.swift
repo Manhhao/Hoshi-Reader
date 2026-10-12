@@ -210,9 +210,14 @@ struct ContentsSheet: View {
         searchResults = nil
         let query = searchQuery
         let chapters = BookSearch.chapters(document: viewModel.document, bookInfo: viewModel.bookInfo)
-        let results = await Task.detached(priority: .userInitiated) {
+        let worker = Task.detached(priority: .userInitiated) {
             BookSearch.search(chapters: chapters, query: query)
-        }.value
+        }
+        let results = await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
         guard !Task.isCancelled else { return }
         searchResults = results
     }
