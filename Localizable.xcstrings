@@ -2129,6 +2129,9 @@
         }
       }
     },
+    "Max Sentences per Page" : {
+
+    },
     "Merge" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2786,9 +2789,6 @@
           }
         }
       }
-    },
-    "Sentences per Page" : {
-
     },
     "Sepia" : {
       "localizations" : {
