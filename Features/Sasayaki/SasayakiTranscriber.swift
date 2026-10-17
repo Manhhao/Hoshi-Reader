@@ -37,6 +37,7 @@ struct SasayakiTranscriber {
         )
         var analyzer: SpeechAnalyzer?
         do {
+            try await AssetInventory.reserve(locale: locale)
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
                 let observation = request.progress.observe(\.fractionCompleted, options: [.initial, .new]) { progress, _ in
                     let fraction = progress.fractionCompleted
@@ -69,10 +70,8 @@ struct SasayakiTranscriber {
             }
         } catch {
             await analyzer?.cancelAndFinishNow()
-            await AssetInventory.release(reservedLocale: locale)
             throw error
         }
         await analyzer?.cancelAndFinishNow()
-        await AssetInventory.release(reservedLocale: locale)
     }
 }
