@@ -34,6 +34,7 @@ struct SasayakiSettingsView: View {
                     Toggle("Show Sasayaki Toggle", isOn: $userConfig.readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)
+                    Toggle("Double-Tap Text to Play Audio", isOn: $userConfig.sasayakiDoubleTapSeek)
                     Toggle("Pause on Images", isOn: $userConfig.sasayakiImagePause)
                     if userConfig.sasayakiImagePause {
                         HStack {

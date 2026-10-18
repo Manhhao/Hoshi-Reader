@@ -34,6 +34,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
+    var doubleTapSeekEnabled: Bool = false
+    var canSeekText: (Int) -> Bool = { _ in false }
+    var onDoubleTapText: (Int) -> Bool = { _ in false }
     let maxSelectionLength: Int = 16
     
     func makeCoordinator() -> Coordinator {
@@ -208,6 +211,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         var pendingFragment: String?
         var pendingSasayakiCues: String?
         var pendingHighlights: String?
+        let doubleTapTracker = ReaderDoubleTapTracker()
         var shouldSyncProgressAfterRestore = false
         var lastProgressUpdate: CFTimeInterval = 0
         var isRestoring = true
@@ -669,6 +673,47 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
             
             let point = gesture.location(in: webView)
+            guard parent.doubleTapSeekEnabled else {
+                selectText(at: point)
+                return
+            }
+            
+            switch doubleTapTracker.registerTap(at: point) {
+            case .double:
+                hitTestText(at: point) { [weak self] offset in
+                    guard let self else { return }
+                    let consumed = offset.map(self.parent.onDoubleTapText) ?? false
+                    if !consumed {
+                        self.selectText(at: point)
+                    }
+                }
+            case .single(let id):
+                hitTestText(at: point) { [weak self] offset in
+                    guard let self else { return }
+                    let seekable = offset.map(self.parent.canSeekText) ?? false
+                    self.doubleTapTracker.resolveSingleTap(id: id, deferred: seekable) { [weak self] in
+                        self?.selectText(at: point)
+                    }
+                }
+            }
+        }
+        
+        private func hitTestText(at point: CGPoint, completion: @escaping (Int?) -> Void) {
+            guard let webView = webView else {
+                completion(nil)
+                return
+            }
+            
+            webView.evaluateJavaScript("window.hoshiSelection.hitTest(\(point.x), \(point.y))") { result, _ in
+                completion(result as? Int)
+            }
+        }
+        
+        private func selectText(at point: CGPoint) {
+            guard let webView = webView else {
+                return
+            }
+            
             let maxLength = parent.maxSelectionLength
             
             let script = "window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength))"

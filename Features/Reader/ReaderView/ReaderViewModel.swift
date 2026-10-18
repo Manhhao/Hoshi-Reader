@@ -666,6 +666,23 @@ class ReaderViewModel {
         return nil
     }
     
+    func hasSasayakiCue(at offset: Int) -> Bool {
+        sasayakiPlayer.hasAudio && sasayakiPlayer.findCue(chapterIndex: index, offset: offset) != nil
+    }
+    
+    func handleDoubleTapSeek(offset: Int) -> Bool {
+        guard sasayakiPlayer.hasAudio,
+              let cue = sasayakiPlayer.findCue(chapterIndex: index, offset: offset) else {
+            return false
+        }
+        Task { await WordAudioPlayer.shared.stop() }
+        wasPaused = false
+        sasayakiPlayer.playCue(from: cue, stop: false)
+        clearSelection()
+        closePopups()
+        return true
+    }
+    
     func closePopups() {
         guard !popups.isEmpty else { return }
         let popupIds = Set(popups.map(\.id))

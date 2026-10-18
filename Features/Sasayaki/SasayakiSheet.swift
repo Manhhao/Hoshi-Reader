@@ -102,6 +102,7 @@ struct SasayakiSheet: View {
                     Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
+                    Toggle("Double-Tap Text to Play Audio", isOn: Bindable(userConfig).sasayakiDoubleTapSeek)
                     Toggle("Pause on Images", isOn: Bindable(userConfig).sasayakiImagePause)
                     if userConfig.sasayakiImagePause {
                         HStack {

@@ -160,6 +160,21 @@ struct ReaderView: View {
         }
     }
     
+    private var doubleTapSeekEnabled: Bool {
+        userConfig.enableSasayaki && userConfig.sasayakiDoubleTapSeek && viewModel.sasayakiPlayer.hasAudio && viewModel.sasayakiPlayer.hasMatch
+    }
+    
+    private func handleDoubleTapText(_ offset: Int) -> Bool {
+        guard viewModel.handleDoubleTapSeek(offset: offset) else { return false }
+        sasayakiControlsExpanded = false
+        if !viewModel.focusMode {
+            withAnimation(.default.speed(2)) {
+                viewModel.focusMode = true
+            }
+        }
+        return true
+    }
+    
     private func handleTapOutside(clearSelection: Bool = false) {
         if clearSelection {
             viewModel.clearSelection()
@@ -386,7 +401,10 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { viewModel.imageURL = $0 }
+                            onImageTapped: { viewModel.imageURL = $0 },
+                            doubleTapSeekEnabled: doubleTapSeekEnabled,
+                            canSeekText: viewModel.hasSasayakiCue,
+                            onDoubleTapText: handleDoubleTapText
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -486,7 +504,10 @@ struct ReaderView: View {
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
                             onImageTapped: { viewModel.imageURL = $0 },
-                            onPageCuesChanged: viewModel.sasayakiPlayer.handlePageChanged
+                            onPageCuesChanged: viewModel.sasayakiPlayer.handlePageChanged,
+                            doubleTapSeekEnabled: doubleTapSeekEnabled,
+                            canSeekText: viewModel.hasSasayakiCue,
+                            onDoubleTapText: handleDoubleTapText
                         )
                         .id(layout)
                         .frame(width: viewSize.width, height: viewSize.height)

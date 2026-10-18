@@ -411,6 +411,18 @@ window.hoshiSelection = {
         return text;
     },
     
+    hitTest(x, y) {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('a, img, image, .blur-wrapper')) {
+            return null;
+        }
+        const hit = this.getCharacterAtPoint(x, y);
+        if (!hit || !window.hoshiReader) {
+            return null;
+        }
+        return this.getNormalizedOffset(hit.node, hit.offset);
+    },
+    
     getSelectionRect(x, y) {
         if (!this.selection?.ranges.length) {
             return null;

@@ -1478,6 +1478,17 @@
         }
       }
     },
+    "Double-Tap Text to Play Audio" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击文本播放音频"
+          }
+        }
+      }
+    },
     "Empty" : {
 
     },
