@@ -115,7 +115,7 @@ struct BookCell: View {
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
-                } else {
+                } else if userConfig.syncProvider == .ttu {
                     Button {
                         viewModel.syncBook(
                             book: book,
@@ -127,6 +127,14 @@ struct BookCell: View {
                         )
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                
+                if userConfig.syncProvider == .gdrive && book.epub == nil {
+                    Button {
+                        viewModel.queueDownloads([book])
+                    } label: {
+                        Label("Download", systemImage: "arrow.down.circle")
                     }
                 }
             }

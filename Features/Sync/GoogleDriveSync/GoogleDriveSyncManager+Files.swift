@@ -2,16 +2,12 @@ import Foundation
 
 extension GoogleDriveSyncManager {
     func runFileSync() async throws -> Bool {
-        let keys = store.state.books.keys.sorted()
-        beginTransfers(keys)
+        enqueue(reset: true)
         let listing = progress == nil ? Listing() : try await listFiles()
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for (index, key) in keys.enumerated() {
-                if index >= 8 {
-                    try await group.next()
-                }
+            for _ in 0..<8 {
                 group.addTask {
-                    try await self.transferFiles(key, listing: listing)
+                    try await self.work(listing: listing)
                 }
             }
             try await group.waitForAll()
@@ -24,13 +20,80 @@ extension GoogleDriveSyncManager {
         return listing.published
     }
     
-    private func transferFiles(_ key: String, listing: Listing) async throws {
-        try Task.checkCancellation()
-        progress?.current.insert(key)
-        try await recordBook(key, phase: .file) {
-            try await syncFiles(key: key, listing: listing)
+    private func work(listing: Listing) async throws {
+        while true {
+            try Task.checkCancellation()
+            let open = epubs < 3 && priority == 0
+            guard let index = jobs.firstIndex(where: { !$0.epub || open }) else {
+                if jobs.isEmpty && active == 0 {
+                    return
+                }
+                await wait()
+                continue
+            }
+            let job = jobs.remove(at: index)
+            active += 1
+            epubs += job.epub ? 1 : 0
+            progress?.current.insert(job.key)
+            var failure: Error?
+            do {
+                try await lock(job.key)
+                defer { unlock(job.key) }
+                try await recordBook(job.key, phase: .file) {
+                    if job.epub {
+                        try await downloadFile(key: job.key, fileType: .epub, listing: listing)
+                    } else {
+                        try await syncFiles(key: job.key, listing: listing)
+                    }
+                }
+            } catch {
+                failure = error
+            }
+            let succeeded = failure == nil && bookErrors[BookErrorKey(key: job.key, phase: .file)] == nil
+            let deferred = !job.epub && succeeded && wantsEpub(job.key)
+            active -= 1
+            epubs -= job.epub ? 1 : 0
+            if job.epub && succeeded {
+                downloads.remove(job.key)
+            }
+            if deferred {
+                jobs.append(Job(key: job.key, epub: true))
+            }
+            if failure != nil {
+                jobs = []
+            }
+            finishTransfer(job.key, finished: !deferred)
+            wake()
+            if let failure {
+                throw failure
+            }
         }
-        finishTransfer(key)
+    }
+    
+    private func lock(_ key: String) async throws {
+        while busy.contains(key) {
+            await wait()
+            try Task.checkCancellation()
+        }
+        busy.insert(key)
+    }
+    
+    private func unlock(_ key: String) {
+        busy.remove(key)
+        wake()
+    }
+    
+    var missingBooks: [String] {
+        store.state.books.filter { missingEpub($0.value) }.map(\.key)
+    }
+    
+    private func missingEpub(_ record: SyncRecord) -> Bool {
+        guard !record.deleted, let published = record.files[.epub], published.value != nil else { return false }
+        return (record.sources[.epub] ?? .min) < published.modified
+    }
+    
+    private func wantsEpub(_ key: String) -> Bool {
+        downloads.contains(key) && store.state.books[key].map(missingEpub) == true
     }
     
     private func syncFiles(key: String, listing: Listing) async throws {
@@ -57,14 +120,14 @@ extension GoogleDriveSyncManager {
         }
     }
     
-    private func transferDirection(_ record: SyncRecord) -> Direction? {
+    private func transferDirection(_ record: SyncRecord, epub: Bool) -> Direction? {
         let fileTypes = SyncFileType.allCases.filter { !record.deleted || $0 == .cover }
         let upload = record.attached && fileTypes.contains { fileType in
             guard let source = record.sources[fileType] else { return false }
             return (record.files[fileType]?.modified ?? .min) < source
         }
         let download = fileTypes.contains { fileType in
-            guard fileType != .epub, let published = record.files[fileType] else { return false }
+            guard fileType != .epub || epub, let published = record.files[fileType] else { return false }
             return (record.sources[fileType] ?? .min) < published.modified
         }
         switch (upload, download) {
@@ -79,19 +142,31 @@ extension GoogleDriveSyncManager {
         }
     }
     
-    private func beginTransfers(_ keys: [String]) {
-        transfers = keys.compactMap { key in
-            let record = store.state.books[key]!
-            return transferDirection(record).map {
-                QueueItem(key: key, title: bookTitle(key, deleted: record.deleted), direction: $0)
-            }
+    func enqueue(reset: Bool) {
+        if reset {
+            jobs = []
+            active = 0
+            epubs = 0
+            transfers = []
+            progress = nil
         }
-        progress = transfers.isEmpty ? nil : Progress(done: 0, total: transfers.count)
+        for key in store.state.books.keys.sorted() {
+            let job = Job(key: key, epub: false)
+            if !jobs.contains(job) {
+                jobs.append(job)
+            }
+            let record = store.state.books[key]!
+            guard !transfers.contains(where: { $0.key == key }), let direction = transferDirection(record, epub: downloads.contains(key)) else { continue }
+            transfers.append(QueueItem(key: key, title: bookTitle(key, deleted: record.deleted), direction: direction))
+            progress = progress ?? Progress(done: 0, total: 0)
+            progress?.total += 1
+        }
+        wake()
     }
     
-    private func finishTransfer(_ key: String) {
+    private func finishTransfer(_ key: String, finished: Bool) {
         progress?.current.remove(key)
-        guard transfers.contains(where: { $0.key == key }) else { return }
+        guard finished, transfers.contains(where: { $0.key == key }) else { return }
         progress?.done += 1
         if bookErrors[BookErrorKey(key: key, phase: .file)] == nil {
             transfers.removeAll { $0.key == key }
@@ -116,6 +191,13 @@ extension GoogleDriveSyncManager {
         }
         
         if enabled, store.state.books[key]?.files[.epub]?.value != nil {
+            priority += 1
+            defer {
+                priority -= 1
+                wake()
+            }
+            try await lock(key)
+            defer { unlock(key) }
             try await downloadFile(key: key, fileType: .epub, listing: Listing(), onProgress: onProgress)
         }
         

@@ -1481,6 +1481,15 @@
         }
       }
     },
+    "Download" : {
+
+    },
+    "Download All Books" : {
+
+    },
+    "Download All Books?" : {
+
+    },
     "Download from Google Drive" : {
 
     },
@@ -1664,6 +1673,9 @@
       }
     },
     "Google Drive" : {
+
+    },
+    "Google Drive already has a library. Merging combines changes from both libraries." : {
 
     },
     "Height" : {
@@ -3362,9 +3374,6 @@
         }
       }
     },
-    "Google Drive already has a library. Merging combines changes from both libraries." : {
-
-    },
     "This will clear cached folder ids and book covers." : {
       "localizations" : {
         "zh-Hans" : {
@@ -3414,6 +3423,9 @@
           }
         }
       }
+    },
+    "This will download %lld book(s) from Google Drive." : {
+
     },
     "This will permanently delete the library on Google Drive and replace it with the library from this device. Anything not on this device will be lost." : {
 

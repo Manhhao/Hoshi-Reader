@@ -142,8 +142,7 @@ struct ShelfView: View {
                                             selectedBook = downloaded
                                         }
                                     } else {
-                                        GoogleDriveSyncManager.shared.downloadTask?.cancel()
-                                        GoogleDriveSyncManager.shared.downloadTask = nil
+                                        viewModel.openTarget = nil
                                         skipSyncOnOpen = false
                                         selectedBook = book
                                     }

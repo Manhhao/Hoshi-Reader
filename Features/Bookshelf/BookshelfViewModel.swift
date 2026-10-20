@@ -26,6 +26,7 @@ class BookshelfViewModel {
     var isDownloading: Bool = false
     var importBooksProgress: String?
     var downloadingBooks: [UUID: Double] = [:]
+    var openTarget: UUID?
     var sasayakiProgress: SasayakiTranscriptionProgress?
     var sasayakiError: String?
     
@@ -35,6 +36,7 @@ class BookshelfViewModel {
     private var sasayakiBookId: UUID?
     private var loadTask: Task<Void, Never>?
     private var reloadTask: Task<Void, Never>?
+    private var menuDownloads: Task<Void, Never>?
     
     func loadBooks() {
         loadTask?.cancel()
@@ -339,22 +341,18 @@ class BookshelfViewModel {
         isSyncing = true
         Task {
             defer { isSyncing = false }
-            if UserConfig.shared.syncProvider == .ttu {
-                do {
-                    let result = try await TtuSyncManager.shared.syncBook(
-                        book: book,
-                        direction: direction,
-                        syncBookData: syncBookData,
-                        syncStats: syncStats,
-                        statsSyncMode: statsSyncMode,
-                        syncAudioBook: syncAudioBook
-                    )
-                    handleSyncResult(result)
-                } catch {
-                    showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
-                }
-            } else {
-                await GoogleDriveSyncManager.shared.sync(book: book)
+            do {
+                let result = try await TtuSyncManager.shared.syncBook(
+                    book: book,
+                    direction: direction,
+                    syncBookData: syncBookData,
+                    syncStats: syncStats,
+                    statsSyncMode: statsSyncMode,
+                    syncAudioBook: syncAudioBook
+                )
+                handleSyncResult(result)
+            } catch {
+                showError(message: String(localized: "Sync failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -429,36 +427,48 @@ class BookshelfViewModel {
     }
     
     func downloadBook(_ book: BookMetadata, onOpen: @escaping (BookMetadata) -> Void) {
+        openTarget = book.id
+        Task {
+            guard let downloaded = await download(book), openTarget == book.id else { return }
+            openTarget = nil
+            onOpen(downloaded)
+        }
+    }
+    
+    func queueDownloads(_ books: [BookMetadata]) {
+        let previous = menuDownloads
+        menuDownloads = Task {
+            await previous?.value
+            for book in books {
+                _ = await download(book)
+            }
+        }
+    }
+    
+    private func download(_ book: BookMetadata) async -> BookMetadata? {
         guard downloadingBooks[book.id] == nil else {
-            return
+            return nil
         }
         
         downloadingBooks[book.id] = 0
         let sync = GoogleDriveSyncManager.shared
-        sync.downloadTask?.cancel()
-        sync.downloadTask = Task {
-            defer {
-                downloadingBooks.removeValue(forKey: book.id)
-                if !Task.isCancelled {
-                    sync.downloadTask = nil
-                    sync.startFileSync()
-                }
-            }
-            
-            do {
-                let downloaded = try await sync.downloadBook(book) { progress in
-                    self.downloadingBooks[book.id] = progress
-                }
-                try Task.checkCancellation()
-                loadBooks()
-                onOpen(downloaded)
-            } catch is CancellationError {
-            } catch {
-                if !Task.isCancelled {
-                    showError(message: error.localizedDescription)
-                }
-            }
+        defer {
+            downloadingBooks.removeValue(forKey: book.id)
+            sync.startFileSync()
         }
+        
+        do {
+            let downloaded = try await sync.downloadBook(book) { progress in
+                self.downloadingBooks[book.id] = progress
+            }
+            loadBooks()
+            return downloaded
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
+        } catch {
+            showError(message: error.localizedDescription)
+        }
+        return nil
     }
     
     func importGoogleDriveBook(_ book: BookMetadata, syncStats: Bool, syncAudioBook: Bool) {

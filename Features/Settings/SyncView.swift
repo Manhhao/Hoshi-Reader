@@ -15,6 +15,7 @@ struct SyncView: View {
     @State private var showError = false
     @State private var showClearCacheConfirmation = false
     @State private var showSignOutConfirmation = false
+    @State private var showDownloadAllConfirmation = false
     @State private var isConnecting = false
     @State private var showQueue = false
     
@@ -163,6 +164,11 @@ struct SyncView: View {
                                 }
                             }
                             .disabled(GoogleDriveSyncManager.shared.isSyncing)
+                            
+                            Button("Download All Books") {
+                                showDownloadAllConfirmation = true
+                            }
+                            .disabled(GoogleDriveSyncManager.shared.missingBooks.isEmpty)
                         } footer: {
                             if let errorMessage = GoogleDriveSyncManager.shared.errorMessage {
                                 Text(errorMessage)
@@ -206,6 +212,14 @@ struct SyncView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This will clear cached folder ids and book covers.")
+        }
+        .alert("Download All Books?", isPresented: $showDownloadAllConfirmation) {
+            Button("Download") {
+                GoogleDriveSyncManager.shared.downloadAll()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will download \(GoogleDriveSyncManager.shared.missingBooks.count) book(s) from Google Drive.")
         }
         .onAppear {
             isAuthenticated = GoogleDriveAuth.shared.isAuthenticated(for: UserConfig.shared.syncProvider)

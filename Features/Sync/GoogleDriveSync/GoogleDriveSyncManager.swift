@@ -41,6 +41,11 @@ final class GoogleDriveSyncManager {
         var current: Set<String> = []
     }
     
+    struct Job: Equatable {
+        var key: String
+        var epub: Bool
+    }
+    
     struct BookErrorKey: Hashable {
         var key: String
         var phase: Phase
@@ -72,13 +77,19 @@ final class GoogleDriveSyncManager {
     private var fileTransferTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
-    var downloadTask: Task<Void, Never>?
     private var stopped = false
     var unsupportedFormat = false
     var attachDismissed = false
     var transfers: [QueueItem] = []
     var progress: Progress?
     var bookErrors: [BookErrorKey: BookError] = [:]
+    var jobs: [Job] = []
+    var active = 0
+    var epubs = 0
+    var priority = 0
+    var downloads: Set<String> = []
+    var busy: Set<String> = []
+    private var waiting: [CheckedContinuation<Void, Never>] = []
     
     var isSyncing: Bool { stateTask != nil || fileTransferTask != nil }
     
@@ -148,19 +159,15 @@ final class GoogleDriveSyncManager {
         debounceTask?.cancel()
         debounceTask = nil
         stateTask?.cancel()
-        fileTransferTask?.cancel()
-        
-        downloadTask?.cancel()
+        cancelFileTransfers()
         
         await GoogleDriveClient.shared.stop()
         await stateTask?.value
         await fileTransferTask?.value
         
-        await downloadTask?.value
-        
         stateTask = nil
         fileTransferTask = nil
-        downloadTask = nil
+        downloads = []
         transfers = []
         progress = nil
         bookErrors = [:]
@@ -186,7 +193,7 @@ final class GoogleDriveSyncManager {
     func setAttachPending() {
         cache.attachPending = true
         attachDismissed = false
-        fileTransferTask?.cancel()
+        cancelFileTransfers()
     }
     
     func attach(_ choice: AttachChoice) async throws {
@@ -268,22 +275,19 @@ final class GoogleDriveSyncManager {
         
         debounceTask?.cancel()
         debounceTask = nil
-        let previousFileTransfers = book == nil ? nil : fileTransferTask
         if book != nil {
             previous?.cancel()
-            previousFileTransfers?.cancel()
         }
         
         let task = Task {
             await previous?.value
-            await previousFileTransfers?.value
             
             do {
                 try await runSync(book: book)
             } catch {
                 if !Task.isCancelled {
                     failRun(error)
-                    fileTransferTask?.cancel()
+                    cancelFileTransfers()
                 }
             }
         }
@@ -297,31 +301,58 @@ final class GoogleDriveSyncManager {
             if book != nil || (errorMessage == nil && !bookErrors.keys.contains(where: { $0.phase == .state }) && (store.state.books.values.contains(where: { $0.pending }) || store.state.shelvesPending)) {
                 schedule()
             }
-            if book == nil {
-                startFileSync()
-            }
+            startFileSync()
         }
     }
     
     func startFileSync() {
-        guard enabled, !unsupportedFormat, errorMessage == nil, !isSyncing, fileTransferTask == nil, downloadTask == nil, !cache.bookFolder.isEmpty else { return }
+        guard enabled, !unsupportedFormat, errorMessage == nil, stateTask == nil, !cache.bookFolder.isEmpty else { return }
+        if fileTransferTask != nil {
+            enqueue(reset: false)
+            return
+        }
         fileTransferTask = Task {
-            defer {
-                fileTransferTask = nil
-                progress = nil
-            }
+            var published = false
             do {
-                if try await runFileSync(), !Task.isCancelled {
-                    Task {
-                        await sync()
-                    }
-                }
+                published = try await runFileSync()
             } catch {
                 if !Task.isCancelled {
                     failRun(error)
                 }
             }
+            fileTransferTask = nil
+            progress = nil
+            let queued = !jobs.isEmpty
+            jobs = []
+            guard !Task.isCancelled else { return }
+            if published {
+                Task {
+                    await sync()
+                }
+            } else if queued {
+                startFileSync()
+            }
         }
+    }
+    
+    func downloadAll() {
+        downloads.formUnion(missingBooks)
+        startFileSync()
+    }
+    
+    func wait() async {
+        await withCheckedContinuation { waiting.append($0) }
+    }
+    
+    func wake() {
+        let continuations = waiting
+        waiting = []
+        continuations.forEach { $0.resume() }
+    }
+    
+    private func cancelFileTransfers() {
+        fileTransferTask?.cancel()
+        wake()
     }
     
     func recordBook(_ key: String, phase: Phase, _ operation: () async throws -> Void) async throws {

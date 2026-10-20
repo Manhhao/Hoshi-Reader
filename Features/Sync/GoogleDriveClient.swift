@@ -107,7 +107,7 @@ final class GoogleDriveClient {
         let connection = connectionId
         var request = request
         request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : 60
-        let (data, response) = try await limited {
+        let (data, response) = try await limited(bodyFile == nil && delegate == nil) {
             try await unavailable {
                 if let bodyFile {
                     try await session.upload(for: request, fromFile: bodyFile, delegate: delegate)
@@ -146,7 +146,10 @@ final class GoogleDriveClient {
         return data
     }
     
-    private func limited<T>(_ operation: () async throws -> T) async throws -> T {
+    private func limited<T>(_ enabled: Bool, _ operation: () async throws -> T) async throws -> T {
+        guard enabled else {
+            return try await operation()
+        }
         if active < 8 {
             active += 1
         } else {
