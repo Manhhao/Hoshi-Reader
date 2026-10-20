@@ -48,6 +48,7 @@ struct HoshiReaderApp: App {
                 }
             }
             .environment(userConfig)
+            .modifier(SyncAttachAlert(active: didFinishLaunch && scenePhase == .active))
             .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme == .sepia && userConfig.sepiaInvertInDark ? nil : userConfig.theme.colorScheme))
             .task {
                 await startup()

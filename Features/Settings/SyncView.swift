@@ -56,7 +56,7 @@ struct SyncView: View {
                     HStack {
                         Text("Status")
                         Spacer()
-                        Text(isAuthenticated ? "Connected" : "Not connected")
+                        Text(isAuthenticated ? (userConfig.syncProvider == .gdrive && GoogleDriveSyncManager.shared.cache.attachPending == true ? "Choice needed" : "Connected") : "Not connected")
                             .foregroundStyle(.secondary)
                     }
                     if isAuthenticated {
@@ -157,6 +157,7 @@ struct SyncView: View {
                             .foregroundStyle(.primary)
                             
                             Button("Sync Now") {
+                                GoogleDriveSyncManager.shared.attachDismissed = false
                                 Task {
                                     await GoogleDriveSyncManager.shared.sync()
                                 }
@@ -332,6 +333,64 @@ struct SyncQueueView: View {
             "arrow.down"
         case .both:
             "arrow.up.arrow.down"
+        }
+    }
+}
+
+struct SyncAttachAlert: ViewModifier {
+    let active: Bool
+    @State private var attaching = false
+    @State private var confirmation: GoogleDriveSyncManager.AttachChoice?
+    
+    private var manager: GoogleDriveSyncManager { GoogleDriveSyncManager.shared }
+    
+    func body(content: Content) -> some View {
+        content
+            .alert("Merge Libraries?", isPresented: Binding(
+                get: { active && !attaching && confirmation == nil && !manager.attachDismissed && manager.cache.attachPending == true },
+                set: { _ in }
+            )) {
+                Button("Merge") {
+                    attach(.merge)
+                }
+                Button("Download from Google Drive", role: .destructive) {
+                    confirmation = .cloud
+                }
+                Button("Upload to Google Drive", role: .destructive) {
+                    confirmation = .device
+                }
+                Button("Cancel", role: .cancel) {
+                    manager.attachDismissed = true
+                }
+            } message: {
+                Text("Google Drive already has a library. Merging combines changes from both libraries.")
+            }
+            .alert(confirmation == .device ? "Upload to Google Drive?" : "Download from Google Drive?", isPresented: Binding(
+                get: { confirmation != nil },
+                set: { if !$0 { confirmation = nil } }
+            ), presenting: confirmation) { choice in
+                Button("Replace", role: .destructive) {
+                    attach(choice)
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: { choice in
+                if choice == .device {
+                    Text("This will permanently delete the library on Google Drive and replace it with the library from this device. Anything not on this device will be lost.")
+                } else {
+                    Text("This will permanently delete the library on this device and replace it with the library from Google Drive. Anything not on Google Drive will be lost.")
+                }
+            }
+    }
+    
+    private func attach(_ choice: GoogleDriveSyncManager.AttachChoice) {
+        attaching = true
+        Task {
+            do {
+                try await manager.attach(choice)
+            } catch {
+                manager.errorMessage = error.localizedDescription
+            }
+            attaching = false
         }
     }
 }

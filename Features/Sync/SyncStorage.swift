@@ -71,6 +71,49 @@ final class SyncStorage {
         try saveChanges()
     }
     
+    func removeDeletionRecords() throws {
+        var cleared: [URL] = []
+        for root in try SyncStorage.bookDirectories() {
+            let archived = root.deletingLastPathComponent().lastPathComponent == "statistics_archive"
+            let sessions = StatisticsStorage.load(root: root)
+            let liveSessions = sessions.filter { $0.value.value != nil }
+            if archived && liveSessions.isEmpty {
+                state.books[root.lastPathComponent.precomposedStringWithCanonicalMapping] = nil
+                cleared.append(root)
+                continue
+            }
+            if liveSessions.count != sessions.count {
+                try BookStorage.save(liveSessions, inside: root, as: FileNames.statistics)
+            }
+            if archived {
+                continue
+            }
+            
+            let highlights = BookStorage.loadHighlightRecords(root: root)
+            let liveHighlights = highlights.filter { $0.value.value != nil }
+            if liveHighlights.count != highlights.count {
+                try BookStorage.save(liveHighlights, inside: root, as: FileNames.highlights)
+            }
+            if var metadata = BookStorage.loadMetadata(root: root), let shelves = metadata.shelves {
+                let members = shelves.filter { $0.value.value }
+                if members.count != shelves.count {
+                    metadata.shelves = members
+                    try BookStorage.saveMetadata(metadata, inside: root)
+                }
+            }
+        }
+        let shelves = BookStorage.loadShelfList()
+        let liveShelves = shelves.filter { $0.value.value != nil }
+        if liveShelves.count != shelves.count {
+            try BookStorage.saveShelfList(liveShelves)
+        }
+        
+        try save()
+        for root in cleared {
+            try BookStorage.delete(at: root)
+        }
+    }
+    
     func prepareLibrary() throws {
         var empty: [URL] = []
         for root in try SyncStorage.bookDirectories() {
@@ -185,8 +228,8 @@ final class SyncStorage {
         }
         
         var record =
-            state.books[key]
-            ?? SyncRecord(generation: book.generation, deleted: book.deleted)
+        state.books[key]
+        ?? SyncRecord(generation: book.generation, deleted: book.deleted)
         
         record.generation = book.generation
         record.deleted = book.deleted
@@ -451,6 +494,15 @@ final class SyncStorage {
             guard FileManager.default.fileExists(atPath: directory.path) else { return [URL]() }
             return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
                 .filter { BookStorage.loadMetadata(root: $0) != nil }
+        }
+    }
+    
+    static func hasData() throws -> Bool {
+        try bookDirectories().contains { root in
+            if root.deletingLastPathComponent().lastPathComponent == "statistics_archive" {
+                return StatisticsStorage.load(root: root).values.contains { $0.value != nil }
+            }
+            return BookStorage.loadMetadata(root: root)?.epub != nil
         }
     }
     

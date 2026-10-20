@@ -32,6 +32,7 @@ extension GoogleDriveSyncManager {
     func runSync(book: BookMetadata?) async throws {
         do {
             try await syncState(book: book)
+        } catch is AttachPending {
         } catch {
             try? saveCache()
             throw error
@@ -107,8 +108,11 @@ extension GoogleDriveSyncManager {
                 listed = try await listRemote()
             }
             for change in page.changes where !change.removed {
-                if let file = change.file, file.parents?.contains(cache.stateFolder) == true,
-                   let key = file.stateKey {
+                guard let file = change.file, file.parents?.contains(cache.stateFolder) == true else { continue }
+                if file.isNewerFormat, file.trashed != true {
+                    throw SyncFormatError.unsupportedVersion
+                }
+                if let key = file.stateKey {
                     changed[key, default: []].append(file)
                 }
             }
@@ -120,8 +124,20 @@ extension GoogleDriveSyncManager {
     private func loadLayout() async throws {
         let layout = try await drive.layout()
         try Task.checkCancellation()
-        if !cache.root.isEmpty, cache.root != layout.root {
+        let replaced = !cache.root.isEmpty && cache.root != layout.root
+        if replaced {
             try resetConnection()
+        }
+        if cache.root.isEmpty, try SyncStorage.hasData() {
+            let files = try await drive.children(parent: layout.state)
+            try Task.checkCancellation()
+            if files.contains(where: \.isNewerFormat) {
+                throw SyncFormatError.unsupportedVersion
+            }
+            if (replaced && !layout.created) || files.contains(where: { $0.stateKey != nil }) {
+                setAttachPending()
+                throw AttachPending()
+            }
         }
         cache.root = layout.root
         cache.stateFolder = layout.state
@@ -132,6 +148,9 @@ extension GoogleDriveSyncManager {
         try await loadLayout()
         let files = try await drive.children(parent: cache.stateFolder)
         try Task.checkCancellation()
+        if files.contains(where: \.isNewerFormat) {
+            throw SyncFormatError.unsupportedVersion
+        }
         var grouped: [String: [GoogleDriveFile]] = [:]
         for file in files {
             if let key = file.stateKey {

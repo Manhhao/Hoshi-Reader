@@ -8,6 +8,8 @@ nonisolated struct GoogleDriveSyncCache: Codable {
     var bookFolder = ""
     var bookVersions: [String: [String: String]] = [:]
     var bookFolders: [String: String]?
+    var attachPending: Bool?
+    var replacedRoot: Bool?
 }
 
 @MainActor
@@ -49,6 +51,14 @@ final class GoogleDriveSyncManager {
         var message: String
     }
     
+    enum AttachChoice: String {
+        case merge
+        case device
+        case cloud
+    }
+    
+    struct AttachPending: Error {}
+    
     static let shared = GoogleDriveSyncManager()
     var errorMessage: String?
     var lastSync: Date?
@@ -65,6 +75,7 @@ final class GoogleDriveSyncManager {
     var downloadTask: Task<Void, Never>?
     private var stopped = false
     var unsupportedFormat = false
+    var attachDismissed = false
     var transfers: [QueueItem] = []
     var progress: Progress?
     var bookErrors: [BookErrorKey: BookError] = [:]
@@ -85,7 +96,7 @@ final class GoogleDriveSyncManager {
     
     var enabled: Bool {
         UserConfig.shared.enableSync && UserConfig.shared.syncProvider == .gdrive
-        && GoogleDriveAuth.shared.isAuthenticated(for: .gdrive) && !stopped
+        && GoogleDriveAuth.shared.isAuthenticated(for: .gdrive) && !stopped && cache.attachPending != true
     }
     
     private init() {
@@ -166,10 +177,59 @@ final class GoogleDriveSyncManager {
     
     func clearCache() async throws {
         await stop()
-        cache = GoogleDriveSyncCache()
+        cache = GoogleDriveSyncCache(root: cache.root, attachPending: cache.attachPending, replacedRoot: cache.replacedRoot)
         try saveCache()
         
         start()
+    }
+    
+    func setAttachPending() {
+        cache.attachPending = true
+        attachDismissed = false
+        fileTransferTask?.cancel()
+    }
+    
+    func attach(_ choice: AttachChoice) async throws {
+        await stop()
+        GoogleDriveClient.shared.resume()
+        defer { start() }
+        
+        if choice == .device {
+            cache.attachPending = nil
+            cache.replacedRoot = true
+            try saveCache()
+            do {
+                try await drive.renameRoot()
+            } catch {
+                cache.attachPending = true
+                try saveCache()
+                throw error
+            }
+            try store.removeDeletionRecords()
+        }
+        let layout = try await drive.layout()
+        if choice == .cloud {
+            try clearLibrary()
+        }
+        cache.root = layout.root
+        cache.stateFolder = layout.state
+        cache.bookFolder = layout.books
+        cache.attachPending = nil
+        try saveCache()
+    }
+    
+    private func clearLibrary() throws {
+        if let reader = ReaderIntentBridge.shared.reader {
+            reader.stopTracking()
+            reader.sasayakiPlayer.teardown()
+            reader.bookDeleted = true
+        }
+        
+        let books = try BookStorage.getBooksDirectory()
+        try FileManager.default.removeItem(at: books)
+        try FileManager.default.createDirectory(at: books, withIntermediateDirectories: true)
+        try store.reload()
+        NotificationCenter.default.post(name: SyncStorage.booksChangedNotification, object: nil)
     }
     
     func resetConnection(restoringBackup: Bool = false) throws {
@@ -180,7 +240,7 @@ final class GoogleDriveSyncManager {
         try store.prepareLibrary()
         try removePlaceholders()
         try store.resetSyncState()
-        cache = GoogleDriveSyncCache()
+        cache = GoogleDriveSyncCache(replacedRoot: cache.replacedRoot)
         unsupportedFormat = false
         errorMessage = nil
         lastSync = nil

@@ -41,7 +41,7 @@ final class GoogleDriveClient {
         config.waitsForConnectivity = false
         return URLSession(configuration: config)
     }()
-
+    
     private init() {
         pathMonitor.start(queue: DispatchQueue(label: "NetworkMonitor"))
     }
@@ -238,6 +238,18 @@ final class GoogleDriveClient {
             method: "PATCH",
             body: JSONSerialization.data(withJSONObject: ["trashed": true])
         )
+    }
+    
+    func renameFile(fileId: String, name: String) async throws {
+        _ = try await request(
+            "files/\(fileId)",
+            method: "PATCH",
+            body: JSONSerialization.data(withJSONObject: ["name": name])
+        )
+    }
+    
+    func deleteFile(fileId: String) async throws {
+        _ = try await request("files/\(fileId)", method: "DELETE", contentType: nil)
     }
 }
 

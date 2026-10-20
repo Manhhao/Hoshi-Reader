@@ -14,6 +14,8 @@ nonisolated struct GoogleDriveFile: Codable, Equatable, Sendable {
     
     var isRecent: Bool { (try? Date(createdTime, strategy: .iso8601)).map { Date.now.timeIntervalSince($0) < 86400 } ?? false }
     
+    var isNewerFormat: Bool { name.hasPrefix(".format-") && Int(name.dropFirst(8)).map { $0 > 1 } == true }
+    
     var stateKey: String? { name.hasSuffix(".json") && !isFolder ? String(name.dropLast(5)).precomposedStringWithCanonicalMapping : nil }
 }
 
@@ -65,11 +67,44 @@ final class GoogleDriveSyncHandler {
         return try JSONDecoder().decode(GoogleDriveChanges.self, from: data)
     }
     
-    func layout() async throws -> (root: String, state: String, books: String) {
-        let root = try await folder(parent: "root", name: "Hoshi Reader", create: true)!
+    func layout() async throws -> (root: String, state: String, books: String, created: Bool) {
+        let existing = try await folder(parent: "root", name: "Hoshi Reader", create: false)
+        let root = if let existing { existing } else { try await createFolder(parent: "root", name: "Hoshi Reader") }
         let state = try await folder(parent: root, name: "state", create: true)!
         let books = try await folder(parent: root, name: "books", create: true)!
-        return (root, state, books)
+        return (root, state, books, existing == nil)
+    }
+    
+    func renameRoot() async throws {
+        for folder in try await children(parent: "root", name: "Hoshi Reader") where folder.isFolder {
+            try await GoogleDriveClient.shared.renameFile(fileId: folder.id, name: "Hoshi Reader (replaced)")
+        }
+    }
+    
+    func removeReplaced() async throws {
+        for folder in try await children(parent: "root", name: "Hoshi Reader (replaced)") {
+            try await deleteTree(folder.id)
+        }
+    }
+    
+    private func deleteTree(_ id: String) async throws {
+        do {
+            return try await GoogleDriveClient.shared.deleteFile(fileId: id)
+        } catch GoogleDriveError.apiError {
+        }
+        let files = try await children(parent: id)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (index, file) in files.enumerated() {
+                if index >= 8 {
+                    try await group.next()
+                }
+                group.addTask {
+                    try await self.deleteTree(file.id)
+                }
+            }
+            try await group.waitForAll()
+        }
+        try await GoogleDriveClient.shared.deleteFile(fileId: id)
     }
     
     func folder(parent: String, name: String, create: Bool) async throws -> String? {

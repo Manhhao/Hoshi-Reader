@@ -17,6 +17,10 @@ extension GoogleDriveSyncManager {
             try await group.waitForAll()
         }
         try saveCache()
+        if cache.replacedRoot == true, (try? await drive.removeReplaced()) != nil {
+            cache.replacedRoot = nil
+            try saveCache()
+        }
         return listing.published
     }
     
@@ -164,8 +168,8 @@ extension GoogleDriveSyncManager {
     private func canPublish(key: String, fileType: SyncFileType, source: Int64, generation: Int) -> Bool {
         let record = store.state.books[key]!
         return record.generation == generation && record.sources[fileType] == source
-            && (!record.deleted || fileType == .cover)
-            && (record.files[fileType]?.modified ?? .min) <= source
+        && (!record.deleted || fileType == .cover)
+        && (record.files[fileType]?.modified ?? .min) <= source
     }
     
     private func downloadFile(key: String, fileType: SyncFileType, listing: Listing, onProgress: @MainActor @Sendable @escaping (Double) -> Void = { _ in }) async throws {
