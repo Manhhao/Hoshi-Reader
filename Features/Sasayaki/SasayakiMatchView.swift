@@ -199,6 +199,9 @@ struct SasayakiMatchView: View {
         guard case .transcribing(_, _, let remaining) = viewModel.sasayakiProgress, let remaining else {
             return nil
         }
+        if remaining < 60 {
+            return "less than 1 min left"
+        }
         let minutes = Int((remaining / 60).rounded(.up))
         return "about \(minutes) min left"
     }
