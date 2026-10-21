@@ -103,11 +103,6 @@ extension GoogleDriveSyncManager {
         downloads.contains(key) && store.state.books[key].map(missingEpub) == true
     }
     
-    private func needsEpubUpload(_ record: SyncRecord) -> Bool {
-        guard record.attached, !record.deleted, let source = record.sources[.epub] else { return false }
-        return (record.files[.epub]?.modified ?? .min) < source
-    }
-    
     private func pendingFiles(key: String, record: SyncRecord, epub: Bool, listing: Listing?) -> [(fileType: SyncFileType, direction: Direction, size: Int64?)] {
         var files: [(fileType: SyncFileType, direction: Direction, size: Int64?)] = []
         for fileType in SyncFileType.allCases where !record.deleted || fileType == .cover {
@@ -237,7 +232,7 @@ extension GoogleDriveSyncManager {
             let files = pendingFiles(key: key, record: record, epub: downloads.contains(key), listing: nil)
             count(key, files: files)
             if !jobs.contains(where: { $0.key == key }) {
-                jobs.append(Job(key: key, epub: needsEpubUpload(record) || (downloads.contains(key) && missingEpub(record))))
+                jobs.append(Job(key: key, epub: files.contains { $0.fileType == .epub }))
             }
             guard !transfers.contains(where: { $0.key == key }), let direction = transferDirection(record, epub: downloads.contains(key)) else { continue }
             let metadata = record.deleted ? nil : (try? SyncStorage.bookDirectory(folder: key)).flatMap { BookStorage.loadMetadata(root: $0) }
