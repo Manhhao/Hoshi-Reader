@@ -47,6 +47,38 @@ nonisolated struct TtuStatistics: Codable, Equatable {
         return hash.withUnsafeBytes { UUID(uuid: $0.load(as: uuid_t.self)) }.uuidString
     }
     
+    static func reconciled(_ sessions: [String: Timestamped<ReadingSession?>], key: String, resetTime: Int) -> [String: Timestamped<ReadingSession?>] {
+        var sessions = sessions
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = .current
+        formatter.formatOptions = [.withFullDate]
+        
+        for day in StatisticsDay.grouped(sessions, resetTime: resetTime) {
+            let id = legacyId(key: key, dateKey: formatter.string(from: day.date))
+            guard var merged = day.sessions[id]?.value else {
+                continue
+            }
+            
+            let counted = day.sessions.filter { $0.key != id }.values.compactMap(\.value).filter {
+                $0.startedAt < merged.endedAt
+            }
+            guard let earliest = counted.map(\.startedAt).min() else {
+                continue
+            }
+            
+            merged.charactersRead -= counted.reduce(0) { $0 + $1.charactersRead }
+            merged.readingTime -= counted.reduce(0) { $0 + $1.readingTime }
+            merged.endedAt = earliest
+            merged.startedAt = min(merged.startedAt, earliest)
+            sessions[id] = Timestamped(
+                modified: Date.now.milliseconds,
+                value: merged.charactersRead > 0 && merged.readingTime > 0 ? merged : nil
+            )
+        }
+        
+        return sessions
+    }
+    
     @MainActor
     static func export(_ sessions: [String: Timestamped<ReadingSession?>], title: String) -> [TtuStatistics] {
         let days = StatisticsDay.grouped(sessions, resetTime: UserConfig.shared.statisticsResetTime)
@@ -95,7 +127,7 @@ nonisolated struct TtuStatistics: Codable, Equatable {
                 continue
             }
             
-            var id = previous.keys.min() ?? legacyId(key: key, dateKey: imported.dateKey)
+            var id = legacyId(key: key, dateKey: imported.dateKey)
             if previous[id] == nil && sessions[id] != nil {
                 id = UUID().uuidString
             }

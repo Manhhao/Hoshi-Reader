@@ -273,7 +273,9 @@ extension GoogleDriveSyncManager {
         if !book.attached && !book.deleted && !remote.deleted {
             local.generation = remote.generation
         }
-        try store.applyBook(key: key, book: SyncBook.merge(local, remote))
+        var merged = SyncBook.merge(local, remote)
+        merged.sessions = TtuStatistics.reconciled(merged.sessions, key: key, resetTime: UserConfig.shared.statisticsResetTime)
+        try store.applyBook(key: key, book: merged)
     }
     
     private func syncShelves() async throws {
