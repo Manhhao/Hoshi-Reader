@@ -10,6 +10,7 @@ nonisolated struct GoogleDriveSyncCache: Codable {
     var bookFolders: [String: String]?
     var attachPending: Bool?
     var replacedRoot: Bool?
+    var uploadSessions: [String: String]?
 }
 
 @MainActor
@@ -31,8 +32,45 @@ final class GoogleDriveSyncManager {
         var title: String
         var direction: Direction?
         var error: String?
+        var transfer: Transfer?
+        var coverURL: URL?
+        var size: Int64?
         
         var id: String { key }
+    }
+    
+    enum TransferState {
+        case moving
+        case interrupted
+    }
+    
+    struct Transfer {
+        var direction: Direction
+        var done: Int64
+        var total: Int64
+        var state: TransferState
+    }
+    
+    struct Moving {
+        var direction: Direction
+        var done: Int64 = 0
+        var total: Int64
+    }
+    
+    struct Flow {
+        var done: Int64 = 0
+        var total: Int64 = 0
+        var counted: Set<String> = []
+        var speed: Double = 0
+        var sampled: (date: Date, done: Int64)?
+        var started: Date?
+    }
+    
+    struct FlowSummary {
+        var done: Int64
+        var total: Int64
+        var speed: Double
+        var remaining: TimeInterval?
     }
     
     struct Progress {
@@ -89,12 +127,19 @@ final class GoogleDriveSyncManager {
     var priority = 0
     var downloads: Set<String> = []
     var busy: Set<String> = []
+    var moving: [String: Moving] = [:]
+    var interrupted: [String: Transfer] = [:]
+    var uploadFlow = Flow()
+    var downloadFlow = Flow()
     private var waiting: [CheckedContinuation<Void, Never>] = []
     
     var isSyncing: Bool { stateTask != nil || fileTransferTask != nil }
     
     var queue: [QueueItem] {
         var queue = transfers
+        for index in queue.indices {
+            queue[index].transfer = transfer(queue[index].key)
+        }
         for (id, error) in bookErrors.sorted(by: { ($0.key.key, $0.key.phase) < ($1.key.key, $1.key.phase) }) {
             if let index = queue.firstIndex(where: { $0.key == id.key }) {
                 queue[index].error = queue[index].error ?? error.message
@@ -103,6 +148,57 @@ final class GoogleDriveSyncManager {
             }
         }
         return queue
+    }
+    
+    var uploadSummary: FlowSummary? {
+        summary(uploadFlow, direction: .upload)
+    }
+    
+    var downloadSummary: FlowSummary? {
+        summary(downloadFlow, direction: .download)
+    }
+    
+    private func transfer(_ key: String) -> Transfer? {
+        if let moving = moving[key] {
+            return Transfer(direction: moving.direction, done: min(moving.done, moving.total), total: moving.total, state: .moving)
+        }
+        return interrupted[key]
+    }
+    
+    private func movingBytes(_ direction: Direction) -> Int64 {
+        moving.values.filter { $0.direction == direction }.reduce(0) { $0 + $1.done }
+    }
+    
+    private func summary(_ flow: Flow, direction: Direction) -> FlowSummary? {
+        guard progress != nil else { return nil }
+        let done = min(flow.done + movingBytes(direction), flow.total)
+        guard done < flow.total else { return nil }
+        let remaining = flow.started.flatMap { started -> TimeInterval? in
+            guard Date().timeIntervalSince(started) >= 60, flow.speed > 1 else { return nil }
+            return Double(flow.total - done) / flow.speed
+        }
+        return FlowSummary(done: done, total: flow.total, speed: flow.speed, remaining: remaining)
+    }
+    
+    func sampleFlows() {
+        sample(&uploadFlow, moving: movingBytes(.upload))
+        sample(&downloadFlow, moving: movingBytes(.download))
+    }
+    
+    private func sample(_ flow: inout Flow, moving: Int64) {
+        let now = Date()
+        let done = flow.done + moving
+        if let sampled = flow.sampled {
+            let elapsed = now.timeIntervalSince(sampled.date)
+            if elapsed > 0 {
+                let rate = Double(max(done - sampled.done, 0)) / elapsed
+                flow.speed += (rate - flow.speed) * min(elapsed / 30, 1)
+            }
+        }
+        if done > 0, flow.started == nil {
+            flow.started = now
+        }
+        flow.sampled = (now, done)
     }
     
     var enabled: Bool {
@@ -171,6 +267,8 @@ final class GoogleDriveSyncManager {
         transfers = []
         progress = nil
         bookErrors = [:]
+        moving = [:]
+        interrupted = [:]
     }
     
     func signOut() async throws {

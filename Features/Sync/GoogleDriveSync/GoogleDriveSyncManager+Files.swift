@@ -4,6 +4,14 @@ extension GoogleDriveSyncManager {
     func runFileSync() async throws -> Bool {
         enqueue(reset: true)
         let listing = progress == nil ? Listing() : try await listFiles()
+        countSizes(listing)
+        let ticker = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                sampleFlows()
+            }
+        }
+        defer { ticker.cancel() }
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<8 {
                 group.addTask {
@@ -23,7 +31,7 @@ extension GoogleDriveSyncManager {
     private func work(listing: Listing) async throws {
         while true {
             try Task.checkCancellation()
-            let open = epubs < 3 && priority == 0
+            let open = epubs < 4 && priority == 0
             guard let index = jobs.firstIndex(where: { !$0.epub || open }) else {
                 if jobs.isEmpty && active == 0 {
                     return
@@ -40,10 +48,9 @@ extension GoogleDriveSyncManager {
                 try await lock(job.key)
                 defer { unlock(job.key) }
                 try await recordBook(job.key, phase: .file) {
-                    if job.epub {
+                    try await syncFiles(key: job.key, listing: listing)
+                    if job.epub && wantsEpub(job.key) {
                         try await downloadFile(key: job.key, fileType: .epub, listing: listing)
-                    } else {
-                        try await syncFiles(key: job.key, listing: listing)
                     }
                 }
             } catch {
@@ -62,7 +69,7 @@ extension GoogleDriveSyncManager {
             if failure != nil {
                 jobs = []
             }
-            finishTransfer(job.key, finished: !deferred)
+            finishTransfer(job.key, finished: !deferred && failure == nil)
             wake()
             if let failure {
                 throw failure
@@ -94,6 +101,77 @@ extension GoogleDriveSyncManager {
     
     private func wantsEpub(_ key: String) -> Bool {
         downloads.contains(key) && store.state.books[key].map(missingEpub) == true
+    }
+    
+    private func needsEpubUpload(_ record: SyncRecord) -> Bool {
+        guard record.attached, !record.deleted, let source = record.sources[.epub] else { return false }
+        return (record.files[.epub]?.modified ?? .min) < source
+    }
+    
+    private func pendingFiles(key: String, record: SyncRecord, epub: Bool, listing: Listing?) -> [(fileType: SyncFileType, direction: Direction, size: Int64?)] {
+        var files: [(fileType: SyncFileType, direction: Direction, size: Int64?)] = []
+        for fileType in SyncFileType.allCases where !record.deleted || fileType == .cover {
+            let source = record.sources[fileType]
+            let published = record.files[fileType]
+            if record.attached, let source, (published?.modified ?? .min) < source {
+                let url = try? store.sourceURL(key: key, fileType: fileType)
+                let size = url.flatMap { (try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? NSNumber)?.int64Value } ?? 0
+                files.append((fileType, .upload, size))
+            } else if fileType != .epub || epub, let published, (source ?? .min) < published.modified, let name = published.value {
+                files.append((fileType, .download, listing.flatMap { size($0, key: key, generation: record.generation, name: name) }))
+            }
+        }
+        return files
+    }
+    
+    private func count(_ key: String, files: [(fileType: SyncFileType, direction: Direction, size: Int64?)]) {
+        for file in files {
+            guard let size = file.size else { continue }
+            if file.direction == .download {
+                if downloadFlow.counted.insert("\(key)/\(file.fileType)").inserted {
+                    downloadFlow.total += size
+                }
+            } else if uploadFlow.counted.insert("\(key)/\(file.fileType)").inserted {
+                uploadFlow.total += size
+            }
+        }
+    }
+    
+    private func size(of files: [(fileType: SyncFileType, direction: Direction, size: Int64?)]) -> Int64? {
+        files.reduce(Int64(0)) { total, file in total.flatMap { total in file.size.map { total + $0 } } }
+    }
+    
+    private func countSizes(_ listing: Listing) {
+        for index in transfers.indices {
+            let key = transfers[index].key
+            guard let record = store.state.books[key] else { continue }
+            let files = pendingFiles(key: key, record: record, epub: downloads.contains(key), listing: listing)
+            count(key, files: files)
+            transfers[index].size = size(of: files)
+        }
+    }
+    
+    private func begin(_ key: String, fileType: SyncFileType, direction: Direction, total: Int64) {
+        count(key, files: [(fileType, direction, total)])
+        interrupted[key] = nil
+        moving[key] = Moving(direction: direction, total: total)
+    }
+    
+    private func advance(_ key: String, to bytes: Int64) {
+        moving[key]?.done = max(bytes, 0)
+    }
+    
+    private func end(_ key: String, succeeded: Bool) {
+        guard let moving = moving.removeValue(forKey: key) else { return }
+        if succeeded {
+            if moving.direction == .download {
+                downloadFlow.done += moving.total
+            } else {
+                uploadFlow.done += moving.total
+            }
+        } else {
+            interrupted[key] = Transfer(direction: moving.direction, done: min(moving.done, moving.total), total: moving.total, state: .interrupted)
+        }
     }
     
     private func syncFiles(key: String, listing: Listing) async throws {
@@ -149,15 +227,21 @@ extension GoogleDriveSyncManager {
             epubs = 0
             transfers = []
             progress = nil
+            moving = [:]
+            interrupted = [:]
+            uploadFlow = Flow()
+            downloadFlow = Flow()
         }
         for key in store.state.books.keys.sorted() {
-            let job = Job(key: key, epub: false)
-            if !jobs.contains(job) {
-                jobs.append(job)
-            }
             let record = store.state.books[key]!
+            let files = pendingFiles(key: key, record: record, epub: downloads.contains(key), listing: nil)
+            count(key, files: files)
+            if !jobs.contains(where: { $0.key == key }) {
+                jobs.append(Job(key: key, epub: needsEpubUpload(record) || (downloads.contains(key) && missingEpub(record))))
+            }
             guard !transfers.contains(where: { $0.key == key }), let direction = transferDirection(record, epub: downloads.contains(key)) else { continue }
-            transfers.append(QueueItem(key: key, title: bookTitle(key, deleted: record.deleted), direction: direction))
+            let metadata = record.deleted ? nil : (try? SyncStorage.bookDirectory(folder: key)).flatMap { BookStorage.loadMetadata(root: $0) }
+            transfers.append(QueueItem(key: key, title: metadata?.title ?? bookTitle(key, deleted: record.deleted), direction: direction, coverURL: metadata?.coverURL, size: size(of: files)))
             progress = progress ?? Progress(done: 0, total: 0)
             progress?.total += 1
         }
@@ -232,7 +316,17 @@ extension GoogleDriveSyncManager {
         let fileName = url.lastPathComponent.precomposedStringWithCanonicalMapping
         let name = fileType == .sasayaki ? "\(source)-\(fileName)" : fileName
         
-        try await upload(listing, key: key, generation: record.generation, name: name, file: url)
+        let total = (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
+        begin(key, fileType: fileType, direction: .upload, total: total)
+        do {
+            try await upload(listing, key: key, generation: record.generation, name: name, file: url, resumable: fileType == .epub) { [weak self] bytes in
+                self?.advance(key, to: bytes)
+            }
+            end(key, succeeded: true)
+        } catch {
+            end(key, succeeded: false)
+            throw error
+        }
         try Task.checkCancellation()
         if !canPublish(key: key, fileType: fileType, source: source, generation: record.generation) {
             return
@@ -279,7 +373,19 @@ extension GoogleDriveSyncManager {
         guard let file = try await findFile(listing, key: key, generation: record.generation, name: name) else {
             throw GoogleDriveError.apiError("\(name) is missing from Google Drive.", statusCode: 404)
         }
-        let data = try await drive.download(file, onProgress: onProgress)
+        let size = file.size.flatMap { Int64($0) } ?? 0
+        let data: Data
+        begin(key, fileType: fileType, direction: .download, total: size)
+        do {
+            data = try await drive.download(file) { [weak self] fraction in
+                self?.advance(key, to: Int64(fraction * Double(size)))
+                onProgress(fraction)
+            }
+            end(key, succeeded: true)
+        } catch {
+            end(key, succeeded: false)
+            throw error
+        }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer {
             try? FileManager.default.removeItem(at: temporary)

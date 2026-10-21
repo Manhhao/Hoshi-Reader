@@ -166,12 +166,12 @@ final class GoogleDriveSyncHandler {
         try await client.request("files/\(file.id)", query: [URLQueryItem(name: "alt", value: "media")])
     }
     
-    func upload(file: URL, fileName: String, folder: String) async throws {
+    func upload(file: URL, fileName: String, folder: String, onProgress: @MainActor @Sendable @escaping (Int64) -> Void) async throws {
         let existing = try await children(parent: folder, name: fileName)
         if !existing.isEmpty {
             return
         }
-        try await client.write(file: file, name: fileName, parent: folder)
+        try await client.write(file: file, name: fileName, parent: folder, onProgress: onProgress)
     }
     
     func download(_ file: GoogleDriveFile, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {

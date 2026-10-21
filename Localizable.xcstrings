@@ -179,6 +179,16 @@
         }
       }
     },
+    "%@ of %@ MB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ MB"
+          }
+        }
+      }
+    },
     "%lld" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -289,6 +299,19 @@
     },
     "%lld failed" : {
 
+    },
+    "%lld more" : {
+
+    },
+    "%lld of %lld KB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld KB"
+          }
+        }
+      }
     },
     "%lld/s" : {
 
@@ -447,6 +470,9 @@
           }
         }
       }
+    },
+    "about %lld min left" : {
+
     },
     "Add Shelf" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -1062,6 +1088,9 @@
         }
       }
     },
+    "Connection lost" : {
+
+    },
     "Contents" : {
       "comment" : "Context: Reader toolbar. Opens the contents sheet containing chapters, highlights, an image gallery, and in-book search.",
       "localizations" : {
@@ -1496,6 +1525,9 @@
     "Download from Google Drive?" : {
 
     },
+    "Downloading" : {
+
+    },
     "Empty" : {
 
     },
@@ -1531,6 +1563,9 @@
           }
         }
       }
+    },
+    "Failed" : {
+
     },
     "Failed to construct authentication URL" : {
       "localizations" : {
@@ -1951,6 +1986,9 @@
           }
         }
       }
+    },
+    "less than 1 min left" : {
+
     },
     "Light" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -3363,6 +3401,9 @@
     "Text Speed" : {
 
     },
+    "The upload expired and will start over." : {
+
+    },
     "Theme" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -3573,6 +3614,9 @@
     "Upload to Google Drive?" : {
 
     },
+    "Uploading" : {
+
+    },
     "Uploads books on first sync if no bookdata is stored on Google Drive." : {
       "localizations" : {
         "zh-Hans" : {
@@ -3626,6 +3670,9 @@
           }
         }
       }
+    },
+    "Waiting" : {
+
     },
     "Week" : {
       "comment" : "Context: Statistics > Reading Time. Segmented period selector for week, month, year, or all recorded time.",

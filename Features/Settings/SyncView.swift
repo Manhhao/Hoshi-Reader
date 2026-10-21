@@ -17,7 +17,6 @@ struct SyncView: View {
     @State private var showSignOutConfirmation = false
     @State private var showDownloadAllConfirmation = false
     @State private var isConnecting = false
-    @State private var showQueue = false
     
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -124,8 +123,8 @@ struct SyncView: View {
                             let queue = GoogleDriveSyncManager.shared.queue
                             let progress = GoogleDriveSyncManager.shared.progress
                             let failed = queue.filter { $0.error != nil }.count
-                            Button {
-                                showQueue = true
+                            NavigationLink {
+                                SyncQueueView()
                             } label: {
                                 VStack(spacing: 8) {
                                     HStack {
@@ -146,16 +145,20 @@ struct SyncView: View {
                                             Text("Empty")
                                                 .foregroundStyle(.secondary)
                                         }
-                                        Image(systemName: "chevron.right")
-                                            .font(.footnote.weight(.semibold))
-                                            .foregroundStyle(.tertiary)
                                     }
-                                    if let progress {
+                                    let upload = GoogleDriveSyncManager.shared.uploadSummary
+                                    let download = GoogleDriveSyncManager.shared.downloadSummary
+                                    if let progress, upload == nil, download == nil {
                                         ProgressView(value: Double(progress.done), total: Double(progress.total))
+                                    }
+                                    if let upload {
+                                        SyncFlowView(label: "Uploading", summary: upload)
+                                    }
+                                    if let download {
+                                        SyncFlowView(label: "Downloading", summary: download)
                                     }
                                 }
                             }
-                            .foregroundStyle(.primary)
                             
                             Button("Sync Now") {
                                 GoogleDriveSyncManager.shared.attachDismissed = false
@@ -189,9 +192,6 @@ struct SyncView: View {
             }
         }
         .navigationTitle("Syncing")
-        .sheet(isPresented: $showQueue) {
-            SyncQueueView()
-        }
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
         } message: {
@@ -289,53 +289,113 @@ struct SyncView: View {
 }
 
 struct SyncQueueView: View {
-    @Environment(\.dismiss) private var dismiss
-    
     var body: some View {
         let queue = GoogleDriveSyncManager.shared.queue
-        let current = GoogleDriveSyncManager.shared.progress?.current
-        NavigationStack {
-            List(queue) { item in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            if let direction = item.direction {
-                                Image(systemName: imageOfDirection(direction))
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Text(item.title)
-                                .lineLimit(1)
-                        }
-                        if let error = item.error {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                                .textSelection(.enabled)
-                        }
-                    }
-                    Spacer()
-                    if current?.contains(item.key) == true {
-                        ProgressView()
+        let current = GoogleDriveSyncManager.shared.progress?.current ?? []
+        let failed = queue.filter { $0.error != nil }
+        let inProgress = queue.filter { $0.error == nil && ($0.transfer != nil || current.contains($0.key)) }
+        let upNext = queue.filter { item in item.error == nil && !inProgress.contains { $0.key == item.key } }
+        List {
+            if !inProgress.isEmpty {
+                Section("Syncing") {
+                    ForEach(inProgress) { item in
+                        row(item, active: current.contains(item.key))
                     }
                 }
             }
-            .overlay {
-                if queue.isEmpty {
-                    ContentUnavailableView("All Books Synced", systemImage: "checkmark.icloud")
-                }
-            }
-            .navigationTitle("Queue")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
+            if !upNext.isEmpty {
+                Section("Waiting") {
+                    ForEach(upNext.prefix(5)) { item in
+                        row(item, active: false)
+                    }
+                    if upNext.count > 5 {
+                        Text("\(upNext.count - 5) more")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
+            if !failed.isEmpty {
+                Section("Failed") {
+                    ForEach(failed) { item in
+                        row(item, active: false)
+                    }
+                }
+            }
+        }
+        .overlay {
+            if queue.isEmpty {
+                ContentUnavailableView("All Books Synced", systemImage: "checkmark.icloud")
+            }
+        }
+        .navigationTitle("Queue")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func row(_ item: GoogleDriveSyncManager.QueueItem, active: Bool) -> some View {
+        let direction = item.transfer.flatMap { $0.state == .interrupted ? nil : $0.direction } ?? item.direction
+        return HStack(spacing: 12) {
+            CoverImage(url: item.coverURL, maxPixelSize: 120) { image in
+                image
+                    .resizable()
+                    .aspectRatio(0.709, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            } placeholder: {
+                CoverFallback(title: item.title, aspectRatio: 0.709, cornerRadius: 4)
+            }
+            .frame(width: 34)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    if let direction {
+                        Image(systemName: imageOfDirection(direction))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(item.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if item.transfer == nil, item.error == nil, let size = item.size {
+                    Text(syncByteSize(size))
+                        .font(.footnote)
+                        .foregroundStyle(Color(.tertiaryLabel))
+                        .monospacedDigit()
+                }
+                if let transfer = item.transfer {
+                    ProgressView(value: Double(transfer.done), total: Double(max(transfer.total, 1)))
+                        .tint(transfer.state == .interrupted ? .gray : .accentColor)
+                    HStack {
+                        Text(transferText(transfer))
+                            .lineLimit(1)
+                            .foregroundStyle(Color(.tertiaryLabel))
+                        Spacer()
+                        Text("\(Int(Double(transfer.done) / Double(max(transfer.total, 1)) * 100))%")
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    }
+                    .font(.footnote)
+                    .monospacedDigit()
+                }
+                if let error = item.error {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
+            }
+            if item.transfer == nil, active {
+                ProgressView()
+            }
+        }
+    }
+    
+    private func transferText(_ transfer: GoogleDriveSyncManager.Transfer) -> String {
+        switch transfer.state {
+        case .interrupted:
+            return String(localized: "Connection lost")
+        case .moving:
+            return syncByteAmount(transfer.done, transfer.total)
         }
     }
     
@@ -349,6 +409,48 @@ struct SyncQueueView: View {
             "arrow.up.arrow.down"
         }
     }
+}
+
+struct SyncFlowView: View {
+    let label: LocalizedStringKey
+    let summary: GoogleDriveSyncManager.FlowSummary
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text(label)
+                Spacer()
+                Text(syncByteSpeed(summary.speed))
+                    .monospacedDigit()
+            }
+            ProgressView(value: Double(summary.done), total: Double(max(summary.total, 1)))
+            HStack {
+                Text(syncByteAmount(summary.done, summary.total))
+                    .monospacedDigit()
+                Spacer()
+                if let remaining = summary.remaining {
+                    Text(remaining < 60 ? "less than 1 min left" : "about \(Int((remaining / 60).rounded(.up))) min left")
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+}
+
+private func syncByteAmount(_ done: Int64, _ total: Int64) -> String {
+    if total >= 1_000_000 {
+        return String(localized: "\(String(format: "%.1f", Double(done) / 1e6)) of \(String(format: "%.1f", Double(total) / 1e6)) MB")
+    }
+    return String(localized: "\(Int((Double(done) / 1e3).rounded())) of \(max(1, Int((Double(total) / 1e3).rounded()))) KB")
+}
+
+private func syncByteSize(_ bytes: Int64) -> String {
+    bytes >= 1_000_000 ? String(format: "%.1f MB", Double(bytes) / 1e6) : "\(max(1, Int((Double(bytes) / 1e3).rounded()))) KB"
+}
+
+private func syncByteSpeed(_ bytes: Double) -> String {
+    bytes >= 1e6 ? String(format: "%.1f MB/s", bytes / 1e6) : String(format: "%.0f KB/s", bytes / 1e3)
 }
 
 struct SyncAttachAlert: ViewModifier {

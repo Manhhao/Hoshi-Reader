@@ -97,6 +97,10 @@ final class GoogleDriveClient {
     }
     
     func performRequest(_ request: URLRequest, bodyFile: URL? = nil, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil, attempt: Int = 0) async throws -> Data {
+        try await performResponse(request, bodyFile: bodyFile, retry: retry, delegate: delegate, attempt: attempt).0
+    }
+    
+    private func performResponse(_ request: URLRequest, bodyFile: URL? = nil, retry: Bool = true, delegate: URLSessionTaskDelegate? = nil, attempt: Int = 0) async throws -> (Data, HTTPURLResponse) {
         if isStopped {
             throw URLError(.cancelled)
         }
@@ -106,7 +110,7 @@ final class GoogleDriveClient {
         
         let connection = connectionId
         var request = request
-        request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : 60
+        request.timeoutInterval = UserConfig.shared.syncProvider == .ttu ? 10 : bodyFile != nil ? 150 : 60
         let (data, response) = try await limited(bodyFile == nil && delegate == nil) {
             try await unavailable {
                 if let bodyFile {
@@ -127,14 +131,14 @@ final class GoogleDriveClient {
             try Task.checkCancellation()
             var newRequest = request
             newRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-            return try await performRequest(newRequest, bodyFile: bodyFile, retry: false, delegate: delegate, attempt: attempt)
+            return try await performResponse(newRequest, bodyFile: bodyFile, retry: false, delegate: delegate, attempt: attempt)
         }
         if httpResponse.statusCode >= 400 {
             let error = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? [String: Any]
             if attempt < 4, isTransient(request, status: httpResponse.statusCode, error: error) {
                 try await Task.sleep(for: .seconds(pow(2, Double(attempt)) + Double.random(in: 0..<1)))
                 try checkConnection(connection)
-                return try await performRequest(request, bodyFile: bodyFile, retry: retry, delegate: delegate, attempt: attempt + 1)
+                return try await performResponse(request, bodyFile: bodyFile, retry: retry, delegate: delegate, attempt: attempt + 1)
             }
             if let message = error?["message"] as? String {
                 throw GoogleDriveError.apiError(message, statusCode: httpResponse.statusCode)
@@ -143,7 +147,7 @@ final class GoogleDriveClient {
             throw GoogleDriveError.apiError("Request failed with status \(httpResponse.statusCode)", statusCode: httpResponse.statusCode)
         }
         
-        return data
+        return (data, httpResponse)
     }
     
     private func limited<T>(_ enabled: Bool, _ operation: () async throws -> T) async throws -> T {
@@ -186,7 +190,7 @@ final class GoogleDriveClient {
     }
     
     @discardableResult
-    func write(file: URL, name: String, parent: String, contentType: String = "application/octet-stream") async throws -> GoogleDriveFile {
+    func write(file: URL, name: String, parent: String, contentType: String = "application/octet-stream", onProgress: (@MainActor @Sendable (Int64) -> Void)? = nil) async throws -> GoogleDriveFile {
         let boundary = UUID().uuidString
         let prefix = try multipartPrefix(boundary: boundary, name: name, parent: parent, fileId: nil, contentType: contentType)
         let bodyFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -199,7 +203,7 @@ final class GoogleDriveClient {
             try output.write(contentsOf: Data(contentsOf: file, options: .alwaysMapped))
             try output.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
         }.value
-        return try await write(fileId: nil, boundary: boundary, bodyFile: bodyFile)
+        return try await write(fileId: nil, boundary: boundary, bodyFile: bodyFile, delegate: onProgress.map { UploadProgress(offset: -Int64(prefix.count), onProgress: $0) })
     }
     
     private func multipartPrefix(boundary: String, name: String, parent: String, fileId: String?, contentType: String) throws -> Data {
@@ -213,7 +217,7 @@ final class GoogleDriveClient {
         return prefix
     }
     
-    private func write(fileId: String?, boundary: String, body: Data? = nil, bodyFile: URL? = nil) async throws -> GoogleDriveFile {
+    private func write(fileId: String?, boundary: String, body: Data? = nil, bodyFile: URL? = nil, delegate: URLSessionTaskDelegate? = nil) async throws -> GoogleDriveFile {
         let response = try await request(
             fileId.map { "files/\($0)" } ?? "files",
             query: [URLQueryItem(name: "uploadType", value: "multipart"), URLQueryItem(name: "fields", value: "id,name,mimeType,md5Checksum,createdTime")],
@@ -221,9 +225,83 @@ final class GoogleDriveClient {
             body: body,
             bodyFile: bodyFile,
             contentType: "multipart/related; boundary=\(boundary)",
-            upload: true
+            upload: true,
+            delegate: delegate
         )
         return try JSONDecoder().decode(GoogleDriveFile.self, from: response)
+    }
+    
+    enum UploadResult {
+        case done
+        case received(Int64)
+        case expired
+    }
+    
+    func startUpload(name: String, parent: String, total: Int64) async throws -> String {
+        var request = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable")!)
+        request.httpMethod = "POST"
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["name": name, "parents": [parent]])
+        request.setValue("application/json; charset=UTF-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/octet-stream", forHTTPHeaderField: "X-Upload-Content-Type")
+        request.setValue(String(total), forHTTPHeaderField: "X-Upload-Content-Length")
+        request.setValue("Bearer \(try await unavailable { try GoogleDriveAuth.shared.getAccessToken() })", forHTTPHeaderField: "Authorization")
+        let (_, response) = try await performResponse(request)
+        guard let location = response.value(forHTTPHeaderField: "Location") else {
+            throw GoogleDriveError.invalidResponse
+        }
+        return location
+    }
+    
+    func uploadStatus(session: String, total: Int64) async throws -> UploadResult {
+        var request = URLRequest(url: URL(string: session)!)
+        request.httpMethod = "PUT"
+        request.setValue("bytes */\(total)", forHTTPHeaderField: "Content-Range")
+        request.setValue("Bearer \(try await unavailable { try GoogleDriveAuth.shared.getAccessToken() })", forHTTPHeaderField: "Authorization")
+        return try await uploadResult(request)
+    }
+    
+    func upload(session: String, file: URL, offset: Int64, total: Int64, onProgress: @MainActor @Sendable @escaping (Int64) -> Void) async throws -> UploadResult {
+        let bodyFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: bodyFile) }
+        try await Task.detached {
+            FileManager.default.createFile(atPath: bodyFile.path, contents: nil)
+            let input = try FileHandle(forReadingFrom: file)
+            let output = try FileHandle(forWritingTo: bodyFile)
+            defer {
+                try? input.close()
+                try? output.close()
+            }
+            try input.seek(toOffset: UInt64(offset))
+            while let chunk = try input.read(upToCount: 1 << 20), !chunk.isEmpty {
+                try output.write(contentsOf: chunk)
+            }
+        }.value
+        var request = URLRequest(url: URL(string: session)!)
+        request.httpMethod = "PUT"
+        request.setValue("bytes \(offset)-\(total - 1)/\(total)", forHTTPHeaderField: "Content-Range")
+        request.setValue("Bearer \(try await unavailable { try GoogleDriveAuth.shared.getAccessToken() })", forHTTPHeaderField: "Authorization")
+        do {
+            let result = try await uploadResult(request, bodyFile: bodyFile, delegate: UploadProgress(offset: offset, onProgress: onProgress))
+            if case .received = result {
+                return try await uploadStatus(session: session, total: total)
+            }
+            return result
+        } catch GoogleDriveError.apiError(_, let statusCode?) where statusCode >= 500 {
+            return try await uploadStatus(session: session, total: total)
+        }
+    }
+    
+    private func uploadResult(_ request: URLRequest, bodyFile: URL? = nil, delegate: URLSessionTaskDelegate? = nil) async throws -> UploadResult {
+        do {
+            let (_, response) = try await performResponse(request, bodyFile: bodyFile, delegate: delegate)
+            if response.statusCode == 308 {
+                let last = response.value(forHTTPHeaderField: "Range")?.split(separator: "-").last.flatMap { Int64($0) }
+                return .received(last.map { $0 + 1 } ?? 0)
+            }
+            return .done
+        } catch GoogleDriveError.apiError(_, let statusCode) where statusCode == 404 || statusCode == 410 {
+            return .expired
+        }
     }
     
     func downloadFile(fileId: String, fileSize: Int64, onProgress: @MainActor @Sendable @escaping (Double) -> Void) async throws -> Data {
@@ -272,6 +350,26 @@ nonisolated private final class DownloadProgress: NSObject, URLSessionTaskDelega
             let progress = Double(task.countOfBytesReceived) / Double(fileSize)
             Task { @MainActor in
                 onProgress(progress)
+            }
+        }
+    }
+}
+
+nonisolated private final class UploadProgress: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let offset: Int64
+    let onProgress: @MainActor @Sendable (Int64) -> Void
+    private var observation: NSKeyValueObservation?
+    
+    init(offset: Int64, onProgress: @MainActor @Sendable @escaping (Int64) -> Void) {
+        self.offset = offset
+        self.onProgress = onProgress
+    }
+    
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.observe(\.countOfBytesSent) { [offset, onProgress] task, _ in
+            let sent = offset + task.countOfBytesSent
+            Task { @MainActor in
+                onProgress(sent)
             }
         }
     }

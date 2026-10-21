@@ -43,7 +43,7 @@ extension GoogleDriveSyncManager {
         cache.bookFolders?["\(key)/\(generation)"] = nil
     }
     
-    func upload(_ listing: Listing, key: String, generation: Int, name: String, file: URL) async throws {
+    func upload(_ listing: Listing, key: String, generation: Int, name: String, file: URL, resumable: Bool, onProgress: @MainActor @Sendable @escaping (Int64) -> Void) async throws {
         var (book, folder) = try await resolveFolder(listing, key: key, generation: generation)
         if folder == nil {
             if book == nil {
@@ -58,11 +58,64 @@ extension GoogleDriveSyncManager {
         if listing.files[folder!]?[name] != nil {
             return
         }
-        if listing.listed || listing.created.contains(folder!) {
-            try await GoogleDriveClient.shared.write(file: file, name: name, parent: folder!)
+        let known = listing.listed || listing.created.contains(folder!)
+        if resumable {
+            if !known, try await !drive.children(parent: folder!, name: name).isEmpty {
+                return
+            }
+            try await uploadResumable(file: file, name: name, folder: folder!, onProgress: onProgress)
+        } else if known {
+            try await GoogleDriveClient.shared.write(file: file, name: name, parent: folder!, onProgress: onProgress)
         } else {
-            try await drive.upload(file: file, fileName: name, folder: folder!)
+            try await drive.upload(file: file, fileName: name, folder: folder!, onProgress: onProgress)
         }
+    }
+    
+    private func uploadResumable(file: URL, name: String, folder: String, onProgress: @MainActor @Sendable @escaping (Int64) -> Void) async throws {
+        let client = GoogleDriveClient.shared
+        let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        let total = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        let modified = Int64(((attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0) * 1000)
+        let key = "\(folder)/\(name)/\(total)/\(modified)"
+        var session: String
+        var offset: Int64 = 0
+        if let saved = cache.uploadSessions?[key] {
+            switch try await client.uploadStatus(session: saved, total: total) {
+            case .done:
+                return try finishSession(key)
+            case .received(let received):
+                session = saved
+                offset = received
+            case .expired:
+                session = try await client.startUpload(name: name, parent: folder, total: total)
+            }
+        } else {
+            session = try await client.startUpload(name: name, parent: folder, total: total)
+        }
+        cache.uploadSessions = (cache.uploadSessions ?? [:]).merging([key: session]) { $1 }
+        try saveCache()
+        for _ in 0..<3 {
+            switch try await client.upload(session: session, file: file, offset: offset, total: total, onProgress: onProgress) {
+            case .done:
+                return try finishSession(key)
+            case .received(let received):
+                offset = received
+            case .expired:
+                try finishSession(key)
+                throw GoogleDriveError.apiError(String(localized: "The upload expired and will start over."), statusCode: nil)
+            }
+        }
+        throw GoogleDriveError.unavailable(URLError(.networkConnectionLost))
+    }
+    
+    private func finishSession(_ key: String) throws {
+        cache.uploadSessions?[key] = nil
+        try saveCache()
+    }
+    
+    func size(_ listing: Listing, key: String, generation: Int, name: String) -> Int64? {
+        guard let folder = listing.folders[key]?[generation] else { return nil }
+        return listing.files[folder]?[name]?.size.flatMap { Int64($0) }
     }
     
     func findFile(_ listing: Listing, key: String, generation: Int, name: String) async throws -> GoogleDriveFile? {
