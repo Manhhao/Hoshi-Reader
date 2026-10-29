@@ -355,7 +355,12 @@ class AnkiManager {
                 await syncAnkiConnect()
             }
             return true
+        } catch is URLError {
+            // Queue since offline / cant reach ankiconnect
+            return true
+
         } catch {
+            // Duplicate or other anki specific error. Fall through and dont queue!
             return false
         }
     }
