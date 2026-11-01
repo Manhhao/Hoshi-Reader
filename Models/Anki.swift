@@ -222,7 +222,7 @@ struct QueuedAnkiNote: Codable, Identifiable {
     let id: UUID
     let word: String
     let createdAt: Date
-    let note: Data
+    let actions: Data
     var attempts: Int
     var lastError: String?
 }

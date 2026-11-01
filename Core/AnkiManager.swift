@@ -16,7 +16,7 @@ import ZIPFoundation
 @MainActor
 class AnkiManager {
     static let shared = AnkiManager()
-    
+
     var cardFormats: [AnkiCardFormat] = []
     
     var availableDecks: [String] = []
@@ -258,6 +258,7 @@ class AnkiManager {
             singleGlossaries = [:]
         }
         
+        var multiNote: [[String: Any]] = []
         var fields: [String: String] = [:]
         var audioFields: [String] = []
         var sasayakiAudioFields: [String] = []
@@ -331,10 +332,21 @@ class AnkiManager {
                 let ext = media.path.split(separator: ".").last!
                 let filename = "hoshi_dict_\(mediaData.sha1).\(ext)"
                 fields = fields.mapValues { $0.replacingOccurrences(of: media.filename, with: filename) }
-                _ = try? await ankiConnectRequest(action: "storeMediaFile", params: [
-                    "filename": filename,
-                    "data": mediaData.base64EncodedString()
-                ])
+                do {
+                    _ = try await ankiConnectRequest(action: "storeMediaFile", params: [
+                        "filename": filename,
+                        "data": mediaData.base64EncodedString()
+                    ])
+                }
+                catch { // storeMediaFile failed. Store for queue
+                    multiNote.append([
+                        "action": "storeMediaFile",
+                        "params": [
+                            "filename": filename,
+                            "data": mediaData.base64EncodedString()
+                        ]
+                    ])
+                }
             }
             note["fields"] = fields
         }
@@ -357,6 +369,23 @@ class AnkiManager {
             return true
         } catch is URLError {
             // Queue since offline / cant reach ankiconnect
+            multiNote.append([
+                "action": "addNote",
+                "params": [
+                    "note": note
+                ]
+            ])
+            let quededNote = ["actions" : multiNote]
+            let qWord =  firstFieldWord(format: format) {
+                handlebarToValue(handlebar: $0, context: context, content: content, singleGlossaries: singleGlossaries)
+            } ?? ""
+
+            if let actions = try? JSONSerialization.data(withJSONObject: quededNote) {
+                AnkiQueue.shared.enqueue(item: QueuedAnkiNote(id: UUID(), word: qWord, createdAt: Date.now, actions: actions, attempts: 0))
+            } else {
+                print("Failed to serialize JSON")
+                return false
+            }
             return true
 
         } catch {
@@ -941,7 +970,6 @@ class AnkiManager {
         default: return "application/octet-stream"
         }
     }
-    
     enum AnkiConnectError: LocalizedError {
         case invalidUrl
         case ankiconnectError(String)

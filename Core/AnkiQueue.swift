@@ -33,13 +33,14 @@ final class AnkiQueue {
                 continue
             }
 
-            guard let action = (try? JSONSerialization.jsonObject(with: items[i].note)) as? [[String: String]] else {
-                print("Data wasn't a valid JSON object or wasn't typed [String: String]")
+            guard let action = (try? JSONSerialization.jsonObject(with: items[i].actions)) as? [[String: Any]] else {
+                print("Data wasn't a valid JSON object or wasn't typed [String: Any]")
                 return false
             }
 
             do {
                 try await send(action)
+                remove(id: items[i].id)
             } catch is URLError {
                 return false
             } catch let ankiConnectError as AnkiManager.AnkiConnectError {
@@ -48,10 +49,8 @@ final class AnkiQueue {
             } catch {
                 return false
             }
-
-
         }
-
+        return true
     }
 
     public func remove(id: UUID) {
