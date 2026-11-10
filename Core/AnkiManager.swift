@@ -113,6 +113,13 @@ class AnkiManager {
             _ = try await ankiConnectRequest(action: "version")
             isAnkiConnectReachable = true
             save()
+            await _ = AnkiQueue.shared.flush { actions in
+                do {
+                    try await ankiConnectRequest(action: "multi" , params: actions as? [String : Any])
+                } catch {
+                    print(error.localizedDescription)
+                }
+            }
         } catch {
             isAnkiConnectReachable = false
         }

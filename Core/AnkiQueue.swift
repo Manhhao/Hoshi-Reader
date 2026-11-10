@@ -19,37 +19,43 @@ final class AnkiQueue {
 
     public func enqueue(item: QueuedAnkiNote) {
         items.append(item)
+        guard presist() else {
+            print("[ANKI_QUEUE] Failed to presist")
+            return
+        }
     }
 
-    public func flush(send: ([[String: Any]]) async throws -> Void) async -> Bool {
+    public func flush(send: ([String: Any]) async throws -> Void) async -> Bool {
         guard !isFlusing, !items.isEmpty else { return false }
         isFlusing =  true
         defer { isFlusing = false }
 
-
-        for i in 0..<items.count {
+        var i = 0
+        while i < items.count {
             if items[i].attempts >= 3 {
                 remove(id: items[i].id)
                 continue
             }
 
-            guard let action = (try? JSONSerialization.jsonObject(with: items[i].actions)) as? [[String: Any]] else {
+            guard let action = (try? JSONSerialization.jsonObject(with: items[i].actions)) as? [String: Any] else {
                 print("Data wasn't a valid JSON object or wasn't typed [String: Any]")
                 return false
             }
 
             do {
                 try await send(action)
+                print("Just flushed \(items[i].word)")
                 remove(id: items[i].id)
-            } catch is URLError {
-                return false
             } catch let ankiConnectError as AnkiManager.AnkiConnectError {
                 items[i].attempts += 1
                 items[i].lastError = ankiConnectError.localizedDescription
+                print(items[i].lastError ?? "Error print lastError")
+                i += 1
             } catch {
                 return false
             }
         }
+        _ = presist()
         return true
     }
 
@@ -73,8 +79,8 @@ final class AnkiQueue {
         }
     }
 
-    func presist(queuedNote: QueuedAnkiNote) -> Bool {
-        guard ((try? BookStorage.save(queuedNote, inside: BookStorage.getAppDirectory(), as: AnkiQueue.queuedWords)) != nil) else {
+    private func presist() -> Bool {
+        guard ((try? BookStorage.save(items, inside: BookStorage.getAppDirectory(), as: AnkiQueue.queuedWords)) != nil) else {
             return false
         }
 
