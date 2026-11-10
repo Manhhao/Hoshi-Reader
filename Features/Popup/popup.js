@@ -1551,8 +1551,16 @@ async function checkDuplicates(entryIndex) {
         return;
     }
     
-    // mining stays enabled while AnkiConnect is unreachable, notes are queued instead
+    // with the offline queue enabled, mining stays enabled while AnkiConnect is unreachable
     const isOffline = window.useAnkiConnect && !window.isAnkiConnectReachable;
+    if (isOffline && !window.queueOffline) {
+        getButtonSlots('mine', entryIndex).forEach(slot => {
+            updateButtonSlot(slot, { state: 'default', enabled: false });
+            updateButtonSlot(getButtonSlot('note', entryIndex, Number(slot.dataset.slotIndex)), { hidden: true });
+        });
+        return;
+    }
+
     const results = await webkit.messageHandlers.duplicateCheck.postMessage({
         '{expression}': entry.expression,
         '{reading}': entry.reading

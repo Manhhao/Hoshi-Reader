@@ -7,13 +7,16 @@
 //
 
 import Foundation
+import Observation
 
+@Observable
+@MainActor
 final class AnkiQueue {
     static let shared = AnkiQueue()
 
     private(set) var items: [QueuedAnkiNote] = []
     private static let queuedWords = "queued_words.json"
-    private var isFlusing = false
+    private(set) var isFlushing = false
 
     private init() { load() }
 
@@ -27,18 +30,15 @@ final class AnkiQueue {
 
     // returns the number of notes that reached Anki
     public func flush(send: ([String: Any]) async throws -> Void) async -> Int {
-        guard !isFlusing, !items.isEmpty else { return 0 }
-        isFlusing =  true
-        defer { isFlusing = false; _ = presist() }
+        guard !isFlushing, !items.isEmpty else { return 0 }
+        isFlushing =  true
+        defer { isFlushing = false; _ = presist() }
 
         var sent = 0
         var i = 0
         while i < items.count {
-            if items[i].attempts >= 3 {
-                remove(id: items[i].id)
-                continue
-            }
-
+            // notes that keep failing stay queued with their error so nothing is lost,
+            // they can be removed from the queue list in the AnkiConnect settings
             guard let action = (try? JSONSerialization.jsonObject(with: items[i].actions)) as? [String: Any] else {
                 print("Data wasn't a valid JSON object or wasn't typed [String: Any]")
                 remove(id: items[i].id)
@@ -56,6 +56,7 @@ final class AnkiQueue {
                 print(items[i].lastError ?? "Error print lastError")
                 i += 1
             } catch {
+                print("[ANKI_QUEUE] Flush stopped at \(items[i].word): \(error)")
                 return sent
             }
         }
@@ -64,6 +65,13 @@ final class AnkiQueue {
 
     public func contains(word: String) -> Bool {
         items.contains { $0.word == word }
+    }
+
+    // removes a note from outside a flush, e.g. from the settings list
+    public func delete(id: UUID) {
+        guard !isFlushing else { return }
+        remove(id: id)
+        _ = presist()
     }
 
     public func remove(id: UUID) {

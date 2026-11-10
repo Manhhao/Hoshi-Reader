@@ -34,6 +34,10 @@ class AnkiManager {
     
     var savedWords: Set<String> = []
     
+    var queueOffline: Bool {
+        useAnkiConnect && ankiConnectConfig?.queueOffline == true
+    }
+
     var isConnected: Bool {
         if useAnkiConnect {
             isAnkiConnectReachable
@@ -71,7 +75,7 @@ class AnkiManager {
             }
         }
     }
-    
+
     static let wordAddedNotification = Notification.Name("hoshiWordAdded")
     static let ankiConnectNotification = Notification.Name("hoshiAnkiConnect")
     
@@ -114,7 +118,16 @@ class AnkiManager {
             isAnkiConnectReachable = true
             save()
             let sent = await AnkiQueue.shared.flush { actions in
-                guard let res = try await ankiConnectRequest(action: "multi" , params: actions) as? [[String: Any]] else { return }
+                var params = actions
+                // AnkiConnect checks the api key on every action inside multi, not just the outer request
+                if let apiKey = ankiConnectConfig?.apiKey, !apiKey.isEmpty,
+                   var innerActions = actions["actions"] as? [[String: Any]] {
+                    for index in innerActions.indices {
+                        innerActions[index]["key"] = apiKey
+                    }
+                    params["actions"] = innerActions
+                }
+                guard let res = try await ankiConnectRequest(action: "multi" , params: params) as? [[String: Any]] else { return }
                 for r in res {
                     if let msg = r["error"] as? String {
                         // we only care about errors that *aren't* duplicates
@@ -276,7 +289,7 @@ class AnkiManager {
         
         // when AnkiConnect is known to be unreachable, skip the requests and queue right away
         // instead of waiting for each one to time out
-        let skipRequests = !isAnkiConnectReachable && URL(string: ankiConnectConfig?.url ?? "") != nil
+        let skipRequests = queueOffline && !isAnkiConnectReachable && URL(string: ankiConnectConfig?.url ?? "") != nil
         var multiNote: [[String: Any]] = []
         var fields: [String: String] = [:]
         var audioFields: [String] = []
@@ -388,7 +401,7 @@ class AnkiManager {
                 await syncAnkiConnect()
             }
             return true
-        } catch is URLError {
+        } catch is URLError where queueOffline {
             // Queue since offline / cant reach ankiconnect
             multiNote.append([
                 "action": "addNote",

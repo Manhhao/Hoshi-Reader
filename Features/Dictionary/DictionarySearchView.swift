@@ -412,6 +412,7 @@ struct DictionarySearchView: View {
             window.allowDupes = \(AnkiManager.shared.allowDupes);
             window.disableShowNotes = \(AnkiManager.shared.disableShowNotes);
             window.useAnkiConnect = \(AnkiManager.shared.useAnkiConnect);
+            window.queueOffline = \(AnkiManager.shared.queueOffline);
             window.embedMedia = \(AnkiManager.shared.embedMedia);
             window.compactGlossariesAnki = \(AnkiManager.shared.compactGlossaries);
             window.customCSS = \(customCSS);

@@ -79,6 +79,7 @@ struct AnkiConnectConfig: Codable {
     var checkAllModels: Bool? = false
     var forceSync: Bool
     var apiKey: String?
+    var queueOffline: Bool? = false
 }
 
 struct MiningContext {
