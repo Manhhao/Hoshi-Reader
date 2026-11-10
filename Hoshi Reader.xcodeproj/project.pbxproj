@@ -67,6 +67,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AnkiManager.swift,
+				AnkiQueue.swift,
 				BookStorage.swift,
 				DictionaryManager.swift,
 				FontManager.swift,

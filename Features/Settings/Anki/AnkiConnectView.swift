@@ -11,7 +11,8 @@ import UniformTypeIdentifiers
 
 struct AnkiConnectView: View {
     @State private var ankiManager = AnkiManager.shared
-    
+    @State private var ankiQueue = AnkiQueue.shared
+
     var body: some View {
         List {
             Section {
@@ -52,8 +53,47 @@ struct AnkiConnectView: View {
                         Text("Status: \(connectionStatus)", tableName: "Dictionaries")
                     }
                 }
+
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { ankiManager.ankiConnectConfig?.queueOffline ?? false },
+                        set: { value in
+                            ankiManager.ankiConnectConfig?.queueOffline = value
+                            ankiManager.save()
+                        }
+                    )) {
+                        Text("Queue Cards While Offline", tableName: "Dictionaries")
+                    }
+                    let recentItems = Array(ankiQueue.items.suffix(3).reversed())
+                    ForEach(recentItems) { item in
+                        QueuedNoteRow(item: item)
+                    }
+                    .onDelete { offsets in
+                        offsets.map { recentItems[$0].id }.forEach { ankiQueue.delete(id: $0) }
+                    }
+                    .deleteDisabled(ankiQueue.isFlushing)
+                    if ankiQueue.items.count > recentItems.count {
+                        NavigationLink {
+                            AnkiQueueView()
+                        } label: {
+                            Text("See All (\(ankiQueue.items.count))", tableName: "Dictionaries")
+                        }
+                    }
+                    if !ankiQueue.items.isEmpty {
+                        Button {
+                            Task { await ankiManager.pingAnkiConnect() }
+                        } label: {
+                            Text("Send Now", tableName: "Dictionaries")
+                        }
+                        .disabled(ankiQueue.isFlushing || !ankiManager.isAnkiConnectReachable)
+                    }
+                } header: {
+                    Text("Offline Queue", tableName: "Dictionaries")
+                } footer: {
+                    Text("Cards mined while AnkiConnect is unreachable are saved on this device and sent once it can be reached again.", tableName: "Dictionaries")
+                }
             }
-            
+
             if ankiManager.useAnkiConnect && ankiManager.isConnected {
                 Section {
                     Picker(selection: Binding(
@@ -95,6 +135,12 @@ struct AnkiConnectView: View {
             }
         }
         .navigationTitle(String(localized: "AnkiConnect", table: "Dictionaries"))
+        .task {
+            // refresh reachability so the queue controls reflect the current state
+            if ankiManager.useAnkiConnect {
+                await ankiManager.pingAnkiConnect()
+            }
+        }
     }
     
     private var connectionStatus: String {

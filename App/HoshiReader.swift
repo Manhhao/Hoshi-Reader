@@ -60,6 +60,7 @@ struct HoshiReaderApp: App {
                     LocalFileServer.shared.endBackgroundTask()
                     Task { @MainActor in
                         LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
+                        await AnkiManager.shared.pingAnkiConnect()
                     }
                     if userConfig.autoUpdateDictionaries {
                         DictionaryManager.shared.autoUpdateDictionaries()

@@ -34,6 +34,10 @@ class AnkiManager {
     
     var savedWords: Set<String> = []
     
+    var queueOffline: Bool {
+        useAnkiConnect && ankiConnectConfig?.queueOffline == true
+    }
+
     var isConnected: Bool {
         if useAnkiConnect {
             isAnkiConnectReachable
@@ -113,6 +117,31 @@ class AnkiManager {
             _ = try await ankiConnectRequest(action: "version")
             isAnkiConnectReachable = true
             save()
+            let sent = await AnkiQueue.shared.flush { actions in
+                var params = actions
+                // AnkiConnect checks the api key on every action inside multi, not just the outer request
+                if let apiKey = ankiConnectConfig?.apiKey, !apiKey.isEmpty,
+                   var innerActions = actions["actions"] as? [[String: Any]] {
+                    for index in innerActions.indices {
+                        innerActions[index]["key"] = apiKey
+                    }
+                    params["actions"] = innerActions
+                }
+                guard let res = try await ankiConnectRequest(action: "multi" , params: params) as? [[String: Any]] else { return }
+                for r in res {
+                    if let msg = r["error"] as? String {
+                        // we only care about errors that *aren't* duplicates
+                        if !msg.contains("duplicate") { throw AnkiConnectError.ankiconnectError(msg)}
+                    }
+                }
+            }
+            if sent > 0 {
+                // refresh open popups so queued icons turn into added icons
+                NotificationCenter.default.post(name: Self.wordAddedNotification, object: nil)
+                if ankiConnectConfig?.forceSync == true {
+                    await syncAnkiConnect()
+                }
+            }
         } catch {
             isAnkiConnectReachable = false
         }
@@ -258,6 +287,10 @@ class AnkiManager {
             singleGlossaries = [:]
         }
         
+        // when AnkiConnect is known to be unreachable, skip the requests and queue right away
+        // instead of waiting for each one to time out
+        let skipRequests = queueOffline && !isAnkiConnectReachable && URL(string: ankiConnectConfig?.url ?? "") != nil
+        var multiNote: [[String: Any]] = []
         var fields: [String: String] = [:]
         var audioFields: [String] = []
         var sasayakiAudioFields: [String] = []
@@ -310,7 +343,8 @@ class AnkiManager {
         if !pictureFields.isEmpty, let coverURL = context.coverURL,
            let coverData = try? Data(contentsOf: coverURL) {
             let filename = "hoshi_cover_\(coverData.sha1).\(coverURL.pathExtension)"
-            if let stored = try? await ankiConnectRequest(action: "getMediaFilesNames", params: ["pattern": filename]) as? [String], !stored.isEmpty {
+            if !skipRequests,
+               let stored = try? await ankiConnectRequest(action: "getMediaFilesNames", params: ["pattern": filename]) as? [String], !stored.isEmpty {
                 for field in pictureFields {
                     fields[field] = "<img src=\"\(filename)\">"
                 }
@@ -331,10 +365,21 @@ class AnkiManager {
                 let ext = media.path.split(separator: ".").last!
                 let filename = "hoshi_dict_\(mediaData.sha1).\(ext)"
                 fields = fields.mapValues { $0.replacingOccurrences(of: media.filename, with: filename) }
-                _ = try? await ankiConnectRequest(action: "storeMediaFile", params: [
+                let mediaParams: [String: Any] = [
                     "filename": filename,
                     "data": mediaData.base64EncodedString()
-                ])
+                ]
+                do {
+                    if skipRequests { throw URLError(.cannotConnectToHost) }
+                    _ = try await ankiConnectRequest(action: "storeMediaFile", params: mediaParams)
+                }
+                catch { // storeMediaFile failed. Store for queue
+                    multiNote.append([
+                        "action": "storeMediaFile",
+                        "version": 6,
+                        "params": mediaParams
+                    ])
+                }
             }
             note["fields"] = fields
         }
@@ -345,6 +390,7 @@ class AnkiManager {
         }
         
         do {
+            if skipRequests { throw URLError(.cannotConnectToHost) }
             _ = try await ankiConnectRequest(action: "addNote", params: ["note": note])
             addWord(firstFieldWord(format: format) {
                 handlebarToValue(handlebar: $0, context: context, content: content, singleGlossaries: singleGlossaries)
@@ -355,11 +401,46 @@ class AnkiManager {
                 await syncAnkiConnect()
             }
             return true
+        } catch is URLError where queueOffline {
+            // Queue since offline / cant reach ankiconnect
+            multiNote.append([
+                "action": "addNote",
+                "version": 6,
+                "params": [
+                    "note": note
+                ]
+            ])
+            let quededNote = ["actions" : multiNote]
+            let qWord =  firstFieldWord(format: format) {
+                handlebarToValue(handlebar: $0, context: context, content: content, singleGlossaries: singleGlossaries)
+            } ?? ""
+
+            if let actions = try? JSONSerialization.data(withJSONObject: quededNote) {
+                AnkiQueue.shared.enqueue(item: QueuedAnkiNote(id: UUID(), word: qWord, createdAt: Date.now, actions: actions, attempts: 0))
+                addWord(qWord)
+                LocalFileServer.shared.clearMedia()
+                isAnkiConnectReachable = false
+            } else {
+                print("Failed to serialize JSON")
+                return false
+            }
+            return true
+
         } catch {
+            // Duplicate or other anki specific error. Fall through and dont queue!
             return false
         }
     }
     
+    func queuedFlags(fields: [String: String]) -> [Bool] {
+        cardFormats.map { format in
+            guard let word = firstFieldWord(format: format, resolve: { fields[$0] }) else {
+                return false
+            }
+            return AnkiQueue.shared.contains(word: word)
+        }
+    }
+
     func checkDuplicates(fields: [String: String]) async -> [Bool] {
         let words = cardFormats.map { format in
             firstFieldWord(format: format) {
@@ -371,7 +452,8 @@ class AnkiManager {
             word.map { savedWords.contains($0) } ?? false
         }
         
-        guard useAnkiConnect else {
+        // skip the AnkiConnect check while offline, it would only wait for the timeout
+        guard useAnkiConnect, isAnkiConnectReachable else {
             return results
         }
         

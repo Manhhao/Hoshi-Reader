@@ -42,6 +42,7 @@ struct AnkiCardFormat: Codable, Identifiable {
         "plus.circle": "plus.circle.fill",
         "plus.diamond": "plus.diamond.fill",
     ]
+    static let queuedIcon = "clock.arrow.circlepath"
 }
 
 struct AnkiConfig: Codable {
@@ -78,6 +79,7 @@ struct AnkiConnectConfig: Codable {
     var checkAllModels: Bool? = false
     var forceSync: Bool
     var apiKey: String?
+    var queueOffline: Bool? = false
 }
 
 struct MiningContext {
@@ -216,4 +218,13 @@ struct AnkiFieldTemplate {
             "miscInfo": Handlebars.documentTitle.rawValue,
         ])
     ]
+}
+
+struct QueuedAnkiNote: Codable, Identifiable {
+    let id: UUID
+    let word: String
+    let createdAt: Date
+    let actions: Data
+    var attempts: Int
+    var lastError: String?
 }

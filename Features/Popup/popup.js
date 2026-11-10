@@ -1551,28 +1551,31 @@ async function checkDuplicates(entryIndex) {
         return;
     }
     
-    if (window.useAnkiConnect && !window.isAnkiConnectReachable) {
+    // with the offline queue enabled, mining stays enabled while AnkiConnect is unreachable
+    const isOffline = window.useAnkiConnect && !window.isAnkiConnectReachable;
+    if (isOffline && !window.queueOffline) {
         getButtonSlots('mine', entryIndex).forEach(slot => {
             updateButtonSlot(slot, { state: 'default', enabled: false });
             updateButtonSlot(getButtonSlot('note', entryIndex, Number(slot.dataset.slotIndex)), { hidden: true });
         });
         return;
     }
-    
+
     const results = await webkit.messageHandlers.duplicateCheck.postMessage({
         '{expression}': entry.expression,
         '{reading}': entry.reading
     });
     getButtonSlots('mine', entryIndex).forEach(slot => {
         const i = Number(slot.dataset.slotIndex);
-        const isDuplicate = results?.[i] === true;
+        const isQueued = results?.queued?.[i] === true;
+        const isDuplicate = isQueued || results?.duplicates?.[i] === true;
         const isValidFormat = window.validFormatFlags[i];
         updateButtonSlot(slot, {
-            state: isDuplicate ? 'duplicate' : 'default',
+            state: isQueued ? 'queued' : isDuplicate ? 'duplicate' : 'default',
             enabled: isValidFormat && !(isDuplicate && !window.allowDupes)
         });
         updateButtonSlot(getButtonSlot('note', entryIndex, i), {
-            hidden: !isDuplicate || window.disableShowNotes
+            hidden: !isDuplicate || isQueued || isOffline || window.disableShowNotes
         });
     });
 }

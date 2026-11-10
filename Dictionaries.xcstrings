@@ -78,6 +78,9 @@
         }
       }
     },
+    "AnkiConnect can't be reached right now. Queued cards will be sent automatically once it can." : {
+
+    },
     "AnkiConnect Status: %@" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
       "localizations" : {
@@ -163,6 +166,9 @@
           }
         }
       }
+    },
+    "Cards mined while AnkiConnect is unreachable are saved on this device and sent once it can be reached again." : {
+
     },
     "Categorize Dictionaries" : {
       "comment" : "Context: Settings > Anki > Advanced. Section assigning categories to term dictionaries for glossary field mappings.",
@@ -846,6 +852,9 @@
         }
       }
     },
+    "No Queued Cards" : {
+
+    },
     "None" : {
       "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
       "localizations" : {
@@ -879,6 +888,9 @@
         }
       }
     },
+    "Offline Queue" : {
+
+    },
     "OK" : {
       "comment" : "Context: Shared label in dictionary, Anki, or AnkiConnect settings. Surrounding UI may be a row label, alert action, or connection status.",
       "localizations" : {
@@ -900,6 +912,12 @@
           }
         }
       }
+    },
+    "Queue Cards While Offline" : {
+
+    },
+    "Queued Cards" : {
+
     },
     "Reset" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",
@@ -944,6 +962,12 @@
           }
         }
       }
+    },
+    "See All (%lld)" : {
+
+    },
+    "Send Now" : {
+
     },
     "Settings" : {
       "comment" : "Context: Settings > Dictionaries > Settings subview. Surrounding UI includes lookup scan controls, collapsed dictionary mode, behavior toggles, and custom CSS editor.",

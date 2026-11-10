@@ -384,7 +384,11 @@ struct PopupWebView: UIViewRepresentable {
             if isSmall {
                 icon = String(icon.dropLast(".small".count))
             }
-            let name = state == "duplicate" ? (AnkiCardFormat.duplicateIcons[icon] ?? icon) : icon
+            let name = switch state {
+            case "duplicate": AnkiCardFormat.duplicateIcons[icon] ?? icon
+            case "queued": AnkiCardFormat.queuedIcon
+            default: icon
+            }
             let iconConfig = isSmall ? UIImage.SymbolConfiguration(pointSize: 10 * parent.scale, weight: .medium) : config
             return UIImage(systemName: name, withConfiguration: iconConfig)
         }
@@ -470,7 +474,10 @@ struct PopupWebView: UIViewRepresentable {
                 return (await parent.onMine?(content, AnkiManager.shared.cardFormats[slotIndex].id) ?? false, nil)
             }
             if message.name == "duplicateCheck", let fields = message.body as? [String: String] {
-                return (await AnkiManager.shared.checkDuplicates(fields: fields), nil)
+                return ([
+                    "duplicates": await AnkiManager.shared.checkDuplicates(fields: fields),
+                    "queued": AnkiManager.shared.queuedFlags(fields: fields)
+                ], nil)
             }
             if message.name == "getEntries", let body = message.body as? [String: Any] {
                 let start = body["start"] as? Int ?? 0
