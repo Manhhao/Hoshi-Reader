@@ -16,7 +16,7 @@ import ZIPFoundation
 @MainActor
 class AnkiManager {
     static let shared = AnkiManager()
-
+    
     var cardFormats: [AnkiCardFormat] = []
     
     var availableDecks: [String] = []
@@ -75,7 +75,7 @@ class AnkiManager {
             }
         }
     }
-
+    
     static let wordAddedNotification = Notification.Name("hoshiWordAdded")
     static let ankiConnectNotification = Notification.Name("hoshiAnkiConnect")
     
@@ -456,7 +456,7 @@ class AnkiManager {
         guard useAnkiConnect, isAnkiConnectReachable else {
             return results
         }
-
+        
         var notes: [[String: Any]] = []
         var noteIndices: [Int] = []
         for (index, word) in words.enumerated() {
@@ -1018,6 +1018,7 @@ class AnkiManager {
         default: return "application/octet-stream"
         }
     }
+    
     enum AnkiConnectError: LocalizedError {
         case invalidUrl
         case ankiconnectError(String)

@@ -78,6 +78,9 @@
         }
       }
     },
+    "AnkiConnect can't be reached right now. Queued cards will be sent automatically once it can." : {
+
+    },
     "AnkiConnect Status: %@" : {
       "comment" : "Context: Settings > Anki. Surrounding UI configures Anki deck/model selection, backup import, duplicate handling, field mappings, tags, and fetch confirmation alerts.",
       "localizations" : {
