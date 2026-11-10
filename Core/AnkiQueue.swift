@@ -62,6 +62,10 @@ final class AnkiQueue {
         return sent
     }
 
+    public func contains(word: String) -> Bool {
+        items.contains { $0.word == word }
+    }
+
     public func remove(id: UUID) {
         if let index = items.firstIndex(where: { $0.id == id }) {
             items.remove(at: index)

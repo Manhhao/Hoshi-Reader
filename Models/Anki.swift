@@ -42,6 +42,7 @@ struct AnkiCardFormat: Codable, Identifiable {
         "plus.circle": "plus.circle.fill",
         "plus.diamond": "plus.diamond.fill",
     ]
+    static let queuedIcon = "clock.arrow.circlepath"
 }
 
 struct AnkiConfig: Codable {
