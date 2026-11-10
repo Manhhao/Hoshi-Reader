@@ -115,7 +115,7 @@ class AnkiManager {
             save()
             await _ = AnkiQueue.shared.flush { actions in
                 do {
-                    try await ankiConnectRequest(action: "multi" , params: actions as? [String : Any])
+                    try await ankiConnectRequest(action: "multi" , params: actions)
                 } catch {
                     print(error.localizedDescription)
                 }
@@ -348,6 +348,7 @@ class AnkiManager {
                 catch { // storeMediaFile failed. Store for queue
                     multiNote.append([
                         "action": "storeMediaFile",
+                        "version": 6,
                         "params": [
                             "filename": filename,
                             "data": mediaData.base64EncodedString()
@@ -378,6 +379,7 @@ class AnkiManager {
             // Queue since offline / cant reach ankiconnect
             multiNote.append([
                 "action": "addNote",
+                "version": 6,
                 "params": [
                     "note": note
                 ]
