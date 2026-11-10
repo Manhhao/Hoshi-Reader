@@ -393,6 +393,7 @@ class AnkiManager {
 
             if let actions = try? JSONSerialization.data(withJSONObject: quededNote) {
                 AnkiQueue.shared.enqueue(item: QueuedAnkiNote(id: UUID(), word: qWord, createdAt: Date.now, actions: actions, attempts: 0))
+                addWord(qWord)
             } else {
                 print("Failed to serialize JSON")
                 return false
