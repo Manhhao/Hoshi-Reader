@@ -28,7 +28,7 @@ final class AnkiQueue {
     public func flush(send: ([String: Any]) async throws -> Void) async -> Bool {
         guard !isFlusing, !items.isEmpty else { return false }
         isFlusing =  true
-        defer { isFlusing = false }
+        defer { isFlusing = false; _ = presist() }
 
         var i = 0
         while i < items.count {
@@ -39,7 +39,8 @@ final class AnkiQueue {
 
             guard let action = (try? JSONSerialization.jsonObject(with: items[i].actions)) as? [String: Any] else {
                 print("Data wasn't a valid JSON object or wasn't typed [String: Any]")
-                return false
+                remove(id: items[i].id)
+                continue
             }
 
             do {
@@ -55,7 +56,6 @@ final class AnkiQueue {
                 return false
             }
         }
-        _ = presist()
         return true
     }
 
@@ -71,9 +71,7 @@ final class AnkiQueue {
 
         let notes = BookStorage.load([QueuedAnkiNote].self, from: file)
         if let notes = notes {
-            for note in notes {
-                enqueue(item: note)
-            }
+            items.append(contentsOf: notes)
         } else {
             print("[ANKI_QUEUE] File is empty/courrupt") // TODO: replace with better error handling
         }

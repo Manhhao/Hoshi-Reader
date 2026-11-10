@@ -113,11 +113,13 @@ class AnkiManager {
             _ = try await ankiConnectRequest(action: "version")
             isAnkiConnectReachable = true
             save()
-            await _ = AnkiQueue.shared.flush { actions in
-                do {
-                    try await ankiConnectRequest(action: "multi" , params: actions)
-                } catch {
-                    print(error.localizedDescription)
+            _ = await AnkiQueue.shared.flush { actions in
+                guard let res = try await ankiConnectRequest(action: "multi" , params: actions) as? [[String: Any]] else { return }
+                for r in res {
+                    if let msg = r["error"] as? String {
+                        // we only care about errors that *aren't* duplicates
+                        if !msg.contains("duplicate") { throw AnkiConnectError.ankiconnectError(msg)}
+                    }
                 }
             }
         } catch {
