@@ -113,7 +113,7 @@ class AnkiManager {
             _ = try await ankiConnectRequest(action: "version")
             isAnkiConnectReachable = true
             save()
-            _ = await AnkiQueue.shared.flush { actions in
+            let sent = await AnkiQueue.shared.flush { actions in
                 guard let res = try await ankiConnectRequest(action: "multi" , params: actions) as? [[String: Any]] else { return }
                 for r in res {
                     if let msg = r["error"] as? String {
@@ -121,6 +121,9 @@ class AnkiManager {
                         if !msg.contains("duplicate") { throw AnkiConnectError.ankiconnectError(msg)}
                     }
                 }
+            }
+            if sent > 0, ankiConnectConfig?.forceSync == true {
+                await syncAnkiConnect()
             }
         } catch {
             isAnkiConnectReachable = false
@@ -394,6 +397,7 @@ class AnkiManager {
             if let actions = try? JSONSerialization.data(withJSONObject: quededNote) {
                 AnkiQueue.shared.enqueue(item: QueuedAnkiNote(id: UUID(), word: qWord, createdAt: Date.now, actions: actions, attempts: 0))
                 addWord(qWord)
+                LocalFileServer.shared.clearMedia()
             } else {
                 print("Failed to serialize JSON")
                 return false

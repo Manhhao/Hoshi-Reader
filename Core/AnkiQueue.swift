@@ -25,11 +25,13 @@ final class AnkiQueue {
         }
     }
 
-    public func flush(send: ([String: Any]) async throws -> Void) async -> Bool {
-        guard !isFlusing, !items.isEmpty else { return false }
+    // returns the number of notes that reached Anki
+    public func flush(send: ([String: Any]) async throws -> Void) async -> Int {
+        guard !isFlusing, !items.isEmpty else { return 0 }
         isFlusing =  true
         defer { isFlusing = false; _ = presist() }
 
+        var sent = 0
         var i = 0
         while i < items.count {
             if items[i].attempts >= 3 {
@@ -47,16 +49,17 @@ final class AnkiQueue {
                 try await send(action)
                 print("Just flushed \(items[i].word)")
                 remove(id: items[i].id)
+                sent += 1
             } catch let ankiConnectError as AnkiManager.AnkiConnectError {
                 items[i].attempts += 1
                 items[i].lastError = ankiConnectError.localizedDescription
                 print(items[i].lastError ?? "Error print lastError")
                 i += 1
             } catch {
-                return false
+                return sent
             }
         }
-        return true
+        return sent
     }
 
     public func remove(id: UUID) {
